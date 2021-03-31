@@ -1,0 +1,6 @@
+[submodule "ext/HomeKitAdk"]
+	path = ext/HomeKitAdk
+	url = ../HomeKitAdk
+[submodule "ext/lua"]
+	path = ext/lua
+	url = ../lua
