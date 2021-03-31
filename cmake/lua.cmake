@@ -1,7 +1,8 @@
 # directory
 set(LUA_DIR "${TOP_DIR}/ext/lua")
+set(LUA_INC_DIR "${LUA_DIR}")
 
-# lua
+# collect lua sources
 set(LUA_SRCS    "${LUA_DIR}/lapi.c"
                 "${LUA_DIR}/lauxlib.c"
                 "${LUA_DIR}/lbaselib.c"
@@ -35,5 +36,3 @@ set(LUA_SRCS    "${LUA_DIR}/lapi.c"
                 "${LUA_DIR}/lutf8lib.c"
                 "${LUA_DIR}/lvm.c"
                 "${LUA_DIR}/lzio.c")
-
-set(LUA_INC_DIR "${LUA_DIR}")
