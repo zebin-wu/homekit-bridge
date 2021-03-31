@@ -20,10 +20,9 @@
  * SOFTWARE.
 */
 #include <stdio.h>
-#include <bridge.h>
 
-void app_main(void)
+int bridge_main(void)
 {
-    printf("Hello world!\n");
-    bridge_main();
+    printf("Hello bridge!\n");
+    return 0;
 }

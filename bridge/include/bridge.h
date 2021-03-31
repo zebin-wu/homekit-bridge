@@ -19,11 +19,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
-#include <stdio.h>
-#include <bridge.h>
+#ifndef __BRIDGE_H_
+#define __BRIDGE_H_
 
-void app_main(void)
-{
-    printf("Hello world!\n");
-    bridge_main();
-}
+/**
+ * The main entry to start the HomeKit bridge.
+*/
+int bridge_main(void);
+
+#endif /* __BRIDGE_H_ */
