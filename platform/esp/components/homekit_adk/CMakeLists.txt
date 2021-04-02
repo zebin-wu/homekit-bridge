@@ -26,3 +26,5 @@ idf_component_register(SRCS "${SRCS}"
                 INCLUDE_DIRS "${INC_DIR}"
                 REQUIRES
                 PRIV_REQUIRES nvs_flash mdns)
+
+add_definitions(-DHAP_LOG_LEVEL=${CONFIG_HAP_LOG_LEVEL})
