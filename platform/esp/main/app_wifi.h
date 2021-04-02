@@ -19,12 +19,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
-#ifndef __BRIDGE_H_
-#define __BRIDGE_H_
+#ifndef APP_WIFI_H
+#define APP_WIFI_H
+
+#include <esp_err.h>
 
 /**
- * The main entry to start the HomeKit bridge.
+ * Initialize Wi-Fi.
 */
-int bridge_main(void);
+void app_wifi_init(void);
 
-#endif /* __BRIDGE_H_ */
+/**
+ * Connect to network.
+*/
+esp_err_t app_wifi_connect(void);
+
+#endif /* APP_WIFI_H */
