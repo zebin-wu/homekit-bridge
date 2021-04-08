@@ -40,6 +40,7 @@
 #endif
 
 #include "app_wifi.h"
+#include "app_spiffs.h"
 
 static bool requestedFactoryReset = false;
 static bool clearPairings = false;
@@ -100,8 +101,11 @@ static void InitializePlatform() {
             &accessorySetup, &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = &platform.factoryKeyValueStore });
     platform.hapPlatform.accessorySetup = &accessorySetup;
 
-    // Initialise Wi-Fi
+    // Initialize Wi-Fi
     app_wifi_init();
+
+    // Initialize SPIFFS
+    app_spiffs_init();
 
 #if IP
     // TCP stream manager.
@@ -343,5 +347,5 @@ void main_task()
 
 void app_main()
 {
-    xTaskCreate(main_task, "main_task", 6 * 1024, NULL, 6, NULL);
+    xTaskCreate(main_task, "main_task", 16 * 1024, NULL, 6, NULL);
 }
