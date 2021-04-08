@@ -1,9 +1,10 @@
 set(TOP_DIR ${COMPONENT_DIR}/../../../..)
 include(${TOP_DIR}/cmake/platform.cmake)
 
-set(PLATFORM_SRCS "src/board.c")
+set(SRCS    "${PLATFORM_SRCS}"
+            "src/board.c")
 
-idf_component_register(SRCS "${PLATFORM_SRCS}"
+idf_component_register(SRCS "${SRCS}"
                 INCLUDE_DIRS "${PLATFORM_INC_DIR}"
                 REQUIRES
-                PRIV_REQUIRES app_update)
+                PRIV_REQUIRES app_update lua)
