@@ -1,5 +1,6 @@
 set(TOP_DIR ${COMPONENT_DIR}/../../../..)
 include(${TOP_DIR}/cmake/adk.cmake)
+include(${TOP_DIR}/cmake/lhap.cmake)
 
 set(PORT_SRCS   "port/src/HAPPlatform.c"
                 "port/src/HAPPlatformAbort.c"

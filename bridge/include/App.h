@@ -33,15 +33,6 @@ extern "C" {
 #endif
 
 /**
- * Identify routine. Used to locate the accessory.
- */
-HAP_RESULT_USE_CHECK
-HAPError IdentifyAccessory(
-        HAPAccessoryServerRef* server,
-        const HAPAccessoryIdentifyRequest* request,
-        void* _Nullable context);
-
-/**
  * Initialize the application.
  */
 void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyValueStore);
@@ -74,17 +65,13 @@ void AccessoryServerHandleSessionInvalidate(
 void RestorePlatformFactorySettings(void);
 
 /**
- * Returns pointer to accessory information
- */
-const HAPAccessory* AppGetAccessoryInfo();
-
-/**
  * Initialize App.
  */
 void AppInitialize(
         HAPAccessoryServerOptions* hapAccessoryServerOptions,
         HAPPlatform* hapPlatform,
-        HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks);
+        HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks,
+        void* _Nullable *context);
 
 /**
  * De-initialize App.

@@ -24,6 +24,8 @@
 
 #include "app_spiffs.h"
 
+#define SPIFFS_DIR_PATH "/spiffs"
+
 static const char *TAG = "spiffs";
 
 void app_spiffs_init(void)
@@ -31,7 +33,7 @@ void app_spiffs_init(void)
     ESP_LOGI(TAG, "Initializing SPIFFS");
 
     esp_vfs_spiffs_conf_t conf = {
-      .base_path = "/spiffs",
+      .base_path = SPIFFS_DIR_PATH,
       .partition_label = NULL,
       .max_files = 5,
       .format_if_mount_failed = false
@@ -58,6 +60,12 @@ void app_spiffs_init(void)
         ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
     } else {
         ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+    }
+
+    // set "/spiffs" to env LUA_PATH
+    ret = setenv("LUA_PATH", SPIFFS_DIR_PATH "/?.lua", 1);
+    if (ret) {
+        ESP_LOGE(TAG, "Failed to set env LUA_PATH");
     }
 }
 

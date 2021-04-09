@@ -58,6 +58,9 @@ static struct {
     HAPPlatform hapPlatform;
     HAPAccessoryServerCallbacks hapAccessoryServerCallbacks;
 
+    /* Client context pointer. Will be passed to callbacks. */
+    void* _Nullable context;
+
 #if HAVE_NFC
     HAPPlatformAccessorySetupNFC setupNFC;
 #endif
@@ -317,15 +320,17 @@ void main_task()
 
     // Perform Application-specific initalizations such as setting up callbacks
     // and configure any additional unique platform dependencies
-    AppInitialize(&platform.hapAccessoryServerOptions, &platform.hapPlatform, &platform.hapAccessoryServerCallbacks);
+    AppInitialize(&platform.hapAccessoryServerOptions, &platform.hapPlatform,
+        &platform.hapAccessoryServerCallbacks, &platform.context);
 
+    printf("context: %p\n", platform.context);
     // Initialize accessory server.
     HAPAccessoryServerCreate(
             &accessoryServer,
             &platform.hapAccessoryServerOptions,
             &platform.hapPlatform,
             &platform.hapAccessoryServerCallbacks,
-            /* context: */ NULL);
+            platform.context);
 
     // Create app object.
     AppCreate(&accessoryServer, &platform.keyValueStore);

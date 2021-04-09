@@ -19,7 +19,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
-#include "App.h"
 #include "DB.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,12 +47,7 @@
 #define kIID_PairingPairingFeatures ((uint64_t) 0x0024)
 #define kIID_PairingPairingPairings ((uint64_t) 0x0025)
 
-#define kIID_LightBulb                 ((uint64_t) 0x0030)
-#define kIID_LightBulbServiceSignature ((uint64_t) 0x0031)
-#define kIID_LightBulbName             ((uint64_t) 0x0032)
-#define kIID_LightBulbOn               ((uint64_t) 0x0033)
-
-HAP_STATIC_ASSERT(kAttributeCount == 9 + 3 + 5 + 4, AttributeCount_mismatch);
+HAP_STATIC_ASSERT(kAttributeCount == 9 + 3 + 5, AttributeCount_mismatch);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
