@@ -20,10 +20,14 @@
  * SOFTWARE.
 */
 #include <HAP.h>
-#include <platform/board.h>
+#include <lauxlib.h>
+#include <lualib.h>
+#include <lpfmlib.h>
 
 #include <App.h>
-#include <DB.h>
+
+#include "AppInt.h"
+#include "lhaplib.h"
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -48,53 +52,12 @@
 typedef struct {
     HAPAccessoryServerRef* server;
     HAPPlatformKeyValueStoreRef keyValueStore;
+    AccessoryContext context;
 } AccessoryConfiguration;
 
 static AccessoryConfiguration accessoryConfiguration;
 
 //----------------------------------------------------------------------------------------------------------------------
-
-/**
- * HomeKit accessory that provides the HomeKit Bridge service.
- *
- * Note: Not constant to enable BCT Manual Name Change.
- */
-static HAPAccessory accessory = { .aid = 1,
-                                  .category = kHAPAccessoryCategory_Bridges,
-                                  .name = "HomeKit Bridge",
-                                  .manufacturer = "unknown",
-                                  .model = "unknown",
-                                  .serialNumber = "unknown",
-                                  .firmwareVersion = "unknown",
-                                  .hardwareVersion = "unknown",
-                                  .services = (const HAPService* const[]) { &accessoryInformationService,
-                                                                            &hapProtocolInformationService,
-                                                                            &pairingService,
-                                                                            NULL },
-                                  .callbacks = { .identify = IdentifyAccessory } };
-
-//----------------------------------------------------------------------------------------------------------------------
-
-HAP_RESULT_USE_CHECK
-HAPError IdentifyAccessory(
-        HAPAccessoryServerRef* server HAP_UNUSED,
-        const HAPAccessoryIdentifyRequest* request HAP_UNUSED,
-        void* _Nullable context HAP_UNUSED) {
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
-    return kHAPError_None;
-}
-
-//----------------------------------------------------------------------------------------------------------------------
-
-void AccessoryNotification(
-        const HAPAccessory* accessory,
-        const HAPService* service,
-        const HAPCharacteristic* characteristic,
-        void* ctx) {
-    HAPLogInfo(&kHAPLog_Default, "Accessory Notification");
-
-    HAPAccessoryServerRaiseEvent(accessoryConfiguration.server, characteristic, service, accessory);
-}
 
 void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyValueStore) {
     HAPPrecondition(server);
@@ -106,26 +69,36 @@ void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyVal
     accessoryConfiguration.server = server;
     accessoryConfiguration.keyValueStore = keyValueStore;
 
-    /* set board information to accessory. */
-    accessory.manufacturer = pfm_board_manufacturer_get();
-    accessory.model = pfm_board_model_get();
-    accessory.serialNumber = pfm_board_serial_number_get();
-    accessory.firmwareVersion = pfm_board_firmware_version_get();
-    accessory.hardwareVersion = pfm_board_hardware_version_get();
+    accessoryConfiguration.context.L = luaL_newstate();
+    luaL_openlibs(accessoryConfiguration.context.L);
+
+    luaL_requiref(accessoryConfiguration.context.L, LUA_HAPNAME, luaopen_hap, 1);
+    lua_pop(accessoryConfiguration.context.L, 1);  /* remove lib */
+    luaL_requiref(accessoryConfiguration.context.L, LUA_PFMNAME, luaopen_pfm, 1);
+    lua_pop(accessoryConfiguration.context.L, 1);  /* remove lib */
+
+    lhap_set_server(accessoryConfiguration.server);
 }
 
 void AppRelease(void) {
+    lua_close(accessoryConfiguration.context.L);
 }
 
 void AppAccessoryServerStart(void) {
-    HAPAccessoryServerStart(accessoryConfiguration.server, &accessory);
+    lua_State *L = accessoryConfiguration.context.L;
+    int status = luaL_dofile(L, "/spiffs/main.lua");
+    if (status != LUA_OK) {
+        const char *msg = lua_tostring(L, -1);
+        lua_writestringerror("%s\n", msg);
+        lua_pop(L, 1);
+    }
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 
 void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef* server, void* _Nullable context) {
     HAPPrecondition(server);
-    HAPPrecondition(!context);
+    HAPPrecondition(context);
 
     switch (HAPAccessoryServerGetState(server)) {
         case kHAPAccessoryServerState_Idle: {
@@ -144,15 +117,12 @@ void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef* server, void* _Nul
     HAPFatalError();
 }
 
-const HAPAccessory* AppGetAccessoryInfo() {
-    return &accessory;
-}
-
 void AppInitialize(
         HAPAccessoryServerOptions* hapAccessoryServerOptions,
         HAPPlatform* hapPlatform,
-        HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks) {
-    /*no-op*/
+        HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks,
+        void* _Nullable *context) {
+    *context = &accessoryConfiguration.context;
 }
 
 void AppDeinitialize() {

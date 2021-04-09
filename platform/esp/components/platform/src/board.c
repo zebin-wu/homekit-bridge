@@ -66,7 +66,7 @@ const char *pfm_board_model_get(void)
         model = "ESP32-C3";
         break;
     default:
-        model = "unknown";
+        model = "Unknown";
         break;
     }
     return model;
