@@ -18,4 +18,9 @@ menu "App Configuration"
         help
             Factory NVS Partition name which will have the HomeKit Setup Info.
 
+    config SPIFFS_DIR_PATH
+        string "SPIFFS Directory Path"
+        default "/spiffs"
+        help
+            SPIFFS directory path.
 endmenu

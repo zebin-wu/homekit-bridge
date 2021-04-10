@@ -19,6 +19,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
+#include <stdlib.h>
+
+#include <platform/sys.h>
 #include <HAP.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -57,6 +60,12 @@ typedef struct {
 
 static AccessoryConfiguration accessoryConfiguration;
 
+static const luaL_Reg loadedlibs[] = {
+    {LUA_HAPNAME, luaopen_hap},
+    {LUA_PFMNAME, luaopen_pfm},
+    {NULL, NULL}
+};
+
 //----------------------------------------------------------------------------------------------------------------------
 
 void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyValueStore) {
@@ -69,13 +78,25 @@ void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyVal
     accessoryConfiguration.server = server;
     accessoryConfiguration.keyValueStore = keyValueStore;
 
-    accessoryConfiguration.context.L = luaL_newstate();
-    luaL_openlibs(accessoryConfiguration.context.L);
+    // set work dir to env LUA_PATH
+    char path[PFM_SYS_PATH_MAX_LEN];
+    snprintf(path, sizeof(path), "%s/?.lua", pfm_sys_get_work_dir());
+    if (setenv("LUA_PATH", path, 1)) {
+        HAPLogError(&kHAPLog_Default, "Failed to set env LUA_PATH.");
+    }
 
-    luaL_requiref(accessoryConfiguration.context.L, LUA_HAPNAME, luaopen_hap, 1);
-    lua_pop(accessoryConfiguration.context.L, 1);  /* remove lib */
-    luaL_requiref(accessoryConfiguration.context.L, LUA_PFMNAME, luaopen_pfm, 1);
-    lua_pop(accessoryConfiguration.context.L, 1);  /* remove lib */
+    lua_State *L  = luaL_newstate();
+    if (L == NULL) {
+        HAPLogError(&kHAPLog_Default, "Cannot create state: not enough memory");
+        return;
+    }
+    luaL_openlibs(L);
+    for (const luaL_Reg *lib = loadedlibs; lib->func; lib++) {
+        luaL_requiref(L, lib->name, lib->func, 1);
+        lua_pop(L, 1);  /* remove lib */
+    }
+
+    accessoryConfiguration.context.L = L;
 
     lhap_set_server(accessoryConfiguration.server);
 }
@@ -86,7 +107,9 @@ void AppRelease(void) {
 
 void AppAccessoryServerStart(void) {
     lua_State *L = accessoryConfiguration.context.L;
-    int status = luaL_dofile(L, "/spiffs/main.lua");
+    char path[PFM_SYS_PATH_MAX_LEN];
+    snprintf(path, sizeof(path), "%s/main.lua", pfm_sys_get_work_dir());
+    int status = luaL_dofile(L, path);
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
         lua_writestringerror("%s\n", msg);
