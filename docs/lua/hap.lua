@@ -20,6 +20,25 @@ local AccessoryCategory = {
     GarageDoorOpeners = 4,
     Lighting = 5,
     Locks = 6,
+    Outlets = 7,
+    Switches = 8,
+    Thermostats = 9,
+    Sensors = 10,
+    SecuritySystems = 11,
+    Doors = 12,
+    Windows = 13,
+    WindowCoverings = 14,
+    ProgrammableSwitches = 15,
+    RangeExtenders = 16,
+    IPCameras = 17,
+    AirPurifiers = 19,
+    Heaters = 20,
+    AirConditioners = 21,
+    Humidifiers = 22,
+    Dehumidifiers = 23,
+    Sprinklers = 28,
+    Faucets = 29,
+    ShowerSystems = 30
 }
 
 ---Error type.
