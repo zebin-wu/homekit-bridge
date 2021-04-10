@@ -26,11 +26,15 @@
 #include <HAP.h>
 
 #define LUA_HAPNAME "hap"
-
 LUAMOD_API int luaopen_hap(lua_State *L);
 
+/**
+ * Set accessory server.
+ *
+ * This function should be called before calling @b luaopen_hap.
+ *
+ * @param server
+*/
 void lhap_set_server(HAPAccessoryServerRef *server);
-
-const HAPAccessory *lhap_get_accessory(void);
 
 #endif /* LHAPLIB_H */
