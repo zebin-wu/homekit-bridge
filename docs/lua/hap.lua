@@ -1,15 +1,10 @@
 ---@meta
 
----Starts the accessory server.
+---Configure HAP.
 ---@param accessory table
----@param bridgedaccessories? table
----@param configurationChanged? boolean
+---@param bridgedAccessories? table
 ---@return boolean
-local function start(accessory, bridgedaccessories, configurationChanged) end
-
----Stops the accessory server.
----@return boolean
-local function stop() end
+local function configure(accessory, bridgedAccessories) end
 
 ---Accessory category.
 local AccessoryCategory = {
@@ -65,8 +60,7 @@ local HapProtocolInformationService
 local PairingService
 
 return {
-    start = start,
-    stop = stop,
+    configure = configure,
     AccessoryCategory = AccessoryCategory,
     Error = Error,
     AccessoryInformationService = AccessoryInformationService,

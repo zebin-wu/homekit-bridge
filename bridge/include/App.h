@@ -33,6 +33,13 @@ extern "C" {
 #endif
 
 /**
+ * Application Lua Entry.
+ *
+ * @return attribute count.
+*/
+size_t AppLuaEntry(void);
+
+/**
  * Initialize the application.
  */
 void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyValueStore);

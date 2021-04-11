@@ -23,7 +23,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <App.h>
-#include <DB.h>
 
 #define IP 1
 #include <HAP.h>
@@ -240,32 +239,34 @@ void HandleUpdatedState(HAPAccessoryServerRef* _Nonnull server, void* _Nullable 
 }
 
 #if IP
-static void InitializeIP() {
+static void InitializeIP(size_t attributeCount) {
     // Prepare accessory server storage.
     static HAPIPSession ipSessions[kHAPIPSessionStorage_MinimumNumElements];
     static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][kHAPIPSession_MinimumInboundBufferSize];
     static uint8_t ipOutboundBuffers[HAPArrayCount(ipSessions)][kHAPIPSession_MinimumOutboundBufferSize];
-    static HAPIPEventNotificationRef ipEventNotifications[HAPArrayCount(ipSessions)][kAttributeCount];
     for (size_t i = 0; i < HAPArrayCount(ipSessions); i++) {
         ipSessions[i].inboundBuffer.bytes = ipInboundBuffers[i];
         ipSessions[i].inboundBuffer.numBytes = sizeof ipInboundBuffers[i];
         ipSessions[i].outboundBuffer.bytes = ipOutboundBuffers[i];
         ipSessions[i].outboundBuffer.numBytes = sizeof ipOutboundBuffers[i];
-        ipSessions[i].eventNotifications = ipEventNotifications[i];
-        ipSessions[i].numEventNotifications = HAPArrayCount(ipEventNotifications[i]);
+        ipSessions[i].eventNotifications = malloc(sizeof(HAPIPEventNotificationRef) * attributeCount);
+        HAPAssert(ipSessions[i].eventNotifications);
+        ipSessions[i].numEventNotifications = attributeCount;
     }
-    static HAPIPReadContextRef ipReadContexts[kAttributeCount];
-    static HAPIPWriteContextRef ipWriteContexts[kAttributeCount];
+    HAPIPReadContextRef *ipReadContexts = malloc(sizeof(HAPIPReadContextRef) * attributeCount);
+    HAPAssert(ipReadContexts);
+    HAPIPWriteContextRef *ipWriteContexts = malloc(sizeof(HAPIPWriteContextRef) * attributeCount);
+    HAPAssert(ipWriteContexts);
     static uint8_t ipScratchBuffer[kHAPIPSession_MinimumScratchBufferSize];
     static HAPIPAccessoryServerStorage ipAccessoryServerStorage = {
         .sessions = ipSessions,
         .numSessions = HAPArrayCount(ipSessions),
-        .readContexts = ipReadContexts,
-        .numReadContexts = HAPArrayCount(ipReadContexts),
-        .writeContexts = ipWriteContexts,
-        .numWriteContexts = HAPArrayCount(ipWriteContexts),
         .scratchBuffer = { .bytes = ipScratchBuffer, .numBytes = sizeof ipScratchBuffer }
     };
+    ipAccessoryServerStorage.readContexts = ipReadContexts;
+    ipAccessoryServerStorage.numReadContexts = attributeCount;
+    ipAccessoryServerStorage.writeContexts = ipWriteContexts;
+    ipAccessoryServerStorage.numWriteContexts = attributeCount;
 
     platform.hapAccessoryServerOptions.ip.transport = &kHAPAccessoryServerTransport_IP;
     platform.hapAccessoryServerOptions.ip.accessoryServerStorage = &ipAccessoryServerStorage;
@@ -278,16 +279,16 @@ static void InitializeIP() {
 #endif
 
 #if BLE
-static void InitializeBLE() {
-    static HAPBLEGATTTableElementRef gattTableElements[kAttributeCount];
+static void InitializeBLE(size_t attributeCount) {
     static HAPBLESessionCacheElementRef sessionCacheElements[kHAPBLESessionCache_MinElements];
     static HAPSessionRef session;
     static uint8_t procedureBytes[2048];
     static HAPBLEProcedureRef procedures[1];
+    static HAPBLEGATTTableElementRef *gattTableElements =
+        malloc(sizeof(HAPBLEGATTTableElementRef) * attributeCount);
+    HAPAssert(gattTableElements);
 
     static HAPBLEAccessoryServerStorage bleAccessoryServerStorage = {
-        .gattTableElements = gattTableElements,
-        .numGATTTableElements = HAPArrayCount(gattTableElements),
         .sessionCacheElements = sessionCacheElements,
         .numSessionCacheElements = HAPArrayCount(sessionCacheElements),
         .session = &session,
@@ -295,6 +296,8 @@ static void InitializeBLE() {
         .numProcedures = HAPArrayCount(procedures),
         .procedureBuffer = { .bytes = procedureBytes, .numBytes = sizeof procedureBytes }
     };
+    bleAccessoryServerStorage.gattTableElements = gattTableElements;
+    bleAccessoryServerStorage.numGATTTableElements = attributeCount;
 
     platform.hapAccessoryServerOptions.ble.transport = &kHAPAccessoryServerTransport_BLE;
     platform.hapAccessoryServerOptions.ble.accessoryServerStorage = &bleAccessoryServerStorage;
@@ -310,12 +313,16 @@ void main_task()
     // Initialize global platform objects.
     InitializePlatform();
 
+    // Lua entry.
+    size_t attributeCount = AppLuaEntry();
+    HAPAssert(attributeCount);
+
 #if IP
-    InitializeIP();
+    InitializeIP(attributeCount);
 #endif
 
 #if BLE
-    InitializeBLE();
+    InitializeBLE(attributeCount);
 #endif
 
     // Perform Application-specific initalizations such as setting up callbacks
@@ -323,7 +330,6 @@ void main_task()
     AppInitialize(&platform.hapAccessoryServerOptions, &platform.hapPlatform,
         &platform.hapAccessoryServerCallbacks, &platform.context);
 
-    printf("context: %p\n", platform.context);
     // Initialize accessory server.
     HAPAccessoryServerCreate(
             &accessoryServer,

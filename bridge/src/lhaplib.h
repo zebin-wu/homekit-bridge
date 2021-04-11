@@ -29,12 +29,23 @@
 LUAMOD_API int luaopen_hap(lua_State *L);
 
 /**
- * Set accessory server.
- *
- * This function should be called before calling @b luaopen_hap.
- *
- * @param server
+ * Get accessory.
 */
-void lhap_set_server(HAPAccessoryServerRef *server);
+const HAPAccessory *lhap_get_accessory(void);
+
+/**
+ * Get bridged accessories.
+*/
+const HAPAccessory *const *lhap_get_bridged_accessories(void);
+
+/**
+ * Get attribute count.
+*/
+size_t lhap_get_attribute_count(void);
+
+/**
+ * Reset lhap.
+*/
+void lhap_reset(void);
 
 #endif /* LHAPLIB_H */

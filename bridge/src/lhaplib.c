@@ -130,12 +130,14 @@ static lapi_userdata userdataServices[] = {
 };
 
 static struct hap_desc {
-    bool isStarted:1;
-    HAPAccessoryServerRef *server;
+    bool isConfigure:1;
+    size_t attributeCount;
     HAPAccessory accessory;
     HAPAccessory **bridgedAccessories;
     lapi_callback *cbHead;
-} gv_hap_desc;
+} gv_hap_desc = {
+    .attributeCount = kAttributeCount
+};
 
 static bool lhap_check_is_valid_service(HAPService *service)
 {
@@ -392,23 +394,18 @@ bool accessories_arr_cb(lua_State *L, int i, void *arg)
 }
 
 /**
- * start(accessory: table, bridgedAccessories: table,
- * configurationChanged: boolean) -> boolean
+ * configure(accessory: table, bridgedAccessories: table) -> boolean
  *
  * If the category of the accessory is bridge, the parameters
- * bridgedAccessories and configurationChanged are valid.
+ * bridgedAccessories is valid.
 */
-static int hap_start(lua_State *L)
+static int hap_configure(lua_State *L)
 {
     size_t len;
     struct hap_desc *desc = &gv_hap_desc;
     HAPAccessory *accessory = &desc->accessory;
 
-    if (!desc->server) {
-        goto err;
-    }
-
-    if (desc->isStarted) {
+    if (desc->isConfigure) {
         goto err;
     }
 
@@ -424,20 +421,16 @@ static int hap_start(lua_State *L)
     }
 
     if (accessory->category != kHAPAccessoryCategory_Bridges) {
-        HAPAccessoryServerStart(desc->server, &desc->accessory);
-        lua_pushboolean(L, true);
-        return 1;
+        goto end;
     }
 
-    if (!lua_istable(L, 2) || !lua_isboolean(L, 3)) {
+    if (!lua_istable(L, 2)) {
         goto err1;
     }
 
     len = lua_rawlen(L, 2);
     if (len == 0) {
-        HAPAccessoryServerStart(desc->server, &desc->accessory);
-        lua_pushboolean(L, true);
-        return 1;
+        goto end;
     }
 
     desc->bridgedAccessories =
@@ -452,10 +445,8 @@ static int hap_start(lua_State *L)
         desc->bridgedAccessories)) {
         goto err2;
     }
-
-    HAPAccessoryServerStartBridge(desc->server, &desc->accessory,
-        (const HAPAccessory *const *)desc->bridgedAccessories,
-        lua_toboolean(L, 3));
+end:
+    desc->isConfigure = true;
     lua_pushboolean(L, true);
     return 1;
 
@@ -472,44 +463,8 @@ err:
     return 1;
 }
 
-/**
- * stop() -> boolean
-*/
-static int hap_stop(lua_State *L)
-{
-    struct hap_desc *desc = &gv_hap_desc;
-
-    if (!desc->server) {
-        lua_pushboolean(L, false);
-        return 1;
-    }
-
-    if (desc->isStarted) {
-        lua_pushboolean(L, false);
-        return 1;
-    }
-
-    HAPAccessoryServerStop(desc->server);
-
-    /* clean all accessory */
-    reset_accessory(&desc->accessory);
-    for (HAPAccessory **pa = desc->bridgedAccessories;
-        *pa != NULL; pa++) {
-        reset_accessory(*pa);
-        LHAP_FREE(*pa);
-    }
-    LHAP_FREE(desc->bridgedAccessories);
-
-    /* clean all callbacks */
-    lapi_del_callback_list(&desc->cbHead, L);
-
-    lua_pushboolean(L, true);
-    return 1;
-}
-
 static const luaL_Reg haplib[] = {
-    {"start", hap_start},
-    {"stop", hap_stop},
+    {"configure", hap_configure},
     /* placeholders */
     {"AccessoryCategory", NULL},
     {"Error", NULL},
@@ -540,9 +495,26 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
     return 1;
 }
 
-void lhap_set_server(HAPAccessoryServerRef *server)
+const HAPAccessory *lhap_get_accessory(void)
 {
-    if (!gv_hap_desc.server) {
-        gv_hap_desc.server = server;
+    if (gv_hap_desc.isConfigure) {
+        return &gv_hap_desc.accessory;
     }
+    return NULL;
+}
+
+const HAPAccessory *const *lhap_get_bridged_accessories(void)
+{
+    if (gv_hap_desc.isConfigure) {
+        return (const HAPAccessory *const *)gv_hap_desc.bridgedAccessories;
+    }
+    return NULL;
+}
+
+size_t lhap_get_attribute_count(void)
+{
+    if (gv_hap_desc.isConfigure) {
+        return gv_hap_desc.attributeCount;
+    }
+    return 0;
 }

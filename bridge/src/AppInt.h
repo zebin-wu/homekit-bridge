@@ -24,6 +24,9 @@
 
 #include "lua.h"
 
+/**
+ * Accessory context. Will be passed to callbacks.
+*/
 typedef struct {
     lua_State *L;
 } AccessoryContext;

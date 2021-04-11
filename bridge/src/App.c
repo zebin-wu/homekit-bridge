@@ -68,6 +68,56 @@ static const luaL_Reg loadedlibs[] = {
 
 //----------------------------------------------------------------------------------------------------------------------
 
+size_t AppLuaEntry(void)
+{
+    char path[PFM_SYS_PATH_MAX_LEN];
+
+    // set work dir to env LUA_PATH
+    snprintf(path, sizeof(path), "%s/?.lua", pfm_sys_get_work_dir());
+    if (setenv("LUA_PATH", path, 1)) {
+        HAPLogError(&kHAPLog_Default, "Failed to set env LUA_PATH.");
+    }
+
+    lua_State *L  = luaL_newstate();
+    if (L == NULL) {
+        HAPLogError(&kHAPLog_Default, "Cannot create state: not enough memory");
+        return 0;
+    }
+
+    // load libraries
+    luaL_openlibs(L);
+    for (const luaL_Reg *lib = loadedlibs; lib->func; lib++) {
+        luaL_requiref(L, lib->name, lib->func, 1);
+        lua_pop(L, 1);  /* remove lib */
+    }
+
+    // run main.lua
+    snprintf(path, sizeof(path), "%s/main.lua", pfm_sys_get_work_dir());
+    int status = luaL_dofile(L, path);
+    if (status != LUA_OK) {
+        const char *msg = lua_tostring(L, -1);
+        lua_writestringerror("%s\n", msg);
+        lua_pop(L, 1);
+        goto err;
+    }
+
+    if (!lua_isboolean(L, -1)) {
+        HAPLogError(&kHAPLog_Default, "main.lua returned is not a boolean.");
+        goto err;
+    }
+
+    if (!lua_toboolean(L, -1)) {
+        HAPLogError(&kHAPLog_Default, "Failed to configure.");
+        goto err;
+    }
+
+    accessoryConfiguration.context.L = L;
+    return lhap_get_attribute_count();
+err:
+    lua_close(L);
+    return 0;
+}
+
 void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyValueStore) {
     HAPPrecondition(server);
     HAPPrecondition(keyValueStore);
@@ -77,43 +127,20 @@ void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyVal
     HAPRawBufferZero(&accessoryConfiguration, sizeof accessoryConfiguration);
     accessoryConfiguration.server = server;
     accessoryConfiguration.keyValueStore = keyValueStore;
-
-    // set work dir to env LUA_PATH
-    char path[PFM_SYS_PATH_MAX_LEN];
-    snprintf(path, sizeof(path), "%s/?.lua", pfm_sys_get_work_dir());
-    if (setenv("LUA_PATH", path, 1)) {
-        HAPLogError(&kHAPLog_Default, "Failed to set env LUA_PATH.");
-    }
-
-    lua_State *L  = luaL_newstate();
-    if (L == NULL) {
-        HAPLogError(&kHAPLog_Default, "Cannot create state: not enough memory");
-        return;
-    }
-    luaL_openlibs(L);
-    for (const luaL_Reg *lib = loadedlibs; lib->func; lib++) {
-        luaL_requiref(L, lib->name, lib->func, 1);
-        lua_pop(L, 1);  /* remove lib */
-    }
-
-    accessoryConfiguration.context.L = L;
-
-    lhap_set_server(accessoryConfiguration.server);
 }
 
 void AppRelease(void) {
-    lua_close(accessoryConfiguration.context.L);
 }
 
 void AppAccessoryServerStart(void) {
-    lua_State *L = accessoryConfiguration.context.L;
-    char path[PFM_SYS_PATH_MAX_LEN];
-    snprintf(path, sizeof(path), "%s/main.lua", pfm_sys_get_work_dir());
-    int status = luaL_dofile(L, path);
-    if (status != LUA_OK) {
-        const char *msg = lua_tostring(L, -1);
-        lua_writestringerror("%s\n", msg);
-        lua_pop(L, 1);
+    const HAPAccessory *accessory = lhap_get_accessory();
+    const HAPAccessory *const *bridgedAccessories = lhap_get_bridged_accessories();
+
+    if (bridgedAccessories) {
+        HAPAccessoryServerStartBridge(accessoryConfiguration.server, accessory,
+            bridgedAccessories, true);
+    } else {
+        HAPAccessoryServerStart(accessoryConfiguration.server, accessory);
     }
 }
 
