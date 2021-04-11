@@ -41,12 +41,12 @@ static char *format_mac(const uint8_t *mac, char *buf, size_t buf_len)
 	return buf;
 }
 
-const char *pfm_board_manufacturer_get(void)
+const char *pfm_board_get_manufacturer(void)
 {
     return "Espressif";
 }
 
-const char *pfm_board_model_get(void)
+const char *pfm_board_get_model(void)
 {
     const char *model;
     esp_chip_info_t info;
@@ -72,7 +72,7 @@ const char *pfm_board_model_get(void)
     return model;
 }
 
-const char *pfm_board_serial_number_get(void)
+const char *pfm_board_get_serial_number(void)
 {
     if (serial_number[0] != '\0') {
         return serial_number;
@@ -82,12 +82,12 @@ const char *pfm_board_serial_number_get(void)
     return format_mac(mac, serial_number, sizeof(serial_number));
 }
 
-const char *pfm_board_firmware_version_get(void)
+const char *pfm_board_get_firmware_version(void)
 {
     return esp_ota_get_app_description()->version;
 }
 
-const char *pfm_board_hardware_version_get(void)
+const char *pfm_board_get_hardware_version(void)
 {
     if (hardware_version[0] != '\0') {
         return hardware_version;
