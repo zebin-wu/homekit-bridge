@@ -3,7 +3,7 @@ local pfm = require("pfm")
 local plugin = require("plugin")
 local hap = require("hap")
 
-hap.start({
+return hap.configure({
     aid = 1,
     category = hap.AccessoryCategory.Bridges,
     name = config.bridge.name,
@@ -23,6 +23,4 @@ hap.start({
             return hap.Error.None
         end
     }
-},
-plugin.gen(config.accessiries),
-true)
+}, plugin.gen(config.accessiries))
