@@ -25,31 +25,31 @@
 
 static int pfm_getManufacturer(lua_State *L)
 {
-    lua_pushstring(L, pfm_board_manufacturer_get());
+    lua_pushstring(L, pfm_board_get_manufacturer());
     return 1;
 }
 
 static int pfm_getModel(lua_State *L)
 {
-    lua_pushstring(L, pfm_board_model_get());
+    lua_pushstring(L, pfm_board_get_model());
     return 1;
 }
 
 static int pfm_getSerialNumber(lua_State *L)
 {
-    lua_pushstring(L, pfm_board_serial_number_get());
+    lua_pushstring(L, pfm_board_get_serial_number());
     return 1;
 }
 
 static int pfm_getFirmwareVersion(lua_State *L)
 {
-    lua_pushstring(L, pfm_board_firmware_version_get());
+    lua_pushstring(L, pfm_board_get_firmware_version());
     return 1;
 }
 
 static int pfm_getHardwareVersion(lua_State *L)
 {
-    lua_pushstring(L, pfm_board_hardware_version_get());
+    lua_pushstring(L, pfm_board_get_hardware_version());
     return 1;
 }
 
