@@ -115,13 +115,6 @@ static const char *lhap_error_strs[] = {
     "Busy",
 };
 
-/**
- * Function type.
-*/
-enum func_type {
-    FUNC_TYPE_IDENTIFY,
-};
-
 static lapi_userdata userdataServices[] = {
     {"AccessoryInformationService", (void *)&accessoryInformationService},
     {"HapProtocolInformationService", (void *)&hapProtocolInformationService},
@@ -134,7 +127,6 @@ static struct hap_desc {
     size_t attributeCount;
     HAPAccessory accessory;
     HAPAccessory **bridgedAccessories;
-    lapi_callback *cbHead;
 } gv_hap_desc = {
     .attributeCount = kAttributeCount
 };
@@ -302,9 +294,8 @@ HAPError accessory_identify_cb(
     HAPError err = kHAPError_Unknown;
     lua_State *L = ((AccessoryContext *)context)->L;
 
-    if (!lapi_push_callback(gv_hap_desc.cbHead, L,
-        (void *)&(request->accessory->callbacks.identify),
-        FUNC_TYPE_IDENTIFY)) {
+    if (!lapi_push_callback(L,
+        (size_t)&(request->accessory->callbacks.identify))) {
         HAPLogError(&kHAPLog_Default,
             "%s: Can't get lua function", __func__);
         return err;
@@ -331,9 +322,8 @@ end:
 static bool
 accessory_cbs_identify_cb(lua_State *L, lapi_table_kv *kv, void *arg)
 {
-    if (!lapi_register_callback(&gv_hap_desc.cbHead, L, -1,
-        &(((HAPAccessory *)arg)->callbacks.identify),
-        FUNC_TYPE_IDENTIFY)) {
+    if (!lapi_register_callback(L, -1,
+        (size_t)&(((HAPAccessory *)arg)->callbacks.identify))) {
         return false;
     }
     ((HAPAccessory *)arg)->callbacks.identify = accessory_identify_cb;
