@@ -21,20 +21,24 @@
 */
 #include <stdlib.h>
 #include <string.h>
+#include <rbtree.h>
 
 #include <common/lapi.h>
 #include <lauxlib.h>
 
 struct lapi_callback {
-    int type;
-    void *parent;
+    /* rbtree node */
+    struct rb_node node;
+
+    size_t key;
     int id; /* ref id return from luaL_ref() */
-    struct lapi_callback *next;
 };
+
+struct rb_root cbTree = RB_ROOT;
 
 lapi_table_kv *lapi_lookup_kv_by_name(lapi_table_kv *kv_tab, const char *name)
 {
-    for (;kv_tab->key != NULL; kv_tab++) {
+    for (; kv_tab->key != NULL; kv_tab++) {
         if (!strcmp(kv_tab->key, name)) {
             return kv_tab;
         }
@@ -107,7 +111,7 @@ bool lapi_traverse_array(lua_State *L, int index,
 
 bool lapi_check_is_valid_userdata(lapi_userdata *tab, void *userdata)
 {
-    for (;tab->userdata != NULL; tab++) {
+    for (; tab->userdata != NULL; tab++) {
         if (userdata == tab->userdata) {
             return true;
         }
@@ -115,11 +119,29 @@ bool lapi_check_is_valid_userdata(lapi_userdata *tab, void *userdata)
     return false;
 }
 
-bool lapi_register_callback(lapi_callback **head, lua_State *L,
-                            int index, void *parent, int type)
+bool lapi_register_callback(lua_State *L, int index, size_t key)
 {
-    lapi_callback **t = head;
-    lapi_callback *new;
+    struct rb_root *root = &cbTree;
+    struct rb_node **t = &(root->rb_node);
+    struct rb_node *parent = NULL;
+
+  	// Figure out where to put new node.
+  	while (*t) {
+        lapi_callback *this = container_of(*t, struct lapi_callback, node);
+        parent = *t;
+        if (key < this->key) {
+            t = &((*t)->rb_left);
+        } else if (key > this->key) {
+            t = &((*t)->rb_right);
+        } else {
+            return false;
+        }
+  	}
+
+    lapi_callback *new = malloc(sizeof(*new));
+    if (!new) {
+        return false;
+    }
 
     lua_pushvalue(L, index);
     int ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
@@ -127,51 +149,71 @@ bool lapi_register_callback(lapi_callback **head, lua_State *L,
         return false;
     }
 
-    while (*t != NULL) {
-        if ((*t)->id == ref_id) {
-            return false;
-        }
-        t = &(*t)->next;
-    }
-    new = malloc(sizeof(*new));
-    if (!new) {
-        return false;
-    }
     new->id = ref_id;
-    new->type = type;
-    new->parent = parent;
-    new->next = NULL;
-    *t = new;
+    new->key = key;
+
+  	/* Add new node and rebalance tree. */
+  	rb_link_node(&new->node, parent, t);
+  	rb_insert_color(&new->node, root);
+
     return true;
 }
 
-bool lapi_push_callback(lapi_callback *head, lua_State *L,
-                        void *parent, int type)
+lapi_callback *lapi_find_callback(struct rb_root *root, size_t key)
 {
-    lapi_callback *t = head;
-    while (t != NULL) {
-        if (t->parent == parent && t->type == type) {
-            break;
+    struct rb_node *node = root->rb_node;
+
+    while (node) {
+        lapi_callback *t = container_of(node, struct lapi_callback, node);
+
+        if (key < t->key) {
+            node = node->rb_left;
+        } else if (key > t->key) {
+            node = node->rb_right;
+        } else {
+            return t;
         }
-        t = t->next;
     }
-    if (!t) {
+    return NULL;
+}
+
+bool lapi_push_callback(lua_State *L, size_t key)
+{
+    lapi_callback *cb = lapi_find_callback(&cbTree, key);
+    if (!cb) {
         return false;
     }
-    lua_rawgeti(L, LUA_REGISTRYINDEX, t->id);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, cb->id);
     return true;
 }
 
-void lapi_del_callback_list(lapi_callback **head, lua_State *L)
+bool lapi_unregister_callback(lua_State *L, size_t key)
 {
-    lapi_callback *t;
-    while (*head) {
-        t = *head;
-        luaL_unref(L, LUA_REGISTRYINDEX, t->id);
-        free(t);
-        head = &(*head)->next;
+    lapi_callback *cb = lapi_find_callback(&cbTree, key);
+    if (!cb) {
+        return false;
     }
-    *head = NULL;
+    rb_erase(&cb->node, &cbTree);
+    luaL_unref(L, LUA_REGISTRYINDEX, cb->id);
+    free(cb);
+    return true;
+}
+
+static void _lapi_remove_all_callbacks(lua_State *L, struct rb_node *root)
+{
+    if (root == NULL) {
+        return;
+    }
+    _lapi_remove_all_callbacks(L, root->rb_left);
+    _lapi_remove_all_callbacks(L, root->rb_right);
+    lapi_callback *cb = container_of(root, struct lapi_callback, node);
+    luaL_unref(L, LUA_REGISTRYINDEX, cb->id);
+    free(cb);
+}
+
+void lapi_remove_all_callbacks(lua_State *L)
+{
+    _lapi_remove_all_callbacks(L, cbTree.rb_node);
 }
 
 void lapi_create_enum_table(lua_State *L, const char *enum_array[], int len)

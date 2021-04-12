@@ -76,19 +76,22 @@ bool lapi_check_is_valid_userdata(lapi_userdata *tab, void *userdata);
 /**
  * Register callback.
 */
-bool lapi_register_callback(lapi_callback **head, lua_State *L,
-                            int index, void *parent, int type);
+bool lapi_register_callback(lua_State *L, int index, size_t key);
+
+/**
+ * Unregister callback.
+*/
+bool lapi_unregister_callback(lua_State *L, size_t key);
 
 /**
  * Push callback to Lua stack.
 */
-bool lapi_push_callback(lapi_callback *head, lua_State *L,
-                        void *parent, int type);
+bool lapi_push_callback(lua_State *L, size_t key);
 
 /**
- * Delete the callback list.
+ * Remove all callbacks.
 */
-void lapi_del_callback_list(lapi_callback **head, lua_State *L);
+void lapi_remove_all_callbacks(lua_State *L);
 
 /**
  * Create a enum table.
