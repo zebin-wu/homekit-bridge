@@ -5,7 +5,7 @@ local hap = require("hap")
 
 return hap.configure({
     aid = 1,
-    category = hap.AccessoryCategory.Bridges,
+    category = "Bridges",
     name = config.bridge.name,
     manufacturer = pfm.getManufacturer(),
     model = pfm.getModel(),

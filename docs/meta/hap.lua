@@ -3,7 +3,7 @@
 ---@class Accessory:table HomeKit accessory.
 ---
 ---@field aid integer Accessory instance ID.
----@field category integer Category information for the accessory.
+---@field category AccessoryCategory Category information for the accessory.
 ---@field name string The display name of the accessory.
 ---@field manufacturer string The manufacturer of the accessory.
 ---@field model string The model name of the accessory.
@@ -20,7 +20,7 @@
 ---@class Service:table HomeKit service.
 ---
 ---@field iid integer Instance ID.
----@field serviceType integer The type of the service.
+---@field serviceType ServiceType The type of the service.
 ---@field debugDescription string Description for debugging (based on "Type" field of HAP specification).
 ---@field name string The name of the service.
 ---@field properties ServiceProperties HAP Service properties.
@@ -50,80 +50,76 @@ local Error = {
     Busy = 6,
 }
 
----Accessory category.
-local AccessoryCategory = {
-    BridgedAccessory = 0,
-    Other = 1,
-    Bridges = 2,
-    Fans = 3,
-    GarageDoorOpeners = 4,
-    Lighting = 5,
-    Locks = 6,
-    Outlets = 7,
-    Switches = 8,
-    Thermostats = 9,
-    Sensors = 10,
-    SecuritySystems = 11,
-    Doors = 12,
-    Windows = 13,
-    WindowCoverings = 14,
-    ProgrammableSwitches = 15,
-    RangeExtenders = 16,
-    IPCameras = 17,
-    AirPurifiers = 19,
-    Heaters = 20,
-    AirConditioners = 21,
-    Humidifiers = 22,
-    Dehumidifiers = 23,
-    Sprinklers = 28,
-    Faucets = 29,
-    ShowerSystems = 30
-}
+---@alias AccessoryCategory
+---|>'"BridgedAccessory"'
+---| '"Other"'
+---| '"Bridges"'
+---| '"Fans"'
+---| '"GarageDoorOpeners"'
+---| '"Lighting"'
+---| '"Locks"'
+---| '"Outlets"'
+---| '"Switches"'
+---| '"Thermostats"'
+---| '"Sensors"'
+---| '"SecuritySystems"'
+---| '"Doors"'
+---| '"Windows"'
+---| '"WindowCoverings"'
+---| '"ProgrammableSwitches"'
+---| '"RangeExtenders"'
+---| '"IPCameras"'
+---| '"AirPurifiers"'
+---| '"Heaters = 20"'
+---| '"AirConditioners"'
+---| '"Humidifiers"'
+---| '"Dehumidifiers"'
+---| '"Sprinklers"'
+---| '"Faucets"'
+---| '"ShowerSystems"'
 
----Service type.
-local ServiceType = {
-    AccessoryInformation = 0,
-    GarageDoorOpener = 1,
-    LightBulb = 2,
-    Lightbulb = 3,
-    LockManagement = 4,
-    Outlet = 5,
-    Switch = 6,
-    Thermostat = 7,
-    Pairing = 8,
-    SecuritySystem = 9,
-    CarbonMonoxideSensor = 10,
-    ContactSensor = 11,
-    Door = 12,
-    HumiditySensor = 13,
-    LeakSensor = 14,
-    LightSensor = 15,
-    MotionSensor = 16,
-    OccupancySensor = 17,
-    SmokeSensor = 18,
-    StatelessProgrammableSwitch = 19,
-    TemperatureSensor = 20,
-    Window = 21,
-    WindowCovering = 22,
-    AirQualitySensor = 23,
-    BatteryService = 24,
-    CarbonDioxideSensor = 25,
-    HAPProtocolInformation = 26,
-    Fan = 27,
-    FanV2 = 28,
-    Slat = 29,
-    FilterMaintenance = 30,
-    AirPurifier = 31,
-    HeaterCooler = 32,
-    HumidifierDehumidifier = 33,
-    ServiceLabel = 34,
-    IrrigationSystem = 35,
-    Valve = 36,
-    Faucet = 37,
-    CameraRTPStreamManagement = 38,
-    Microphone = 39,
-    Speaker = 40,
-}
+---@alias ServiceType
+---| '"AccessoryInformation"'
+---| '"GarageDoorOpener"'
+---| '"LightBulb"'
+---| '"Lightbulb"'
+---| '"LockManagement"'
+---| '"Outlet"'
+---| '"Switch"'
+---| '"Thermostat"'
+---| '"Pairing"'
+---| '"SecuritySystem"'
+---| '"CarbonMonoxideSensor"'
+---| '"ContactSensor"'
+---| '"Door"'
+---| '"HumiditySensor"'
+---| '"LeakSensor"'
+---| '"LightSensor"'
+---| '"MotionSensor"'
+---| '"OccupancySensor"'
+---| '"SmokeSensor"'
+---| '"StatelessProgrammableSwitch"'
+---| '"TemperatureSensor"'
+---| '"Window"'
+---| '"WindowCovering"'
+---| '"AirQualitySensor"'
+---| '"BatteryService"'
+---| '"CarbonDioxideSensor"'
+---| '"HAPProtocolInformation"'
+---| '"Fan"'
+---| '"FanV2"'
+---| '"Slat"'
+---| '"FilterMaintenance"'
+---| '"AirPurifier"'
+---| '"HeaterCooler"'
+---| '"HumidifierDehumidifier"'
+---| '"ServiceLabel"'
+---| '"IrrigationSystem"'
+---| '"Valve"'
+---| '"Faucet"'
+---| '"CameraRTPStreamManagement"'
+---| '"Microphone"'
+---| '"Speaker"'
 
 ---Configure HAP.
 ---@param accessory Accessory Accessory to serve.
@@ -146,8 +142,6 @@ local PairingService
 return {
     configure = configure,
     Error = Error,
-    AccessoryCategory = AccessoryCategory,
-    ServiceType = ServiceType,
     AccessoryInformationService = AccessoryInformationService,
     HapProtocolInformationService = HapProtocolInformationService,
     PairingService = PairingService,
