@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-#include "HAP.h"
+#include <HAP.h>
 
 #if __has_feature(nullability)
 #pragma clang assume_nonnull begin
@@ -36,7 +36,7 @@ extern "C" {
  * Application Lua Entry.
  *
  * @return attribute count.
-*/
+ */
 size_t AppLuaEntry(void);
 
 /**

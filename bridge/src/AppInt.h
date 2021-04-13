@@ -22,13 +22,21 @@
 #ifndef APP_INT_H
 #define APP_INT_H
 
-#include "lua.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <lua.h>
 
 /**
  * Accessory context. Will be passed to callbacks.
-*/
+ */
 typedef struct {
     lua_State *L;
 } AccessoryContext;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* APP_INT_H */

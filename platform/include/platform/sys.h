@@ -22,6 +22,10 @@
 #ifndef PLATFORM_SYS_H
 #define PLATFORM_SYS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* the max length of the path */
 #define PFM_SYS_PATH_MAX_LEN 256
 
@@ -29,7 +33,11 @@
  * Get the path of the work directory.
  *
  * All Lua scripts will be here.
-*/
+ */
 const char *pfm_sys_get_work_dir(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PLATFORM_SYS_H */

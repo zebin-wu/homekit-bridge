@@ -22,6 +22,10 @@
 #ifndef LHAPLIB_H
 #define LHAPLIB_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <lua.h>
 #include <HAP.h>
 
@@ -30,22 +34,26 @@ LUAMOD_API int luaopen_hap(lua_State *L);
 
 /**
  * Get accessory.
-*/
+ */
 const HAPAccessory *lhap_get_accessory(void);
 
 /**
  * Get bridged accessories.
-*/
+ */
 const HAPAccessory *const *lhap_get_bridged_accessories(void);
 
 /**
  * Get attribute count.
-*/
+ */
 size_t lhap_get_attribute_count(void);
 
 /**
  * Reset lhap.
-*/
+ */
 void lhap_reset(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LHAPLIB_H */
