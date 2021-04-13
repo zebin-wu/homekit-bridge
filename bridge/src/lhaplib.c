@@ -23,7 +23,7 @@
 /**
  * accessory: {
  *     aid: number, // Accessory instance ID.
- *     category: number,  // Category information for the accessory.
+ *     category: string,  // Category information for the accessory.
  *     name: string,  // The display name of the accessory.
  *     manufacturer: string,  // The manufacturer of the accessory.
  *     model: string, // The model name of the accessory.
@@ -39,8 +39,7 @@
  *
  * service: {
  *     iid: number, // Instance ID.
- *     serviceType: number, // The type of the service.
- *     debugDescription: string, // Description for debugging.
+ *     type: string, // The type of the service.
  *     name: string, // The name of the service.
  *     properties: {
  *         // The service is the primary service on the accessory.
@@ -59,11 +58,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <common/lapi.h>
 #include <lualib.h>
 #include <lauxlib.h>
 
 #include "AppInt.h"
+#include "lapi.h"
 #include "lhaplib.h"
 #include "DB.h"
 
@@ -71,7 +70,7 @@
 #define LHAP_MALLOC(size)        malloc(size)
 #define LHAP_FREE(p)             do { if (p) { free((void *)p); (p) = NULL; } } while (0)
 
-static const char *lhap_accessory_category_strs[] = {
+static const char *lhap_lhap_accessory_category_strs[] = {
     "BridgedAccessory",
     "Other",
     "Bridges",
@@ -115,11 +114,223 @@ static const char *lhap_error_strs[] = {
     "Busy",
 };
 
-static lapi_userdata userdataServices[] = {
+/**
+ * Lua light userdata.
+*/
+typedef struct {
+    const char *name;
+    void *ptr;
+} lhap_lightuserdata;
+
+static lhap_lightuserdata lhap_accessory_services_userdatas[] = {
     {"AccessoryInformationService", (void *)&accessoryInformationService},
     {"HapProtocolInformationService", (void *)&hapProtocolInformationService},
     {"PairingService", (void *)&pairingService},
     {NULL, NULL},
+};
+
+typedef struct {
+    const char *name;
+    const HAPUUID *type;
+    const char *debugDescription;
+} lhap_service_type;
+
+static lhap_service_type lhap_service_type_tab[] = {
+    {
+        "AccessoryInformation",
+        &kHAPServiceType_AccessoryInformation,
+        kHAPServiceDebugDescription_AccessoryInformation
+    },
+    {
+        "GarageDoorOpener",
+        &kHAPServiceType_GarageDoorOpener,
+        kHAPServiceDebugDescription_GarageDoorOpener
+    },
+    {
+        "LightBulb",
+        &kHAPServiceType_LightBulb,
+        kHAPServiceDebugDescription_LightBulb
+    },
+    {
+        "LockManagement",
+        &kHAPServiceType_LockManagement,
+        kHAPServiceDebugDescription_LockManagement
+    },
+    {
+        "Outlet",
+        &kHAPServiceType_Outlet,
+        kHAPServiceDebugDescription_Outlet
+    },
+    {
+        "Switch",
+        &kHAPServiceType_Switch,
+        kHAPServiceDebugDescription_Switch
+    },
+    {
+        "Thermostat",
+        &kHAPServiceType_Thermostat,
+        kHAPServiceDebugDescription_Thermostat
+    },
+    {
+        "Pairing",
+        &kHAPServiceType_Pairing,
+        kHAPServiceDebugDescription_Pairing
+    },
+    {
+        "SecuritySystem",
+        &kHAPServiceType_SecuritySystem,
+        kHAPServiceDebugDescription_SecuritySystem
+    },
+    {
+        "CarbonMonoxideSensor",
+        &kHAPServiceType_CarbonDioxideSensor,
+        kHAPServiceDebugDescription_CarbonDioxideSensor
+    },
+    {
+        "ContactSensor",
+        &kHAPServiceType_ContactSensor,
+        kHAPServiceDebugDescription_ContactSensor
+    },
+    {
+        "Door",
+        &kHAPServiceType_Door,
+        kHAPServiceDebugDescription_Door
+    },
+    {
+        "HumiditySensor",
+        &kHAPServiceType_HumiditySensor,
+        kHAPServiceDebugDescription_HumiditySensor
+    },
+    {
+        "LeakSensor",
+        &kHAPServiceType_LeakSensor,
+        kHAPServiceDebugDescription_LeakSensor
+    },
+    {
+        "LightSensor",
+        &kHAPServiceType_LightSensor,
+        kHAPServiceDebugDescription_LightSensor
+    },
+    {
+        "MotionSensor",
+        &kHAPServiceType_MotionSensor,
+        kHAPServiceDebugDescription_MotionSensor
+    },
+    {
+        "OccupancySensor",
+        &kHAPServiceType_OccupancySensor,
+        kHAPServiceDebugDescription_OccupancySensor
+    },
+    {
+        "SmokeSensor",
+        &kHAPServiceType_SmokeSensor,
+        kHAPServiceDebugDescription_SmokeSensor
+    },
+    {
+        "StatelessProgrammableSwitch",
+        &kHAPServiceType_StatelessProgrammableSwitch,
+        kHAPServiceDebugDescription_StatelessProgrammableSwitch
+    },
+    {
+        "TemperatureSensor",
+        &kHAPServiceType_TemperatureSensor,
+        kHAPServiceDebugDescription_TemperatureSensor
+    },
+    {
+        "Window",
+        &kHAPServiceType_Window,
+        kHAPServiceDebugDescription_Window
+    },
+    {
+        "WindowCovering",
+        &kHAPServiceType_WindowCovering,
+        kHAPServiceDebugDescription_WindowCovering
+    },
+    {
+        "AirQualitySensor",
+        &kHAPServiceType_AirQualitySensor,
+        kHAPServiceDebugDescription_AirQualitySensor
+    },
+    {
+        "BatteryService",
+        &kHAPServiceType_BatteryService,
+        kHAPServiceDebugDescription_BatteryService
+    },
+    {
+        "CarbonDioxideSensor",
+        &kHAPServiceType_CarbonDioxideSensor,
+        kHAPServiceDebugDescription_CarbonDioxideSensor
+    },
+    {
+        "HAPProtocolInformation",
+        &kHAPServiceType_HAPProtocolInformation,
+        kHAPServiceDebugDescription_HAPProtocolInformation
+    },
+    {
+        "Fan",
+        &kHAPServiceType_Fan,
+        kHAPServiceDebugDescription_Fan
+    },
+    {
+        "Slat",
+        &kHAPServiceType_Slat,
+        kHAPServiceDebugDescription_Slat
+    },
+    {
+        "FilterMaintenance",
+        &kHAPServiceType_FilterMaintenance,
+        kHAPServiceDebugDescription_FilterMaintenance
+    },
+    {
+        "AirPurifier",
+        &kHAPServiceType_AirPurifier,
+        kHAPServiceDebugDescription_AirPurifier
+    },
+    {
+        "HeaterCooler",
+        &kHAPServiceType_HeaterCooler,
+        kHAPServiceDebugDescription_HeaterCooler
+    },
+    {
+        "HumidifierDehumidifier",
+        &kHAPServiceType_HumidifierDehumidifier,
+        kHAPServiceDebugDescription_HumidifierDehumidifier
+    },
+    {
+        "ServiceLabel",
+        &kHAPServiceType_ServiceLabel,
+        kHAPServiceDebugDescription_ServiceLabel
+    },
+    {
+        "IrrigationSystem",
+        &kHAPServiceType_IrrigationSystem,
+        kHAPServiceDebugDescription_IrrigationSystem
+    },
+    {
+        "Valve",
+        &kHAPServiceType_Valve,
+        kHAPServiceDebugDescription_Valve
+    },
+    {
+        "Faucet",
+        &kHAPServiceType_Faucet,
+        kHAPServiceDebugDescription_Faucet
+    },
+    {
+        "CameraRTPStreamManagement",
+        &kHAPServiceType_CameraRTPStreamManagement,
+        kHAPServiceDebugDescription_CameraRTPStreamManagement
+    },
+    {
+        "Microphone",
+        &kHAPServiceType_Microphone,
+        kHAPServiceDebugDescription_Microphone
+    },
+    {
+        "Speaker",
+        &kHAPServiceType_Speaker,
+        kHAPServiceDebugDescription_Speaker
+    },
 };
 
 static struct hap_desc {
@@ -131,9 +342,15 @@ static struct hap_desc {
     .attributeCount = kAttributeCount
 };
 
-static bool lhap_check_is_valid_service(HAPService *service)
+static bool lhap_service_is_light_userdata(HAPService *service)
 {
-    return lapi_check_is_valid_userdata(userdataServices, service);
+    for (lhap_lightuserdata *ud = lhap_accessory_services_userdatas;
+        ud->ptr; ud++) {
+        if (service == ud->ptr) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /* return a new string copy from str */
@@ -147,22 +364,19 @@ static char *lhap_new_str(const char *str)
 }
 
 static bool
-accessory_aid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_aid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     ((HAPAccessory *)arg)->aid = lua_tonumber(L, -1);
     return true;
 }
 
 static bool
-accessory_category_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_category_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    if (!lua_isstring(L, -1)) {
-        return false;
-    }
     const char *str = lua_tostring(L, -1);
-    for (int i = 0; i < LHAP_ARRAY_LEN(lhap_accessory_category_strs);
+    for (int i = 0; i < LHAP_ARRAY_LEN(lhap_lhap_accessory_category_strs);
         i++) {
-        if (!strcmp(str, lhap_accessory_category_strs[i])) {
+        if (!strcmp(str, lhap_lhap_accessory_category_strs[i])) {
             ((HAPAccessory *)arg)->category = i;
             return true;
         }
@@ -171,69 +385,112 @@ accessory_category_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 }
 
 static bool
-accessory_name_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_name_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    char **name = (char **)&(((HAPAccessory *)arg)->name);
-    return (*name = lhap_new_str(lua_tostring(L, -1))) ?
-        true : false;
+    return (*((char **)&((HAPAccessory *)arg)->name) =
+        lhap_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
-accessory_manufacturer_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_manufacturer_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    char **manufacturer = (char **)&(((HAPAccessory *)arg)->manufacturer);
-    return (*manufacturer = lhap_new_str(lua_tostring(L, -1))) ?
-        true : false;
+    return (*((char **)&((HAPAccessory *)arg)->manufacturer) =
+        lhap_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
-accessory_model_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_model_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    char **model = (char **)&(((HAPAccessory *)arg)->model);
-    return (*model = lhap_new_str(lua_tostring(L, -1))) ?
-        true : false;
+    return (*((char **)&((HAPAccessory *)arg)->model) =
+        lhap_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
-accessory_serialnumber_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_serialnumber_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    char **serialNumber = (char **)&(((HAPAccessory *)arg)->serialNumber);
-    return (*serialNumber = lhap_new_str(lua_tostring(L, -1))) ?
-        true : false;
+    return (*((char **)&((HAPAccessory *)arg)->serialNumber) =
+        lhap_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
-accessory_firmwareversion_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_firmwareversion_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    char **firmwareVersion = (char **)&(((HAPAccessory *)arg)->firmwareVersion);
-    return (*firmwareVersion = lhap_new_str(lua_tostring(L, -1))) ?
-        true : false;
+    return (*((char **)&((HAPAccessory *)arg)->firmwareVersion) =
+        lhap_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
-accessory_hardwareversion_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_hardwareversion_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    char **hardwareVersion = (char **)&(((HAPAccessory *)arg)->hardwareVersion);
-    return (*hardwareVersion = lhap_new_str(lua_tostring(L, -1))) ?
-        true : false;
+    return (*((char **)&((HAPAccessory *)arg)->hardwareVersion) =
+        lhap_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
-static const lapi_table_kv service_kvs[] = {
-    NULL,
+static bool
+lhap_service_iid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPService *)arg)->iid = lua_tonumber(L, -1);
+    gv_hap_desc.attributeCount++;
+    return true;
+}
+
+static bool
+lhap_service_type_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    HAPService *service = arg;
+    const char *str = lua_tostring(L, -1);
+    for (int i = 0; i < LHAP_ARRAY_LEN(lhap_service_type_tab);
+        i++) {
+        if (!strcmp(str, lhap_service_type_tab[i].name)) {
+            service->serviceType = lhap_service_type_tab[i].type;
+            service->debugDescription = lhap_service_type_tab[i].debugDescription;
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool
+lhap_service_name_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return (*((char **)&((HAPService *)arg)->name) =
+        lhap_new_str(lua_tostring(L, -1))) ? true : false;
+}
+
+static bool
+lhap_server_properties_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return true;
+}
+
+static bool
+lhap_server_characteristics_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return true;
+}
+
+static const lapi_table_kv lhap_service_kvs[] = {
+    {"iid", LUA_TNUMBER, lhap_service_iid_cb},
+    {"type", LUA_TSTRING, lhap_service_type_cb},
+    {"name", LUA_TSTRING, lhap_service_name_cb},
+    {"properties", LUA_TTABLE, lhap_server_properties_cb},
+    {"characteristics", LUA_TTABLE, lhap_server_characteristics_cb},
+    {NULL, LUA_TNONE, NULL},
 };
 
 static void reset_service(HAPService *service)
 {
+    LHAP_FREE(service->name);
 }
 
 static bool
-accessory_services_arr_cb(lua_State *L, int i, void *arg)
+lhap_accessory_services_arr_cb(lua_State *L, int i, void *arg)
 {
     HAPService **services = arg;
 
     if (lua_islightuserdata(L, -1)) {
         HAPService *s = lua_touserdata(L, -1);
-        if (lhap_check_is_valid_service(s)) {
+        if (lhap_service_is_light_userdata(s)) {
             services[i] = s;
         } else {
             return false;
@@ -249,14 +506,14 @@ accessory_services_arr_cb(lua_State *L, int i, void *arg)
     }
     memset(s, 0, sizeof(HAPService));
     services[i] = s;
-    if (!lapi_traverse_table(L, -1, service_kvs, s)) {
+    if (!lapi_traverse_table(L, -1, lhap_service_kvs, s)) {
         return false;
     }
     return true;
 }
 
 static bool
-accessory_services_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_services_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     HAPAccessory *accessory = arg;
     HAPService ***pservices = (HAPService ***)&(accessory->services);
@@ -274,7 +531,7 @@ accessory_services_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
     }
     memset(services, 0, sizeof(HAPService *) * (len + 1));
 
-    if (!lapi_traverse_array(L, -1, accessory_services_arr_cb, services)) {
+    if (!lapi_traverse_array(L, -1, lhap_accessory_services_arr_cb, services)) {
         goto err1;
     }
 
@@ -282,7 +539,7 @@ accessory_services_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
     return true;
 err1:
     for (HAPService **s = services; *s != NULL; s++) {
-        if (!lhap_check_is_valid_service(*s)) {
+        if (!lhap_service_is_light_userdata(*s)) {
             reset_service(*s);
             LHAP_FREE(*s);
         }
@@ -293,7 +550,7 @@ err:
 }
 
 HAP_RESULT_USE_CHECK
-HAPError accessory_identify_cb(
+HAPError lhap_accessory_identify_cb(
         HAPAccessoryServerRef* server HAP_UNUSED,
         const HAPAccessoryIdentifyRequest* request,
         void* _Nullable context) {
@@ -331,39 +588,39 @@ end:
 }
 
 static bool
-accessory_cbs_identify_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_cbs_identify_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     if (!lapi_register_callback(L, -1,
         (size_t)&(((HAPAccessory *)arg)->callbacks.identify))) {
         return false;
     }
-    ((HAPAccessory *)arg)->callbacks.identify = accessory_identify_cb;
+    ((HAPAccessory *)arg)->callbacks.identify = lhap_accessory_identify_cb;
     return true;
 }
 
-static lapi_table_kv accessory_callbacks_kvs[] = {
-    {"identify", LUA_TFUNCTION, accessory_cbs_identify_cb},
+static lapi_table_kv lhap_accessory_callbacks_kvs[] = {
+    {"identify", LUA_TFUNCTION, lhap_accessory_cbs_identify_cb},
     {NULL, -1, NULL},
 };
 
 static bool
-accessory_callbacks_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_accessory_callbacks_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    return lapi_traverse_table(L, -1, accessory_callbacks_kvs, arg);
+    return lapi_traverse_table(L, -1, lhap_accessory_callbacks_kvs, arg);
 }
 
-static const lapi_table_kv accessory_kvs[] = {
-    {"aid", LUA_TNUMBER, accessory_aid_cb},
-    {"category", LUA_TSTRING, accessory_category_cb},
-    {"name", LUA_TSTRING, accessory_name_cb},
-    {"manufacturer", LUA_TSTRING, accessory_manufacturer_cb},
-    {"model", LUA_TSTRING, accessory_model_cb},
-    {"serialNumber", LUA_TSTRING, accessory_serialnumber_cb},
-    {"firmwareVersion", LUA_TSTRING, accessory_firmwareversion_cb},
-    {"hardwareVersion", LUA_TSTRING, accessory_hardwareversion_cb},
-    {"services", LUA_TTABLE, accessory_services_cb},
-    {"callbacks", LUA_TTABLE, accessory_callbacks_cb},
-    {NULL, -1, NULL},
+static const lapi_table_kv lhap_accessory_kvs[] = {
+    {"aid", LUA_TNUMBER, lhap_accessory_aid_cb},
+    {"category", LUA_TSTRING, lhap_accessory_category_cb},
+    {"name", LUA_TSTRING, lhap_accessory_name_cb},
+    {"manufacturer", LUA_TSTRING, lhap_accessory_manufacturer_cb},
+    {"model", LUA_TSTRING, lhap_accessory_model_cb},
+    {"serialNumber", LUA_TSTRING, lhap_accessory_serialnumber_cb},
+    {"firmwareVersion", LUA_TSTRING, lhap_accessory_firmwareversion_cb},
+    {"hardwareVersion", LUA_TSTRING, lhap_accessory_hardwareversion_cb},
+    {"services", LUA_TTABLE, lhap_accessory_services_cb},
+    {"callbacks", LUA_TTABLE, lhap_accessory_callbacks_cb},
+    {NULL, LUA_TNONE, NULL},
 };
 
 static void reset_accessory(HAPAccessory *accessory)
@@ -388,7 +645,7 @@ bool accessories_arr_cb(lua_State *L, int i, void *arg)
     }
     memset(a, 0, sizeof(HAPAccessory));
     accessories[i] = a;
-    if (!lapi_traverse_table(L, -1, accessory_kvs, a)) {
+    if (!lapi_traverse_table(L, -1, lhap_accessory_kvs, a)) {
         return false;
     }
     return true;
@@ -414,7 +671,7 @@ static int hap_configure(lua_State *L)
         goto err;
     }
 
-    if (!lapi_traverse_table(L, 1, accessory_kvs, accessory)) {
+    if (!lapi_traverse_table(L, 1, lhap_accessory_kvs, accessory)) {
         HAPLogError(&kHAPLog_Default,
             "%s: Failed to generate accessory structure from table accessory.",
             __func__);
@@ -483,8 +740,8 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
     lua_setfield(L, -2, "Error");
 
     /* set services */
-    for (lapi_userdata *ud = userdataServices; ud->userdata; ud++) {
-        lua_pushlightuserdata(L, ud->userdata);
+    for (lhap_lightuserdata *ud = lhap_accessory_services_userdatas; ud->ptr; ud++) {
+        lua_pushlightuserdata(L, ud->ptr);
         lua_setfield(L, -2, ud->name);
     }
     return 1;

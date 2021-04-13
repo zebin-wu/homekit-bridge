@@ -20,8 +20,7 @@
 ---@class Service:table HomeKit service.
 ---
 ---@field iid integer Instance ID.
----@field serviceType ServiceType The type of the service.
----@field debugDescription string Description for debugging (based on "Type" field of HAP specification).
+---@field type ServiceType The type of the service.
 ---@field name string The name of the service.
 ---@field properties ServiceProperties HAP Service properties.
 ---@field linkedServices array Array containing instance IDs of linked services.
@@ -82,7 +81,6 @@ local Error = {
 ---| '"AccessoryInformation"'
 ---| '"GarageDoorOpener"'
 ---| '"LightBulb"'
----| '"Lightbulb"'
 ---| '"LockManagement"'
 ---| '"Outlet"'
 ---| '"Switch"'
@@ -107,7 +105,6 @@ local Error = {
 ---| '"CarbonDioxideSensor"'
 ---| '"HAPProtocolInformation"'
 ---| '"Fan"'
----| '"FanV2"'
 ---| '"Slat"'
 ---| '"FilterMaintenance"'
 ---| '"AirPurifier"'
@@ -121,12 +118,6 @@ local Error = {
 ---| '"Microphone"'
 ---| '"Speaker"'
 
----Configure HAP.
----@param accessory Accessory Accessory to serve.
----@param bridgedAccessories? array Array of bridged accessories.
----@return boolean
-local function configure(accessory, bridgedAccessories) end
-
 ---HomeKit Accessory Information service.
 ---@type lightuserdata
 local AccessoryInformationService
@@ -139,10 +130,16 @@ local HapProtocolInformationService
 ---@type lightuserdata
 local PairingService
 
+---Configure HAP.
+---@param accessory Accessory Accessory to serve.
+---@param bridgedAccessories? array Array of bridged accessories.
+---@return boolean
+local function configure(accessory, bridgedAccessories) end
+
 return {
-    configure = configure,
     Error = Error,
     AccessoryInformationService = AccessoryInformationService,
     HapProtocolInformationService = HapProtocolInformationService,
     PairingService = PairingService,
+    configure = configure,
 }

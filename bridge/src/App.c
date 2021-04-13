@@ -22,7 +22,6 @@
 #include <stdlib.h>
 
 #include <platform/sys.h>
-#include <common/lapi.h>
 #include <HAP.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -31,6 +30,7 @@
 #include <App.h>
 
 #include "AppInt.h"
+#include "lapi.h"
 #include "lhaplib.h"
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
