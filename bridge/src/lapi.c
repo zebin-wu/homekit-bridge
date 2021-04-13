@@ -23,16 +23,15 @@
 #include <string.h>
 #include <rbtree.h>
 
-#include <common/lapi.h>
 #include <lauxlib.h>
 #include <lgc.h>
 
-struct lapi_callback {
-    /* rbtree node */
-    struct rb_node node;
+#include "lapi.h"
 
-    size_t key;
-    int id; /* ref id return from luaL_ref() */
+struct lapi_callback {
+    struct rb_node node; /* rbtree node */
+    size_t key; /* the only key that can find the callback */
+    int id; /* reference id return from luaL_ref() */
 };
 
 struct rb_root cbTree = RB_ROOT;
@@ -108,16 +107,6 @@ bool lapi_traverse_array(lua_State *L, int index,
     }
     lua_pop(L, 1);
     return true;
-}
-
-bool lapi_check_is_valid_userdata(lapi_userdata *tab, void *userdata)
-{
-    for (; tab->userdata != NULL; tab++) {
-        if (userdata == tab->userdata) {
-            return true;
-        }
-    }
-    return false;
 }
 
 bool lapi_register_callback(lua_State *L, int index, size_t key)
