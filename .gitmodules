@@ -1,6 +1,6 @@
 [submodule "ext/HomeKitAdk"]
 	path = ext/HomeKitAdk
-	url = ../HomeKitAdk
+	url = https://github.com/apple/HomeKitADK
 [submodule "ext/lua"]
 	path = ext/lua
-	url = ../lua
+	url = https://github.com/lua/lua
