@@ -147,21 +147,31 @@ static char *lhap_new_str(const char *str)
 }
 
 static bool
-accessory_aid_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_aid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     ((HAPAccessory *)arg)->aid = lua_tonumber(L, -1);
     return true;
 }
 
 static bool
-accessory_category_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_category_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    ((HAPAccessory *)arg)->category = lua_tonumber(L, -1);
-    return true;
+    if (!lua_isstring(L, -1)) {
+        return false;
+    }
+    const char *str = lua_tostring(L, -1);
+    for (int i = 0; i < LHAP_ARRAY_LEN(lhap_accessory_category_strs);
+        i++) {
+        if (!strcmp(str, lhap_accessory_category_strs[i])) {
+            ((HAPAccessory *)arg)->category = i;
+            return true;
+        }
+    }
+    return false;
 }
 
 static bool
-accessory_name_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_name_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     char **name = (char **)&(((HAPAccessory *)arg)->name);
     return (*name = lhap_new_str(lua_tostring(L, -1))) ?
@@ -169,7 +179,7 @@ accessory_name_cb(lua_State *L, lapi_table_kv *kv, void *arg)
 }
 
 static bool
-accessory_manufacturer_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_manufacturer_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     char **manufacturer = (char **)&(((HAPAccessory *)arg)->manufacturer);
     return (*manufacturer = lhap_new_str(lua_tostring(L, -1))) ?
@@ -177,7 +187,7 @@ accessory_manufacturer_cb(lua_State *L, lapi_table_kv *kv, void *arg)
 }
 
 static bool
-accessory_model_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_model_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     char **model = (char **)&(((HAPAccessory *)arg)->model);
     return (*model = lhap_new_str(lua_tostring(L, -1))) ?
@@ -185,7 +195,7 @@ accessory_model_cb(lua_State *L, lapi_table_kv *kv, void *arg)
 }
 
 static bool
-accessory_serialnumber_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_serialnumber_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     char **serialNumber = (char **)&(((HAPAccessory *)arg)->serialNumber);
     return (*serialNumber = lhap_new_str(lua_tostring(L, -1))) ?
@@ -193,7 +203,7 @@ accessory_serialnumber_cb(lua_State *L, lapi_table_kv *kv, void *arg)
 }
 
 static bool
-accessory_firmwareversion_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_firmwareversion_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     char **firmwareVersion = (char **)&(((HAPAccessory *)arg)->firmwareVersion);
     return (*firmwareVersion = lhap_new_str(lua_tostring(L, -1))) ?
@@ -201,14 +211,14 @@ accessory_firmwareversion_cb(lua_State *L, lapi_table_kv *kv, void *arg)
 }
 
 static bool
-accessory_hardwareversion_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_hardwareversion_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     char **hardwareVersion = (char **)&(((HAPAccessory *)arg)->hardwareVersion);
     return (*hardwareVersion = lhap_new_str(lua_tostring(L, -1))) ?
         true : false;
 }
 
-static lapi_table_kv service_kvs[] = {
+static const lapi_table_kv service_kvs[] = {
     NULL,
 };
 
@@ -246,7 +256,7 @@ accessory_services_arr_cb(lua_State *L, int i, void *arg)
 }
 
 static bool
-accessory_services_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_services_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     HAPAccessory *accessory = arg;
     HAPService ***pservices = (HAPService ***)&(accessory->services);
@@ -316,11 +326,12 @@ HAPError accessory_identify_cb(
     err = lua_tonumber(L, -1);
 end:
     lua_pop(L, 1);
+    lapi_collectgarbage(L);
     return err;
 }
 
 static bool
-accessory_cbs_identify_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_cbs_identify_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     if (!lapi_register_callback(L, -1,
         (size_t)&(((HAPAccessory *)arg)->callbacks.identify))) {
@@ -336,14 +347,14 @@ static lapi_table_kv accessory_callbacks_kvs[] = {
 };
 
 static bool
-accessory_callbacks_cb(lua_State *L, lapi_table_kv *kv, void *arg)
+accessory_callbacks_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return lapi_traverse_table(L, -1, accessory_callbacks_kvs, arg);
 }
 
-static lapi_table_kv accessory_kvs[] = {
+static const lapi_table_kv accessory_kvs[] = {
     {"aid", LUA_TNUMBER, accessory_aid_cb},
-    {"category", LUA_TNUMBER, accessory_category_cb},
+    {"category", LUA_TSTRING, accessory_category_cb},
     {"name", LUA_TSTRING, accessory_name_cb},
     {"manufacturer", LUA_TSTRING, accessory_manufacturer_cb},
     {"model", LUA_TSTRING, accessory_model_cb},
@@ -456,7 +467,6 @@ err:
 static const luaL_Reg haplib[] = {
     {"configure", hap_configure},
     /* placeholders */
-    {"AccessoryCategory", NULL},
     {"Error", NULL},
     {"AccessoryInformationService", NULL},
     {"HapProtocolInformationService", NULL},
@@ -466,11 +476,6 @@ static const luaL_Reg haplib[] = {
 
 LUAMOD_API int luaopen_hap(lua_State *L) {
     luaL_newlib(L, haplib);
-
-    /* set AccessoryCategory */
-    lapi_create_enum_table(L, lhap_accessory_category_strs,
-        LHAP_ARRAY_LEN(lhap_accessory_category_strs));
-    lua_setfield(L, -2, "AccessoryCategory");
 
     /* set Error */
     lapi_create_enum_table(L, lhap_error_strs,
