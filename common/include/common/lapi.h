@@ -39,7 +39,7 @@ typedef struct lapi_table_kv {
      * @param kv the point to current key-value
      * @param arg the extra argument
     */
-    bool (*cb)(lua_State *L, struct lapi_table_kv *kv, void *arg);
+    bool (*cb)(lua_State *L, const struct lapi_table_kv *kv, void *arg);
 } lapi_table_kv;
 
 /**
@@ -59,7 +59,7 @@ typedef struct lapi_callback lapi_callback;
 /**
  * Traverse table.
 */
-bool lapi_traverse_table(lua_State *L, int index, lapi_table_kv *kvs, void *arg);
+bool lapi_traverse_table(lua_State *L, int index, const lapi_table_kv *kvs, void *arg);
 
 /**
  * Traverse array.
@@ -97,5 +97,10 @@ void lapi_remove_all_callbacks(lua_State *L);
  * Create a enum table.
 */
 void lapi_create_enum_table(lua_State *L, const char *enum_array[], int len);
+
+/**
+ * Collect garbage.
+ */
+void lapi_collectgarbage(lua_State *L);
 
 #endif /* LUA_API_H */

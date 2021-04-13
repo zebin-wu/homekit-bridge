@@ -22,6 +22,7 @@
 #include <stdlib.h>
 
 #include <platform/sys.h>
+#include <common/lapi.h>
 #include <HAP.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -94,6 +95,7 @@ size_t AppLuaEntry(void)
     // run main.lua
     snprintf(path, sizeof(path), "%s/main.lua", pfm_sys_get_work_dir());
     int status = luaL_dofile(L, path);
+    lapi_collectgarbage(L);
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
         lua_writestringerror("%s\n", msg);
