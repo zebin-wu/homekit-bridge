@@ -22,9 +22,17 @@
 #ifndef LPFMLIB_H
 #define LPFMLIB_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <lua.h>
 
 #define LUA_PFMNAME "pfm"
 LUAMOD_API int luaopen_pfm(lua_State *L);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LPFMLIB_H */

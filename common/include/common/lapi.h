@@ -19,15 +19,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
-#ifndef LUA_API_H
-#define LUA_API_H
+#ifndef COMMON_LUA_API_H
+#define COMMON_LUA_API_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdbool.h>
 #include <lua.h>
 
 /**
  * Lua table key-value.
-*/
+ */
 typedef struct lapi_table_kv {
     const char *key;    /* key */
     int type;   /* value type */
@@ -38,64 +42,51 @@ typedef struct lapi_table_kv {
      * @param L 'per thread' state
      * @param kv the point to current key-value
      * @param arg the extra argument
-    */
+     */
     bool (*cb)(lua_State *L, const struct lapi_table_kv *kv, void *arg);
 } lapi_table_kv;
 
 /**
- * Lua userdata.
-*/
-typedef struct {
-    const char *name;
-    void *userdata;
-} lapi_userdata;
-
-/**
  * Lua callback.
-*/
+ */
 struct lapi_callback;
 typedef struct lapi_callback lapi_callback;
 
 /**
  * Traverse table.
-*/
+ */
 bool lapi_traverse_table(lua_State *L, int index, const lapi_table_kv *kvs, void *arg);
 
 /**
  * Traverse array.
-*/
+ */
 bool lapi_traverse_array(lua_State *L, int index,
                          bool (*arr_cb)(lua_State *L, int i, void *arg),
                          void *arg);
 
 /**
- * Check if the userdata is at the table.
-*/
-bool lapi_check_is_valid_userdata(lapi_userdata *tab, void *userdata);
-
-/**
  * Register callback.
-*/
+ */
 bool lapi_register_callback(lua_State *L, int index, size_t key);
 
 /**
  * Unregister callback.
-*/
+ */
 bool lapi_unregister_callback(lua_State *L, size_t key);
 
 /**
  * Push callback to Lua stack.
-*/
+ */
 bool lapi_push_callback(lua_State *L, size_t key);
 
 /**
  * Remove all callbacks.
-*/
+ */
 void lapi_remove_all_callbacks(lua_State *L);
 
 /**
  * Create a enum table.
-*/
+ */
 void lapi_create_enum_table(lua_State *L, const char *enum_array[], int len);
 
 /**
@@ -103,4 +94,8 @@ void lapi_create_enum_table(lua_State *L, const char *enum_array[], int len);
  */
 void lapi_collectgarbage(lua_State *L);
 
-#endif /* LUA_API_H */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* COMMON_LUA_API_H */
