@@ -25,6 +25,7 @@
 
 #include <common/lapi.h>
 #include <lauxlib.h>
+#include <lgc.h>
 
 struct lapi_callback {
     /* rbtree node */
@@ -36,7 +37,8 @@ struct lapi_callback {
 
 struct rb_root cbTree = RB_ROOT;
 
-lapi_table_kv *lapi_lookup_kv_by_name(lapi_table_kv *kv_tab, const char *name)
+static const lapi_table_kv *
+lapi_lookup_kv_by_name(const lapi_table_kv *kv_tab, const char *name)
 {
     for (; kv_tab->key != NULL; kv_tab++) {
         if (!strcmp(kv_tab->key, name)) {
@@ -46,7 +48,7 @@ lapi_table_kv *lapi_lookup_kv_by_name(lapi_table_kv *kv_tab, const char *name)
     return NULL;
 }
 
-bool lapi_traverse_table(lua_State *L, int index, lapi_table_kv *kvs, void *arg)
+bool lapi_traverse_table(lua_State *L, int index, const lapi_table_kv *kvs, void *arg)
 {
     // Push another reference to the table on top of the stack (so we know
     // where it is, and this function can work for negative, positive and
@@ -60,7 +62,7 @@ bool lapi_traverse_table(lua_State *L, int index, lapi_table_kv *kvs, void *arg)
         // copy the key so that lua_tostring does not modify the original
         lua_pushvalue(L, -2);
         // stack now contains: -1 => key; -2 => value; -3 => key; -4 => table
-        lapi_table_kv *kv = lapi_lookup_kv_by_name(kvs, lua_tostring(L, -1));
+        const lapi_table_kv *kv = lapi_lookup_kv_by_name(kvs, lua_tostring(L, -1));
         // pop copy of key
         lua_pop(L, 1);
         // stack now contains: -1 => value; -2 => key; -3 => table
@@ -70,10 +72,9 @@ bool lapi_traverse_table(lua_State *L, int index, lapi_table_kv *kvs, void *arg)
                 return false;
             }
             if (kv->cb) {
-                if (kv->cb(L, kv, arg) == false) {
+                if (!kv->cb(L, kv, arg)) {
                     lua_pop(L, 2);
                     return false;
-                } else {
                 }
             }
         }
@@ -146,6 +147,7 @@ bool lapi_register_callback(lua_State *L, int index, size_t key)
     lua_pushvalue(L, index);
     int ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
     if (ref_id == LUA_REFNIL) {
+        free(new);
         return false;
     }
 
@@ -222,8 +224,13 @@ void lapi_create_enum_table(lua_State *L, const char *enum_array[], int len)
     for (int i = 0; i < len; i++) {
         if (enum_array[i]) {
             lua_pushstring(L, enum_array[i]);
-            lua_pushnumber(L, i);
+            lua_pushinteger(L, i);
             lua_settable(L, -3);
         }
     }
+}
+
+void lapi_collectgarbage(lua_State *L)
+{
+    luaC_fullgc(L, 0);
 }
