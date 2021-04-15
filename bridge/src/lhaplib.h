@@ -48,9 +48,9 @@ const HAPAccessory *const *lhap_get_bridged_accessories(void);
 size_t lhap_get_attribute_count(void);
 
 /**
- * Reset lhap.
+ * De-initialize lhap.
  */
-void lhap_reset(void);
+void lhap_deinitialize();
 
 #ifdef __cplusplus
 }

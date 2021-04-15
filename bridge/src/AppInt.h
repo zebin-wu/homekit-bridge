@@ -29,6 +29,11 @@ extern "C" {
 #include <lua.h>
 
 /**
+ * Log subsystem used by the HAP Application implementation.
+ */
+#define kHAPApplication_LogSubsystem "com.apple.mfi.HomeKit.Application"
+
+/**
  * Accessory context. Will be passed to callbacks.
  */
 typedef struct {

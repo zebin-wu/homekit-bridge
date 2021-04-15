@@ -52,7 +52,47 @@
  *     } // HAP Service properties.
  *     characteristics: table, // Array of contained characteristics.
  * } // HomeKit service.
-*/
+ *
+ * characteristic: {
+ *     format: string, // Format.
+ *     iid: number, // Instance ID.
+ *     type: string, // The type of the characteristic.
+ *     // Description of the characteristic provided
+ *     // by the manufacturer of the accessory.
+ *     manufacturerDescription: string,
+ *     properties: { // Properties that HomeKit characteristics can have.
+ *         readable: boolean, // The characteristic is readable.
+ *         writable: boolean, // The characteristic is writable.
+ *         // The characteristic supports notifications using 
+ *         // the event connection established by the controller.
+ *         supportsEventNotification: boolean,
+ *         hidden: boolean, // The characteristic should be hidden from the user.
+ *         // The characteristic will only be accessible for read operations by admin controllers.
+ *         readRequiresAdminPermissions: boolean,
+ *         // The characteristic will only be accessible for write operations by admin controllers.
+ *         writeRequiresAdminPermissions: boolean,
+ *         requiresTimedWrite: boolean, // The characteristic requires time sensitive actions.
+ *         // The characteristic requires additional authorization data.
+ *         supportsAuthorizationData: boolean,
+ *         ip: { // These properties only affect connections over IP (Ethernet / Wi-Fi).
+ *             // This flag prevents the characteristic from being read during discovery.
+ *             controlPoint: boolean,
+ *             // Write operations on the characteristic require a read response value.
+ *             supportsWriteResponse: boolean,
+ *         },
+ *         ble: { // These properties only affect connections over Bluetooth LE.
+ *             // The characteristic supports broadcast notifications.
+ *             supportsBroadcastNotification: boolean,
+ *             // The characteristic supports disconnected notifications.
+ *             supportsDisconnectedNotification: boolean,
+ *             // The characteristic is always readable, even before a secured session is established.
+ *             readableWithoutSecurity: boolean,
+ *             // The characteristic is always writable, even before a secured session is established.
+ *             writableWithoutSecurity: boolean,
+ *         }
+ *     }
+ * }
+ */
 
 #include <stdbool.h>
 #include <string.h>
@@ -60,15 +100,16 @@
 
 #include <lualib.h>
 #include <lauxlib.h>
-
+#include <HAPCharacteristic.h>
 #include "AppInt.h"
 #include "lapi.h"
 #include "lhaplib.h"
 #include "DB.h"
 
-#define LHAP_ARRAY_LEN(x)        (sizeof(x) / sizeof(*(x)))
 #define LHAP_MALLOC(size)        malloc(size)
 #define LHAP_FREE(p)             do { if (p) { free((void *)p); (p) = NULL; } } while (0)
+
+static const HAPLogObject lhap_log = { .subsystem = kHAPApplication_LogSubsystem, .category = "lhap" };
 
 static const char *lhap_lhap_accessory_category_strs[] = {
     "BridgedAccessory",
@@ -114,15 +155,39 @@ static const char *lhap_error_strs[] = {
     "Busy",
 };
 
-/**
- * Lua light userdata.
-*/
+static const char *lhap_characteristics_format_strs[] = {
+    "Data",
+    "Bool",
+    "UInt8",
+    "UInt16",
+    "UInt32",
+    "UInt64",
+    "Int",
+    "Float",
+    "String",
+    "TLV8",
+};
+
+static const size_t lhap_characteristic_struct_size[] = {
+    sizeof(HAPDataCharacteristic),
+    sizeof(HAPBoolCharacteristic),
+    sizeof(HAPUInt8Characteristic),
+    sizeof(HAPUInt16Characteristic),
+    sizeof(HAPUInt32Characteristic),
+    sizeof(HAPUInt64Characteristic),
+    sizeof(HAPIntCharacteristic),
+    sizeof(HAPFloatCharacteristic),
+    sizeof(HAPStringCharacteristic),
+    sizeof(HAPTLV8Characteristic),
+};
+
+// Lua light userdata.
 typedef struct {
     const char *name;
     void *ptr;
 } lhap_lightuserdata;
 
-static lhap_lightuserdata lhap_accessory_services_userdatas[] = {
+static const lhap_lightuserdata lhap_accessory_services_userdatas[] = {
     {"AccessoryInformationService", (void *)&accessoryInformationService},
     {"HapProtocolInformationService", (void *)&hapProtocolInformationService},
     {"PairingService", (void *)&pairingService},
@@ -135,7 +200,7 @@ typedef struct {
     const char *debugDescription;
 } lhap_service_type;
 
-static lhap_service_type lhap_service_type_tab[] = {
+static const lhap_service_type lhap_service_type_tab[] = {
     {
         "AccessoryInformation",
         &kHAPServiceType_AccessoryInformation,
@@ -333,18 +398,37 @@ static lhap_service_type lhap_service_type_tab[] = {
     },
 };
 
-static struct hap_desc {
+typedef struct {
+    const char *name;
+    const HAPUUID *type;
+    const char *debugDescription;
+    HAPCharacteristicFormat format;
+} lhap_characteristic_type;
+
+static struct lhap_desc {
     bool isConfigure:1;
     size_t attributeCount;
     HAPAccessory accessory;
     HAPAccessory **bridgedAccessories;
-} gv_hap_desc = {
+} gv_lhap_desc = {
     .attributeCount = kAttributeCount
 };
 
+// Find the string and return the string index.
+static int lhap_lookup_by_name(const char *name, const char *strs[], int len)
+{
+    for (int i = 0; i < len; i++) {
+        if (!strcmp(name, strs[i])) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Check if the service is one of "lhap_accessory_services_userdatas"
 static bool lhap_service_is_light_userdata(HAPService *service)
 {
-    for (lhap_lightuserdata *ud = lhap_accessory_services_userdatas;
+    for (const lhap_lightuserdata *ud = lhap_accessory_services_userdatas;
         ud->ptr; ud++) {
         if (service == ud->ptr) {
             return true;
@@ -353,7 +437,7 @@ static bool lhap_service_is_light_userdata(HAPService *service)
     return false;
 }
 
-/* return a new string copy from str */
+// Return a new string copy from str.
 static char *lhap_new_str(const char *str)
 {
     if (!str) {
@@ -373,15 +457,14 @@ lhap_accessory_aid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 static bool
 lhap_accessory_category_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    const char *str = lua_tostring(L, -1);
-    for (int i = 0; i < LHAP_ARRAY_LEN(lhap_lhap_accessory_category_strs);
-        i++) {
-        if (!strcmp(str, lhap_lhap_accessory_category_strs[i])) {
-            ((HAPAccessory *)arg)->category = i;
-            return true;
-        }
+    int idx = lhap_lookup_by_name(lua_tostring(L, -1),
+        lhap_lhap_accessory_category_strs,
+        HAPArrayCount(lhap_lhap_accessory_category_strs));
+    if (idx == -1) {
+        return false;
     }
-    return false;
+    ((HAPAccessory *)arg)->category = idx;
+    return true;
 }
 
 static bool
@@ -430,7 +513,7 @@ static bool
 lhap_service_iid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     ((HAPService *)arg)->iid = lua_tonumber(L, -1);
-    gv_hap_desc.attributeCount++;
+    gv_lhap_desc.attributeCount++;
     return true;
 }
 
@@ -439,7 +522,7 @@ lhap_service_type_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     HAPService *service = arg;
     const char *str = lua_tostring(L, -1);
-    for (int i = 0; i < LHAP_ARRAY_LEN(lhap_service_type_tab);
+    for (int i = 0; i < HAPArrayCount(lhap_service_type_tab);
         i++) {
         if (!strcmp(str, lhap_service_type_tab[i].name)) {
             service->serviceType = lhap_service_type_tab[i].type;
@@ -458,14 +541,150 @@ lhap_service_name_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 }
 
 static bool
-lhap_server_properties_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_properties_primary_service_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPServiceProperties *)arg)->primaryService = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_properties_hidden_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPServiceProperties *)arg)->hidden = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_properties_supports_conf_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPServiceProperties *)arg)->ble.supportsConfiguration = lua_toboolean(L, -1);
+    return true;
+}
+
+static const lapi_table_kv lhap_properties_ble_kvs[] = {
+    {"supportsConfiguration", LUA_TBOOLEAN, lhap_properties_supports_conf_cb},
+    {NULL, LUA_TNONE, NULL},
+};
+
+static bool
+lhap_properties_ble_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return lapi_traverse_table(L, -1, lhap_properties_ble_kvs,
+        &((HAPService *)arg)->properties);
+}
+
+static const lapi_table_kv lhap_properties_kvs[] = {
+    {"primaryService", LUA_TBOOLEAN, lhap_properties_primary_service_cb},
+    {"hidden", LUA_TBOOLEAN, lhap_properties_hidden_cb},
+    {"ble", LUA_TTABLE, lhap_properties_ble_cb},
+    {NULL, LUA_TNONE, NULL},
+};
+
+static bool
+lhap_service_properties_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return lapi_traverse_table(L, -1, lhap_properties_kvs,
+        &((HAPService *)arg)->properties);
+}
+
+static bool
+lhap_characteristics_iid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPBaseCharacteristic *)arg)->iid = lua_tointeger(L, -1);
+    return true;
+}
+
+static bool
+lhap_characteristics_type_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return true;
 }
 
 static bool
-lhap_server_characteristics_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_characteristics_mfg_desc_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
+    return (*((char **)&((HAPBaseCharacteristic *)arg)->manufacturerDescription) =
+        lhap_new_str(lua_tostring(L, -1))) ? true : false;
+}
+
+static bool
+lhap_characteristics_properties_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return true;
+}
+
+static const lapi_table_kv lhap_characteristics_kvs[] = {
+    {"iid", LUA_TNUMBER, lhap_characteristics_iid_cb},
+    {"type", LUA_TSTRING, lhap_characteristics_type_cb},
+    {"manufacturerDescription", LUA_TSTRING, lhap_characteristics_mfg_desc_cb},
+    {"properties", LUA_TTABLE, lhap_characteristics_properties_cb},
+    {NULL, LUA_TNONE, NULL},
+};
+
+static bool lhap_service_characteristics_arr_cb(lua_State *L, int i, void *arg)
+{
+    HAPCharacteristic **characteristics = arg;
+
+    if (!lua_istable(L, -1)) {
+        return false;
+    }
+
+    lua_pushstring(L, "format");
+    lua_gettable(L, -2);
+    if (!lua_isstring(L, -1)) {
+        return false;
+    }
+    int idx = lhap_lookup_by_name(lua_tostring(L, -1),
+        lhap_characteristics_format_strs, 
+        HAPArrayCount(lhap_characteristics_format_strs));
+    lua_pop(L, 1);
+    if (idx == -1) {
+        return false;
+    }
+
+    HAPCharacteristic *c = LHAP_MALLOC(lhap_characteristic_struct_size[idx]);
+    if (!c) {
+        return false;
+    }
+    memset(c, 0, sizeof(HAPCharacteristic));
+    ((HAPBaseCharacteristic *)c)->format = idx;
+    characteristics[i] = c;
+    if (!lapi_traverse_table(L, -1, lhap_characteristics_kvs, c)) {
+        return false;
+    }
+    return true;
+}
+
+static void lhap_reset_characteristic(HAPCharacteristic *characteristic)
+{
+    LHAP_FREE(((HAPBaseCharacteristic *)characteristic)->manufacturerDescription);
+}
+
+static bool
+lhap_service_characteristics_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    HAPService *service = arg;
+    HAPCharacteristic ***pcharacteristic = (HAPCharacteristic ***)&(service->characteristics);
+    // Get the array length.
+    size_t len = lua_rawlen(L, -1);
+    if (len == 0) {
+        *pcharacteristic = NULL;
+        return true;
+    }
+
+    HAPCharacteristic **characteristics = LHAP_MALLOC(sizeof(HAPCharacteristic *) * (len + 1));
+    if (!characteristics) {
+        return false;
+    }
+    if (!lapi_traverse_array(L, -1, lhap_service_characteristics_arr_cb, characteristics)) {
+        for (HAPCharacteristic **c = characteristics; *c; c++) {
+            lhap_reset_characteristic(*c);
+            LHAP_FREE(*c);
+        }
+        LHAP_FREE(characteristics);
+        return false;
+    }
+    *pcharacteristic = characteristics;
     return true;
 }
 
@@ -473,14 +692,19 @@ static const lapi_table_kv lhap_service_kvs[] = {
     {"iid", LUA_TNUMBER, lhap_service_iid_cb},
     {"type", LUA_TSTRING, lhap_service_type_cb},
     {"name", LUA_TSTRING, lhap_service_name_cb},
-    {"properties", LUA_TTABLE, lhap_server_properties_cb},
-    {"characteristics", LUA_TTABLE, lhap_server_characteristics_cb},
+    {"properties", LUA_TTABLE, lhap_service_properties_cb},
+    {"characteristics", LUA_TTABLE, lhap_service_characteristics_cb},
     {NULL, LUA_TNONE, NULL},
 };
 
-static void reset_service(HAPService *service)
+static void lhap_reset_service(HAPService *service)
 {
     LHAP_FREE(service->name);
+    for (HAPCharacteristic **c = (HAPCharacteristic **)service->characteristics; *c; c++) {
+        lhap_reset_characteristic(*c);
+        LHAP_FREE(*c);
+    }
+    LHAP_FREE(service->characteristics);
 }
 
 static bool
@@ -527,26 +751,23 @@ lhap_accessory_services_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 
     HAPService **services = LHAP_MALLOC(sizeof(HAPService *) * (len + 1));
     if (!services) {
-        goto err;
+        return false;
     }
     memset(services, 0, sizeof(HAPService *) * (len + 1));
 
     if (!lapi_traverse_array(L, -1, lhap_accessory_services_arr_cb, services)) {
-        goto err1;
+        for (HAPService **s = services; *s; s++) {
+            if (!lhap_service_is_light_userdata(*s)) {
+                lhap_reset_service(*s);
+                LHAP_FREE(*s);
+            }
+        }
+        LHAP_FREE(services);
+        return false;
     }
 
     *pservices = services;
     return true;
-err1:
-    for (HAPService **s = services; *s != NULL; s++) {
-        if (!lhap_service_is_light_userdata(*s)) {
-            reset_service(*s);
-            LHAP_FREE(*s);
-        }
-    }
-    LHAP_FREE(services);
-err:
-    return false;
 }
 
 HAP_RESULT_USE_CHECK
@@ -563,19 +784,19 @@ HAPError lhap_accessory_identify_cb(
 
     if (!lapi_push_callback(L,
         (size_t)&(request->accessory->callbacks.identify))) {
-        HAPLogError(&kHAPLog_Default,
+        HAPLogError(&lhap_log,
             "%s: Can't get lua function", __func__);
         return err;
     }
 
     if (lua_pcall(L, 0, 1, 0)) {
-        HAPLogError(&kHAPLog_Default,
+        HAPLogError(&lhap_log,
             "%s: Failed to call lua function", __func__);
         return err;
     }
 
     if (!lua_isnumber(L, -1)) {
-        HAPLogError(&kHAPLog_Default,
+        HAPLogError(&lhap_log,
             "%s: Illegal return value", __func__);
         goto end;
     }
@@ -623,7 +844,7 @@ static const lapi_table_kv lhap_accessory_kvs[] = {
     {NULL, LUA_TNONE, NULL},
 };
 
-static void reset_accessory(HAPAccessory *accessory)
+static void lhap_reset_accessory(HAPAccessory *accessory)
 {
     LHAP_FREE(accessory->name);
     LHAP_FREE(accessory->manufacturer);
@@ -631,9 +852,16 @@ static void reset_accessory(HAPAccessory *accessory)
     LHAP_FREE(accessory->serialNumber);
     LHAP_FREE(accessory->firmwareVersion);
     LHAP_FREE(accessory->hardwareVersion);
+    for (HAPService **s = (HAPService **)accessory->services; *s; s++) {
+        if (!lhap_service_is_light_userdata(*s)) {
+            lhap_reset_service(*s);
+            LHAP_FREE(*s);
+        }
+    }
+    LHAP_FREE(accessory->services);
 }
 
-bool accessories_arr_cb(lua_State *L, int i, void *arg)
+bool lhap_accessories_arr_cb(lua_State *L, int i, void *arg)
 {
     HAPAccessory **accessories = arg;
     if (!lua_istable(L, -1)) {
@@ -652,27 +880,30 @@ bool accessories_arr_cb(lua_State *L, int i, void *arg)
 }
 
 /**
- * configure(accessory: table, bridgedAccessories: table) -> boolean
+ * configure(accessory: table, bridgedAccessories?: table) -> boolean
  *
  * If the category of the accessory is bridge, the parameters
  * bridgedAccessories is valid.
 */
 static int hap_configure(lua_State *L)
 {
-    size_t len;
-    struct hap_desc *desc = &gv_hap_desc;
+    size_t len = 0;
+    struct lhap_desc *desc = &gv_lhap_desc;
     HAPAccessory *accessory = &desc->accessory;
 
     if (desc->isConfigure) {
+        HAPLogError(&lhap_log,
+            "%s: HAP is already configured.", __func__);
         goto err;
     }
 
-    if (!lua_istable(L, 1)) {
-        goto err;
+    luaL_checktype(L, 1, LUA_TTABLE);
+    if (!lua_isnone(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
     }
 
     if (!lapi_traverse_table(L, 1, lhap_accessory_kvs, accessory)) {
-        HAPLogError(&kHAPLog_Default,
+        HAPLogError(&lhap_log,
             "%s: Failed to generate accessory structure from table accessory.",
             __func__);
         goto err1;
@@ -680,10 +911,6 @@ static int hap_configure(lua_State *L)
 
     if (accessory->category != kHAPAccessoryCategory_Bridges) {
         goto end;
-    }
-
-    if (!lua_istable(L, 2)) {
-        goto err1;
     }
 
     len = lua_rawlen(L, 2);
@@ -694,28 +921,40 @@ static int hap_configure(lua_State *L)
     desc->bridgedAccessories =
         LHAP_MALLOC(sizeof(HAPAccessory *) * (len + 1));
     if (!desc->bridgedAccessories) {
+        HAPLogError(&lhap_log,
+            "%s: Error type(bridgedAccessories).", __func__);
         goto err1;
     }
     memset(desc->bridgedAccessories, 0,
         sizeof(HAPAccessory *) * (len + 1));
 
-    if (!lapi_traverse_array(L, 2, accessories_arr_cb,
+    if (!lapi_traverse_array(L, 2, lhap_accessories_arr_cb,
         desc->bridgedAccessories)) {
+        HAPLogError(&lhap_log,
+            "%s: Failed to generate bridged accessories structureies"
+            " from table bridgedAccessories.", __func__);
         goto err2;
     }
 end:
+    HAPLogInfo(&lhap_log,
+        "Accessory \"%s\": (%s) has been configured.", accessory->name,
+        lhap_lhap_accessory_category_strs[accessory->category]);
+    if (len) {
+        HAPLogInfo(&lhap_log,
+            "%u bridged accessories have been configured.", len);
+    }
     desc->isConfigure = true;
     lua_pushboolean(L, true);
     return 1;
 
 err2:
     for (HAPAccessory **pa = desc->bridgedAccessories; *pa != NULL; pa++) {
-        reset_accessory(*pa);
+        lhap_reset_accessory(*pa);
         LHAP_FREE(*pa);
     }
     LHAP_FREE(desc->bridgedAccessories);
 err1:
-    reset_accessory(accessory);
+    lhap_reset_accessory(accessory);
 err:
     lua_pushboolean(L, false);
     return 1;
@@ -736,11 +975,12 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
 
     /* set Error */
     lapi_create_enum_table(L, lhap_error_strs,
-        LHAP_ARRAY_LEN(lhap_error_strs));
+        HAPArrayCount(lhap_error_strs));
     lua_setfield(L, -2, "Error");
 
     /* set services */
-    for (lhap_lightuserdata *ud = lhap_accessory_services_userdatas; ud->ptr; ud++) {
+    for (const lhap_lightuserdata *ud = lhap_accessory_services_userdatas;
+        ud->ptr; ud++) {
         lua_pushlightuserdata(L, ud->ptr);
         lua_setfield(L, -2, ud->name);
     }
@@ -749,24 +989,37 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
 
 const HAPAccessory *lhap_get_accessory(void)
 {
-    if (gv_hap_desc.isConfigure) {
-        return &gv_hap_desc.accessory;
+    if (gv_lhap_desc.isConfigure) {
+        return &gv_lhap_desc.accessory;
     }
     return NULL;
 }
 
 const HAPAccessory *const *lhap_get_bridged_accessories(void)
 {
-    if (gv_hap_desc.isConfigure) {
-        return (const HAPAccessory *const *)gv_hap_desc.bridgedAccessories;
+    if (gv_lhap_desc.isConfigure) {
+        return (const HAPAccessory *const *)gv_lhap_desc.bridgedAccessories;
     }
     return NULL;
 }
 
 size_t lhap_get_attribute_count(void)
 {
-    if (gv_hap_desc.isConfigure) {
-        return gv_hap_desc.attributeCount;
+    if (gv_lhap_desc.isConfigure) {
+        return gv_lhap_desc.attributeCount;
     }
     return 0;
+}
+
+void lhap_deinitialize(void)
+{
+    struct lhap_desc *desc = &gv_lhap_desc;
+    for (HAPAccessory **pa = desc->bridgedAccessories; *pa != NULL; pa++) {
+        lhap_reset_accessory(*pa);
+        LHAP_FREE(*pa);
+    }
+    LHAP_FREE(desc->bridgedAccessories);
+    lhap_reset_accessory(&desc->accessory);
+    desc->attributeCount = kAttributeCount;
+    desc->isConfigure = false;
 }
