@@ -8,4 +8,5 @@ set(BRIDGE_LUA_DIR "${BRIDGE_DIR}/lua")
 set(BRIDGE_SRCS "${BRIDGE_SRC_DIR}/App.c"
                 "${BRIDGE_SRC_DIR}/DB.c"
                 "${BRIDGE_SRC_DIR}/lhaplib.c"
+                "${BRIDGE_SRC_DIR}/lpfmlib.c"
                 "${BRIDGE_SRC_DIR}/lapi.c")

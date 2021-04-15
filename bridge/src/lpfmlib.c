@@ -20,8 +20,9 @@
  * SOFTWARE.
 */
 #include <lauxlib.h>
-#include <lpfmlib.h>
 #include <platform/board.h>
+
+#include "lpfmlib.h"
 
 static int pfm_getManufacturer(lua_State *L)
 {

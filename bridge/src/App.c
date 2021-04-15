@@ -25,13 +25,13 @@
 #include <HAP.h>
 #include <lauxlib.h>
 #include <lualib.h>
-#include <lpfmlib.h>
 
 #include <App.h>
 
 #include "AppInt.h"
 #include "lapi.h"
 #include "lhaplib.h"
+#include "lpfmlib.h"
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
