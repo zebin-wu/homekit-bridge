@@ -143,14 +143,14 @@ bool lapi_register_callback(lua_State *L, int index, size_t key)
     new->id = ref_id;
     new->key = key;
 
-  	/* Add new node and rebalance tree. */
+  	// Add new node and rebalance tree.
   	rb_link_node(&new->node, parent, t);
   	rb_insert_color(&new->node, root);
 
     return true;
 }
 
-lapi_callback *lapi_find_callback(struct rb_root *root, size_t key)
+static lapi_callback *lapi_find_callback(struct rb_root *root, size_t key)
 {
     struct rb_node *node = root->rb_node;
 

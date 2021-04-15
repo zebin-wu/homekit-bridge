@@ -53,12 +53,12 @@ struct lapi_callback;
 typedef struct lapi_callback lapi_callback;
 
 /**
- * Traverse table.
+ * Traverse Lua table.
  */
 bool lapi_traverse_table(lua_State *L, int index, const lapi_table_kv *kvs, void *arg);
 
 /**
- * Traverse array.
+ * Traverse Lua array.
  */
 bool lapi_traverse_array(lua_State *L, int index,
                          bool (*arr_cb)(lua_State *L, int i, void *arg),
