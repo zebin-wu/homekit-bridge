@@ -35,9 +35,10 @@ extern "C" {
 /**
  * Application Lua Entry.
  *
+ * @param workDir the path of the work directory. 
  * @return attribute count.
  */
-size_t AppLuaEntry(void);
+size_t AppLuaEntry(const char *workDir);
 
 /**
  * Initialize the application.

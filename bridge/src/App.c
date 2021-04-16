@@ -21,7 +21,6 @@
 */
 #include <stdlib.h>
 
-#include <platform/sys.h>
 #include <HAP.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -69,12 +68,13 @@ static const luaL_Reg loadedlibs[] = {
 
 //----------------------------------------------------------------------------------------------------------------------
 
-size_t AppLuaEntry(void)
+size_t AppLuaEntry(const char *work_dir)
 {
-    char path[PFM_SYS_PATH_MAX_LEN];
+    HAPPrecondition(work_dir);
 
+    char path[256];
     // set work dir to env LUA_PATH
-    snprintf(path, sizeof(path), "%s/?.lua", pfm_sys_get_work_dir());
+    snprintf(path, sizeof(path), "%s/?.lua", work_dir);
     if (setenv("LUA_PATH", path, 1)) {
         HAPLogError(&kHAPLog_Default, "Failed to set env LUA_PATH.");
     }
@@ -93,7 +93,7 @@ size_t AppLuaEntry(void)
     }
 
     // run main.lua
-    snprintf(path, sizeof(path), "%s/main.lua", pfm_sys_get_work_dir());
+    snprintf(path, sizeof(path), "%s/main.lua", work_dir);
     int status = luaL_dofile(L, path);
     lapi_collectgarbage(L);
     if (status != LUA_OK) {

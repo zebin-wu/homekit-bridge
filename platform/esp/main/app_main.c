@@ -314,7 +314,7 @@ void main_task()
     InitializePlatform();
 
     // Lua entry.
-    size_t attributeCount = AppLuaEntry();
+    size_t attributeCount = AppLuaEntry(CONFIG_SPIFFS_DIR_PATH);
     HAPAssert(attributeCount);
 
 #if IP
