@@ -200,202 +200,49 @@ typedef struct {
     const char *debugDescription;
 } lhap_service_type;
 
+#define LHAP_SERVICE_TYPE_FORMAT(type) \
+    { #type, &kHAPServiceType_##type, kHAPServiceDebugDescription_##type }
+
 static const lhap_service_type lhap_service_type_tab[] = {
-    {
-        "AccessoryInformation",
-        &kHAPServiceType_AccessoryInformation,
-        kHAPServiceDebugDescription_AccessoryInformation
-    },
-    {
-        "GarageDoorOpener",
-        &kHAPServiceType_GarageDoorOpener,
-        kHAPServiceDebugDescription_GarageDoorOpener
-    },
-    {
-        "LightBulb",
-        &kHAPServiceType_LightBulb,
-        kHAPServiceDebugDescription_LightBulb
-    },
-    {
-        "LockManagement",
-        &kHAPServiceType_LockManagement,
-        kHAPServiceDebugDescription_LockManagement
-    },
-    {
-        "Outlet",
-        &kHAPServiceType_Outlet,
-        kHAPServiceDebugDescription_Outlet
-    },
-    {
-        "Switch",
-        &kHAPServiceType_Switch,
-        kHAPServiceDebugDescription_Switch
-    },
-    {
-        "Thermostat",
-        &kHAPServiceType_Thermostat,
-        kHAPServiceDebugDescription_Thermostat
-    },
-    {
-        "Pairing",
-        &kHAPServiceType_Pairing,
-        kHAPServiceDebugDescription_Pairing
-    },
-    {
-        "SecuritySystem",
-        &kHAPServiceType_SecuritySystem,
-        kHAPServiceDebugDescription_SecuritySystem
-    },
-    {
-        "CarbonMonoxideSensor",
-        &kHAPServiceType_CarbonDioxideSensor,
-        kHAPServiceDebugDescription_CarbonDioxideSensor
-    },
-    {
-        "ContactSensor",
-        &kHAPServiceType_ContactSensor,
-        kHAPServiceDebugDescription_ContactSensor
-    },
-    {
-        "Door",
-        &kHAPServiceType_Door,
-        kHAPServiceDebugDescription_Door
-    },
-    {
-        "HumiditySensor",
-        &kHAPServiceType_HumiditySensor,
-        kHAPServiceDebugDescription_HumiditySensor
-    },
-    {
-        "LeakSensor",
-        &kHAPServiceType_LeakSensor,
-        kHAPServiceDebugDescription_LeakSensor
-    },
-    {
-        "LightSensor",
-        &kHAPServiceType_LightSensor,
-        kHAPServiceDebugDescription_LightSensor
-    },
-    {
-        "MotionSensor",
-        &kHAPServiceType_MotionSensor,
-        kHAPServiceDebugDescription_MotionSensor
-    },
-    {
-        "OccupancySensor",
-        &kHAPServiceType_OccupancySensor,
-        kHAPServiceDebugDescription_OccupancySensor
-    },
-    {
-        "SmokeSensor",
-        &kHAPServiceType_SmokeSensor,
-        kHAPServiceDebugDescription_SmokeSensor
-    },
-    {
-        "StatelessProgrammableSwitch",
-        &kHAPServiceType_StatelessProgrammableSwitch,
-        kHAPServiceDebugDescription_StatelessProgrammableSwitch
-    },
-    {
-        "TemperatureSensor",
-        &kHAPServiceType_TemperatureSensor,
-        kHAPServiceDebugDescription_TemperatureSensor
-    },
-    {
-        "Window",
-        &kHAPServiceType_Window,
-        kHAPServiceDebugDescription_Window
-    },
-    {
-        "WindowCovering",
-        &kHAPServiceType_WindowCovering,
-        kHAPServiceDebugDescription_WindowCovering
-    },
-    {
-        "AirQualitySensor",
-        &kHAPServiceType_AirQualitySensor,
-        kHAPServiceDebugDescription_AirQualitySensor
-    },
-    {
-        "BatteryService",
-        &kHAPServiceType_BatteryService,
-        kHAPServiceDebugDescription_BatteryService
-    },
-    {
-        "CarbonDioxideSensor",
-        &kHAPServiceType_CarbonDioxideSensor,
-        kHAPServiceDebugDescription_CarbonDioxideSensor
-    },
-    {
-        "HAPProtocolInformation",
-        &kHAPServiceType_HAPProtocolInformation,
-        kHAPServiceDebugDescription_HAPProtocolInformation
-    },
-    {
-        "Fan",
-        &kHAPServiceType_Fan,
-        kHAPServiceDebugDescription_Fan
-    },
-    {
-        "Slat",
-        &kHAPServiceType_Slat,
-        kHAPServiceDebugDescription_Slat
-    },
-    {
-        "FilterMaintenance",
-        &kHAPServiceType_FilterMaintenance,
-        kHAPServiceDebugDescription_FilterMaintenance
-    },
-    {
-        "AirPurifier",
-        &kHAPServiceType_AirPurifier,
-        kHAPServiceDebugDescription_AirPurifier
-    },
-    {
-        "HeaterCooler",
-        &kHAPServiceType_HeaterCooler,
-        kHAPServiceDebugDescription_HeaterCooler
-    },
-    {
-        "HumidifierDehumidifier",
-        &kHAPServiceType_HumidifierDehumidifier,
-        kHAPServiceDebugDescription_HumidifierDehumidifier
-    },
-    {
-        "ServiceLabel",
-        &kHAPServiceType_ServiceLabel,
-        kHAPServiceDebugDescription_ServiceLabel
-    },
-    {
-        "IrrigationSystem",
-        &kHAPServiceType_IrrigationSystem,
-        kHAPServiceDebugDescription_IrrigationSystem
-    },
-    {
-        "Valve",
-        &kHAPServiceType_Valve,
-        kHAPServiceDebugDescription_Valve
-    },
-    {
-        "Faucet",
-        &kHAPServiceType_Faucet,
-        kHAPServiceDebugDescription_Faucet
-    },
-    {
-        "CameraRTPStreamManagement",
-        &kHAPServiceType_CameraRTPStreamManagement,
-        kHAPServiceDebugDescription_CameraRTPStreamManagement
-    },
-    {
-        "Microphone",
-        &kHAPServiceType_Microphone,
-        kHAPServiceDebugDescription_Microphone
-    },
-    {
-        "Speaker",
-        &kHAPServiceType_Speaker,
-        kHAPServiceDebugDescription_Speaker
-    },
+    LHAP_SERVICE_TYPE_FORMAT(AccessoryInformation),
+    LHAP_SERVICE_TYPE_FORMAT(GarageDoorOpener),
+    LHAP_SERVICE_TYPE_FORMAT(LightBulb),
+    LHAP_SERVICE_TYPE_FORMAT(LockManagement),
+    LHAP_SERVICE_TYPE_FORMAT(Outlet),
+    LHAP_SERVICE_TYPE_FORMAT(Switch),
+    LHAP_SERVICE_TYPE_FORMAT(Thermostat),
+    LHAP_SERVICE_TYPE_FORMAT(Pairing),
+    LHAP_SERVICE_TYPE_FORMAT(SecuritySystem),
+    LHAP_SERVICE_TYPE_FORMAT(CarbonMonoxideSensor),
+    LHAP_SERVICE_TYPE_FORMAT(ContactSensor),
+    LHAP_SERVICE_TYPE_FORMAT(Door),
+    LHAP_SERVICE_TYPE_FORMAT(HumiditySensor),
+    LHAP_SERVICE_TYPE_FORMAT(LeakSensor),
+    LHAP_SERVICE_TYPE_FORMAT(LightSensor),
+    LHAP_SERVICE_TYPE_FORMAT(MotionSensor),
+    LHAP_SERVICE_TYPE_FORMAT(OccupancySensor),
+    LHAP_SERVICE_TYPE_FORMAT(SmokeSensor),
+    LHAP_SERVICE_TYPE_FORMAT(StatelessProgrammableSwitch),
+    LHAP_SERVICE_TYPE_FORMAT(TemperatureSensor),
+    LHAP_SERVICE_TYPE_FORMAT(Window),
+    LHAP_SERVICE_TYPE_FORMAT(WindowCovering),
+    LHAP_SERVICE_TYPE_FORMAT(AirQualitySensor),
+    LHAP_SERVICE_TYPE_FORMAT(BatteryService),
+    LHAP_SERVICE_TYPE_FORMAT(CarbonDioxideSensor),
+    LHAP_SERVICE_TYPE_FORMAT(HAPProtocolInformation),
+    LHAP_SERVICE_TYPE_FORMAT(Fan),
+    LHAP_SERVICE_TYPE_FORMAT(Slat),
+    LHAP_SERVICE_TYPE_FORMAT(FilterMaintenance),
+    LHAP_SERVICE_TYPE_FORMAT(AirPurifier),
+    LHAP_SERVICE_TYPE_FORMAT(HeaterCooler),
+    LHAP_SERVICE_TYPE_FORMAT(HumidifierDehumidifier),
+    LHAP_SERVICE_TYPE_FORMAT(ServiceLabel),
+    LHAP_SERVICE_TYPE_FORMAT(IrrigationSystem),
+    LHAP_SERVICE_TYPE_FORMAT(Valve),
+    LHAP_SERVICE_TYPE_FORMAT(Faucet),
+    LHAP_SERVICE_TYPE_FORMAT(CameraRTPStreamManagement),
+    LHAP_SERVICE_TYPE_FORMAT(Microphone),
+    LHAP_SERVICE_TYPE_FORMAT(Speaker),
 };
 
 typedef struct {
@@ -404,6 +251,130 @@ typedef struct {
     const char *debugDescription;
     HAPCharacteristicFormat format;
 } lhap_characteristic_type;
+
+#define LHAP_CHARACTERISTIC_TYPE_FORMAT(type, format) \
+{ \
+    #type, \
+    &kHAPCharacteristicType_##type, \
+    kHAPCharacteristicDebugDescription_##type, \
+    kHAPCharacteristicFormat_##format \
+}
+
+static const lhap_characteristic_type lhap_characteristic_type_tab[] = {
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AdministratorOnlyAccess, Bool),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AudioFeedback, Bool),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Brightness, Int),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CoolingThresholdTemperature, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentDoorState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHeatingCoolingState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentRelativeHumidity, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentTemperature, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(HeatingThresholdTemperature, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Hue, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Identify, Bool),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockControlPoint, TLV8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockManagementAutoSecurityTimeout, UInt32),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockLastKnownAction, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockCurrentState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockTargetState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Logs, TLV8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Manufacturer, String),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Model, String),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(MotionDetected, Bool),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Name, String),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ObstructionDetected, Bool),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(On, Bool),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(OutletInUse, Bool),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(RotationDirection, Int),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(RotationSpeed, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Saturation, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SerialNumber, String),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetDoorState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHeatingCoolingState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetRelativeHumidity, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetTemperature, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TemperatureDisplayUnits, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Version, String),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairSetup, TLV8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairVerify, TLV8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairingFeatures, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairingPairings, TLV8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(FirmwareRevision, String),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(HardwareRevision, String),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AirParticulateDensity, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AirParticulateSize, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SecuritySystemCurrentState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SecuritySystemTargetState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(BatteryLevel, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonMonoxideDetected, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ContactSensorState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentAmbientLightLevel, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHorizontalTiltAngle, Int),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentPosition, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentVerticalTiltAngle, Int),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(HoldPosition, Bool),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LeakDetected, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(OccupancyDetected, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PositionState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ProgrammableSwitchEvent, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusActive, Bool),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SmokeDetected, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusFault, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusJammed, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusLowBattery, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusTampered, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHorizontalTiltAngle, Int),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetPosition, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetVerticalTiltAngle, Int),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SecuritySystemAlarmType, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ChargingState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonMonoxideLevel, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonMonoxidePeakLevel, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonDioxideDetected, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonDioxideLevel, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonDioxidePeakLevel, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AirQuality, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ServiceSignature, Data),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AccessoryFlags, UInt32),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockPhysicalControls, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetAirPurifierState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentAirPurifierState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentSlatState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(FilterLifeLevel, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(FilterChangeIndication, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ResetFilterIndication, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentFanState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Active, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHeaterCoolerState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHeaterCoolerState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHumidifierDehumidifierState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHumidifierDehumidifierState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(WaterLevel, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SwingMode, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetFanState, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SlatType, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentTiltAngle, Int),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetTiltAngle, Int),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(OzoneDensity, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(NitrogenDioxideDensity, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SulphurDioxideDensity, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PM2_5Density, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PM10Density, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(VOCDensity, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(RelativeHumidityDehumidifierThreshold, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(RelativeHumidityHumidifierThreshold, Float),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ServiceLabelIndex, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ServiceLabelNamespace, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ColorTemperature, UInt32),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ProgramMode, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(InUse, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SetDuration, UInt32),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(RemainingDuration, UInt32),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ValveType, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(IsConfigured, UInt8),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ActiveIdentifier, UInt32),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ADKVersion, String),
+};
 
 static struct lhap_desc {
     bool isConfigure:1;
@@ -597,7 +568,25 @@ lhap_characteristics_iid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 static bool
 lhap_characteristics_type_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    return true;
+    HAPBaseCharacteristic *c = arg;
+    const char *str = lua_tostring(L, -1);
+    for (int i = 0; i < HAPArrayCount(lhap_characteristic_type_tab);
+        i++) {
+        if (!strcmp(str, lhap_characteristic_type_tab[i].name)) {
+            if (c->format != lhap_characteristic_type_tab[i].format) {
+                HAPLogError(&lhap_log, "%s: Format error, %s expected, got %s",
+                    __func__,
+                    lhap_characteristics_format_strs[lhap_characteristic_type_tab[i].format],
+                    lhap_characteristics_format_strs[c->format]);
+                return false;
+            }
+            c->characteristicType = lhap_characteristic_type_tab[i].type;
+            c->debugDescription = lhap_characteristic_type_tab[i].debugDescription;
+            return true;
+        }
+    }
+    HAPLogError(&lhap_log, "%s: error type.", __func__);
+    return false;
 }
 
 static bool
@@ -751,6 +740,8 @@ lhap_accessory_services_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 
     HAPService **services = LHAP_MALLOC(sizeof(HAPService *) * (len + 1));
     if (!services) {
+        HAPLogError(&lhap_log,
+            "%s: Failed to alloc memory.", __func__);
         return false;
     }
     memset(services, 0, sizeof(HAPService *) * (len + 1));
@@ -785,19 +776,19 @@ HAPError lhap_accessory_identify_cb(
     if (!lapi_push_callback(L,
         (size_t)&(request->accessory->callbacks.identify))) {
         HAPLogError(&lhap_log,
-            "%s: Can't get lua function", __func__);
+            "%s: Can't get lua function.", __func__);
         return err;
     }
 
     if (lua_pcall(L, 0, 1, 0)) {
         HAPLogError(&lhap_log,
-            "%s: Failed to call lua function", __func__);
+            "%s: Failed to call lua function.", __func__);
         return err;
     }
 
     if (!lua_isnumber(L, -1)) {
         HAPLogError(&lhap_log,
-            "%s: Illegal return value", __func__);
+            "%s: Illegal return value.", __func__);
         goto end;
     }
 
@@ -813,6 +804,8 @@ lhap_accessory_cbs_identify_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     if (!lapi_register_callback(L, -1,
         (size_t)&(((HAPAccessory *)arg)->callbacks.identify))) {
+        HAPLogError(&lhap_log,
+            "%s: Failed to register callback.", __func__);
         return false;
     }
     ((HAPAccessory *)arg)->callbacks.identify = lhap_accessory_identify_cb;
@@ -865,15 +858,22 @@ bool lhap_accessories_arr_cb(lua_State *L, int i, void *arg)
 {
     HAPAccessory **accessories = arg;
     if (!lua_istable(L, -1)) {
+        HAPLogError(&lhap_log,
+            "%s: The type of the element is not table.", __func__);
         return false;
     }
     HAPAccessory *a = LHAP_MALLOC(sizeof(HAPAccessory));
     if (!a) {
+        HAPLogError(&lhap_log,
+            "%s: Failed to alloc memory.", __func__);
         return false;
     }
     memset(a, 0, sizeof(HAPAccessory));
     accessories[i] = a;
     if (!lapi_traverse_table(L, -1, lhap_accessory_kvs, a)) {
+        HAPLogError(&lhap_log,
+            "%s: Failed to generate accessory structure from table accessory.",
+            __func__);
         return false;
     }
     return true;
