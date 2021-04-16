@@ -5,6 +5,7 @@ set(ADK_INC_DIR "${ADK_DIR}/HAP"
                 "${ADK_DIR}/External/Base64"
                 "${ADK_DIR}/External/JSON"
                 "${ADK_DIR}/External/HTTP")
+set(ADK_PAL_LINUX_DIR "${ADK_DIR}/PAL/Linux")
 
 # collect adk sources
 set(ADK_SRCS    "${ADK_DIR}/PAL/HAPAssert.c"
@@ -19,7 +20,6 @@ set(ADK_SRCS    "${ADK_DIR}/PAL/HAPAssert.c"
                 "${ADK_DIR}/PAL/HAPBase+UTF8.c"
                 "${ADK_DIR}/PAL/HAPLog.c"
                 "${ADK_DIR}/PAL/HAPPlatformSystemInit.c"
-                "${ADK_DIR}/PAL/Crypto/MbedTLS/HAPMbedTLS.c"
                 "${ADK_DIR}/HAP/HAPAccessory+Info.c"
                 "${ADK_DIR}/HAP/HAPAccessoryServer+Reset.c"
                 "${ADK_DIR}/HAP/HAPAccessoryServer.c"
@@ -81,3 +81,24 @@ set(ADK_SRCS    "${ADK_DIR}/PAL/HAPAssert.c"
                 "${ADK_DIR}/External/JSON/util_json_reader.c"
                 "${ADK_DIR}/External/HTTP/util_http_reader.c"
                 "${ADK_DIR}/External/Base64/util_base64.c")
+
+set(ADK_PAL_LINUX   "${ADK_PAL_LINUX_DIR}/HAPPlatformAbort.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformBLEPeripheralManager.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformAccessorySetup.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformKeyValueStore.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformMFiTokenAuth.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformSystemCommand.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformAccessorySetupDisplay.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatform.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformClock.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformRandomNumber.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformTCPStreamManager.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformLog.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformRunLoop.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformAccessorySetupNFC.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformFileManager.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformMFiHWAuth.c"
+                    "${ADK_PAL_LINUX_DIR}/HAPPlatformServiceDiscovery.c")
+
+set(ADK_PAL_MBEDTLS_SRCS "${ADK_DIR}/PAL/Crypto/MbedTLS/HAPMbedTLS.c")
+set(ADK_PAL_OPENSSL_SRCS "${ADK_DIR}/PAL/Crypto/OpenSSL/HAPOpenSSL.c")
