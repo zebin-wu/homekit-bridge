@@ -666,7 +666,7 @@ lhap_service_characteristics_cb(lua_State *L, const lapi_table_kv *kv, void *arg
     HAPService *service = arg;
     HAPCharacteristic ***pcharacteristic = (HAPCharacteristic ***)&(service->characteristics);
     // Get the array length.
-    size_t len = lua_rawlen(L, -1);
+    lua_Unsigned len = lua_rawlen(L, -1);
     if (len == 0) {
         *pcharacteristic = NULL;
         return true;
@@ -743,7 +743,7 @@ lhap_accessory_services_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
     HAPService ***pservices = (HAPService ***)&(accessory->services);
 
     // Get the array length.
-    size_t len = lua_rawlen(L, -1);
+    lua_Unsigned len = lua_rawlen(L, -1);
     if (len == 0) {
         *pservices = NULL;
         return true;
@@ -887,7 +887,7 @@ bool lhap_accessories_arr_cb(lua_State *L, int i, void *arg)
 */
 static int hap_configure(lua_State *L)
 {
-    size_t len = 0;
+    lua_Unsigned len = 0;
     struct lhap_desc *desc = &gv_lhap_desc;
     HAPAccessory *accessory = &desc->accessory;
 
@@ -937,11 +937,11 @@ static int hap_configure(lua_State *L)
     }
 end:
     HAPLogInfo(&lhap_log,
-        "Accessory \"%s\": (%s) has been configured.", accessory->name,
+        "Accessory \"%s\": %s has been configured.", accessory->name,
         lhap_lhap_accessory_category_strs[accessory->category]);
     if (len) {
         HAPLogInfo(&lhap_log,
-            "%u bridged accessories have been configured.", len);
+            "%llu bridged accessories have been configured.", len);
     }
     desc->isConfigure = true;
     lua_pushboolean(L, true);
