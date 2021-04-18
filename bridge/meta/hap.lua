@@ -38,6 +38,39 @@
 
 ---@class array: table
 
+---@class Characteristic:table HomeKit characteristic.
+---
+---@field format CharacteristicFormat Format.
+---@field iid integer Instance ID.
+---@field type CharacteristicType The type of the characteristic.
+---@field manufacturerDescription string Description of the characteristic provided by the manufacturer of the accessory.
+---@field properties CharacteristicProperties Characteristic properties.
+
+---@class CharacteristicProperties:table Properties that HomeKit characteristics can have.
+---
+---@field readable boolean The characteristic is readable.
+---@field writable boolean The characteristic is writable.
+---@field supportsEventNotification boolean The characteristic supports notifications using the event connection established by the controller.
+---@field hidden boolean The characteristic should be hidden from the user.
+---@field readRequiresAdminPermissions boolean The characteristic will only be accessible for read operations by admin controllers.
+---@field writeRequiresAdminPermissions boolean The characteristic will only be accessible for write operations by admin controllers.
+---@field requiresTimedWrite boolean The characteristic requires time sensitive actions.
+---@field supportsAuthorizationData boolean The characteristic requires additional authorization data.
+---@field ip CharacteristicPropertiesIP
+---@field ble CharacteristicPropertiesBLE
+
+---@class CharacteristicPropertiesIP:table These properties only affect connections over IP (Ethernet / Wi-Fi).
+---
+---@field controlPoint boolean This flag prevents the characteristic from being read during discovery.
+---@field supportsWriteResponse boolean Write operations on the characteristic require a read response value.
+
+---@class CharacteristicPropertiesBLE:table These properties only affect connections over Bluetooth LE.
+---
+---@field supportsBroadcastNotification boolean The characteristic supports broadcast notifications.
+---@field supportsDisconnectedNotification boolean The characteristic supports disconnected notifications.
+---@field readableWithoutSecurity boolean The characteristic is always readable, even before a secured session is established.
+---@field writableWithoutSecurity boolean The characteristic is always writable, even before a secured session is established.
+
 ---Error type.
 local Error = {
     None = 0,
