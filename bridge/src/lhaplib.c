@@ -19,81 +19,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
-
-/**
- * accessory: {
- *     aid: number, // Accessory instance ID.
- *     category: string,  // Category information for the accessory.
- *     name: string,  // The display name of the accessory.
- *     manufacturer: string,  // The manufacturer of the accessory.
- *     model: string, // The model name of the accessory.
- *     serialNumber: string, // The serial number of the accessory.
- *     firmwareVersion: string, // The firmware version of the accessory.
- *     hardwareVersion: string, // The hardware version of the accessory.
- *     services: table // Array of provided services.
- *     callbacks: {
- *         // The callback used to invoke the identify routine.
- *         identify: function() -> int,
- *     } // Callbacks.
- * } // HomeKit accessory.
- *
- * service: {
- *     iid: number, // Instance ID.
- *     type: string, // The type of the service.
- *     name: string, // The name of the service.
- *     properties: {
- *         // The service is the primary service on the accessory.
- *         primaryService: boolean,
- *         hidden: boolean, // The service should be hidden from the user.
- *         ble: {
- *             // The service supports configuration.
- *             supportsConfiguration: boolean,
- *         } These properties only affect connections over Bluetooth LE.
- *     } // HAP Service properties.
- *     characteristics: table, // Array of contained characteristics.
- * } // HomeKit service.
- *
- * characteristic: {
- *     format: string, // Format.
- *     iid: number, // Instance ID.
- *     type: string, // The type of the characteristic.
- *     // Description of the characteristic provided
- *     // by the manufacturer of the accessory.
- *     manufacturerDescription: string,
- *     properties: { // Properties that HomeKit characteristics can have.
- *         readable: boolean, // The characteristic is readable.
- *         writable: boolean, // The characteristic is writable.
- *         // The characteristic supports notifications using 
- *         // the event connection established by the controller.
- *         supportsEventNotification: boolean,
- *         hidden: boolean, // The characteristic should be hidden from the user.
- *         // The characteristic will only be accessible for read operations by admin controllers.
- *         readRequiresAdminPermissions: boolean,
- *         // The characteristic will only be accessible for write operations by admin controllers.
- *         writeRequiresAdminPermissions: boolean,
- *         requiresTimedWrite: boolean, // The characteristic requires time sensitive actions.
- *         // The characteristic requires additional authorization data.
- *         supportsAuthorizationData: boolean,
- *         ip: { // These properties only affect connections over IP (Ethernet / Wi-Fi).
- *             // This flag prevents the characteristic from being read during discovery.
- *             controlPoint: boolean,
- *             // Write operations on the characteristic require a read response value.
- *             supportsWriteResponse: boolean,
- *         },
- *         ble: { // These properties only affect connections over Bluetooth LE.
- *             // The characteristic supports broadcast notifications.
- *             supportsBroadcastNotification: boolean,
- *             // The characteristic supports disconnected notifications.
- *             supportsDisconnectedNotification: boolean,
- *             // The characteristic is always readable, even before a secured session is established.
- *             readableWithoutSecurity: boolean,
- *             // The characteristic is always writable, even before a secured session is established.
- *             writableWithoutSecurity: boolean,
- *         }
- *     }
- * }
- */
-
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
@@ -512,49 +437,49 @@ lhap_service_name_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 }
 
 static bool
-lhap_properties_primary_service_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_service_props_primary_service_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     ((HAPServiceProperties *)arg)->primaryService = lua_toboolean(L, -1);
     return true;
 }
 
 static bool
-lhap_properties_hidden_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_service_props_hidden_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     ((HAPServiceProperties *)arg)->hidden = lua_toboolean(L, -1);
     return true;
 }
 
 static bool
-lhap_properties_supports_conf_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_service_props_supports_conf_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     ((HAPServiceProperties *)arg)->ble.supportsConfiguration = lua_toboolean(L, -1);
     return true;
 }
 
-static const lapi_table_kv lhap_properties_ble_kvs[] = {
-    {"supportsConfiguration", LUA_TBOOLEAN, lhap_properties_supports_conf_cb},
+static const lapi_table_kv lhap_service_props_ble_kvs[] = {
+    {"supportsConfiguration", LUA_TBOOLEAN, lhap_service_props_supports_conf_cb},
     {NULL, LUA_TNONE, NULL},
 };
 
 static bool
-lhap_properties_ble_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_service_props_ble_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    return lapi_traverse_table(L, -1, lhap_properties_ble_kvs,
+    return lapi_traverse_table(L, -1, lhap_service_props_ble_kvs,
         &((HAPService *)arg)->properties);
 }
 
-static const lapi_table_kv lhap_properties_kvs[] = {
-    {"primaryService", LUA_TBOOLEAN, lhap_properties_primary_service_cb},
-    {"hidden", LUA_TBOOLEAN, lhap_properties_hidden_cb},
-    {"ble", LUA_TTABLE, lhap_properties_ble_cb},
+static const lapi_table_kv lhap_service_props_kvs[] = {
+    {"primaryService", LUA_TBOOLEAN, lhap_service_props_primary_service_cb},
+    {"hidden", LUA_TBOOLEAN, lhap_service_props_hidden_cb},
+    {"ble", LUA_TTABLE, lhap_service_props_ble_cb},
     {NULL, LUA_TNONE, NULL},
 };
 
 static bool
-lhap_service_properties_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_service_props_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    return lapi_traverse_table(L, -1, lhap_properties_kvs,
+    return lapi_traverse_table(L, -1, lhap_service_props_kvs,
         &((HAPService *)arg)->properties);
 }
 
@@ -597,12 +522,169 @@ lhap_characteristics_mfg_desc_cb(lua_State *L, const lapi_table_kv *kv, void *ar
 }
 
 static bool
-lhap_characteristics_properties_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_char_props_readable_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
+    ((HAPCharacteristicProperties *)arg)->readable = lua_toboolean(L, -1);
     return true;
 }
 
-static const lapi_table_kv lhap_characteristics_kvs[] = {
+static bool
+lhap_char_props_writable_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->writable = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_support_evt_notify_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->supportsEventNotification = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_hidden_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->hidden = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_read_req_admin_pms_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->readRequiresAdminPermissions = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_write_req_admin_pms_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->writeRequiresAdminPermissions = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_req_timed_write_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->requiresTimedWrite = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_support_auth_data_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->supportsAuthorizationData = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_ip_control_point_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->ip.controlPoint = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_ip_support_write_resp_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->ip.supportsWriteResponse = lua_toboolean(L, -1);
+    return true;
+}
+
+static const lapi_table_kv lhap_char_props_ip_kvs[] = {
+    {"controlPoint", LUA_TBOOLEAN, lhap_char_props_ip_control_point_cb},
+    {"supportsWriteResponse", LUA_TBOOLEAN, lhap_char_props_ip_support_write_resp_cb},
+    {NULL, LUA_TNONE, NULL},
+};
+
+static bool
+lhap_char_props_ip_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return lapi_traverse_table(L, -1, lhap_char_props_ip_kvs,
+        &((HAPBaseCharacteristic *)arg)->properties);
+}
+
+static bool
+lhap_char_props_ble_support_bc_notify_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->ble.supportsBroadcastNotification = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_ble_support_disconn_notify_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->ble.supportsDisconnectedNotification = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_ble_read_without_sec_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->ble.readableWithoutSecurity = lua_toboolean(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_props_ble_write_without_sec_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPCharacteristicProperties *)arg)->ble.writableWithoutSecurity = lua_toboolean(L, -1);
+    return true;
+}
+
+static const lapi_table_kv lhap_char_props_ble_kvs[] = {
+    {
+        "supportsBroadcastNotification",
+        LUA_TBOOLEAN,
+        lhap_char_props_ble_support_bc_notify_cb
+    },
+    {
+        "supportsDisconnectedNotification",
+        LUA_TBOOLEAN,
+        lhap_char_props_ble_support_disconn_notify_cb
+    },
+    {
+        "readableWithoutSecurity",
+        LUA_TBOOLEAN,
+        lhap_char_props_ble_read_without_sec_cb
+    },
+    {
+        "writableWithoutSecurity",
+        LUA_TBOOLEAN,
+        lhap_char_props_ble_write_without_sec_cb
+    },
+    {NULL, LUA_TNONE, NULL},
+};
+
+static bool
+lhap_char_props_ble_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return lapi_traverse_table(L, -1, lhap_char_props_ble_kvs,
+        &((HAPBaseCharacteristic *)arg)->properties);
+}
+
+static const lapi_table_kv lhap_char_props_kvs[] = {
+    {"readable", LUA_TBOOLEAN, lhap_char_props_readable_cb},
+    {"writable", LUA_TBOOLEAN, lhap_char_props_writable_cb},
+    {"supportsEventNotification", LUA_TBOOLEAN, lhap_char_props_support_evt_notify_cb},
+    {"hidden", LUA_TBOOLEAN, lhap_char_props_hidden_cb},
+    {"readRequiresAdminPermissions", LUA_TBOOLEAN, lhap_char_props_read_req_admin_pms_cb},
+    {"writeRequiresAdminPermissions", LUA_TBOOLEAN, lhap_char_props_write_req_admin_pms_cb},
+    {"requiresTimedWrite", LUA_TBOOLEAN, lhap_char_props_req_timed_write_cb},
+    {"supportsAuthorizationData", LUA_TBOOLEAN, lhap_char_props_support_auth_data_cb},
+    {"ip", LUA_TTABLE, lhap_char_props_ip_cb},
+    {"ble", LUA_TTABLE, lhap_char_props_ble_cb},
+    {NULL, LUA_TNONE, NULL},
+};
+
+static bool
+lhap_characteristics_properties_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return lapi_traverse_table(L, -1, lhap_char_props_kvs,
+        &((HAPBaseCharacteristic *)arg)->properties);
+}
+
+static const lapi_table_kv lhap_characteristic_kvs[] = {
     {"iid", LUA_TNUMBER, lhap_characteristics_iid_cb},
     {"type", LUA_TSTRING, lhap_characteristics_type_cb},
     {"manufacturerDescription", LUA_TSTRING, lhap_characteristics_mfg_desc_cb},
@@ -638,7 +720,7 @@ static bool lhap_service_characteristics_arr_cb(lua_State *L, int i, void *arg)
     memset(c, 0, sizeof(HAPCharacteristic));
     ((HAPBaseCharacteristic *)c)->format = idx;
     characteristics[i] = c;
-    if (!lapi_traverse_table(L, -1, lhap_characteristics_kvs, c)) {
+    if (!lapi_traverse_table(L, -1, lhap_characteristic_kvs, c)) {
         return false;
     }
     return true;
@@ -681,7 +763,7 @@ static const lapi_table_kv lhap_service_kvs[] = {
     {"iid", LUA_TNUMBER, lhap_service_iid_cb},
     {"type", LUA_TSTRING, lhap_service_type_cb},
     {"name", LUA_TSTRING, lhap_service_name_cb},
-    {"properties", LUA_TTABLE, lhap_service_properties_cb},
+    {"properties", LUA_TTABLE, lhap_service_props_cb},
     {"characteristics", LUA_TTABLE, lhap_service_characteristics_cb},
     {NULL, LUA_TNONE, NULL},
 };
