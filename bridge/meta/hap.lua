@@ -45,6 +45,34 @@
 ---@field type CharacteristicType The type of the characteristic.
 ---@field manufacturerDescription string Description of the characteristic provided by the manufacturer of the accessory.
 ---@field properties CharacteristicProperties Characteristic properties.
+---@field units CharacteristicUnits The units of the values for the characteristic. Format: UInt8|UInt16|UInt32|UInt64|Int|Float
+---@field constraints StringCharacteristiConstraints|NumberCharacteristiConstraints|UInt8CharacteristiConstraints Value constraints.
+---@field callbacks CharacteristicCallbacks Callbacks.
+
+---@class StringCharacteristiConstraints:table Format: String|Data
+---
+---@field maxLength integer Maximum length.
+
+---@class NumberCharacteristiConstraints:table Format: UInt16|UInt32|Uint64|Int|Float
+---
+---@field minimumValue number Minimum value.
+---@field maximumValue number Maximum value.
+---@field stepValue number Step value.
+
+---@class UInt8CharacteristiConstraints:table Format: UInt8
+---
+---@field minimumValue integer Minimum value.
+---@field maximumValue integer Maximum value.
+---@field stepValue integer Step value.
+---@field validValues array List of valid values in ascending order.
+---@field validValuesRanges array List of valid values ranges in ascending order.
+
+---@class CharacteristicCallbacks:table Characteristic Callbacks.
+---
+---@field read function The callback used to handle read requests.
+---@field write function The callback used to handle write requests.
+---@field sub function The callback used to handle subscribe requests.
+---@field unsub function The callback used to handle unsubscribe requests.
 
 ---@class CharacteristicProperties:table Properties that HomeKit characteristics can have.
 ---
@@ -277,6 +305,14 @@ local Error = {
 ---| '"IsConfigured"'
 ---| '"ActiveIdentifier"'
 ---| '"ADKVersion"'
+
+---@alias CharacteristicUnits
+---| '"None"'       # Unitless. Used for example on enumerations.
+---| '"Celsius"'    # Degrees celsius.
+---| '"ArcDegrees"' # The degrees of an arc.
+---| '"Percentage"' # A percentage %.
+---| '"Lux"'        # Lux (that is, illuminance).
+---| '"Seconds"'    # Seconds.
 
 ---HomeKit Accessory Information service.
 ---@type lightuserdata
