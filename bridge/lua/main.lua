@@ -18,8 +18,10 @@ return hap.configure({
         hap.PairingService,
     },
     callbacks = {
-        identify = function()
+        identify = function(request)
             print("Identify callback is called.")
+            print(string.format("transportType: %s, remote: %s.",
+                request.transportType, request.remote))
             return hap.Error.None
         end
     }

@@ -15,7 +15,12 @@
 
 ---@class AccessoryCallbacks:table Accessory Callbacks.
 ---
----@field identify function The callback used to invoke the identify routine.
+---@field identify fun(request: AccessoryIdentifyRequest) The callback used to invoke the identify routine.
+
+---@class AccessoryIdentifyRequest:table Accessory identify request.
+---
+---@field transportType TransportType Transport type over which the request has been received.
+---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
 
 ---@class Service:table HomeKit service.
 ---
@@ -114,6 +119,10 @@ local Error = {
     NotAuthorized = 5,
     Busy = 6,
 }
+
+---@alias TransportType
+---| '"IP"'     # HAP over IP (Ethernet / Wi-Fi).
+---| '"BLE"'    # HAP over Bluetooth LE.
 
 ---@alias AccessoryCategory
 ---| '"BridgedAccessory"'

@@ -55,9 +55,9 @@
 typedef struct {
     HAPAccessoryServerRef* server;
     HAPPlatformKeyValueStoreRef keyValueStore;
-    AccessoryContext context;
 } AccessoryConfiguration;
 
+static AccessoryContext context;
 static AccessoryConfiguration accessoryConfiguration;
 
 static const luaL_Reg loadedlibs[] = {
@@ -113,7 +113,7 @@ size_t AppLuaEntry(const char *work_dir)
         goto err;
     }
 
-    accessoryConfiguration.context.L = L;
+    context.L = L;
     return lhap_get_attribute_count();
 err:
     lua_close(L);
@@ -174,7 +174,7 @@ void AppInitialize(
         HAPPlatform* hapPlatform,
         HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks,
         void* _Nullable *context) {
-    *context = &accessoryConfiguration.context;
+    *context = &context;
 }
 
 void AppDeinitialize() {
