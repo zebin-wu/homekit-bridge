@@ -1090,7 +1090,27 @@ static bool lhap_service_characteristics_arr_cb(lua_State *L, int i, void *arg)
 
 static void lhap_reset_characteristic(HAPCharacteristic *characteristic)
 {
+    HAPCharacteristicFormat format =
+        ((HAPBaseCharacteristic *)characteristic)->format;
     LHAP_FREE(((HAPBaseCharacteristic *)characteristic)->manufacturerDescription);
+    switch (format) {
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, characteristic,
+        for (uint8_t **pval = (uint8_t **)characteristic->constraints.validValues;
+            *pval; pval++) {
+            LHAP_FREE(*pval);
+        }
+        LHAP_FREE(characteristic->constraints.validValues);
+        for (HAPUInt8CharacteristicValidValuesRange **prange =
+            (HAPUInt8CharacteristicValidValuesRange **)
+            characteristic->constraints.validValuesRanges;
+            *prange; prange++) {
+            LHAP_FREE(*prange);
+        }
+        LHAP_FREE(characteristic->constraints.validValuesRanges);
+    )
+    default:
+        break;
+    }
 }
 
 static bool
@@ -1225,7 +1245,7 @@ HAPError lhap_accessory_identify_cb(
     }
 
     /* set the table request */
-    lua_newtable(L);
+    lua_createtable(L, 0, 2);
     lua_pushstring(L, "transportType");
     lua_pushstring(L, lhap_transport_type_strs[request->transportType]);
     lua_settable(L, -3);

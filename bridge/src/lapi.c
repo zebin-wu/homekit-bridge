@@ -209,7 +209,7 @@ void lapi_remove_all_callbacks(lua_State *L)
 
 void lapi_create_enum_table(lua_State *L, const char *enum_array[], int len)
 {
-    lua_newtable(L);
+    lua_createtable(L, len, 0);
     for (int i = 0; i < len; i++) {
         if (enum_array[i]) {
             lua_pushstring(L, enum_array[i]);
