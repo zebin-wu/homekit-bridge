@@ -52,7 +52,13 @@ static const HAPLogObject lhap_log = {
     .category = "lhap",
 };
 
-static const char *lhap_lhap_accessory_category_strs[] = {
+static const char *lhap_transport_type_strs[] = {
+    NULL,
+    "IP",
+    "BLE",
+};
+
+static const char *lhap_accessory_category_strs[] = {
     "BridgedAccessory",
     "Other",
     "Bridges",
@@ -379,8 +385,8 @@ static bool
 lhap_accessory_category_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     int idx = lhap_lookup_by_name(lua_tostring(L, -1),
-        lhap_lhap_accessory_category_strs,
-        HAPArrayCount(lhap_lhap_accessory_category_strs));
+        lhap_accessory_category_strs,
+        HAPArrayCount(lhap_accessory_category_strs));
     if (idx == -1) {
         return false;
     }
@@ -1218,7 +1224,16 @@ HAPError lhap_accessory_identify_cb(
         return err;
     }
 
-    if (lua_pcall(L, 0, 1, 0)) {
+    /* set the table request */
+    lua_newtable(L);
+    lua_pushstring(L, "transportType");
+    lua_pushstring(L, lhap_transport_type_strs[request->transportType]);
+    lua_settable(L, -3);
+    lua_pushstring(L, "remote");
+    lua_pushboolean(L, request->remote);
+    lua_settable(L, -3);
+
+    if (lua_pcall(L, 1, 1, 0)) {
         HAPLogError(&lhap_log,
             "%s: Failed to call lua function.", __func__);
         return err;
@@ -1376,7 +1391,7 @@ static int hap_configure(lua_State *L)
 end:
     HAPLogInfo(&lhap_log,
         "Accessory \"%s\": %s has been configured.", accessory->name,
-        lhap_lhap_accessory_category_strs[accessory->category]);
+        lhap_accessory_category_strs[accessory->category]);
     if (len) {
         HAPLogInfo(&lhap_log,
             "%llu bridged accessories have been configured.", len);
