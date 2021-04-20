@@ -1,6 +1,9 @@
+# Set the minimum version of CMake that can be used
+# To find the cmake version run
+# $ cmake --version
 cmake_minimum_required(VERSION 3.5)
 
-set(TOP_DIR ${CMAKE_SOURCE_DIR}/../..)
+set(TOP_DIR ../..)
 set(SRC_DIR src)
 
 include(${TOP_DIR}/cmake/project.cmake)
@@ -10,7 +13,12 @@ include(${TOP_DIR}/cmake/datastruct.cmake)
 include(${TOP_DIR}/cmake/lua.cmake)
 include(${TOP_DIR}/cmake/platform.cmake)
 
+set(PLATFORM linux)
+set(PROJECT ${PROJECT_NAME}-${PLATFORM})
+
 project(${PROJECT})
+
+find_package(dns_sd)
 
 include_directories(${ADK_INC_DIR}
                     ${ADK_PAL_LINUX_DIR}
