@@ -34,7 +34,23 @@
 #define LHAP_MALLOC(size)        malloc(size)
 #define LHAP_FREE(p)             do { if (p) { free((void *)p); (p) = NULL; } } while (0)
 
-static const HAPLogObject lhap_log = { .subsystem = kHAPApplication_LogSubsystem, .category = "lhap" };
+#define LHAP_CASE_CHAR_FORMAT_CODE(format, ptr, code) \
+    case kHAPCharacteristicFormat_##format: \
+        { HAP##format##Characteristic *ptr = ptr; code; } \
+        break;
+
+#define LHAP_LOG_TYPE_ERROR(L, name, excepted, got) \
+	do { \
+		HAPLogError(&lhap_log, "invalid type: %s", name); \
+		HAPLogError(&lhap_log, "%s excepted, got %s", \
+		    lua_typename(L, excepted), \
+		    lua_typename(L, got)); \
+	} while (0)
+
+static const HAPLogObject lhap_log = {
+    .subsystem = kHAPApplication_LogSubsystem,
+    .category = "lhap",
+};
 
 static const char *lhap_lhap_accessory_category_strs[] = {
     "BridgedAccessory",
@@ -80,7 +96,7 @@ static const char *lhap_error_strs[] = {
     "Busy",
 };
 
-static const char *lhap_characteristics_format_strs[] = {
+static const char *lhap_characteristic_format_strs[] = {
     "Data",
     "Bool",
     "UInt8",
@@ -91,6 +107,15 @@ static const char *lhap_characteristics_format_strs[] = {
     "Float",
     "String",
     "TLV8",
+};
+
+static const char *lhap_characteristic_units_strs[] = {
+    "None",
+    "Celsius",
+    "ArcDegrees",
+    "Percentage",
+    "Lux",
+    "Seconds",
 };
 
 static const size_t lhap_characteristic_struct_size[] = {
@@ -484,14 +509,14 @@ lhap_service_props_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 }
 
 static bool
-lhap_characteristics_iid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_characteristic_iid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     ((HAPBaseCharacteristic *)arg)->iid = lua_tointeger(L, -1);
     return true;
 }
 
 static bool
-lhap_characteristics_type_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_characteristic_type_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     HAPBaseCharacteristic *c = arg;
     const char *str = lua_tostring(L, -1);
@@ -501,8 +526,8 @@ lhap_characteristics_type_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
             if (c->format != lhap_characteristic_type_tab[i].format) {
                 HAPLogError(&lhap_log, "%s: Format error, %s expected, got %s",
                     __func__,
-                    lhap_characteristics_format_strs[lhap_characteristic_type_tab[i].format],
-                    lhap_characteristics_format_strs[c->format]);
+                    lhap_characteristic_format_strs[lhap_characteristic_type_tab[i].format],
+                    lhap_characteristic_format_strs[c->format]);
                 return false;
             }
             c->characteristicType = lhap_characteristic_type_tab[i].type;
@@ -515,7 +540,7 @@ lhap_characteristics_type_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 }
 
 static bool
-lhap_characteristics_mfg_desc_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_characteristic_mfg_desc_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPBaseCharacteristic *)arg)->manufacturerDescription) =
         lhap_new_str(lua_tostring(L, -1))) ? true : false;
@@ -607,28 +632,32 @@ lhap_char_props_ip_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 static bool
 lhap_char_props_ble_support_bc_notify_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    ((HAPCharacteristicProperties *)arg)->ble.supportsBroadcastNotification = lua_toboolean(L, -1);
+    ((HAPCharacteristicProperties *)arg)->ble.supportsBroadcastNotification =
+        lua_toboolean(L, -1);
     return true;
 }
 
 static bool
 lhap_char_props_ble_support_disconn_notify_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    ((HAPCharacteristicProperties *)arg)->ble.supportsDisconnectedNotification = lua_toboolean(L, -1);
+    ((HAPCharacteristicProperties *)arg)->ble.supportsDisconnectedNotification =
+        lua_toboolean(L, -1);
     return true;
 }
 
 static bool
 lhap_char_props_ble_read_without_sec_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    ((HAPCharacteristicProperties *)arg)->ble.readableWithoutSecurity = lua_toboolean(L, -1);
+    ((HAPCharacteristicProperties *)arg)->ble.readableWithoutSecurity =
+        lua_toboolean(L, -1);
     return true;
 }
 
 static bool
 lhap_char_props_ble_write_without_sec_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
-    ((HAPCharacteristicProperties *)arg)->ble.writableWithoutSecurity = lua_toboolean(L, -1);
+    ((HAPCharacteristicProperties *)arg)->ble.writableWithoutSecurity =
+        lua_toboolean(L, -1);
     return true;
 }
 
@@ -678,17 +707,344 @@ static const lapi_table_kv lhap_char_props_kvs[] = {
 };
 
 static bool
-lhap_characteristics_properties_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+lhap_characteristic_properties_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return lapi_traverse_table(L, -1, lhap_char_props_kvs,
         &((HAPBaseCharacteristic *)arg)->properties);
 }
 
+static bool
+lhap_characteristic_units_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
+    if (format < kHAPCharacteristicFormat_UInt8 ||
+        format > kHAPCharacteristicFormat_Float) {
+        HAPLogError(&lhap_log, "%s: The value of the %s characteristic has no unit.",
+            __func__, lhap_characteristic_format_strs[format]);
+        return false;
+    }
+    const char *str = lua_tostring(L, -1);
+    int idx = lhap_lookup_by_name(str, lhap_characteristic_units_strs,
+        HAPArrayCount(lhap_characteristic_units_strs));
+    if (idx == -1) {
+        HAPLogError(&lhap_log, "%s: Failed to find the unit \"%s\""
+            " in lhap_characteristic_units_strs", __func__, str);
+        return false;
+    }
+
+    switch (format) {
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg, arg->units = idx)
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg, arg->units = idx)
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg, arg->units = idx)
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg, arg->units = idx)
+    LHAP_CASE_CHAR_FORMAT_CODE(Int, arg, arg->units = idx)
+    LHAP_CASE_CHAR_FORMAT_CODE(Float, arg, arg->units = idx)
+    default:
+        HAPAssertionFailure();
+        break;
+    }
+    return true;
+}
+
+static bool
+lhap_char_constraints_max_length_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
+    switch (format) {
+    LHAP_CASE_CHAR_FORMAT_CODE(String, arg,
+        arg->constraints.maxLength = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(Data, arg,
+        arg->constraints.maxLength = lua_tointeger(L, -1))
+    default:
+        HAPLogError(&lhap_log, "%s: The constraints of the %s "
+            "characteristic has no maxLength.",
+            __func__, lhap_characteristic_format_strs[format]);
+        return false;
+    }
+    return true;
+}
+
+static bool
+lhap_char_constraints_min_val_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
+    switch (format) {
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
+        arg->constraints.minimumValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg,
+        arg->constraints.minimumValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg,
+        arg->constraints.minimumValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg,
+        arg->constraints.minimumValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(Int, arg,
+        arg->constraints.minimumValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(Float, arg,
+        arg->constraints.minimumValue = lua_tonumber(L, -1))
+    default:
+        HAPLogError(&lhap_log, "%s: The constraints of the %s "
+            "characteristic has no minimumValue.",
+            __func__, lhap_characteristic_format_strs[format]);
+        return false;
+    }
+    return true;
+}
+
+static bool
+lhap_char_constraints_max_val_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
+    switch (format) {
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
+        arg->constraints.maximumValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg,
+        arg->constraints.maximumValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg,
+        arg->constraints.maximumValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg,
+        arg->constraints.maximumValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(Int, arg,
+        arg->constraints.maximumValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(Float, arg,
+        arg->constraints.maximumValue = lua_tonumber(L, -1))
+    default:
+        HAPLogError(&lhap_log, "%s: The constraints of the %s "
+            "characteristic has no maximumValue.",
+            __func__, lhap_characteristic_format_strs[format]);
+        return false;
+    }
+    return true;
+}
+
+static bool
+lhap_char_constraints_step_val_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
+    switch (format) {
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
+        arg->constraints.stepValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg,
+        arg->constraints.stepValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg,
+        arg->constraints.stepValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg,
+        arg->constraints.stepValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(Int, arg,
+        arg->constraints.stepValue = lua_tointeger(L, -1))
+    LHAP_CASE_CHAR_FORMAT_CODE(Float, arg,
+        arg->constraints.stepValue = lua_tonumber(L, -1))
+    default:
+        HAPLogError(&lhap_log, "%s: The constraints of the %s "
+            "characteristic has no stepValue.",
+            __func__, lhap_characteristic_format_strs[format]);
+        return false;
+    }
+    return true;
+}
+
+bool lhap_char_constraints_valid_vals_arr_cb(lua_State *L, int i, void *arg)
+{
+    uint8_t **vals = arg;
+
+    if (!lua_isinteger(L, -1)) {
+        LHAP_LOG_TYPE_ERROR(L, "element of validValues",
+            LUA_TNUMBER, lua_type(L, -1));
+        return false;
+    }
+    uint8_t *val = LHAP_MALLOC(sizeof(uint8_t));
+    if (!val) {
+        HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
+        return false;
+    }
+    *val = lua_tointeger(L, -1);
+    vals[i] = val;
+    return true;
+}
+
+static bool
+lhap_char_constraints_valid_vals_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
+    switch (format) {
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
+        uint8_t ***pValidValues = (uint8_t ***)&(arg->constraints.validValues);
+        lua_Unsigned len = lua_rawlen(L, -1);
+        if (!len) {
+            *pValidValues = NULL;
+            break;
+        }
+        uint8_t **vals = LHAP_MALLOC(sizeof(uint8_t *) * len);
+        if (!vals) {
+            HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
+            return false;
+        }
+        memset(vals, 0, sizeof(uint8_t *) * len);
+        if (!lapi_traverse_array(L, -1, lhap_char_constraints_valid_vals_arr_cb,
+            vals)) {
+            HAPLogError(&lhap_log, "%s: Failed to parse validValues.", __func__);
+            return false;
+        }
+        *pValidValues = vals;
+    )
+    default:
+        HAPLogError(&lhap_log, "%s: The constraints of the %s "
+            "characteristic has no validValues.",
+            __func__, lhap_characteristic_format_strs[format]);
+        return false;
+    }
+    return true;
+}
+
+static bool
+lhap_char_constraints_valid_val_range_start_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPUInt8CharacteristicValidValuesRange *)arg)->start = lua_tointeger(L, -1);
+    return true;
+}
+
+static bool
+lhap_char_constraints_valid_val_range_end_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    ((HAPUInt8CharacteristicValidValuesRange *)arg)->end = lua_tointeger(L, -1);
+    return true;
+}
+
+static const lapi_table_kv lhap_char_constraints_valid_val_range_kvs[] = {
+    {"start", LUA_TNUMBER, lhap_char_constraints_valid_val_range_start_cb},
+    {"end", LUA_TNUMBER, lhap_char_constraints_valid_val_range_end_cb},
+    {NULL, LUA_TNONE, NULL},
+};
+
+bool lhap_char_constraints_valid_vals_ranges_arr_cb(lua_State *L, int i, void *arg)
+{
+    HAPUInt8CharacteristicValidValuesRange **ranges = arg;
+
+    if (!lua_istable(L, -1)) {
+        LHAP_LOG_TYPE_ERROR(L, "element of validValuesRanges",
+            LUA_TTABLE, lua_type(L, -1));
+        return false;
+    }
+    HAPUInt8CharacteristicValidValuesRange *range =
+        LHAP_MALLOC(sizeof(HAPUInt8CharacteristicValidValuesRange));
+    if (!range) {
+        HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
+        return false;
+    }
+    if (!lapi_traverse_table(L, -1, lhap_char_constraints_valid_val_range_kvs, range)) {
+        HAPLogError(&lhap_log, "%s: Failed to parse valid value range.", __func__);
+        LHAP_FREE(range);
+        return false;
+    }
+    ranges[i] = range; 
+    return true;
+}
+
+static bool
+lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
+    switch (format) {
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
+        HAPUInt8CharacteristicValidValuesRange ***pValidValuesRanges =
+            (HAPUInt8CharacteristicValidValuesRange ***)
+            &(arg->constraints.validValuesRanges);
+        lua_Unsigned len = lua_rawlen(L, -1);
+        if (!len) {
+            *pValidValuesRanges = NULL;
+            break;
+        }
+        HAPUInt8CharacteristicValidValuesRange **ranges =
+            LHAP_MALLOC(sizeof(HAPUInt8CharacteristicValidValuesRange *) * len);
+        if (!ranges) {
+            HAPLogError(&lhap_log, "%s: Failed to alloc ranges.", __func__);
+            return false;
+        }
+        memset(ranges, 0, sizeof(HAPUInt8CharacteristicValidValuesRange *) * len);
+        if (!lapi_traverse_array(L, -1, lhap_char_constraints_valid_vals_ranges_arr_cb,
+            ranges)) {
+            HAPLogError(&lhap_log, "%s: Failed to parse validValues.", __func__);
+            return false;
+        }
+        *pValidValuesRanges = ranges;
+    )
+    default:
+        HAPLogError(&lhap_log, "%s: The constraints of the %s "
+            "characteristic has no validValues.",
+            __func__, lhap_characteristic_format_strs[format]);
+        return false;
+    }
+    return true;
+}
+
+static const lapi_table_kv lhap_characteristic_constraints_kvs[] = {
+    {"maxLength", LUA_TNUMBER, lhap_char_constraints_max_length_cb},
+    {"minimumValue", LUA_TNUMBER, lhap_char_constraints_min_val_cb},
+    {"maximumValue", LUA_TNUMBER, lhap_char_constraints_max_val_cb},
+    {"stepValue", LUA_TNUMBER, lhap_char_constraints_step_val_cb},
+    {"validValues", LUA_TTABLE, lhap_char_constraints_valid_vals_cb},
+    {"validValuesRanges", LUA_TTABLE, lhap_char_constraints_valid_vals_ranges_cb},
+    {NULL, LUA_TNONE, NULL},
+};
+
+static bool
+lhap_characteristic_constraints_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
+    if (format == kHAPCharacteristicFormat_Bool ||
+        format == kHAPCharacteristicFormat_TLV8) {
+        HAPLogError(&lhap_log, "%s: The %s characteristic has no constraints.",
+            __func__, lhap_characteristic_format_strs[format]);
+        return false;
+    }
+    return lapi_traverse_table(L, -1, lhap_characteristic_constraints_kvs, arg);
+}
+
+static bool
+lhap_char_callbacks_handle_read_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return false;
+}
+
+static bool
+lhap_char_callbacks_handle_write_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return false;
+}
+
+static bool
+lhap_char_callbacks_handle_sub_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return false;
+}
+
+static bool
+lhap_char_callbacks_handle_unsub_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return false;
+}
+
+static const lapi_table_kv lhap_characteristic_callbacks_kvs[] = {
+    {"handleRead", LUA_TFUNCTION, lhap_char_callbacks_handle_read_cb},
+    {"handleWrite", LUA_TFUNCTION, lhap_char_callbacks_handle_write_cb},
+    {"handleSubscribe", LUA_TFUNCTION, lhap_char_callbacks_handle_sub_cb},
+    {"handleUnsubscribe", LUA_TFUNCTION, lhap_char_callbacks_handle_unsub_cb},
+    {NULL, LUA_TNONE, NULL},
+};
+
+static bool
+lhap_characteristic_callbacks_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
+{
+    return lapi_traverse_table(L, -1, lhap_characteristic_callbacks_kvs, arg);
+}
+
 static const lapi_table_kv lhap_characteristic_kvs[] = {
-    {"iid", LUA_TNUMBER, lhap_characteristics_iid_cb},
-    {"type", LUA_TSTRING, lhap_characteristics_type_cb},
-    {"manufacturerDescription", LUA_TSTRING, lhap_characteristics_mfg_desc_cb},
-    {"properties", LUA_TTABLE, lhap_characteristics_properties_cb},
+    {"iid", LUA_TNUMBER, lhap_characteristic_iid_cb},
+    {"type", LUA_TSTRING, lhap_characteristic_type_cb},
+    {"manufacturerDescription", LUA_TSTRING, lhap_characteristic_mfg_desc_cb},
+    {"properties", LUA_TTABLE, lhap_characteristic_properties_cb},
+    {"units", LUA_TSTRING, lhap_characteristic_units_cb},
+    {"constraints", LUA_TTABLE, lhap_characteristic_constraints_cb},
+    {"callbacks", LUA_TTABLE, lhap_characteristic_callbacks_cb},
     {NULL, LUA_TNONE, NULL},
 };
 
@@ -706,8 +1062,8 @@ static bool lhap_service_characteristics_arr_cb(lua_State *L, int i, void *arg)
         return false;
     }
     int idx = lhap_lookup_by_name(lua_tostring(L, -1),
-        lhap_characteristics_format_strs, 
-        HAPArrayCount(lhap_characteristics_format_strs));
+        lhap_characteristic_format_strs, 
+        HAPArrayCount(lhap_characteristic_format_strs));
     lua_pop(L, 1);
     if (idx == -1) {
         return false;

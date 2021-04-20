@@ -67,12 +67,17 @@
 ---@field validValues array List of valid values in ascending order.
 ---@field validValuesRanges array List of valid values ranges in ascending order.
 
+---@class UInt8CharacteristicValidValuesRange
+---
+---@field start integer Starting value.
+---@field end integer Starting value.
+
 ---@class CharacteristicCallbacks:table Characteristic Callbacks.
 ---
----@field read function The callback used to handle read requests.
----@field write function The callback used to handle write requests.
----@field sub function The callback used to handle subscribe requests.
----@field unsub function The callback used to handle unsubscribe requests.
+---@field handleRead function The callback used to handle read requests.
+---@field handleWrite function The callback used to handle write requests.
+---@field handleSubscribe function The callback used to handle subscribe requests.
+---@field handleUnsubscribe function The callback used to handle unsubscribe requests.
 
 ---@class CharacteristicProperties:table Properties that HomeKit characteristics can have.
 ---
