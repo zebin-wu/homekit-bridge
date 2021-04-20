@@ -1,4 +1,4 @@
-# lua-homekit-bridge
+# homekit-bridge
 
 ![](https://img.shields.io/badge/language-c|lua-orange.svg)
 ![](https://img.shields.io/badge/platform-linux|esp-lightgrey.svg)
