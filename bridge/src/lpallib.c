@@ -22,49 +22,49 @@
 #include <lauxlib.h>
 #include <platform/board.h>
 
-#include "lpfmlib.h"
+#include "lpallib.h"
 
-static int pfm_getManufacturer(lua_State *L)
+static int pal_getManufacturer(lua_State *L)
 {
-    lua_pushstring(L, pfm_board_get_manufacturer());
+    lua_pushstring(L, pal_board_get_manufacturer());
     return 1;
 }
 
-static int pfm_getModel(lua_State *L)
+static int pal_getModel(lua_State *L)
 {
-    lua_pushstring(L, pfm_board_get_model());
+    lua_pushstring(L, pal_board_get_model());
     return 1;
 }
 
-static int pfm_getSerialNumber(lua_State *L)
+static int pal_getSerialNumber(lua_State *L)
 {
-    lua_pushstring(L, pfm_board_get_serial_number());
+    lua_pushstring(L, pal_board_get_serial_number());
     return 1;
 }
 
-static int pfm_getFirmwareVersion(lua_State *L)
+static int pal_getFirmwareVersion(lua_State *L)
 {
-    lua_pushstring(L, pfm_board_get_firmware_version());
+    lua_pushstring(L, pal_board_get_firmware_version());
     return 1;
 }
 
-static int pfm_getHardwareVersion(lua_State *L)
+static int pal_getHardwareVersion(lua_State *L)
 {
-    lua_pushstring(L, pfm_board_get_hardware_version());
+    lua_pushstring(L, pal_board_get_hardware_version());
     return 1;
 }
 
-static const luaL_Reg pfmlib[] = {
-    {"getManufacturer", pfm_getManufacturer},
-    {"getModel", pfm_getModel},
-    {"getSerialNumber", pfm_getSerialNumber},
-    {"getFirmwareVersion", pfm_getFirmwareVersion},
-    {"getHardwareVersion", pfm_getHardwareVersion},
+static const luaL_Reg pallib[] = {
+    {"getManufacturer", pal_getManufacturer},
+    {"getModel", pal_getModel},
+    {"getSerialNumber", pal_getSerialNumber},
+    {"getFirmwareVersion", pal_getFirmwareVersion},
+    {"getHardwareVersion", pal_getHardwareVersion},
     {NULL, NULL},
 };
 
-LUAMOD_API int luaopen_pfm(lua_State *L)
+LUAMOD_API int luaopen_pal(lua_State *L)
 {
-    luaL_newlib(L, pfmlib);
+    luaL_newlib(L, pallib);
     return 1;
 }

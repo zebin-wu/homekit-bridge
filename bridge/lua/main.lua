@@ -1,5 +1,5 @@
 local config = require("config")
-local pfm = require("pfm")
+local pal = require("pal")
 local plugin = require("plugin")
 local hap = require("hap")
 
@@ -7,11 +7,11 @@ return hap.configure({
     aid = 1,
     category = "Bridges",
     name = config.bridge.name,
-    manufacturer = pfm.getManufacturer(),
-    model = pfm.getModel(),
-    serialNumber = pfm.getSerialNumber(),
-    firmwareVersion = pfm.getFirmwareVersion(),
-    hardwareVersion = pfm.getHardwareVersion(),
+    manufacturer = pal.getManufacturer(),
+    model = pal.getModel(),
+    serialNumber = pal.getSerialNumber(),
+    firmwareVersion = pal.getFirmwareVersion(),
+    hardwareVersion = pal.getHardwareVersion(),
     services = {
         hap.AccessoryInformationService,
         hap.HapProtocolInformationService,

@@ -31,7 +31,7 @@
 #include "AppInt.h"
 #include "lapi.h"
 #include "lhaplib.h"
-#include "lpfmlib.h"
+#include "lpallib.h"
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -63,7 +63,7 @@ static AccessoryConfiguration accessoryConfiguration;
 
 static const luaL_Reg loadedlibs[] = {
     {LUA_HAPNAME, luaopen_hap},
-    {LUA_PFMNAME, luaopen_pfm},
+    {LUA_PALNAME, luaopen_pal},
     {NULL, NULL}
 };
 
