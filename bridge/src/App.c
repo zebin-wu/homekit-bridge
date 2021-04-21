@@ -173,8 +173,9 @@ void AppInitialize(
         HAPAccessoryServerOptions* hapAccessoryServerOptions,
         HAPPlatform* hapPlatform,
         HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks,
-        void* _Nonnull * _Nonnull context) {
-    *context = &context;
+        void* _Nonnull * _Nonnull pcontext) {
+    HAPPrecondition(pcontext);
+    *pcontext = &context;
 }
 
 void AppDeinitialize() {
