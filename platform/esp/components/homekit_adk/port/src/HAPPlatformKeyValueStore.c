@@ -130,6 +130,12 @@ HAPError HAPPlatformKeyValueStoreSet(
     HAPPrecondition(keyValueStore);
     HAPPrecondition(bytes);
 
+    if (keyValueStore->read_only) {
+        HAPLogError(&logObject, "%s: Permission denied. Partition \"%s\" is read only!",
+            __func__, keyValueStore->part_name);
+        return kHAPError_Unknown;
+    }
+
     HAPLogBufferDebug(&logObject, bytes, numBytes, "Write %02X.%02X", domain, key);
 
     nvs_handle store_handle;
@@ -166,6 +172,12 @@ HAPError HAPPlatformKeyValueStoreRemove(
         HAPPlatformKeyValueStoreDomain domain,
         HAPPlatformKeyValueStoreKey key) {
     HAPPrecondition(keyValueStore);
+
+    if (keyValueStore->read_only) {
+        HAPLogError(&logObject, "%s: Permission denied. Partition \"%s\" is read only!",
+            __func__, keyValueStore->part_name);
+        return kHAPError_Unknown;
+    }
 
     nvs_handle store_handle;
     esp_err_t err;
@@ -228,6 +240,12 @@ HAPError HAPPlatformKeyValueStorePurgeDomain(
     HAPPrecondition(keyValueStore);
 
     (void) domain;
+
+    if (keyValueStore->read_only) {
+        HAPLogError(&logObject, "%s: Permission denied. Partition \"%s\" is read only!",
+            __func__, keyValueStore->part_name);
+        return kHAPError_Unknown;
+    }
 
     nvs_handle store_handle;
     esp_err_t err;

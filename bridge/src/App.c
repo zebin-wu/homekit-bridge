@@ -22,6 +22,7 @@
 #include <stdlib.h>
 
 #include <HAP.h>
+#include <HAPAccessorySetup.h>
 #include <lauxlib.h>
 #include <lualib.h>
 
@@ -176,6 +177,11 @@ void AppInitialize(
         void* _Nonnull * _Nonnull pcontext) {
     HAPPrecondition(pcontext);
     *pcontext = &context;
+
+    // Display setup code.
+    HAPSetupCode setupCode;
+    HAPPlatformAccessorySetupLoadSetupCode(hapPlatform->accessorySetup, &setupCode);
+    HAPLogInfo(&kHAPLog_Default, "Setup code: %s", setupCode.stringValue);
 }
 
 void AppDeinitialize() {
