@@ -15,6 +15,7 @@ include(${TOP_DIR}/cmake/platform.cmake)
 
 set(PLATFORM linux)
 set(PROJECT ${PROJECT_NAME}-${PLATFORM})
+set(BINARY ${PROJECT_NAME})
 
 project(${PROJECT})
 
@@ -40,6 +41,6 @@ set(SRCS "${SRC_DIR}/main.c"
          "${BRIDGE_SRCS}"
          "${DATASTRUCT_SRCS}"
          "${LUA_SRCS}")
-add_executable(${PROJECT} ${SRCS})
+add_executable(${BINARY} ${SRCS})
 
-target_link_libraries(${PROJECT} PRIVATE pthread ssl crypto m dns_sd)
+target_link_libraries(${BINARY} PRIVATE pthread ssl crypto m dns_sd)
