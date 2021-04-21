@@ -19,8 +19,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
-#ifndef LPFMLIB_H
-#define LPFMLIB_H
+#ifndef LPALLIB_H
+#define LPALLIB_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,11 +28,11 @@ extern "C" {
 
 #include <lua.h>
 
-#define LUA_PFMNAME "pfm"
-LUAMOD_API int luaopen_pfm(lua_State *L);
+#define LUA_PALNAME "pal"
+LUAMOD_API int luaopen_pal(lua_State *L);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* LPFMLIB_H */
+#endif /* LPALLIB_H */

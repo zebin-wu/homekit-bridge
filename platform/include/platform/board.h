@@ -34,27 +34,27 @@ extern "C" {
 /**
  * Get manufacturer.
  */
-const char *pfm_board_get_manufacturer(void);
+const char *pal_board_get_manufacturer(void);
 
 /**
  * Get model.
  */
-const char *pfm_board_get_model(void);
+const char *pal_board_get_model(void);
 
 /**
  * Get serial number.
  */
-const char *pfm_board_get_serial_number(void);
+const char *pal_board_get_serial_number(void);
 
 /**
  * Get firmware version.
  */
-const char *pfm_board_get_firmware_version(void);
+const char *pal_board_get_firmware_version(void);
 
 /**
  * Get hardware version.
  */
-const char *pfm_board_get_hardware_version(void);
+const char *pal_board_get_hardware_version(void);
 
 #ifdef __cplusplus
 }

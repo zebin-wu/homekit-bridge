@@ -21,22 +21,22 @@
 */
 #include <platform/board.h>
 
-const char *pfm_board_get_manufacturer(void)
+const char *pal_board_get_manufacturer(void)
 {
     return "Unknown";
 }
 
-const char *pfm_board_get_model(void)
+const char *pal_board_get_model(void)
 {
     return "Unknown";
 }
 
-const char *pfm_board_get_serial_number(void)
+const char *pal_board_get_serial_number(void)
 {
     return "Unknown";
 }
 
-const char *pfm_board_get_firmware_version(void)
+const char *pal_board_get_firmware_version(void)
 {
 #ifdef BRIDGE_VER
     return BRIDGE_VER;
@@ -45,7 +45,7 @@ const char *pfm_board_get_firmware_version(void)
 #endif
 }
 
-const char *pfm_board_get_hardware_version(void)
+const char *pal_board_get_hardware_version(void)
 {
     return "Unknown";
 }
