@@ -25,26 +25,42 @@ TODO
 ### Clone the repo
 > Add `--recursive` to initialize submodules in the clone.
 ```
-    git clone https://github.com/KNpTrue/lua-homekit-bridge.git --recursive
+    git clone --recursive https://github.com/KNpTrue/lua-homekit-bridge.git
 ```
 
 ### Platform Linux (Ubuntu)
 1. Install dependencies
-    ```
+    ```text
     $ sudo apt install cmake ninja clang libavahi-compat-libdnssd-dev libssl-dev
     ```
-2. Configure and compile
-    ```
+
+2. Compile and run
+    ```text
     $ mkdir build
     $ cd build
     $ cmake -G Ninja .. && ninja
+    $ ./homekit-bridge-linux
     ```
 
 ### Platform ESP
+1. Set up the host environment and ESP-IDF (**v4.3-beta2**) as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
 
-## Install
+2. ESP-IDF currently uses MbedTLS 2.16.x, whereas HomeKit ADK requires 2.18. A branch mbedtls-2.16.6-adk is being maintained [here](https://github.com/espressif/mbedtls/tree/mbedtls-2.16.6-adk) which has the required patches from 2.18, on top of 2.16.6. To switch to this, follow these steps:
+    ```text
+    $ cd $IDF_PATH/components/mbedtls/mbedtls
+    $ git pull
+    $ git checkout -b mbedtls-2.16.6-adk origin/mbedtls-2.16.6-adk
+    ```
 
-TODO
+3. You can use homekit-bridge with any ESP32 or ESP32-S2 board. Compile and flash as below:
+    ```text
+    $ cd /path/to/homekit-bridge/platform/esp
+    $ export ESPPORT=/dev/tty.SLAB_USBtoUART #Set your board's serial port here
+    $ idf.py set-target <esp32/esp32s2>
+    $ idf.py menuconfig # Set Example Configuration -> WiFi SSID/Password
+    $ idf.py flash
+    $ idf.py monitor
+    ```
 
 ## Usage
 
