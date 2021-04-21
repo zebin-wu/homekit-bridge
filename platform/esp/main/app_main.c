@@ -26,10 +26,12 @@
 
 #define IP 1
 #include <HAP.h>
+#include <HAPAccessorySetup.h>
 #include <HAPPlatform+Init.h>
 #include <HAPPlatformAccessorySetup+Init.h>
 #include <HAPPlatformBLEPeripheralManager+Init.h>
 #include <HAPPlatformKeyValueStore+Init.h>
+#include <HAPPlatformKeyValueStore+SDKDomains.h>
 #include <HAPPlatformMFiHWAuth+Init.h>
 #include <HAPPlatformMFiTokenAuth+Init.h>
 #include <HAPPlatformRunLoop+Init.h>
@@ -52,7 +54,6 @@ static bool clearPairings = false;
  */
 static struct {
     HAPPlatformKeyValueStore keyValueStore;
-    HAPPlatformKeyValueStore factoryKeyValueStore;
     HAPAccessoryServerOptions hapAccessoryServerOptions;
     HAPPlatform hapPlatform;
     HAPAccessoryServerCallbacks hapAccessoryServerCallbacks;
@@ -80,6 +81,65 @@ static HAPAccessoryServerRef accessoryServer;
 static void HandleUpdatedState(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context);
 
 /**
+ * Generate setup code, setup info and setup ID, and put them in the key-value store.
+ */
+static void AccessorySetupGenerate()
+{
+    bool found;
+    size_t numBytes;
+
+    // Setup code.
+    HAPSetupCode setupCode;
+    HAPAssert(HAPPlatformKeyValueStoreGet(&platform.keyValueStore,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupCode,
+            &setupCode, sizeof(setupCode), &numBytes,
+            &found) == kHAPError_None);
+    if (!found) {
+        HAPAccessorySetupGenerateRandomSetupCode(&setupCode);
+        HAPAssert(HAPPlatformKeyValueStoreSet(&platform.keyValueStore,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupCode,
+            &setupCode, sizeof(setupCode)) == kHAPError_None);
+    }
+
+    // Setup info.
+    HAPSetupInfo setupInfo;
+    HAPAssert(HAPPlatformKeyValueStoreGet(&platform.keyValueStore,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupInfo,
+            &setupInfo, sizeof(setupInfo), &numBytes,
+            &found) == kHAPError_None);
+    if (!found) {
+        HAPPlatformRandomNumberFill(setupInfo.salt, sizeof setupInfo.salt);
+        const uint8_t srpUserName[] = "Pair-Setup";
+        HAP_srp_verifier(
+                setupInfo.verifier,
+                setupInfo.salt,
+                srpUserName,
+                sizeof srpUserName - 1,
+                (const uint8_t*) setupCode.stringValue,
+                sizeof setupCode.stringValue - 1);
+        HAPAssert(HAPPlatformKeyValueStoreSet(&platform.keyValueStore,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupInfo,
+            &setupInfo, sizeof(setupInfo)) == kHAPError_None);
+    }
+
+    // Setup ID.
+    HAPSetupID setupID;
+    bool hasSetupID;
+    HAPPlatformAccessorySetupLoadSetupID(platform.hapPlatform.accessorySetup, &hasSetupID, &setupID);
+    if (!hasSetupID) {
+        HAPAccessorySetupGenerateRandomSetupID(&setupID);
+        HAPAssert(HAPPlatformKeyValueStoreSet(&platform.keyValueStore,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupID,
+            &setupID, sizeof(setupID)) == kHAPError_None);
+    }
+}
+
+/**
  * Initialize global platform objects.
  */
 static void InitializePlatform() {
@@ -91,17 +151,13 @@ static void InitializePlatform() {
     });
     platform.hapPlatform.keyValueStore = &platform.keyValueStore;
 
-    HAPPlatformKeyValueStoreCreate(&platform.factoryKeyValueStore, &(const HAPPlatformKeyValueStoreOptions) {
-        .part_name = CONFIG_EXAMPLE_FACTORY_PARTITION_NAME,
-        .namespace_prefix = "hap",
-        .read_only = true
-    });
-
     // Accessory setup manager. Depends on key-value store.
     static HAPPlatformAccessorySetup accessorySetup;
     HAPPlatformAccessorySetupCreate(
-            &accessorySetup, &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = &platform.factoryKeyValueStore });
+            &accessorySetup, &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = &platform.keyValueStore });
     platform.hapPlatform.accessorySetup = &accessorySetup;
+
+    AccessorySetupGenerate();
 
     // Initialize Wi-Fi
     app_wifi_init();

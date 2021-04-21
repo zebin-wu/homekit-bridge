@@ -12,12 +12,6 @@ menu "App Configuration"
         help
             WiFi password (WPA or WPA2) for the example to use.
 
-    config EXAMPLE_FACTORY_PARTITION_NAME
-        string "Factory Partition Name"
-        default "fctry"
-        help
-            Factory NVS Partition name which will have the HomeKit Setup Info.
-
     config SPIFFS_DIR_PATH
         string "SPIFFS Directory Path"
         default "/spiffs"

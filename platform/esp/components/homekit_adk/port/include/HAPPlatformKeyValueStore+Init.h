@@ -72,7 +72,7 @@ typedef struct {
  */
 typedef struct {
     /** Name of flash partition that will be used storing the Key-Value pairs.
-     * Recommended names are "nvs" and "fctry" as they are the defaults.
+     * Recommended name is "nvs" as it is the defaults.
      */
     const char *part_name;
     /** Prefix for the namespace under which the Key Value pairs will be stored. Recommended name is "hap"
