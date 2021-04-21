@@ -24,47 +24,58 @@
 
 #include "lpallib.h"
 
-static int pal_getManufacturer(lua_State *L)
+static int board_getManufacturer(lua_State *L)
 {
     lua_pushstring(L, pal_board_get_manufacturer());
     return 1;
 }
 
-static int pal_getModel(lua_State *L)
+static int board_getModel(lua_State *L)
 {
     lua_pushstring(L, pal_board_get_model());
     return 1;
 }
 
-static int pal_getSerialNumber(lua_State *L)
+static int board_getSerialNumber(lua_State *L)
 {
     lua_pushstring(L, pal_board_get_serial_number());
     return 1;
 }
 
-static int pal_getFirmwareVersion(lua_State *L)
+static int board_getFirmwareVersion(lua_State *L)
 {
     lua_pushstring(L, pal_board_get_firmware_version());
     return 1;
 }
 
-static int pal_getHardwareVersion(lua_State *L)
+static int board_getHardwareVersion(lua_State *L)
 {
     lua_pushstring(L, pal_board_get_hardware_version());
     return 1;
 }
 
+static const luaL_Reg board_funcs[] = {
+    {"getManufacturer", board_getManufacturer},
+    {"getModel", board_getModel},
+    {"getSerialNumber", board_getSerialNumber},
+    {"getFirmwareVersion", board_getFirmwareVersion},
+    {"getHardwareVersion", board_getHardwareVersion},
+    {NULL, NULL},
+};
+
 static const luaL_Reg pallib[] = {
-    {"getManufacturer", pal_getManufacturer},
-    {"getModel", pal_getModel},
-    {"getSerialNumber", pal_getSerialNumber},
-    {"getFirmwareVersion", pal_getFirmwareVersion},
-    {"getHardwareVersion", pal_getHardwareVersion},
+    {"board", NULL},
     {NULL, NULL},
 };
 
 LUAMOD_API int luaopen_pal(lua_State *L)
 {
     luaL_newlib(L, pallib);
+
+    /* set board */
+    lua_newtable(L);
+    luaL_setfuncs(L, board_funcs, 0);
+    lua_setfield(L, -2, "board");
+
     return 1;
 }
