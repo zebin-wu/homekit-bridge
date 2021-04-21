@@ -79,7 +79,7 @@ void AppInitialize(
         HAPAccessoryServerOptions* hapAccessoryServerOptions,
         HAPPlatform* hapPlatform,
         HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks,
-        void* _Nonnull * _Nonnull context);
+        void* _Nonnull * _Nonnull pcontext);
 
 /**
  * De-initialize App.
