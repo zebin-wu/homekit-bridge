@@ -28,11 +28,7 @@ uint32_t HAPPlatformGetCompatibilityVersion(void) {
 
 HAP_RESULT_USE_CHECK
 const char* HAPPlatformGetIdentification(void) {
-#ifdef CONFIG_IDF_TARGET_ESP32S2
-    return "ESP32S2";
-#else
-    return "ESP32";
-#endif
+    return "ESP-IDF";
 }
 
 HAP_RESULT_USE_CHECK
