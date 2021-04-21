@@ -31,7 +31,7 @@ TODO
 ### Platform Linux (Ubuntu)
 1. Install dependencies
     ```text
-    $ sudo apt install cmake ninja clang libavahi-compat-libdnssd-dev libssl-dev
+    $ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev
     ```
 
 2. Compile and run
@@ -68,4 +68,4 @@ TODO
 
 ## License
 
-[MIT © 2021 KNpTrue.](LICENSE)
+[MIT © 2021 KNpTrue and homekit-bridge contributors.](LICENSE)
