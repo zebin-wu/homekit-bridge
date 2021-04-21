@@ -1,17 +1,17 @@
 local config = require("config")
-local pal = require("pal")
 local plugin = require("plugin")
 local hap = require("hap")
+local board = require("pal").board
 
 return hap.configure({
     aid = 1,
     category = "Bridges",
     name = config.bridge.name,
-    manufacturer = pal.getManufacturer(),
-    model = pal.getModel(),
-    serialNumber = pal.getSerialNumber(),
-    firmwareVersion = pal.getFirmwareVersion(),
-    hardwareVersion = pal.getHardwareVersion(),
+    manufacturer = board.getManufacturer(),
+    model = board.getModel(),
+    serialNumber = board.getSerialNumber(),
+    firmwareVersion = board.getFirmwareVersion(),
+    hardwareVersion = board.getHardwareVersion(),
     services = {
         hap.AccessoryInformationService,
         hap.HapProtocolInformationService,

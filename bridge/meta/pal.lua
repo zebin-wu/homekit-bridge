@@ -2,28 +2,30 @@
 
 ---Get manufacturer.
 ---@return string
-local function getManufacturer() end
+local function board_getManufacturer() end
 
 ---Get model.
 ---@return string
-local function getModel() end
+local function board_getModel() end
 
 ---Get serial number.
 ---@return string
-local function getSerialNumber() end
+local function board_getSerialNumber() end
 
 ---Get firmware version.
 ---@return string
-local function getFirmwareVersion() end
+local function board_getFirmwareVersion() end
 
 ---Get hardware version.
 ---@return string
-local function getHardwareVersion() end
+local function board_getHardwareVersion() end
 
 return {
-    getManufacturer = getManufacturer,
-    getModel = getModel,
-    getSerialNumber = getSerialNumber,
-    getFirmwareVersion = getFirmwareVersion,
-    getHardwareVersion = getHardwareVersion
+    board = {
+        getManufacturer = board_getManufacturer,
+        getModel = board_getModel,
+        getSerialNumber = board_getSerialNumber,
+        getFirmwareVersion = board_getFirmwareVersion,
+        getHardwareVersion = board_getHardwareVersion,
+    }
 }
