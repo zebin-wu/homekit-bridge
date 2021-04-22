@@ -208,3 +208,12 @@ void lapi_collectgarbage(lua_State *L)
 {
     luaC_fullgc(L, 0);
 }
+
+char *lapi_new_str(const char *str)
+{
+    if (!str) {
+        return NULL;
+    }
+    char *copy = malloc(strlen(str) + 1);
+    return copy ? strcpy(copy, str) : NULL;
+}
