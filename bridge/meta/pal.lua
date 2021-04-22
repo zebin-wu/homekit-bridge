@@ -1,31 +1,27 @@
 ---@meta
 
+local board = {}
+
 ---Get manufacturer.
 ---@return string
-local function board_getManufacturer() end
+function board.getManufacturer() end
 
 ---Get model.
 ---@return string
-local function board_getModel() end
+function board.getModel() end
 
 ---Get serial number.
 ---@return string
-local function board_getSerialNumber() end
+function board.getSerialNumber() end
 
 ---Get firmware version.
 ---@return string
-local function board_getFirmwareVersion() end
+function board.getFirmwareVersion() end
 
 ---Get hardware version.
 ---@return string
-local function board_getHardwareVersion() end
+function board.getHardwareVersion() end
 
 return {
-    board = {
-        getManufacturer = board_getManufacturer,
-        getModel = board_getModel,
-        getSerialNumber = board_getSerialNumber,
-        getFirmwareVersion = board_getFirmwareVersion,
-        getHardwareVersion = board_getHardwareVersion,
-    }
+    board = board
 }
