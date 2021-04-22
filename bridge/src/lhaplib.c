@@ -349,16 +349,6 @@ static bool lhap_service_is_light_userdata(HAPService *service)
     return false;
 }
 
-// Return a new string copy from str.
-static char *lhap_new_str(const char *str)
-{
-    if (!str) {
-        return NULL;
-    }
-    char *copy = LHAP_MALLOC(strlen(str) + 1);
-    return copy ? strcpy(copy, str) : NULL;
-}
-
 static bool
 lhap_accessory_aid_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
@@ -383,42 +373,42 @@ static bool
 lhap_accessory_name_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPAccessory *)arg)->name) =
-        lhap_new_str(lua_tostring(L, -1))) ? true : false;
+        lapi_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
 lhap_accessory_manufacturer_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPAccessory *)arg)->manufacturer) =
-        lhap_new_str(lua_tostring(L, -1))) ? true : false;
+        lapi_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
 lhap_accessory_model_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPAccessory *)arg)->model) =
-        lhap_new_str(lua_tostring(L, -1))) ? true : false;
+        lapi_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
 lhap_accessory_serialnumber_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPAccessory *)arg)->serialNumber) =
-        lhap_new_str(lua_tostring(L, -1))) ? true : false;
+        lapi_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
 lhap_accessory_firmwareversion_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPAccessory *)arg)->firmwareVersion) =
-        lhap_new_str(lua_tostring(L, -1))) ? true : false;
+        lapi_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
 lhap_accessory_hardwareversion_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPAccessory *)arg)->hardwareVersion) =
-        lhap_new_str(lua_tostring(L, -1))) ? true : false;
+        lapi_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
@@ -449,7 +439,7 @@ static bool
 lhap_service_name_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPService *)arg)->name) =
-        lhap_new_str(lua_tostring(L, -1))) ? true : false;
+        lapi_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
@@ -534,7 +524,7 @@ static bool
 lhap_characteristic_mfg_desc_cb(lua_State *L, const lapi_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPBaseCharacteristic *)arg)->manufacturerDescription) =
-        lhap_new_str(lua_tostring(L, -1))) ? true : false;
+        lapi_new_str(lua_tostring(L, -1))) ? true : false;
 }
 
 static bool
@@ -1367,7 +1357,8 @@ static int hap_configure(lua_State *L)
         goto err1;
     }
 
-    if (accessory->category != kHAPAccessoryCategory_Bridges) {
+    if (accessory->category != kHAPAccessoryCategory_Bridges ||
+        lua_isnone(L, 2)) {
         goto end;
     }
 

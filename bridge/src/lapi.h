@@ -79,6 +79,11 @@ void lapi_create_enum_table(lua_State *L, const char *enum_array[], int len);
  */
 void lapi_collectgarbage(lua_State *L);
 
+/**
+ * Return a new string copy from str.
+ */
+char *lapi_new_str(const char *str);
+
 #ifdef __cplusplus
 }
 #endif
