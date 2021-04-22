@@ -10,12 +10,12 @@
 ---@field serialNumber string The serial number of the accessory.
 ---@field firmwareVersion string The firmware version of the accessory.
 ---@field hardwareVersion string The hardware version of the accessory.
----@field services array Array of provided services.
+---@field services Service[] Array of provided services.
 ---@field callbacks AccessoryCallbacks Callbacks.
 
 ---@class AccessoryCallbacks:table Accessory Callbacks.
 ---
----@field identify fun(request: AccessoryIdentifyRequest) The callback used to invoke the identify routine.
+---@field identify fun(request: AccessoryIdentifyRequest):integer The callback used to invoke the identify routine.
 
 ---@class AccessoryIdentifyRequest:table Accessory identify request.
 ---
@@ -28,8 +28,8 @@
 ---@field type ServiceType The type of the service.
 ---@field name string The name of the service.
 ---@field properties ServiceProperties HAP Service properties.
----@field linkedServices array Array containing instance IDs of linked services.
----@field characteristics array Array of contained characteristics.
+---@field linkedServices integer[] Array containing instance IDs of linked services.
+---@field characteristics Characteristic[] Array of contained characteristics.
 
 ---@class ServiceProperties:table Properties that HomeKit services can have.
 ---
@@ -40,8 +40,6 @@
 ---@class ServicePropertiesBLE:table These properties only affect connections over Bluetooth LE.
 ---
 ---@field supportsConfiguration boolean The service supports configuration.
-
----@class array: table
 
 ---@class Characteristic:table HomeKit characteristic.
 ---
@@ -69,8 +67,8 @@
 ---@field minimumValue integer Minimum value.
 ---@field maximumValue integer Maximum value.
 ---@field stepValue integer Step value.
----@field validValues array List of valid values in ascending order.
----@field validValuesRanges array List of valid values ranges in ascending order.
+---@field validValues integer[] List of valid values in ascending order.
+---@field validValuesRanges integer[] List of valid values ranges in ascending order.
 
 ---@class UInt8CharacteristicValidValuesRange
 ---
@@ -342,7 +340,7 @@ local PairingService
 
 ---Configure HAP.
 ---@param accessory Accessory Accessory to serve.
----@param bridgedAccessories? array Array of bridged accessories.
+---@param bridgedAccessories? Accessory[] Array of bridged accessories.
 ---@return boolean
 local function configure(accessory, bridgedAccessories) end
 
