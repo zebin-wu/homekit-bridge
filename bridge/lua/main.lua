@@ -2,6 +2,7 @@ local config = require("config")
 local plugin = require("plugin")
 local hap = require("hap")
 local board = require("pal").board
+local logger = require("log").getLogger()
 
 return hap.configure({
     aid = 1,
@@ -19,8 +20,8 @@ return hap.configure({
     },
     callbacks = {
         identify = function(request)
-            print("Identify callback is called.")
-            print(string.format("transportType: %s, remote: %s.",
+            logger:info("Identify callback is called.")
+            logger:info(string.format("transportType: %s, remote: %s.",
                 request.transportType, request.remote))
             return hap.Error.None
         end

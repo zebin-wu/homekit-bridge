@@ -4,8 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef APP_INT_H
-#define APP_INT_H
+#ifndef LLOGLIB_H
+#define LLOGLIB_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,20 +13,11 @@ extern "C" {
 
 #include <lua.h>
 
-/**
- * Log subsystem used by the HAP Bridge implementation.
- */
-#define kHAPApplication_LogSubsystem "com.apple.mfi.HomeKit.Bridge"
-
-/**
- * Accessory context. Will be passed to callbacks.
- */
-typedef struct {
-    lua_State *L;
-} AccessoryContext;
+#define LUA_LOGNAME "log"
+LUAMOD_API int luaopen_log(lua_State *L);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* APP_INT_H */
+#endif /* LLOGLIB_H */
