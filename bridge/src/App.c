@@ -17,6 +17,7 @@
 #include "lapi.h"
 #include "lhaplib.h"
 #include "lpallib.h"
+#include "lloglib.h"
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -49,6 +50,7 @@ static AccessoryConfiguration accessoryConfiguration;
 static const luaL_Reg loadedlibs[] = {
     {LUA_HAPNAME, luaopen_hap},
     {LUA_PALNAME, luaopen_pal},
+    {LUA_LOGNAME, luaopen_log},
     {NULL, NULL}
 };
 
