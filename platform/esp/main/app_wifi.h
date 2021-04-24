@@ -11,12 +11,27 @@
 
 /**
  * Initialize Wi-Fi.
-*/
+ */
 void app_wifi_init(void);
 
 /**
+ * Turn on the Wi-Fi.
+ */
+void app_wifi_on(void);
+
+/**
+ * Turn off the Wi-Fi.
+ */
+void app_wifi_off(void);
+
+/**
  * Connect to network.
-*/
-esp_err_t app_wifi_connect(void);
+ */
+void app_wifi_connect(void);
+
+/**
+ * Regsiter Wi=Fi command.
+ */
+void app_wifi_register_cmd(void);
 
 #endif /* APP_WIFI_H */
