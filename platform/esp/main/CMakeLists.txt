@@ -3,7 +3,8 @@ include(${TOP_DIR}/cmake/bridge.cmake)
 
 set(APP_SRCS    "app_main.c"
                 "app_wifi.c"
-                "app_spiffs.c")
+                "app_spiffs.c"
+                "app_console.c")
 
 set(SRCS "${APP_SRCS}" "${BRIDGE_SRCS}")
 set(INC_DIRS "${BRIDGE_INC_DIR}")
