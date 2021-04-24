@@ -16,7 +16,7 @@
 
 #include "app_console.h"
 
-#define APP_CONSOLE_TASK_STACKSIZE  2 * 1024
+#define APP_CONSOLE_TASK_STACKSIZE  4 * 1024
 #define APP_CONSOLE_TASK_PRIORITY   6
 
 #define PROMPT_STR CONFIG_IDF_TARGET
