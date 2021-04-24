@@ -9,6 +9,4 @@
 
 void app_spiffs_init(void);
 
-void app_spiffs_final(void);
-
 #endif /* APP_SPIFFS_H */

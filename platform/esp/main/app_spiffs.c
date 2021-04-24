@@ -45,9 +45,3 @@ void app_spiffs_init(void)
         ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
     }
 }
-
-void app_spiffs_final(void)
-{
-    esp_vfs_spiffs_unregister(NULL);
-    ESP_LOGI(TAG, "SPIFFS unmounted");
-}
