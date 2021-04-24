@@ -43,10 +43,6 @@ static int llog_get_logger(lua_State *L)
     logger->obj.subsystem = kHAPApplication_LogSubsystem;
     luaL_setmetatable(L, LUA_LOGGER_NAME);
     return 1;
-
-err:
-    lua_pushnil(L);
-    return 1;
 }
 
 static int llog_log_with_type(lua_State *L, HAPLogType type)
