@@ -7,6 +7,9 @@
 #ifndef APP_SPIFFS_H
 #define APP_SPIFFS_H
 
+/**
+ * Initialize spiffs.
+ */
 void app_spiffs_init(void);
 
 #endif /* APP_SPIFFS_H */
