@@ -24,7 +24,6 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#include <signal.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <App.h>
@@ -46,7 +45,19 @@
 #endif
 
 #include "app_wifi.h"
+#include "app_console.h"
 #include "app_spiffs.h"
+
+/* The app use WiFi configuration that you can set via project configuration menu
+
+   If you'd rather not, just change the below entries to strings with
+   the config you want - ie #define APP_ESP_WIFI_SSID "mywifissid"
+*/
+#define APP_ESP_WIFI_SSID      CONFIG_APP_WIFI_SSID
+#define APP_ESP_WIFI_PASS      CONFIG_APP_WIFI_PASSWORD
+
+#define APP_MAIN_TASK_STACKSIZE 16 * 1024
+#define APP_MAIN_TASK_PRIORITY 6
 
 static bool requestedFactoryReset = false;
 static bool clearPairings = false;
@@ -162,13 +173,16 @@ static void InitializePlatform() {
             &accessorySetup, &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = &platform.keyValueStore });
     platform.hapPlatform.accessorySetup = &accessorySetup;
 
+    // Generate setup code, setup info and setup ID.
     AccessorySetupGenerate();
 
-    // Initialize Wi-Fi
+    app_console_init();
     app_wifi_init();
-
-    // Initialize SPIFFS
     app_spiffs_init();
+
+    app_wifi_on();
+
+    app_wifi_register_cmd();
 
 #if IP
     // TCP stream manager.
@@ -333,9 +347,6 @@ static void InitializeIP(size_t attributeCount) {
     platform.hapAccessoryServerOptions.ip.accessoryServerStorage = &ipAccessoryServerStorage;
 
     platform.hapPlatform.ip.tcpStreamManager = &platform.tcpStreamManager;
-
-    // Connect to Wi-Fi
-    app_wifi_connect();
 }
 #endif
 
@@ -367,7 +378,7 @@ static void InitializeBLE(size_t attributeCount) {
 }
 #endif
 
-void main_task()
+void app_main_task(void *arg)
 {
     HAPAssert(HAPGetCompatibilityVersion() == HAP_COMPATIBILITY_VERSION);
 
@@ -405,6 +416,9 @@ void main_task()
     // Start accessory server for App.
     AppAccessoryServerStart();
 
+    // Start the console.
+    app_console_start();
+
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
     // Run loop stopped explicitly by calling function HAPPlatformRunLoopStop.
@@ -419,5 +433,6 @@ void main_task()
 
 void app_main()
 {
-    xTaskCreate(main_task, "main_task", 16 * 1024, NULL, 6, NULL);
+    xTaskCreate(app_main_task, "main", APP_MAIN_TASK_STACKSIZE,
+        NULL, APP_MAIN_TASK_PRIORITY, NULL);
 }
