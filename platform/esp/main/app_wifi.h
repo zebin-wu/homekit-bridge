@@ -27,7 +27,7 @@ void app_wifi_off(void);
 /**
  * Connect to network.
  */
-void app_wifi_connect(void);
+void app_wifi_connect(const char *ssid, const char *password);
 
 /**
  * Regsiter Wi=Fi command.

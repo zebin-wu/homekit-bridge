@@ -12,7 +12,7 @@
 #include <esp_event.h>
 #include <esp_log.h>
 
-#define APP_ESP_MAXIMUM_RETRY  CONFIG_APP_MAXIMUM_RETRY
+#define APP_ESP_MAXIMUM_RETRY  5
 
 /*
  * Wifi state.
@@ -35,7 +35,7 @@ typedef struct {
     wifi_mode_t mode;
 } app_wifi_desc;
 
-static const char *TAG = "wifi";
+static const char *TAG = "app_wifi";
 
 static app_wifi_desc gv_wifi_desc;
 
@@ -43,41 +43,56 @@ static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
     static int retry = 0;
+    char ssid[32 + 1];
 
     if (event_base == WIFI_EVENT) {
         switch (event_id) {
         case WIFI_EVENT_STA_START:
             esp_wifi_connect();
             break;
-        case WIFI_EVENT_STA_DISCONNECTED:;
-            wifi_event_sta_disconnected_t *event = event_data;
-            ESP_LOGI(TAG, "disconnected from AP, reason: %d", event->reason);
+        case WIFI_EVENT_STA_DISCONNECTED:
+        {
+            wifi_event_sta_disconnected_t *evt = event_data;
+            ESP_LOGW(TAG, "disconnected reason: %d", evt->reason);
             if (retry < APP_ESP_MAXIMUM_RETRY) {
                 esp_wifi_connect();
                 retry++;
                 ESP_LOGI(TAG, "retry to connect to the AP");
             }
             break;
+        }
+        case WIFI_EVENT_STA_CONNECTED:
+        {
+            wifi_event_sta_connected_t *evt = event_data;
+            memcpy(ssid, evt->ssid, evt->ssid_len);
+            ssid[evt->ssid_len] = '\0';
+            ESP_LOGI(TAG, "connected to AP \"%s\", channel: %u", ssid, evt->channel);
+            break;
+        }
         default:
             break;
         }
     } else if (event_base == IP_EVENT) {
         switch (event_id) {
-        case IP_EVENT_STA_GOT_IP:;
-            ip_event_got_ip_t *event = event_data;
-            ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        case IP_EVENT_STA_GOT_IP:
+        {
+            ip_event_got_ip_t *evt = event_data;
+            ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&evt->ip_info.ip));
             retry = 0;
             break;
+        }
         default:
             break;
         }
     }
-}            
+}
 
 void app_wifi_init(void)
 {
     assert(gv_wifi_desc.state == APP_WIFI_STATE_NOINIT);
 
+    esp_log_level_set("wifi", ESP_LOG_WARN);
+    esp_log_level_set("wifi_init", ESP_LOG_WARN);
     esp_event_loop_create_default();
     ESP_ERROR_CHECK(esp_netif_init());
 
@@ -97,7 +112,7 @@ void app_wifi_init(void)
                                                         event_handler,
                                                         NULL,
                                                         &instance_got_ip));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_NULL));
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     gv_wifi_desc.state = APP_WIFI_STATE_INITED;
     ESP_LOGI(TAG, "noinit -> inited");
@@ -129,6 +144,7 @@ void app_wifi_connect(const char *ssid, const char *password)
     }
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_connect());
 }
 
 /** Arguments used by 'join' function */
@@ -157,7 +173,7 @@ void app_wifi_register_cmd(void)
     join_args.end = arg_end(2);
 
     const esp_console_cmd_t join_cmd = {
-        .command = "wifi_join",
+        .command = "join",
         .help = "Join WiFi AP as a station",
         .hint = NULL,
         .func = app_wifi_join_cmd,

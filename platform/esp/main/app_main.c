@@ -26,6 +26,8 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <cmd_system.h>
+
 #include <App.h>
 
 #define IP 1
@@ -47,14 +49,6 @@
 #include "app_wifi.h"
 #include "app_console.h"
 #include "app_spiffs.h"
-
-/* The app use WiFi configuration that you can set via project configuration menu
-
-   If you'd rather not, just change the below entries to strings with
-   the config you want - ie #define APP_ESP_WIFI_SSID "mywifissid"
-*/
-#define APP_ESP_WIFI_SSID      CONFIG_APP_WIFI_SSID
-#define APP_ESP_WIFI_PASS      CONFIG_APP_WIFI_PASSWORD
 
 #define APP_MAIN_TASK_STACKSIZE 16 * 1024
 #define APP_MAIN_TASK_PRIORITY 6
@@ -178,11 +172,11 @@ static void InitializePlatform() {
 
     app_console_init();
     app_wifi_init();
+    app_wifi_on();
     app_spiffs_init();
 
-    app_wifi_on();
-
     app_wifi_register_cmd();
+    register_system();
 
 #if IP
     // TCP stream manager.
@@ -265,51 +259,63 @@ void RestorePlatformFactorySettings(void) {
  * Either simply passes State handling to app, or processes Factory Reset
  */
 void HandleUpdatedState(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context) {
-    if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && requestedFactoryReset) {
-        HAPPrecondition(server);
+    switch (HAPAccessoryServerGetState(server)) {
+    case kHAPAccessoryServerState_Idle:
+        if (requestedFactoryReset) {
+            HAPPrecondition(server);
 
-        HAPError err;
+            HAPError err;
 
-        HAPLogInfo(&kHAPLog_Default, "A factory reset has been requested.");
+            HAPLogInfo(&kHAPLog_Default, "A factory reset has been requested.");
 
-        // Purge app state.
-        err = HAPPlatformKeyValueStorePurgeDomain(&platform.keyValueStore, ((HAPPlatformKeyValueStoreDomain) 0x00));
-        if (err) {
-            HAPAssert(err == kHAPError_Unknown);
-            HAPFatalError();
+            // Purge app state.
+            err = HAPPlatformKeyValueStorePurgeDomain(&platform.keyValueStore,
+                ((HAPPlatformKeyValueStoreDomain) 0x00));
+            if (err) {
+                HAPAssert(err == kHAPError_Unknown);
+                HAPFatalError();
+            }
+
+            // Reset HomeKit state.
+            err = HAPRestoreFactorySettings(&platform.keyValueStore);
+            if (err) {
+                HAPAssert(err == kHAPError_Unknown);
+                HAPFatalError();
+            }
+
+            // Restore platform specific factory settings.
+            RestorePlatformFactorySettings();
+
+            // De-initialize App.
+            AppRelease();
+
+            requestedFactoryReset = false;
+
+            // Re-initialize App.
+            AppCreate(server, &platform.keyValueStore);
+
+            // Restart accessory server.
+            AppAccessoryServerStart();
+            return;
+        } else if (clearPairings) {
+            HAPError err;
+            err = HAPRemoveAllPairings(&platform.keyValueStore);
+            if (err) {
+                HAPAssert(err == kHAPError_Unknown);
+                HAPFatalError();
+            }
+            AppAccessoryServerStart();
         }
-
-        // Reset HomeKit state.
-        err = HAPRestoreFactorySettings(&platform.keyValueStore);
-        if (err) {
-            HAPAssert(err == kHAPError_Unknown);
-            HAPFatalError();
-        }
-
-        // Restore platform specific factory settings.
-        RestorePlatformFactorySettings();
-
-        // De-initialize App.
-        AppRelease();
-
-        requestedFactoryReset = false;
-
-        // Re-initialize App.
-        AppCreate(server, &platform.keyValueStore);
-
-        // Restart accessory server.
-        AppAccessoryServerStart();
-        return;
-    } else if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && clearPairings) {
-        HAPError err;
-        err = HAPRemoveAllPairings(&platform.keyValueStore);
-        if (err) {
-            HAPAssert(err == kHAPError_Unknown);
-            HAPFatalError();
-        }
-        AppAccessoryServerStart();
-    } else {
+        break;
+    case kHAPAccessoryServerState_Running:
         AccessoryServerHandleUpdatedState(server, context);
+
+        // Start the console.
+        app_console_start();
+        break;
+    default:
+        AccessoryServerHandleUpdatedState(server, context);
+        break;
     }
 }
 
@@ -386,7 +392,7 @@ void app_main_task(void *arg)
     InitializePlatform();
 
     // Lua entry.
-    size_t attributeCount = AppLuaEntry(CONFIG_SPIFFS_DIR_PATH);
+    size_t attributeCount = AppLuaEntry(APP_SPIFFS_DIR_PATH);
     HAPAssert(attributeCount);
 
 #if IP
@@ -415,9 +421,6 @@ void app_main_task(void *arg)
 
     // Start accessory server for App.
     AppAccessoryServerStart();
-
-    // Start the console.
-    app_console_start();
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
