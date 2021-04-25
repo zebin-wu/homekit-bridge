@@ -7,6 +7,8 @@
 #ifndef APP_SPIFFS_H
 #define APP_SPIFFS_H
 
+#define APP_SPIFFS_DIR_PATH "/spiffs"
+
 /**
  * Initialize spiffs.
  */

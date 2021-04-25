@@ -5,6 +5,8 @@ cmake_minimum_required(VERSION 3.5)
 
 set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
+set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/system/console/components)
+
 include(${TOP_DIR}/cmake/project.cmake)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
