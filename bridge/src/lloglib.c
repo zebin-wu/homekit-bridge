@@ -11,7 +11,6 @@
 #include <lauxlib.h>
 
 #include "AppInt.h"
-#include "lapi.h"
 #include "lloglib.h"
 
 #define LUA_LOGGER_NAME "logger"

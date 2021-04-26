@@ -14,7 +14,7 @@
 #include <App.h>
 
 #include "AppInt.h"
-#include "lapi.h"
+#include "lc.h"
 #include "lhaplib.h"
 #include "lpallib.h"
 #include "lloglib.h"
@@ -91,7 +91,7 @@ size_t AppLuaEntry(const char *work_dir) {
     // run main.lua
     snprintf(path, sizeof(path), "%s/main.lua", work_dir);
     int status = luaL_dofile(L, path);
-    lapi_collectgarbage(L);
+    lc_collectgarbage(L);
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
         lua_writestringerror("%s\n", msg);
