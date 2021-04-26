@@ -93,8 +93,7 @@ static void HandleUpdatedState(HAPAccessoryServerRef* _Nonnull server, void* _Nu
 /**
  * Generate setup code, setup info and setup ID, and put them in the key-value store.
  */
-static void AccessorySetupGenerate()
-{
+static void AccessorySetupGenerate() {
     bool found;
     size_t numBytes;
 
@@ -243,8 +242,6 @@ static void DeinitializePlatform() {
     HAPPlatformTCPStreamManagerRelease(&platform.tcpStreamManager);
 #endif
 
-    AppDeinitialize();
-
     // Run loop.
     HAPPlatformRunLoopRelease();
 }
@@ -354,6 +351,15 @@ static void InitializeIP(size_t attributeCount) {
 
     platform.hapPlatform.ip.tcpStreamManager = &platform.tcpStreamManager;
 }
+
+static void DeinitializeIP(void) {
+    HAPIPAccessoryServerStorage *storage = platform.hapAccessoryServerOptions.ip.accessoryServerStorage;
+    for (size_t i = 0; i < storage->numSessions; i++) {
+        free(storage->sessions + i);
+    }
+    free(storage->readContexts);
+    free(storage->writeContexts);
+}
 #endif
 
 #if BLE
@@ -382,10 +388,13 @@ static void InitializeBLE(size_t attributeCount) {
     platform.hapAccessoryServerOptions.ble.preferredAdvertisingInterval = PREFERRED_ADVERTISING_INTERVAL;
     platform.hapAccessoryServerOptions.ble.preferredNotificationDuration = kHAPBLENotification_MinDuration;
 }
+
+static void DeinitializeBLE(void) {
+    free(platform.hapAccessoryServerOptions.ble.accessoryServerStorage->gattTableElements);
+}
 #endif
 
-void app_main_task(void *arg)
-{
+void app_main_task(void *arg) {
     HAPAssert(HAPGetCompatibilityVersion() == HAP_COMPATIBILITY_VERSION);
 
     // Initialize global platform objects.
@@ -431,11 +440,23 @@ void app_main_task(void *arg)
 
     HAPAccessoryServerRelease(&accessoryServer);
 
+    AppDeinitialize();
+
+#if IP
+    DeinitializeIP();
+#endif
+
+#if BLE
+    DeinitializeBLE();
+#endif
+
+    // Close lua state.
+    AppLuaClose();
+
     DeinitializePlatform();
 }
 
-void app_main()
-{
-    xTaskCreate(app_main_task, "main", APP_MAIN_TASK_STACKSIZE,
+void app_main() {
+    xTaskCreate(app_main_task, "app", APP_MAIN_TASK_STACKSIZE,
         NULL, APP_MAIN_TASK_PRIORITY, NULL);
 }

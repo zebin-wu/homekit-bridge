@@ -18,12 +18,17 @@ extern "C" {
 #endif
 
 /**
- * Application Lua Entry.
+ * Application lua Entry.
  *
  * @param workDir the path of the work directory. 
  * @return attribute count.
  */
 size_t AppLuaEntry(const char *workDir);
+
+/**
+ * Close the lua state.
+ */
+void AppLuaClose(void);
 
 /**
  * Initialize the application.
