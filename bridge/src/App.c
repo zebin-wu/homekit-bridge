@@ -48,6 +48,16 @@ static AccessoryContext context;
 static AccessoryConfiguration accessoryConfiguration;
 
 static const luaL_Reg loadedlibs[] = {
+    {LUA_GNAME, luaopen_base},
+    {LUA_LOADLIBNAME, luaopen_package},
+    {LUA_COLIBNAME, luaopen_coroutine},
+    {LUA_TABLIBNAME, luaopen_table},
+    {LUA_IOLIBNAME, luaopen_io},
+    {LUA_OSLIBNAME, luaopen_os},
+    {LUA_STRLIBNAME, luaopen_string},
+    {LUA_MATHLIBNAME, luaopen_math},
+    {LUA_UTF8LIBNAME, luaopen_utf8},
+    {LUA_DBLIBNAME, luaopen_debug},
     {LUA_HAPNAME, luaopen_hap},
     {LUA_PALNAME, luaopen_pal},
     {LUA_LOGNAME, luaopen_log},
@@ -56,8 +66,7 @@ static const luaL_Reg loadedlibs[] = {
 
 //----------------------------------------------------------------------------------------------------------------------
 
-size_t AppLuaEntry(const char *work_dir)
-{
+size_t AppLuaEntry(const char *work_dir) {
     HAPPrecondition(work_dir);
 
     char path[256];
@@ -74,7 +83,6 @@ size_t AppLuaEntry(const char *work_dir)
     }
 
     // load libraries
-    luaL_openlibs(L);
     for (const luaL_Reg *lib = loadedlibs; lib->func; lib++) {
         luaL_requiref(L, lib->name, lib->func, 1);
         lua_pop(L, 1);  /* remove lib */
@@ -104,8 +112,15 @@ size_t AppLuaEntry(const char *work_dir)
     context.L = L;
     return lhap_get_attribute_count();
 err:
-    lua_close(L);
-    return 0;
+    HAPAssertionFailure();
+}
+
+void AppLuaClose(void) {
+    if (context.L) {
+        lc_remove_all_callbacks(context.L);
+        lua_close(context.L);
+    }
+    lhap_deinitialize();
 }
 
 void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyValueStore) {

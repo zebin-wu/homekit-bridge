@@ -213,8 +213,6 @@ static void DeinitializePlatform() {
     HAPPlatformTCPStreamManagerRelease(&platform.tcpStreamManager);
 #endif
 
-    AppDeinitialize();
-
     // Run loop.
     HAPPlatformRunLoopRelease();
 }
@@ -312,6 +310,15 @@ static void InitializeIP(size_t attributeCount) {
 
     platform.hapPlatform.ip.tcpStreamManager = &platform.tcpStreamManager;
 }
+
+static void DeinitializeIP(void) {
+    HAPIPAccessoryServerStorage *storage = platform.hapAccessoryServerOptions.ip.accessoryServerStorage;
+    for (size_t i = 0; i < storage->numSessions; i++) {
+        free(storage->sessions + i);
+    }
+    free(storage->readContexts);
+    free(storage->writeContexts);
+}
 #endif
 
 #if BLE
@@ -339,6 +346,10 @@ static void InitializeBLE(size_t attributeCount) {
     platform.hapAccessoryServerOptions.ble.accessoryServerStorage = &bleAccessoryServerStorage;
     platform.hapAccessoryServerOptions.ble.preferredAdvertisingInterval = PREFERRED_ADVERTISING_INTERVAL;
     platform.hapAccessoryServerOptions.ble.preferredNotificationDuration = kHAPBLENotification_MinDuration;
+}
+
+static void DeinitializeBLE(void) {
+    free(platform.hapAccessoryServerOptions.ble.accessoryServerStorage->gattTableElements);
 }
 #endif
 
@@ -387,6 +398,19 @@ int main(int argc HAP_UNUSED, char* _Nullable argv[_Nullable] HAP_UNUSED) {
     AppRelease();
 
     HAPAccessoryServerRelease(&accessoryServer);
+
+    AppDeinitialize();
+
+#if IP
+    DeinitializeIP();
+#endif
+
+#if BLE
+    DeinitializeBLE();
+#endif
+
+    // Close lua state.
+    AppLuaClose();
 
     DeinitializePlatform();
 
