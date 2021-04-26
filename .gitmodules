@@ -3,4 +3,4 @@
 	url = https://github.com/apple/HomeKitADK
 [submodule "ext/lua"]
 	path = ext/lua
-	url = https://github.com/lua/lua
+	url = https://github.com/KNpTrue/lua
