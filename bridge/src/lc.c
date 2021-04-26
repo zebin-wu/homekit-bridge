@@ -11,9 +11,9 @@
 #include <lauxlib.h>
 #include <lgc.h>
 
-#include "lapi.h"
+#include "lc.h"
 
-struct lapi_callback {
+struct lc_callback {
     struct rb_node node; /* rbtree node */
     size_t key; /* the only key that can find the callback */
     int id; /* reference id return from luaL_ref() */
@@ -21,8 +21,8 @@ struct lapi_callback {
 
 struct rb_root cbTree = RB_ROOT;
 
-static const lapi_table_kv *
-lapi_lookup_kv_by_name(const lapi_table_kv *kv_tab, const char *name)
+static const lc_table_kv *
+lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *name)
 {
     for (; kv_tab->key != NULL; kv_tab++) {
         if (!strcmp(kv_tab->key, name)) {
@@ -32,7 +32,7 @@ lapi_lookup_kv_by_name(const lapi_table_kv *kv_tab, const char *name)
     return NULL;
 }
 
-bool lapi_traverse_table(lua_State *L, int index, const lapi_table_kv *kvs, void *arg)
+bool lc_traverse_table(lua_State *L, int index, const lc_table_kv *kvs, void *arg)
 {
     // Push another reference to the table on top of the stack (so we know
     // where it is, and this function can work for negative, positive and
@@ -46,7 +46,7 @@ bool lapi_traverse_table(lua_State *L, int index, const lapi_table_kv *kvs, void
         // copy the key so that lua_tostring does not modify the original
         lua_pushvalue(L, -2);
         // stack now contains: -1 => key; -2 => value; -3 => key; -4 => table
-        const lapi_table_kv *kv = lapi_lookup_kv_by_name(kvs, lua_tostring(L, -1));
+        const lc_table_kv *kv = lc_lookup_kv_by_name(kvs, lua_tostring(L, -1));
         // pop copy of key
         lua_pop(L, 1);
         // stack now contains: -1 => value; -2 => key; -3 => table
@@ -74,7 +74,7 @@ bool lapi_traverse_table(lua_State *L, int index, const lapi_table_kv *kvs, void
     return true;
 }
 
-bool lapi_traverse_array(lua_State *L, int index,
+bool lc_traverse_array(lua_State *L, int index,
                          bool (*arr_cb)(lua_State *L, int i, void *arg),
                          void *arg)
 {
@@ -94,7 +94,7 @@ bool lapi_traverse_array(lua_State *L, int index,
     return true;
 }
 
-bool lapi_register_callback(lua_State *L, int index, size_t key)
+bool lc_register_callback(lua_State *L, int index, size_t key)
 {
     struct rb_root *root = &cbTree;
     struct rb_node **t = &(root->rb_node);
@@ -102,7 +102,7 @@ bool lapi_register_callback(lua_State *L, int index, size_t key)
 
   	// Figure out where to put new node.
   	while (*t) {
-        lapi_callback *this = container_of(*t, struct lapi_callback, node);
+        lc_callback *this = container_of(*t, struct lc_callback, node);
         parent = *t;
         if (key < this->key) {
             t = &((*t)->rb_left);
@@ -113,7 +113,7 @@ bool lapi_register_callback(lua_State *L, int index, size_t key)
         }
   	}
 
-    lapi_callback *new = malloc(sizeof(*new));
+    lc_callback *new = malloc(sizeof(*new));
     if (!new) {
         return false;
     }
@@ -135,12 +135,12 @@ bool lapi_register_callback(lua_State *L, int index, size_t key)
     return true;
 }
 
-static lapi_callback *lapi_find_callback(struct rb_root *root, size_t key)
+static lc_callback *lc_find_callback(struct rb_root *root, size_t key)
 {
     struct rb_node *node = root->rb_node;
 
     while (node) {
-        lapi_callback *t = container_of(node, struct lapi_callback, node);
+        lc_callback *t = container_of(node, struct lc_callback, node);
 
         if (key < t->key) {
             node = node->rb_left;
@@ -153,9 +153,9 @@ static lapi_callback *lapi_find_callback(struct rb_root *root, size_t key)
     return NULL;
 }
 
-bool lapi_push_callback(lua_State *L, size_t key)
+bool lc_push_callback(lua_State *L, size_t key)
 {
-    lapi_callback *cb = lapi_find_callback(&cbTree, key);
+    lc_callback *cb = lc_find_callback(&cbTree, key);
     if (!cb) {
         return false;
     }
@@ -163,9 +163,9 @@ bool lapi_push_callback(lua_State *L, size_t key)
     return true;
 }
 
-bool lapi_unregister_callback(lua_State *L, size_t key)
+bool lc_unregister_callback(lua_State *L, size_t key)
 {
-    lapi_callback *cb = lapi_find_callback(&cbTree, key);
+    lc_callback *cb = lc_find_callback(&cbTree, key);
     if (!cb) {
         return false;
     }
@@ -175,24 +175,24 @@ bool lapi_unregister_callback(lua_State *L, size_t key)
     return true;
 }
 
-static void _lapi_remove_all_callbacks(lua_State *L, struct rb_node *root)
+static void _lc_remove_all_callbacks(lua_State *L, struct rb_node *root)
 {
     if (root == NULL) {
         return;
     }
-    _lapi_remove_all_callbacks(L, root->rb_left);
-    _lapi_remove_all_callbacks(L, root->rb_right);
-    lapi_callback *cb = container_of(root, struct lapi_callback, node);
+    _lc_remove_all_callbacks(L, root->rb_left);
+    _lc_remove_all_callbacks(L, root->rb_right);
+    lc_callback *cb = container_of(root, struct lc_callback, node);
     luaL_unref(L, LUA_REGISTRYINDEX, cb->id);
     free(cb);
 }
 
-void lapi_remove_all_callbacks(lua_State *L)
+void lc_remove_all_callbacks(lua_State *L)
 {
-    _lapi_remove_all_callbacks(L, cbTree.rb_node);
+    _lc_remove_all_callbacks(L, cbTree.rb_node);
 }
 
-void lapi_create_enum_table(lua_State *L, const char *enum_array[], int len)
+void lc_create_enum_table(lua_State *L, const char *enum_array[], int len)
 {
     lua_createtable(L, len, 0);
     for (int i = 0; i < len; i++) {
@@ -204,12 +204,12 @@ void lapi_create_enum_table(lua_State *L, const char *enum_array[], int len)
     }
 }
 
-void lapi_collectgarbage(lua_State *L)
+void lc_collectgarbage(lua_State *L)
 {
     luaC_fullgc(L, 0);
 }
 
-char *lapi_new_str(const char *str)
+char *lc_new_str(const char *str)
 {
     if (!str) {
         return NULL;
