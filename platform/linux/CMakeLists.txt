@@ -30,7 +30,8 @@ include_directories(${ADK_INC_DIR}
 add_definitions(-DBRIDGE_VER="${PROJECT_VER}"
                 -DBRIDGE_LUA_DIR="${BRIDGE_LUA_DIR}"
                 -DIP
-                -DHAP_LOG_LEVEL=3)
+                -DHAP_LOG_LEVEL=3
+                -DLUA_USE_POSIX)
 
 #collect sources
 set(SRCS "${SRC_DIR}/main.c"
