@@ -11,26 +11,25 @@
 /**
  * IID constants.
  */
-#define kIID_AccessoryInformation                 ((uint64_t) 0x0001)
-#define kIID_AccessoryInformationIdentify         ((uint64_t) 0x0002)
-#define kIID_AccessoryInformationManufacturer     ((uint64_t) 0x0003)
-#define kIID_AccessoryInformationModel            ((uint64_t) 0x0004)
-#define kIID_AccessoryInformationName             ((uint64_t) 0x0005)
-#define kIID_AccessoryInformationSerialNumber     ((uint64_t) 0x0006)
-#define kIID_AccessoryInformationFirmwareRevision ((uint64_t) 0x0007)
-#define kIID_AccessoryInformationHardwareRevision ((uint64_t) 0x0008)
-#define kIID_AccessoryInformationADKVersion       ((uint64_t) 0x0009)
-#define kIID_AccessoryInformationProductData      ((uint64_t) 0x000A)
+#define kIID_AccessoryInformation                 ((uint64_t) 1)
+#define kIID_AccessoryInformationIdentify         ((uint64_t) 2)
+#define kIID_AccessoryInformationManufacturer     ((uint64_t) 3)
+#define kIID_AccessoryInformationModel            ((uint64_t) 4)
+#define kIID_AccessoryInformationName             ((uint64_t) 5)
+#define kIID_AccessoryInformationSerialNumber     ((uint64_t) 6)
+#define kIID_AccessoryInformationFirmwareRevision ((uint64_t) 7)
+#define kIID_AccessoryInformationHardwareRevision ((uint64_t) 8)
+#define kIID_AccessoryInformationADKVersion       ((uint64_t) 9)
 
-#define kIID_HAPProtocolInformation                 ((uint64_t) 0x0010)
-#define kIID_HAPProtocolInformationServiceSignature ((uint64_t) 0x0011)
-#define kIID_HAPProtocolInformationVersion          ((uint64_t) 0x0012)
+#define kIID_HAPProtocolInformation                 ((uint64_t) 10)
+#define kIID_HAPProtocolInformationServiceSignature ((uint64_t) 11)
+#define kIID_HAPProtocolInformationVersion          ((uint64_t) 12)
 
-#define kIID_Pairing                ((uint64_t) 0x0020)
-#define kIID_PairingPairSetup       ((uint64_t) 0x0022)
-#define kIID_PairingPairVerify      ((uint64_t) 0x0023)
-#define kIID_PairingPairingFeatures ((uint64_t) 0x0024)
-#define kIID_PairingPairingPairings ((uint64_t) 0x0025)
+#define kIID_Pairing                ((uint64_t) 13)
+#define kIID_PairingPairSetup       ((uint64_t) 14)
+#define kIID_PairingPairVerify      ((uint64_t) 15)
+#define kIID_PairingPairingFeatures ((uint64_t) 16)
+#define kIID_PairingPairingPairings ((uint64_t) 17)
 
 HAP_STATIC_ASSERT(kAttributeCount == 9 + 3 + 5, AttributeCount_mismatch);
 

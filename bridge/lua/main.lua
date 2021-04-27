@@ -1,16 +1,17 @@
 local config = require("config")
 local plugin = require("plugin")
 local hap = require("hap")
+local accessory = require("hap.accessory")
 local board = require("pal").board
 local logger = require("log").getLogger()
 
 return hap.configure({
-    aid = 1,
+    aid = accessory.iid(),
     category = "Bridges",
-    name = config.bridge.name,
+    name = config.bridge.name or "HomeKit Bridge",
     manufacturer = board.getManufacturer(),
     model = board.getModel(),
-    serialNumber = board.getSerialNumber(),
+    sn = board.getSerialNumber(),
     firmwareVersion = board.getFirmwareVersion(),
     hardwareVersion = board.getHardwareVersion(),
     services = {
