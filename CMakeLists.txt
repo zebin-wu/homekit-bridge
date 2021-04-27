@@ -7,4 +7,6 @@ include(cmake/project.cmake)
 
 project(${PROJECT_NAME})
 
-add_subdirectory(platform/linux)
+string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM)
+
+add_subdirectory(platform/${PLATFORM})
