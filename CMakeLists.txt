@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.5)
 
 include(cmake/project.cmake)
 
-project(${PROJECT_NAME})
+project(${PROJECT})
 
 string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM)
 

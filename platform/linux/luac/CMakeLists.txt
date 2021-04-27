@@ -7,17 +7,28 @@ set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 
 include(${TOP_DIR}/cmake/lua.cmake)
 
-set(PROJECT luac)
+project(luac)
 
-project(${PROJECT})
-
-include_directories(${LUA_INC_DIR})
-
-add_definitions(-DLUA_USE_LINUX)
-
-#collect sources
+# collect sources
 set(SRCS "${LUAC_SRCS}"
          "${LUA_SRCS}")
-add_executable(${PROJECT} ${SRCS})
+add_executable(${PROJECT_NAME} ${SRCS})
 
-target_link_libraries(${PROJECT} PRIVATE m dl)
+# add include directories
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        ${LUA_INC_DIR}
+)
+
+# add definitions
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE
+        LUA_USE_LINUX
+)
+
+# add link libraries
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        m
+        dl
+)

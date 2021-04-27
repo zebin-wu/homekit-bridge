@@ -13,26 +13,9 @@ include(${TOP_DIR}/cmake/datastruct.cmake)
 include(${TOP_DIR}/cmake/lua.cmake)
 include(${TOP_DIR}/cmake/platform.cmake)
 
-set(PROJECT ${PROJECT_NAME}-${PLATFORM})
-set(BRIDGE ${PROJECT_NAME})
+project(${PROJECT}-${PLATFORM})
 
-project(${PROJECT})
-
-include_directories(${ADK_INC_DIR}
-                    ${ADK_PAL_LINUX_DIR}
-                    ${BRIDGE_INC_DIR}
-                    ${DATASTRUCT_INC_DIR}
-                    ${LUA_INC_DIR}
-                    ${PLATFORM_INC_DIR})
-
-#add definitions
-add_definitions(-DBRIDGE_VER="${PROJECT_VER}"
-                -DBRIDGE_LUA_DIR="${BRIDGE_LUA_DIR}"
-                -DIP
-                -DHAP_LOG_LEVEL=3
-                -DLUA_USE_LINUX)
-
-#collect sources
+# collect sources
 set(SRCS "${SRC_DIR}/main.c"
          "${SRC_DIR}/platform/board.c"
          "${ADK_SRCS}"
@@ -41,9 +24,39 @@ set(SRCS "${SRC_DIR}/main.c"
          "${BRIDGE_SRCS}"
          "${DATASTRUCT_SRCS}"
          "${LUA_SRCS}")
-add_executable(${BRIDGE} ${SRCS})
+add_executable(${PROJECT} ${SRCS})
 
-target_link_libraries(${BRIDGE} PRIVATE pthread ssl crypto m dns_sd dl)
+# add include directories
+target_include_directories(${PROJECT}
+    PRIVATE
+        ${ADK_INC_DIR}
+        ${ADK_PAL_LINUX_DIR}
+        ${BRIDGE_INC_DIR}
+        ${DATASTRUCT_INC_DIR}
+        ${LUA_INC_DIR}
+        ${PLATFORM_INC_DIR}
+)
+
+# add definitions
+target_compile_definitions(${PROJECT}
+    PRIVATE
+        BRIDGE_VER="${PROJECT_VER}"
+        BRIDGE_LUA_DIR="${BRIDGE_LUA_DIR}"
+        IP=1
+        HAP_LOG_LEVEL=3
+        LUA_USE_LINUX
+)
+
+# add link libraries
+target_link_libraries(${PROJECT}
+    PRIVATE
+        pthread
+        ssl
+        crypto
+        m
+        dns_sd
+        dl
+)
 
 # compile luac
 add_subdirectory(luac)
