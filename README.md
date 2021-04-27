@@ -39,11 +39,11 @@ TODO
     $ mkdir build
     $ cd build
     $ cmake -G Ninja .. && ninja
-    $ ./homekit-bridge-linux
+    $ ./platform/linux/homekit-bridge
     ```
 
 ### Platform ESP
-1. Set up the host environment and ESP-IDF (**v4.3-beta2**) as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
+1. Set up the host environment and ESP-IDF (**v4.3-beta3**) as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
 
 2. ESP-IDF currently uses MbedTLS 2.16.x, whereas HomeKit ADK requires 2.18. A branch mbedtls-2.16.6-adk is being maintained [here](https://github.com/espressif/mbedtls/tree/mbedtls-2.16.6-adk) which has the required patches from 2.18, on top of 2.16.6. To switch to this, follow these steps:
     ```text
@@ -57,7 +57,6 @@ TODO
     $ cd /path/to/homekit-bridge/platform/esp
     $ export ESPPORT=/dev/tty.SLAB_USBtoUART #Set your board's serial port here
     $ idf.py set-target <esp32/esp32s2>
-    $ idf.py menuconfig # Set Example Configuration -> WiFi SSID/Password
     $ idf.py flash
     $ idf.py monitor
     ```
