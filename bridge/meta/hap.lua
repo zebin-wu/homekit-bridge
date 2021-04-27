@@ -7,7 +7,7 @@
 ---@field name string The display name of the accessory.
 ---@field manufacturer string The manufacturer of the accessory.
 ---@field model string The model name of the accessory.
----@field serialNumber string The serial number of the accessory.
+---@field sn string The serial number of the accessory.
 ---@field firmwareVersion string The firmware version of the accessory.
 ---@field hardwareVersion string The hardware version of the accessory.
 ---@field services Service[] Array of provided services.
@@ -27,15 +27,15 @@
 ---@field iid integer Instance ID.
 ---@field type ServiceType The type of the service.
 ---@field name string The name of the service.
----@field properties ServiceProperties HAP Service properties.
+---@field props ServiceProperties HAP Service properties.
 ---@field linkedServices integer[] Array containing instance IDs of linked services.
----@field characteristics Characteristic[] Array of contained characteristics.
+---@field chars Characteristic[] Array of contained characteristics.
 
 ---@class ServiceProperties:table Properties that HomeKit services can have.
 ---
 ---@field primaryService boolean The service is the primary service on the accessory.
 ---@field hidden boolean The service should be hidden from the user.
----@field ble ServicePropertiesBLE The service supports configuration.
+---@field ble ServicePropertiesBLE
 
 ---@class ServicePropertiesBLE:table These properties only affect connections over Bluetooth LE.
 ---
@@ -341,8 +341,12 @@ local PairingService
 ---Configure HAP.
 ---@param accessory Accessory Accessory to serve.
 ---@param bridgedAccessories? Accessory[] Array of bridged accessories.
----@return boolean
+---@return boolean status true on success, false on failure.
 local function configure(accessory, bridgedAccessories) end
+
+---Get a new Instance ID for service or characteristic.
+---@return integer iid Instance ID.
+local function getInstanceID() end
 
 return {
     Error = Error,
@@ -350,4 +354,5 @@ return {
     HapProtocolInformationService = HapProtocolInformationService,
     PairingService = PairingService,
     configure = configure,
+    getInstanceID = getInstanceID,
 }

@@ -320,10 +320,12 @@ static const lhap_characteristic_type lhap_characteristic_type_tab[] = {
 static struct lhap_desc {
     bool isConfigure:1;
     size_t attributeCount;
+    size_t iid;
     HAPAccessory accessory;
     HAPAccessory **bridgedAccessories;
 } gv_lhap_desc = {
-    .attributeCount = kAttributeCount
+    .attributeCount = kAttributeCount,
+    .iid = kAttributeCount + 1
 };
 
 // Find the string and return the string index.
@@ -391,7 +393,7 @@ lhap_accessory_model_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 }
 
 static bool
-lhap_accessory_serialnumber_cb(lua_State *L, const lc_table_kv *kv, void *arg)
+lhap_accessory_sn_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPAccessory *)arg)->serialNumber) =
         lc_new_str(lua_tostring(L, -1))) ? true : false;
@@ -1089,7 +1091,7 @@ static void lhap_reset_characteristic(HAPCharacteristic *characteristic)
 }
 
 static bool
-lhap_service_characteristics_cb(lua_State *L, const lc_table_kv *kv, void *arg)
+lhap_service_chars_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
     HAPService *service = arg;
     HAPCharacteristic ***pcharacteristic = (HAPCharacteristic ***)&(service->characteristics);
@@ -1120,8 +1122,8 @@ static const lc_table_kv lhap_service_kvs[] = {
     {"iid", LUA_TNUMBER, lhap_service_iid_cb},
     {"type", LUA_TSTRING, lhap_service_type_cb},
     {"name", LUA_TSTRING, lhap_service_name_cb},
-    {"properties", LUA_TTABLE, lhap_service_props_cb},
-    {"characteristics", LUA_TTABLE, lhap_service_characteristics_cb},
+    {"props", LUA_TTABLE, lhap_service_props_cb},
+    {"chars", LUA_TTABLE, lhap_service_chars_cb},
     {NULL, LUA_TNONE, NULL},
 };
 
@@ -1277,7 +1279,7 @@ static const lc_table_kv lhap_accessory_kvs[] = {
     {"name", LUA_TSTRING, lhap_accessory_name_cb},
     {"manufacturer", LUA_TSTRING, lhap_accessory_manufacturer_cb},
     {"model", LUA_TSTRING, lhap_accessory_model_cb},
-    {"serialNumber", LUA_TSTRING, lhap_accessory_serialnumber_cb},
+    {"sn", LUA_TSTRING, lhap_accessory_sn_cb},
     {"firmwareVersion", LUA_TSTRING, lhap_accessory_firmwareversion_cb},
     {"hardwareVersion", LUA_TSTRING, lhap_accessory_hardwareversion_cb},
     {"services", LUA_TTABLE, lhap_accessory_services_cb},
@@ -1333,7 +1335,7 @@ bool lhap_accessories_arr_cb(lua_State *L, int i, void *arg)
  * If the category of the accessory is bridge, the parameters
  * bridgedAccessories is valid.
 */
-static int hap_configure(lua_State *L)
+static int lhap_configure(lua_State *L)
 {
     lua_Unsigned len = 0;
     struct lhap_desc *desc = &gv_lhap_desc;
@@ -1409,8 +1411,15 @@ err:
     return 1;
 }
 
+static int lhap_get_iid(lua_State *L)
+{
+    lua_pushinteger(L, gv_lhap_desc.iid++);
+    return 1;
+}
+
 static const luaL_Reg haplib[] = {
-    {"configure", hap_configure},
+    {"configure", lhap_configure},
+    {"getInstanceID", lhap_get_iid},
     /* placeholders */
     {"Error", NULL},
     {"AccessoryInformationService", NULL},
@@ -1470,5 +1479,6 @@ void lhap_deinitialize(void)
     LHAP_FREE(desc->bridgedAccessories);
     lhap_reset_accessory(&desc->accessory);
     desc->attributeCount = kAttributeCount;
+    desc->iid = kAttributeCount + 1;
     desc->isConfigure = false;
 }
