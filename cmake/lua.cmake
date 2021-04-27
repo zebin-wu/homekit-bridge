@@ -36,3 +36,5 @@ set(LUA_SRCS    "${LUA_SRC_DIR}/lapi.c"
                 "${LUA_SRC_DIR}/lutf8lib.c"
                 "${LUA_SRC_DIR}/lvm.c"
                 "${LUA_SRC_DIR}/lzio.c")
+
+set(LUAC_SRCS   "${LUA_SRC_DIR}/luac.c")

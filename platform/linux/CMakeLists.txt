@@ -13,9 +13,8 @@ include(${TOP_DIR}/cmake/datastruct.cmake)
 include(${TOP_DIR}/cmake/lua.cmake)
 include(${TOP_DIR}/cmake/platform.cmake)
 
-set(PLATFORM linux)
 set(PROJECT ${PROJECT_NAME}-${PLATFORM})
-set(BINARY ${PROJECT_NAME})
+set(BRIDGE ${PROJECT_NAME})
 
 project(${PROJECT})
 
@@ -31,7 +30,7 @@ add_definitions(-DBRIDGE_VER="${PROJECT_VER}"
                 -DBRIDGE_LUA_DIR="${BRIDGE_LUA_DIR}"
                 -DIP
                 -DHAP_LOG_LEVEL=3
-                -DLUA_USE_POSIX)
+                -DLUA_USE_LINUX)
 
 #collect sources
 set(SRCS "${SRC_DIR}/main.c"
@@ -42,6 +41,9 @@ set(SRCS "${SRC_DIR}/main.c"
          "${BRIDGE_SRCS}"
          "${DATASTRUCT_SRCS}"
          "${LUA_SRCS}")
-add_executable(${BINARY} ${SRCS})
+add_executable(${BRIDGE} ${SRCS})
 
-target_link_libraries(${BINARY} PRIVATE pthread ssl crypto m dns_sd)
+target_link_libraries(${BRIDGE} PRIVATE pthread ssl crypto m dns_sd dl)
+
+# compile luac
+add_subdirectory(luac)
