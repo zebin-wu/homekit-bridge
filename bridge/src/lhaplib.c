@@ -1007,10 +1007,10 @@ lhap_char_callbacks_handle_unsub_cb(lua_State *L, const lc_table_kv *kv, void *a
 }
 
 static const lc_table_kv lhap_characteristic_callbacks_kvs[] = {
-    {"handleRead", LUA_TFUNCTION, lhap_char_callbacks_handle_read_cb},
-    {"handleWrite", LUA_TFUNCTION, lhap_char_callbacks_handle_write_cb},
-    {"handleSubscribe", LUA_TFUNCTION, lhap_char_callbacks_handle_sub_cb},
-    {"handleUnsubscribe", LUA_TFUNCTION, lhap_char_callbacks_handle_unsub_cb},
+    {"read", LUA_TFUNCTION, lhap_char_callbacks_handle_read_cb},
+    {"write", LUA_TFUNCTION, lhap_char_callbacks_handle_write_cb},
+    {"sub", LUA_TFUNCTION, lhap_char_callbacks_handle_sub_cb},
+    {"unsub", LUA_TFUNCTION, lhap_char_callbacks_handle_unsub_cb},
     {NULL, LUA_TNONE, NULL},
 };
 
@@ -1023,7 +1023,7 @@ lhap_characteristic_callbacks_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 static const lc_table_kv lhap_characteristic_kvs[] = {
     {"iid", LUA_TNUMBER, lhap_characteristic_iid_cb},
     {"type", LUA_TSTRING, lhap_characteristic_type_cb},
-    {"manufacturerDescription", LUA_TSTRING, lhap_characteristic_mfg_desc_cb},
+    {"mfgDesc", LUA_TSTRING, lhap_characteristic_mfg_desc_cb},
     {"properties", LUA_TTABLE, lhap_characteristic_properties_cb},
     {"units", LUA_TSTRING, lhap_characteristic_units_cb},
     {"constraints", LUA_TTABLE, lhap_characteristic_constraints_cb},
@@ -1277,7 +1277,7 @@ static const lc_table_kv lhap_accessory_kvs[] = {
     {"aid", LUA_TNUMBER, lhap_accessory_aid_cb},
     {"category", LUA_TSTRING, lhap_accessory_category_cb},
     {"name", LUA_TSTRING, lhap_accessory_name_cb},
-    {"manufacturer", LUA_TSTRING, lhap_accessory_manufacturer_cb},
+    {"mfg", LUA_TSTRING, lhap_accessory_manufacturer_cb},
     {"model", LUA_TSTRING, lhap_accessory_model_cb},
     {"sn", LUA_TSTRING, lhap_accessory_sn_cb},
     {"firmwareVersion", LUA_TSTRING, lhap_accessory_firmwareversion_cb},

@@ -17,7 +17,7 @@ function accessory.new(name, category, mfg, model, sn, fver, hver, services)
         aid = accessory.iid(),
         category = category,
         name = name,
-        manufacturer = mfg,
+        mfg = mfg,
         model = model,
         sn = sn,
         firmwareVersion = fver,
@@ -26,14 +26,14 @@ function accessory.new(name, category, mfg, model, sn, fver, hver, services)
     }
 end
 
----Add callbacks to accessory.
+---Add callbacks to the accessory.
 ---@param a Accessory
 ---@param identify fun(request: AccessoryIdentifyRequest):integer The callback used to invoke the identify routine.
-function accessory.addCallbacks(a, identify)
+function accessory.setCallbacks(a, identify)
     a.callbacks.identify = identify
 end
 
----Add service to accessory.
+---Add service to the accessory.
 ---@param a Accessory
 ---@param s Service
 function accessory.addService(a, s)

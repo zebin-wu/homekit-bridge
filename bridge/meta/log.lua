@@ -1,11 +1,14 @@
 ---@meta
 
+---@class loglib
+log = {}
+
 ---Return a logger with the specified name, creating it if necessary.
 ---
 ---If no name is specified, return the default logger.
 ---@param name? string the specified name
 ---@return logger
-local function getLogger(name) end
+function log.getLogger(name) end
 
 ---@class logger
 local logger = {}
@@ -30,6 +33,4 @@ function logger:error(s) end
 ---@param s string
 function logger:fault(s) end
 
-return {
-    getLogger = getLogger,
-}
+return log

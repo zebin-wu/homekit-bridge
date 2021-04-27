@@ -1,11 +1,14 @@
 ---@meta
 
+---@class haplib
+hap = {}
+
 ---@class Accessory:table HomeKit accessory.
 ---
 ---@field aid integer Accessory instance ID.
 ---@field category AccessoryCategory Category information for the accessory.
 ---@field name string The display name of the accessory.
----@field manufacturer string The manufacturer of the accessory.
+---@field mfg string The manufacturer of the accessory.
 ---@field model string The model name of the accessory.
 ---@field sn string The serial number of the accessory.
 ---@field firmwareVersion string The firmware version of the accessory.
@@ -46,7 +49,7 @@
 ---@field format CharacteristicFormat Format.
 ---@field iid integer Instance ID.
 ---@field type CharacteristicType The type of the characteristic.
----@field manufacturerDescription string Description of the characteristic provided by the manufacturer of the accessory.
+---@field mfgDesc string Description of the characteristic provided by the manufacturer of the accessory.
 ---@field properties CharacteristicProperties Characteristic properties.
 ---@field units CharacteristicUnits The units of the values for the characteristic. Format: UInt8|UInt16|UInt32|UInt64|Int|Float
 ---@field constraints StringCharacteristiConstraints|NumberCharacteristiConstraints|UInt8CharacteristiConstraints Value constraints.
@@ -77,10 +80,10 @@
 
 ---@class CharacteristicCallbacks:table Characteristic Callbacks.
 ---
----@field handleRead function The callback used to handle read requests.
----@field handleWrite function The callback used to handle write requests.
----@field handleSubscribe function The callback used to handle subscribe requests.
----@field handleUnsubscribe function The callback used to handle unsubscribe requests.
+---@field read function The callback used to handle read requests.
+---@field write function The callback used to handle write requests.
+---@field sub function The callback used to handle subscribe requests.
+---@field unsub function The callback used to handle unsubscribe requests.
 
 ---@class CharacteristicProperties:table Properties that HomeKit characteristics can have.
 ---
@@ -106,17 +109,6 @@
 ---@field supportsDisconnectedNotification boolean The characteristic supports disconnected notifications.
 ---@field readableWithoutSecurity boolean The characteristic is always readable, even before a secured session is established.
 ---@field writableWithoutSecurity boolean The characteristic is always writable, even before a secured session is established.
-
----Error type.
-local Error = {
-    None = 0,
-    Unknown = 1,
-    InvalidState = 2,
-    InvalidData = 3,
-    OutOfResources = 4,
-    NotAuthorized = 5,
-    Busy = 6,
-}
 
 ---@alias TransportType
 ---| '"IP"'     # HAP over IP (Ethernet / Wi-Fi).
@@ -326,33 +318,37 @@ local Error = {
 ---| '"Lux"'        # Lux (that is, illuminance).
 ---| '"Seconds"'    # Seconds.
 
+---Error type.
+hap.Error = {
+    None = 0,
+    Unknown = 1,
+    InvalidState = 2,
+    InvalidData = 3,
+    OutOfResources = 4,
+    NotAuthorized = 5,
+    Busy = 6,
+}
+
 ---HomeKit Accessory Information service.
 ---@type lightuserdata
-local AccessoryInformationService
+hap.AccessoryInformationService = {}
 
 ---HAP Protocol Information service.
 ---@type lightuserdata
-local HapProtocolInformationService
+hap.HapProtocolInformationService = {}
 
 ---Pairing service.
 ---@type lightuserdata
-local PairingService
+hap.PairingService = {}
 
 ---Configure HAP.
 ---@param accessory Accessory Accessory to serve.
 ---@param bridgedAccessories? Accessory[] Array of bridged accessories.
 ---@return boolean status true on success, false on failure.
-local function configure(accessory, bridgedAccessories) end
+function hap.configure(accessory, bridgedAccessories) end
 
 ---Get a new Instance ID for service or characteristic.
 ---@return integer iid Instance ID.
-local function getInstanceID() end
+function hap.getInstanceID() end
 
-return {
-    Error = Error,
-    AccessoryInformationService = AccessoryInformationService,
-    HapProtocolInformationService = HapProtocolInformationService,
-    PairingService = PairingService,
-    configure = configure,
-    getInstanceID = getInstanceID,
-}
+return hap

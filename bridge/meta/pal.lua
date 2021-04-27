@@ -1,6 +1,9 @@
 ---@meta
 
-local board = {}
+---@class pallib
+pal = {}
+
+local board
 
 ---Get manufacturer.
 ---@return string
@@ -22,6 +25,6 @@ function board.getFirmwareVersion() end
 ---@return string
 function board.getHardwareVersion() end
 
-return {
-    board = board
-}
+pal.board = board
+
+return pal
