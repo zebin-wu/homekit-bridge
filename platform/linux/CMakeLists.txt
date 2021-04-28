@@ -12,8 +12,14 @@ include(${TOP_DIR}/cmake/bridge.cmake)
 include(${TOP_DIR}/cmake/datastruct.cmake)
 include(${TOP_DIR}/cmake/lua.cmake)
 include(${TOP_DIR}/cmake/platform.cmake)
+include(${TOP_DIR}/cmake/extension.cmake)
 
 project(${PROJECT}-${PLATFORM})
+
+set(BRIDGE_WORK_DIR ${CMAKE_BINARY_DIR}/.bridge)
+
+# generate lua binaries to work directory
+gen_lua_binary_from_dir(${BRIDGE_WORK_DIR} ${BRIDGE_LUA_DIR})
 
 # collect sources
 set(SRCS "${SRC_DIR}/main.c"
@@ -41,7 +47,7 @@ target_include_directories(${PROJECT}
 target_compile_definitions(${PROJECT}
     PRIVATE
         BRIDGE_VER="${PROJECT_VER}"
-        BRIDGE_LUA_DIR="${BRIDGE_LUA_DIR}"
+        BRIDGE_WORK_DIR="${BRIDGE_WORK_DIR}"
         IP=1
         HAP_LOG_LEVEL=3
         LUA_USE_LINUX

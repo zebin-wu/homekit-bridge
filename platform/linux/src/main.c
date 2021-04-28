@@ -33,8 +33,8 @@ static bool clearPairings = false;
 
 #define PREFERRED_ADVERTISING_INTERVAL (HAPBLEAdvertisingIntervalCreateFromMilliseconds(417.5f))
 
-#ifndef BRIDGE_LUA_DIR
-#error Please set the macro "BRIDGE_LUA_DIR"
+#ifndef BRIDGE_WORK_DIR
+#error Please set the macro "BRIDGE_WORK_DIR"
 #endif
 
 /**
@@ -360,7 +360,7 @@ int main(int argc HAP_UNUSED, char* _Nullable argv[_Nullable] HAP_UNUSED) {
     InitializePlatform();
 
     // Lua entry.
-    size_t attributeCount = AppLuaEntry(BRIDGE_LUA_DIR);
+    size_t attributeCount = AppLuaEntry(BRIDGE_WORK_DIR);
     HAPAssert(attributeCount);
 
 #if IP
