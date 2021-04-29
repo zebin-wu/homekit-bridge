@@ -95,7 +95,7 @@ size_t AppLuaEntry(const char *work_dir) {
     lc_collectgarbage(L);
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
-        HAPLogError(&kHAPLog_Default, "lua: %s", msg);
+        lua_writestringerror("main.lua: %s\n", msg);
         lua_pop(L, 1);
         goto err;
     }
