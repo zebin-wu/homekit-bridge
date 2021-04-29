@@ -379,7 +379,7 @@ lhap_accessory_name_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 }
 
 static bool
-lhap_accessory_manufacturer_cb(lua_State *L, const lc_table_kv *kv, void *arg)
+lhap_accessory_mfg_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPAccessory *)arg)->manufacturer) =
         lc_new_str(lua_tostring(L, -1))) ? true : false;
@@ -1277,7 +1277,7 @@ static const lc_table_kv lhap_accessory_kvs[] = {
     {"aid", LUA_TNUMBER, lhap_accessory_aid_cb},
     {"category", LUA_TSTRING, lhap_accessory_category_cb},
     {"name", LUA_TSTRING, lhap_accessory_name_cb},
-    {"mfg", LUA_TSTRING, lhap_accessory_manufacturer_cb},
+    {"mfg", LUA_TSTRING, lhap_accessory_mfg_cb},
     {"model", LUA_TSTRING, lhap_accessory_model_cb},
     {"sn", LUA_TSTRING, lhap_accessory_sn_cb},
     {"firmwareVersion", LUA_TSTRING, lhap_accessory_firmwareversion_cb},

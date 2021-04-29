@@ -18,7 +18,12 @@
 #include "lhaplib.h"
 #include "lpallib.h"
 #include "lloglib.h"
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define LUA_SCRIPTS_SUFFIX ".lua"
+
+// Generate lua script path.
+#define GEN_LUA_SCRIPT_PATH(name, dir, buf, len) \
+    snprintf(buf, len, "%s/%s" LUA_SCRIPTS_SUFFIX, dir, name)
 
 /**
  * Domain used in the key value store for application data.
@@ -33,8 +38,6 @@
  * Purged: On factory reset.
  */
 #define kAppKeyValueStoreKey_Configuration_State ((HAPPlatformKeyValueStoreDomain) 0x00)
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Global accessory configuration.
@@ -64,14 +67,12 @@ static const luaL_Reg loadedlibs[] = {
     {NULL, NULL}
 };
 
-//----------------------------------------------------------------------------------------------------------------------
-
 size_t AppLuaEntry(const char *work_dir) {
     HAPPrecondition(work_dir);
 
     char path[256];
     // set work dir to env LUA_PATH
-    snprintf(path, sizeof(path), "%s/?.lua", work_dir);
+    GEN_LUA_SCRIPT_PATH("?", work_dir, path, sizeof(path));
     if (setenv("LUA_PATH", path, 1)) {
         HAPLogError(&kHAPLog_Default, "Failed to set env LUA_PATH.");
     }
@@ -88,13 +89,13 @@ size_t AppLuaEntry(const char *work_dir) {
         lua_pop(L, 1);  /* remove lib */
     }
 
-    // run main.lua
-    snprintf(path, sizeof(path), "%s/main.lua", work_dir);
+    // run main scripts
+    GEN_LUA_SCRIPT_PATH("main", work_dir, path, sizeof(path));
     int status = luaL_dofile(L, path);
     lc_collectgarbage(L);
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
-        lua_writestringerror("%s\n", msg);
+        HAPLogError(&kHAPLog_Default, "lua: %s", msg);
         lua_pop(L, 1);
         goto err;
     }
@@ -148,8 +149,6 @@ void AppAccessoryServerStart(void) {
         HAPAccessoryServerStart(accessoryConfiguration.server, accessory);
     }
 }
-
-//----------------------------------------------------------------------------------------------------------------------
 
 void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef* server, void* _Nullable context) {
     HAPPrecondition(server);
