@@ -16,10 +16,16 @@ include(${TOP_DIR}/cmake/extension.cmake)
 
 project(${PROJECT}-${PLATFORM})
 
+# set the work directory
 set(BRIDGE_WORK_DIR ${CMAKE_BINARY_DIR}/.bridge)
 
+# compile luac
+set(LUAC_BUILD_DIR ${CMAKE_BINARY_DIR}/luac)
+set(LUAC_BINARY ${LUAC_BUILD_DIR}/luac)
+compile_luac(${LUAC_BINARY} ${CMAKE_CURRENT_SOURCE_DIR}/luac ${LUAC_BUILD_DIR})
+
 # generate lua binaries to work directory
-gen_lua_binary_from_dir(${BRIDGE_WORK_DIR} ${BRIDGE_LUA_DIR})
+gen_lua_binary_from_dir(${BRIDGE_WORK_DIR} ${BRIDGE_LUA_DIR} ${LUAC_BINARY})
 
 # collect sources
 set(SRCS "${SRC_DIR}/main.c"
@@ -63,6 +69,3 @@ target_link_libraries(${PROJECT}
         dns_sd
         dl
 )
-
-# compile luac
-add_subdirectory(luac)
