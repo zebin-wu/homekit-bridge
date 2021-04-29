@@ -38,19 +38,21 @@
 #include <HAPPlatformBLEPeripheralManager+Init.h>
 #include <HAPPlatformKeyValueStore+Init.h>
 #include <HAPPlatformKeyValueStore+SDKDomains.h>
-#include <HAPPlatformMFiHWAuth+Init.h>
 #include <HAPPlatformMFiTokenAuth+Init.h>
 #include <HAPPlatformRunLoop+Init.h>
 #if IP
 #include <HAPPlatformServiceDiscovery+Init.h>
 #include <HAPPlatformTCPStreamManager+Init.h>
 #endif
+#if HAVE_MFI_HW_AUTH
+#include <HAPPlatformMFiHWAuth+Init.h>
+#endif
 
 #include "app_wifi.h"
 #include "app_console.h"
 #include "app_spiffs.h"
 
-#define APP_MAIN_TASK_STACKSIZE 16 * 1024
+#define APP_MAIN_TASK_STACKSIZE 8 * 1024
 #define APP_MAIN_TASK_PRIORITY 6
 
 static bool requestedFactoryReset = false;
@@ -79,7 +81,10 @@ static struct {
     HAPPlatformTCPStreamManager tcpStreamManager;
 #endif
 
+#if HAVE_MFI_HW_AUTH
     HAPPlatformMFiHWAuth mfiHWAuth;
+#endif
+
     HAPPlatformMFiTokenAuth mfiTokenAuth;
 } platform;
 
@@ -206,9 +211,6 @@ static void InitializePlatform() {
 #if HAVE_MFI_HW_AUTH
     // Apple Authentication Coprocessor provider.
     HAPPlatformMFiHWAuthCreate(&platform.mfiHWAuth);
-#endif
-
-#if HAVE_MFI_HW_AUTH
     platform.hapPlatform.authentication.mfiHWAuth = &platform.mfiHWAuth;
 #endif
 
