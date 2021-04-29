@@ -15,7 +15,7 @@ function(gen_lua_binary_from_dir dest_dir src_dir luac_bin)
     foreach(script ${scripts})
         # get the relative path of the script
         file(RELATIVE_PATH rel_path ${src_dir} ${script})
-        set(bin ${dest_dir}/${rel_path})
+        set(bin ${dest_dir}/${rel_path}c)
         set(bins ${bins} ${bin})
         get_filename_component(dir ${bin} DIRECTORY)
         make_directory(${dir})
