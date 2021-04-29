@@ -19,12 +19,15 @@
 #include "HAPPlatformBLEPeripheralManager+Init.h"
 #include "HAPPlatformKeyValueStore+Init.h"
 #include "HAPPlatformKeyValueStore+SDKDomains.h"
-#include "HAPPlatformMFiHWAuth+Init.h"
 #include "HAPPlatformMFiTokenAuth+Init.h"
 #include "HAPPlatformRunLoop+Init.h"
 #if IP
 #include "HAPPlatformServiceDiscovery+Init.h"
 #include "HAPPlatformTCPStreamManager+Init.h"
+#endif
+
+#if HAVE_MFI_HW_AUTH
+#include "HAPPlatformMFiHWAuth+Init.h"
 #endif
 
 #include <signal.h>
@@ -58,7 +61,9 @@ static struct {
     HAPPlatformTCPStreamManager tcpStreamManager;
 #endif
 
+#if HAVE_MFI_HW_AUTH
     HAPPlatformMFiHWAuth mfiHWAuth;
+#endif
     HAPPlatformMFiTokenAuth mfiTokenAuth;
 } platform;
 
