@@ -1,24 +1,49 @@
 # generate lua binray from lua script
-function(gen_lua_binary bin script)
+function(gen_lua_binary bin script luac_bin)
     add_custom_command(OUTPUT ${bin}
-        COMMAND ${luac_BINARY_DIR}/luac -o ${bin} ${script}
-        DEPENDS luac ${script}
+        COMMAND ${luac_bin} -s -o ${bin} ${script}
+        COMMAND echo "Generated ${bin}"
+        DEPENDS ${luac_bin} ${script}
         COMMENT "Generating ${bin}"
     )
-endfunction()
+endfunction(gen_lua_binary)
 
 # genrate lua binraies in a directory
-function(gen_lua_binary_from_dir dest_dir src_dir)
+function(gen_lua_binary_from_dir dest_dir src_dir luac_bin)
     # get all lua scripts
     file(GLOB_RECURSE scripts ${src_dir}/*.lua)
     foreach(script ${scripts})
         # get the relative path of the script
         file(RELATIVE_PATH rel_path ${src_dir} ${script})
-        set(bin ${dest_dir}/${rel_path}.out)
+        set(bin ${dest_dir}/${rel_path})
         set(bins ${bins} ${bin})
         get_filename_component(dir ${bin} DIRECTORY)
         make_directory(${dir})
-        gen_lua_binary(${bin} ${script})
+        gen_lua_binary(${bin} ${script} ${luac_bin})
     endforeach()
-    add_custom_target(lua_binary ALL DEPENDS ${bins})
-endfunction()
+    add_custom_target(lua_binary
+        ALL
+        DEPENDS ${bins}
+    )
+endfunction(gen_lua_binary_from_dir)
+
+# compile luac
+function(compile_luac bin src_dir build_dir)
+    add_custom_command(OUTPUT ${bin}
+        COMMAND cmake -H${src_dir} -B${build_dir} -G Ninja
+        COMMAND cmake --build ${build_dir} -j10
+        DEPENDS ${src_dir}/CMakeLists.txt
+        COMMENT "Compiling luac"
+    )
+    add_custom_target(luac ALL DEPENDS ${bin})
+endfunction(compile_luac)
+
+# get host platform
+macro(get_host_platform output)
+    execute_process(
+        COMMAND uname
+        OUTPUT_VARIABLE ${output}
+    )
+    string(REPLACE "\n" "" ${output} ${${output}})
+    string(TOLOWER ${${output}} ${output})
+endmacro(get_host_platform)

@@ -13,5 +13,3 @@ idf_component_register(SRCS "${SRCS}"
                     INCLUDE_DIRS "${INC_DIRS}")
 
 add_definitions(-DHAP_LOG_LEVEL=${CONFIG_HAP_LOG_LEVEL})
-
-spiffs_create_partition_image(storage ${BRIDGE_LUA_DIR} FLASH_IN_PROJECT)
