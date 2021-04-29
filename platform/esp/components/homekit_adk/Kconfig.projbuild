@@ -48,7 +48,7 @@ menu "HomeKit"
 
     choice HAP_LOG_LEVEL
         prompt "HAP Log Level"
-        default HAP_LOG_LEVEL_DEFAULT
+        default HAP_LOG_LEVEL_INFO
         help
             HomeKit Logging Level
 
