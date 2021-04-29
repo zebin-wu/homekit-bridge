@@ -19,7 +19,7 @@
 #include "lpallib.h"
 #include "lloglib.h"
 
-#define LUA_SCRIPTS_SUFFIX ".lua"
+#define LUA_SCRIPTS_SUFFIX ".luac"
 
 // Generate lua script path.
 #define GEN_LUA_SCRIPT_PATH(name, dir, buf, len) \

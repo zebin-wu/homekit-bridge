@@ -28,7 +28,7 @@ project(${PROJECT})
 
 # create storage.bin
 spiffs_create_partition_image(storage
-    ${BRIDGE_LUA_DIR}
+    ${BRIDGE_WORK_DIR}
     FLASH_IN_PROJECT
     DEPENDS lua_binary
 )
