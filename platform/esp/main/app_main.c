@@ -227,7 +227,9 @@ static void InitializePlatform() {
     platform.hapPlatform.authentication.mfiTokenAuth =
             HAPPlatformMFiTokenAuthIsProvisioned(&platform.mfiTokenAuth) ? &platform.mfiTokenAuth : NULL;
 
-   platform.hapAccessoryServerCallbacks.handleUpdatedState = HandleUpdatedState;
+    platform.hapAccessoryServerCallbacks.handleUpdatedState = HandleUpdatedState;
+    platform.hapAccessoryServerCallbacks.handleSessionAccept = AccessoryServerHandleSessionAccept;
+    platform.hapAccessoryServerCallbacks.handleSessionInvalidate = AccessoryServerHandleSessionInvalidate;
 }
 
 /**
@@ -255,7 +257,7 @@ void RestorePlatformFactorySettings(void) {
 }
 
 /**
- * Either simply passes State handling to app, or processes Factory Reset
+ * Either simply passes State handling to app, or processes Factory Reset.
  */
 void HandleUpdatedState(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context) {
     switch (HAPAccessoryServerGetState(server)) {

@@ -3,6 +3,12 @@
 ---@class haplib
 hap = {}
 
+---@class ServerCallbacks:table Accessory server callbacks.
+---
+---@field updatedState fun(state: ServerState) Invoked when the accessory server state changes.
+---@field sessionAccept fun() The callback used when a HomeKit Session is accepted.
+---@field sessionInvalidate fun() The callback used when a HomeKit Session is invalidated.
+
 ---@class Accessory:table HomeKit accessory.
 ---
 ---@field aid integer Accessory instance ID.
@@ -109,6 +115,11 @@ hap = {}
 ---@field supportsDisconnectedNotification boolean The characteristic supports disconnected notifications.
 ---@field readableWithoutSecurity boolean The characteristic is always readable, even before a secured session is established.
 ---@field writableWithoutSecurity boolean The characteristic is always writable, even before a secured session is established.
+
+---@alias ServerState
+---| '"Idle"'
+---| '"Running"'
+---| '"Stopping"'
 
 ---@alias TransportType
 ---| '"IP"'     # HAP over IP (Ethernet / Wi-Fi).
@@ -343,9 +354,10 @@ hap.PairingService = {}
 
 ---Configure HAP.
 ---@param accessory Accessory Accessory to serve.
----@param bridgedAccessories? Accessory[] Array of bridged accessories.
+---@param bridgedAccessories Accessory[] Array of bridged accessories.
+---@param serverCallbacks ServerCallbacks Accessory server callbacks.
 ---@return boolean status true on success, false on failure.
-function hap.configure(accessory, bridgedAccessories) end
+function hap.configure(accessory, bridgedAccessories, serverCallbacks) end
 
 ---Get a new Instance ID for service or characteristic.
 ---@return integer iid Instance ID.

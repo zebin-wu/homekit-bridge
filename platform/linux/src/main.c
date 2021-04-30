@@ -202,6 +202,8 @@ static void InitializePlatform() {
             HAPPlatformMFiTokenAuthIsProvisioned(&platform.mfiTokenAuth) ? &platform.mfiTokenAuth : NULL;
 
     platform.hapAccessoryServerCallbacks.handleUpdatedState = HandleUpdatedState;
+    platform.hapAccessoryServerCallbacks.handleSessionAccept = AccessoryServerHandleSessionAccept;
+    platform.hapAccessoryServerCallbacks.handleSessionInvalidate = AccessoryServerHandleSessionInvalidate;
 }
 
 /**
