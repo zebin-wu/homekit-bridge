@@ -27,6 +27,9 @@ compile_luac(${LUAC_BINARY} ${CMAKE_CURRENT_SOURCE_DIR}/luac ${LUAC_BUILD_DIR})
 # generate lua binaries to work directory
 gen_lua_binary_from_dir(${BRIDGE_WORK_DIR} ${BRIDGE_LUA_DIR} ${LUAC_BINARY})
 
+# generate config.lua
+configure_file(${TOP_DIR}/config/config.lua.in ${BRIDGE_WORK_DIR}/config.lua)
+
 # collect sources
 set(SRCS "${SRC_DIR}/main.c"
          "${SRC_DIR}/platform/board.c"

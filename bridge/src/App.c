@@ -19,12 +19,13 @@
 #include "lpallib.h"
 #include "lloglib.h"
 
-// Suffix of lua script file name.
-#define LUA_SCRIPTS_SUFFIX ".luac"
+#define LUA_SCRIPT_SUFFIX "lua"
+#define LUA_BINARY_SUFFIX "luac"
 
-// Generate lua script path.
-#define GEN_LUA_SCRIPT_PATH(name, dir, buf, len) \
-    snprintf(buf, len, "%s/%s" LUA_SCRIPTS_SUFFIX, dir, name)
+#define LUA_PATH_FMT(suffix) "%s/%s." suffix
+
+#define LUA_SCRIPT_PATH_FMT LUA_PATH_FMT(LUA_SCRIPT_SUFFIX)
+#define LUA_BINARY_PATH_FMT LUA_PATH_FMT(LUA_BINARY_SUFFIX)
 
 /**
  * Domain used in the key value store for application data.
@@ -75,7 +76,10 @@ size_t AppLuaEntry(const char *work_dir) {
 
     char path[256];
     // set work dir to env LUA_PATH
-    GEN_LUA_SCRIPT_PATH("?", work_dir, path, sizeof(path));
+    int len = snprintf(path, sizeof(path), LUA_SCRIPT_PATH_FMT, work_dir, "?");
+    HAPAssert(len > 0);
+    len = snprintf(path + len, sizeof(path) - len, ";" LUA_BINARY_PATH_FMT, work_dir, "?");
+    HAPAssert(len > 0);
     if (setenv("LUA_PATH", path, 1)) {
         HAPLogError(&kHAPLog_Default, "Failed to set env LUA_PATH.");
     }
@@ -93,7 +97,8 @@ size_t AppLuaEntry(const char *work_dir) {
     }
 
     // run main scripts
-    GEN_LUA_SCRIPT_PATH("main", work_dir, path, sizeof(path));
+    len = snprintf(path, sizeof(path), LUA_BINARY_PATH_FMT, work_dir, "main");
+    HAPAssert(len > 0);
     int status = luaL_dofile(L, path);
     lc_collectgarbage(L);
     if (status != LUA_OK) {
