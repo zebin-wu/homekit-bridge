@@ -22,11 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#ifdef _WIN32
-#include <Windows.h>
-#else
 #include <sys/time.h>
-#endif
 
 #include "HAP.h"
 #include "HAPPlatformLog+Init.h"
@@ -115,20 +111,7 @@ void HAPPlatformLogCapture(
             } break;
         }
 
-// Time.
-#ifdef _WIN32
-        SYSTEMTIME now;
-        GetSystemTime(&now);
-        (void) fprintf(
-                stderr,
-                "%04d-%02d-%02d'T'%02d:%02d:%02d'Z'",
-                now.wYear,
-                now.wMonth,
-                now.wDay,
-                now.wHour,
-                now.wMinute,
-                now.wSecond);
-#else
+        // Time.
         struct timeval now;
         int err = gettimeofday(&now, NULL);
         if (!err) {
@@ -146,7 +129,7 @@ void HAPPlatformLogCapture(
                         gmt->tm_sec);
             }
         }
-#endif
+
         (void) fprintf(stderr, "\t");
 
         // Type.
@@ -179,8 +162,7 @@ void HAPPlatformLogCapture(
         }
 
         // Message.
-        (void) fprintf(stderr, "%s", message);
-        (void) fprintf(stderr, "\n");
+        (void) fprintf(stderr, "%s\n", message);
 
         // Buffer.
         if (bufferBytes) {
