@@ -1,5 +1,3 @@
-local hap = require("hap")
-
 local service = {}
 
 ---New a service.
@@ -11,7 +9,7 @@ local service = {}
 ---@return Service service
 function service.new(name, type, primary, hidden, chars)
     return {
-        iid = hap.getInstanceID(),
+        iid = hap.getNewInstanceID(),
         name = name,
         type = type,
         props = {

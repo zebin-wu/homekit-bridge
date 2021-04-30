@@ -359,8 +359,12 @@ hap.PairingService = {}
 ---@return boolean status true on success, false on failure.
 function hap.configure(accessory, bridgedAccessories, serverCallbacks) end
 
+---Get a new Instance ID for accessory.
+---@return integer iid Instance ID.
+function hap.getNewAccessoryID() end
+
 ---Get a new Instance ID for service or characteristic.
 ---@return integer iid Instance ID.
-function hap.getInstanceID() end
+function hap.getNewInstanceID() end
 
 return hap

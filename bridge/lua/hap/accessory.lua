@@ -1,7 +1,5 @@
 local accessory = {}
 
-local iid = 0
-
 ---New a accessory.
 ---@param name string The display name of the accessory.
 ---@param category AccessoryCategory Category information for the accessory.
@@ -14,7 +12,7 @@ local iid = 0
 ---@return Accessory accessory
 function accessory.new(name, category, mfg, model, sn, fver, hver, services)
     return {
-        aid = accessory.iid(),
+        aid = hap.getNewAccessoryID(),
         category = category,
         name = name,
         mfg = mfg,
@@ -38,13 +36,6 @@ end
 ---@param s Service
 function accessory.addService(a, s)
     table.insert(a.services, s)
-end
-
----Get a new accessory instance ID.
----@return integer aid Accessory instance ID
-function accessory.iid()
-    iid = iid + 1
-    return iid
 end
 
 return accessory

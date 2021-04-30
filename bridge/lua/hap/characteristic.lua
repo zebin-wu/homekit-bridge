@@ -1,5 +1,3 @@
-local hap = require("hap")
-
 local characteristic = {}
 
 ---New a characteristic.
@@ -10,8 +8,8 @@ local characteristic = {}
 ---@return Characteristic
 function characteristic.new(format, type, mfgDesc, props)
     return {
+        iid = hap.getNewInstanceID(),
         format = format,
-        iid = hap.getInstanceID(),
         type = type,
         mfgDesc = mfgDesc,
         props = props,
