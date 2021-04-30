@@ -333,12 +333,14 @@ enum lhap_ref_idx {
 static struct lhap_desc {
     bool isConfigure:1;
     size_t attributeCount;
+    size_t aid;
     size_t iid;
     int ref_ids[LHAP_REF_IDX_MAX];
     HAPAccessory accessory;
     HAPAccessory **bridgedAccessories;
 } gv_lhap_desc = {
     .attributeCount = kAttributeCount,
+    .aid = 1,
     .iid = kAttributeCount + 1
 };
 
@@ -1487,7 +1489,13 @@ err:
     return 1;
 }
 
-static int lhap_get_iid(lua_State *L)
+static int lhap_get_new_aid(lua_State *L)
+{
+    lua_pushinteger(L, gv_lhap_desc.aid++);
+    return 1;
+}
+
+static int lhap_get_new_iid(lua_State *L)
 {
     lua_pushinteger(L, gv_lhap_desc.iid++);
     return 1;
@@ -1495,7 +1503,8 @@ static int lhap_get_iid(lua_State *L)
 
 static const luaL_Reg haplib[] = {
     {"configure", lhap_configure},
-    {"getInstanceID", lhap_get_iid},
+    {"getNewAccessoryID", lhap_get_new_aid},
+    {"getNewInstanceID", lhap_get_new_iid},
     /* placeholders */
     {"Error", NULL},
     {"AccessoryInformationService", NULL},
@@ -1566,6 +1575,7 @@ void lhap_deinitialize(lua_State *L)
     lhap_reset_accessory(&desc->accessory);
     lhap_unref_all(L);
     desc->attributeCount = kAttributeCount;
+    desc->aid = 1;
     desc->iid = kAttributeCount + 1;
     desc->isConfigure = false;
 }

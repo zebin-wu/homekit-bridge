@@ -1,10 +1,10 @@
 local config = require("config")
 local plugin = require("plugin")
-local accessory = require("hap.accessory")
+
 local logger = log.getLogger()
 
 return hap.configure({
-    aid = accessory.iid(),
+    aid = hap.getNewAccessoryID(),
     category = "Bridges",
     name = config.bridge.name or "HomeKit Bridge",
     mfg = pal.board.getManufacturer(),
