@@ -19,11 +19,11 @@ extern "C" {
 #define kHAPApplication_LogSubsystem "com.apple.mfi.HomeKit.Bridge"
 
 /**
- * Accessory context. Will be passed to callbacks.
+ * Application context. Will be passed to callbacks.
  */
 typedef struct {
     lua_State *L;
-} AccessoryContext;
+} ApplicationContext;
 
 #ifdef __cplusplus
 }

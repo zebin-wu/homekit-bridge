@@ -18,6 +18,16 @@ extern "C" {
 LUAMOD_API int luaopen_hap(lua_State *L);
 
 /**
+ * Initialize lhap.
+ */
+void lhap_initialize(void);
+
+/**
+ * De-initialize lhap.
+ */
+void lhap_deinitialize(lua_State *L);
+
+/**
  * Get accessory.
  */
 const HAPAccessory *lhap_get_accessory(void);
@@ -33,9 +43,19 @@ const HAPAccessory *const *lhap_get_bridged_accessories(void);
 size_t lhap_get_attribute_count(void);
 
 /**
- * De-initialize lhap.
+ * Handle the updated state of the Accessory Server.
  */
-void lhap_deinitialize();
+void lhap_server_handle_update_state(lua_State *L, HAPAccessoryServerState state);
+
+/**
+ * Handle the session accept of the Accessory Server.
+ */
+void lhap_server_handle_session_accept(lua_State *L);
+
+/**
+ * Handle the session invalidate of the Accessory Server.
+ */
+void lhap_server_handle_session_invalidate(lua_State *L);
 
 #ifdef __cplusplus
 }

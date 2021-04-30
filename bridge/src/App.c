@@ -19,6 +19,7 @@
 #include "lpallib.h"
 #include "lloglib.h"
 
+// Suffix of lua script file name.
 #define LUA_SCRIPTS_SUFFIX ".luac"
 
 // Generate lua script path.
@@ -47,7 +48,7 @@ typedef struct {
     HAPPlatformKeyValueStoreRef keyValueStore;
 } AccessoryConfiguration;
 
-static AccessoryContext context;
+static ApplicationContext appContext;
 static AccessoryConfiguration accessoryConfiguration;
 
 static const luaL_Reg loadedlibs[] = {
@@ -69,6 +70,8 @@ static const luaL_Reg loadedlibs[] = {
 
 size_t AppLuaEntry(const char *work_dir) {
     HAPPrecondition(work_dir);
+
+    lhap_initialize();
 
     char path[256];
     // set work dir to env LUA_PATH
@@ -110,18 +113,20 @@ size_t AppLuaEntry(const char *work_dir) {
         goto err;
     }
 
-    context.L = L;
+    appContext.L = L;
     return lhap_get_attribute_count();
 err:
-    HAPAssertionFailure();
+    HAPFatalError();
 }
 
 void AppLuaClose(void) {
-    if (context.L) {
-        lc_remove_all_callbacks(context.L);
-        lua_close(context.L);
+    lua_State *L = appContext.L;
+    if (L) {
+        lc_remove_all_callbacks(L);
+        lhap_deinitialize(L);
+        lua_close(L);
+        appContext.L = NULL;
     }
-    lhap_deinitialize();
 }
 
 void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyValueStore) {
@@ -152,23 +157,26 @@ void AppAccessoryServerStart(void) {
 
 void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef* server, void* _Nullable context) {
     HAPPrecondition(server);
-    HAPPrecondition(context);
+    HAPPrecondition(appContext.L);
+    lhap_server_handle_update_state(appContext.L, HAPAccessoryServerGetState(server));
+}
 
-    switch (HAPAccessoryServerGetState(server)) {
-        case kHAPAccessoryServerState_Idle: {
-            HAPLogInfo(&kHAPLog_Default, "Accessory Server State did update: Idle.");
-            return;
-        }
-        case kHAPAccessoryServerState_Running: {
-            HAPLogInfo(&kHAPLog_Default, "Accessory Server State did update: Running.");
-            return;
-        }
-        case kHAPAccessoryServerState_Stopping: {
-            HAPLogInfo(&kHAPLog_Default, "Accessory Server State did update: Stopping.");
-            return;
-        }
-    }
-    HAPFatalError();
+void AccessoryServerHandleSessionAccept(
+        HAPAccessoryServerRef* server,
+        HAPSessionRef* session,
+        void* _Nullable context) {
+    HAPPrecondition(server);
+    HAPPrecondition(appContext.L);
+    lhap_server_handle_session_accept(appContext.L);
+}
+
+void AccessoryServerHandleSessionInvalidate(
+        HAPAccessoryServerRef* server,
+        HAPSessionRef* session,
+        void* _Nullable context) {
+    HAPPrecondition(server);
+    HAPPrecondition(appContext.L);
+    lhap_server_handle_session_invalidate(appContext.L);
 }
 
 void AppInitialize(
@@ -177,7 +185,7 @@ void AppInitialize(
         HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks,
         void* _Nonnull * _Nonnull pcontext) {
     HAPPrecondition(pcontext);
-    *pcontext = &context;
+    *pcontext = &appContext;
 
     // Display setup code.
     HAPSetupCode setupCode;

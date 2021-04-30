@@ -50,8 +50,17 @@ void AppAccessoryServerStart(void);
  */
 void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef* server, void* _Nullable context);
 
-void AccessoryServerHandleSessionAccept(HAPAccessoryServerRef* server, HAPSessionRef* session, void* _Nullable context);
+/**
+ * Handle the session accept of the Accessory Server.
+ */
+void AccessoryServerHandleSessionAccept(
+        HAPAccessoryServerRef* server,
+        HAPSessionRef* session,
+        void* _Nullable context);
 
+/**
+ * Handle the session invalidate of the Accessory Server.
+ */
 void AccessoryServerHandleSessionInvalidate(
         HAPAccessoryServerRef* server,
         HAPSessionRef* session,
