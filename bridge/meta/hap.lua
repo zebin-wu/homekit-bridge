@@ -26,10 +26,17 @@ hap = {}
 ---
 ---@field identify fun(request: AccessoryIdentifyRequest):integer The callback used to invoke the identify routine.
 
+---@class AccessoryInformation:table Accessory information.
+---
+---@field aid integer Accessory instance ID.
+---@field category AccessoryCategory Category information for the accessory.
+---@field name string The display name of the accessory.
+
 ---@class AccessoryIdentifyRequest:table Accessory identify request.
 ---
 ---@field transportType TransportType Transport type over which the request has been received.
 ---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
+---@field accessoryInfo AccessoryInformation
 
 ---@class Service:table HomeKit service.
 ---
@@ -50,6 +57,12 @@ hap = {}
 ---
 ---@field supportsConfiguration boolean The service supports configuration.
 
+---@class ServiceInformation
+---
+---@field iid integer Instance ID.
+---@field type ServiceType The type of the service.
+---@field name string The name of the service.
+
 ---@class Characteristic:table HomeKit characteristic.
 ---
 ---@field format CharacteristicFormat Format.
@@ -60,6 +73,12 @@ hap = {}
 ---@field units CharacteristicUnits The units of the values for the characteristic. Format: UInt8|UInt16|UInt32|UInt64|Int|Float
 ---@field constraints StringCharacteristiConstraints|NumberCharacteristiConstraints|UInt8CharacteristiConstraints Value constraints.
 ---@field callbacks CharacteristicCallbacks Callbacks.
+
+---@class CharacteristicInformation
+---
+---@field iid integer Instance ID.
+---@field format CharacteristicFormat Format.
+---@field type CharacteristicType The type of the characteristic.
 
 ---@class StringCharacteristiConstraints:table Format: String|Data
 ---
@@ -84,12 +103,34 @@ hap = {}
 ---@field start integer Starting value.
 ---@field end integer Starting value.
 
+---@class CharacteristicReadRequest:table Characteristic read request.
+---
+---@field transportType TransportType Transport type over which the request has been received.
+---@field accessoryInfo AccessoryInformation
+---@field serviceInfo ServiceInformation
+---@field charInfo CharacteristicInformation
+
+---@class CharacteristicWriteRequest:table Characteristic write request.
+---
+---@field transportType TransportType Transport type over which the request has been received.
+---@field accessoryInfo AccessoryInformation
+---@field serviceInfo ServiceInformation
+---@field charInfo CharacteristicInformation
+---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
+
+---@class CharacteristicSubscriptionRequest:table Characteristic subscription request.
+---
+---@field transportType TransportType Transport type over which the request has been received.
+---@field accessoryInfo AccessoryInformation
+---@field serviceInfo ServiceInformation
+---@field charInfo CharacteristicInformation
+
 ---@class CharacteristicCallbacks:table Characteristic Callbacks.
 ---
----@field read function The callback used to handle read requests.
----@field write function The callback used to handle write requests.
----@field sub function The callback used to handle subscribe requests.
----@field unsub function The callback used to handle unsubscribe requests.
+---@field read fun(request:CharacteristicReadRequest):integer, any The callback used to handle read requests, it return error code and value.
+---@field write fun(request:CharacteristicWriteRequest, val:any):integer, boolean The callback used to handle write requests, it return error code and changed flag.
+---@field sub fun(request:CharacteristicSubscriptionRequest) The callback used to handle subscribe requests.
+---@field unsub fun(request:CharacteristicSubscriptionRequest) The callback used to handle unsubscribe requests.
 
 ---@class CharacteristicProperties:table Properties that HomeKit characteristics can have.
 ---
@@ -353,15 +394,16 @@ hap.HapProtocolInformationService = {}
 hap.PairingService = {}
 
 ---Configure HAP.
----@param accessory Accessory Accessory to serve.
+---@param primaryAccessory Accessory Primary accessory to serve.
 ---@param bridgedAccessories Accessory[] Array of bridged accessories.
 ---@param serverCallbacks ServerCallbacks Accessory server callbacks.
+---@param confChanged boolean Whether or not the bridge configuration changed since the last start.
 ---@return boolean status true on success, false on failure.
-function hap.configure(accessory, bridgedAccessories, serverCallbacks) end
+function hap.configure(primaryAccessory, bridgedAccessories, serverCallbacks, confChanged) end
 
----Get a new Instance ID for accessory.
+---Get a new Instance ID for bridged accessory.
 ---@return integer iid Instance ID.
-function hap.getNewAccessoryID() end
+function hap.getNewBridgedAccessoryID() end
 
 ---Get a new Instance ID for service or characteristic.
 ---@return integer iid Instance ID.

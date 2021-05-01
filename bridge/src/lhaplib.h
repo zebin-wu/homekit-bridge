@@ -17,6 +17,12 @@ extern "C" {
 #define LUA_HAPNAME "hap"
 LUAMOD_API int luaopen_hap(lua_State *L);
 
+typedef struct {
+    const HAPAccessory *primaryAccessory;
+    const HAPAccessory *const *bridgedAccessories;
+    bool confChanged;
+} lhap_conf;
+
 /**
  * Initialize lhap.
  */
@@ -28,14 +34,9 @@ void lhap_initialize(void);
 void lhap_deinitialize(lua_State *L);
 
 /**
- * Get accessory.
+ * Get configuration.
  */
-const HAPAccessory *lhap_get_accessory(void);
-
-/**
- * Get bridged accessories.
- */
-const HAPAccessory *const *lhap_get_bridged_accessories(void);
+const lhap_conf lhap_get_conf(void);
 
 /**
  * Get attribute count.

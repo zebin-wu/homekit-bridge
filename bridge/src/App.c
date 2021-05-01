@@ -149,14 +149,13 @@ void AppRelease(void) {
 }
 
 void AppAccessoryServerStart(void) {
-    const HAPAccessory *accessory = lhap_get_accessory();
-    const HAPAccessory *const *bridgedAccessories = lhap_get_bridged_accessories();
+    const lhap_conf conf = lhap_get_conf();
 
-    if (bridgedAccessories) {
-        HAPAccessoryServerStartBridge(accessoryConfiguration.server, accessory,
-            bridgedAccessories, true);
+    if (conf.bridgedAccessories) {
+        HAPAccessoryServerStartBridge(accessoryConfiguration.server, conf.primaryAccessory,
+            conf.bridgedAccessories, conf.confChanged);
     } else {
-        HAPAccessoryServerStart(accessoryConfiguration.server, accessory);
+        HAPAccessoryServerStart(accessoryConfiguration.server, conf.primaryAccessory);
     }
 }
 

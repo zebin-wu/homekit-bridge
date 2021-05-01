@@ -4,7 +4,7 @@ local plugin = require("plugin")
 local logger = log.getLogger()
 
 return hap.configure({
-    aid = hap.getNewAccessoryID(),
+    aid = 1, -- Primary accessory must have aid 1.
     category = "Bridges",
     name = config.bridge.name or "HomeKit Bridge",
     mfg = pal.board.getManufacturer(),
@@ -35,4 +35,4 @@ return hap.configure({
     sessionInvalidate = function ()
         logger:default("Session is invalidated")
     end
-})
+}, false)
