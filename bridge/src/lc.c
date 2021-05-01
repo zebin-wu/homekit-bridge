@@ -4,7 +4,6 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#include <stdlib.h>
 #include <string.h>
 #include <rbtree.h>
 
@@ -32,12 +31,12 @@ lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *name)
     return NULL;
 }
 
-bool lc_traverse_table(lua_State *L, int index, const lc_table_kv *kvs, void *arg)
+bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
 {
     // Push another reference to the table on top of the stack (so we know
     // where it is, and this function can work for negative, positive and
     // pseudo indices
-    lua_pushvalue(L, index);
+    lua_pushvalue(L, idx);
     // stack now contains: -1 => table
     lua_pushnil(L);
     // stack now contains: -1 => nil; -2 => table
@@ -74,7 +73,7 @@ bool lc_traverse_table(lua_State *L, int index, const lc_table_kv *kvs, void *ar
     return true;
 }
 
-bool lc_traverse_array(lua_State *L, int index,
+bool lc_traverse_array(lua_State *L, int idx,
                          bool (*arr_cb)(lua_State *L, int i, void *arg),
                          void *arg)
 {
@@ -82,7 +81,7 @@ bool lc_traverse_array(lua_State *L, int index,
         return false;
     }
 
-    lua_pushvalue(L, index);
+    lua_pushvalue(L, idx);
     lua_pushnil(L);
     for (int i = 0; lua_next(L, -2); lua_pop(L, 1), i++) {
         if (!arr_cb(L, i, arg)) {
@@ -94,7 +93,7 @@ bool lc_traverse_array(lua_State *L, int index,
     return true;
 }
 
-bool lc_register_callback(lua_State *L, int index, size_t key)
+bool lc_register_callback(lua_State *L, int idx, size_t key)
 {
     struct rb_root *root = &cbTree;
     struct rb_node **t = &(root->rb_node);
@@ -113,15 +112,15 @@ bool lc_register_callback(lua_State *L, int index, size_t key)
         }
   	}
 
-    lc_callback *new = malloc(sizeof(*new));
+    lc_callback *new = lc_malloc(sizeof(*new));
     if (!new) {
         return false;
     }
 
-    lua_pushvalue(L, index);
+    lua_pushvalue(L, idx);
     int ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
     if (ref_id == LUA_REFNIL) {
-        free(new);
+        lc_free(new);
         return false;
     }
 
@@ -171,7 +170,7 @@ bool lc_unregister_callback(lua_State *L, size_t key)
     }
     rb_erase(&cb->node, &cbTree);
     luaL_unref(L, LUA_REGISTRYINDEX, cb->id);
-    free(cb);
+    lc_free(cb);
     return true;
 }
 
@@ -184,7 +183,7 @@ static void _lc_remove_all_callbacks(lua_State *L, struct rb_node *root)
     _lc_remove_all_callbacks(L, root->rb_right);
     lc_callback *cb = container_of(root, struct lc_callback, node);
     luaL_unref(L, LUA_REGISTRYINDEX, cb->id);
-    free(cb);
+    lc_free(cb);
 }
 
 void lc_remove_all_callbacks(lua_State *L)
@@ -209,11 +208,10 @@ void lc_collectgarbage(lua_State *L)
     luaC_fullgc(L, 0);
 }
 
-char *lc_new_str(const char *str)
+char *lc_new_str(lua_State *L, int idx)
 {
-    if (!str) {
-        return NULL;
-    }
-    char *copy = malloc(strlen(str) + 1);
+    size_t len;
+    const char *str = lua_tolstring(L, idx, &len);
+    char *copy = lc_malloc(len + 1);
     return copy ? strcpy(copy, str) : NULL;
 }
