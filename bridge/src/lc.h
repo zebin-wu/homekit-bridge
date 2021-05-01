@@ -12,7 +12,12 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include <lua.h>
+
+#define lc_malloc(size)     malloc(size)
+#define lc_free(p)          free(p)
+#define lc_safe_free(p)     do { if (p) { lc_free((void *)p); (p) = NULL; } } while (0)
 
 /**
  * Lua table key-value.
@@ -40,19 +45,19 @@ typedef struct lc_callback lc_callback;
 /**
  * Traverse Lua table.
  */
-bool lc_traverse_table(lua_State *L, int index, const lc_table_kv *kvs, void *arg);
+bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg);
 
 /**
  * Traverse Lua array.
  */
-bool lc_traverse_array(lua_State *L, int index,
-                         bool (*arr_cb)(lua_State *L, int i, void *arg),
-                         void *arg);
+bool lc_traverse_array(lua_State *L, int idx,
+                        bool (*arr_cb)(lua_State *L, int i, void *arg),
+                        void *arg);
 
 /**
  * Register callback.
  */
-bool lc_register_callback(lua_State *L, int index, size_t key);
+bool lc_register_callback(lua_State *L, int idx, size_t key);
 
 /**
  * Unregister callback.
@@ -80,9 +85,9 @@ void lc_create_enum_table(lua_State *L, const char *enum_array[], int len);
 void lc_collectgarbage(lua_State *L);
 
 /**
- * Return a new string copy from str.
+ * Return a new copy from the str on the "idx" of the stack.
  */
-char *lc_new_str(const char *str);
+char *lc_new_str(lua_State *L, int idx);
 
 #ifdef __cplusplus
 }
