@@ -415,14 +415,14 @@ lhap_accessory_sn_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 }
 
 static bool
-lhap_accessory_firmwareversion_cb(lua_State *L, const lc_table_kv *kv, void *arg)
+lhap_accessory_fw_ver_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPAccessory *)arg)->firmwareVersion) =
         lc_new_str(L, -1)) ? true : false;
 }
 
 static bool
-lhap_accessory_hardwareversion_cb(lua_State *L, const lc_table_kv *kv, void *arg)
+lhap_accessory_hw_ver_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
     return (*((char **)&((HAPAccessory *)arg)->hardwareVersion) =
         lc_new_str(L, -1)) ? true : false;
@@ -705,7 +705,7 @@ static const lc_table_kv lhap_char_props_kvs[] = {
 };
 
 static bool
-lhap_characteristic_properties_cb(lua_State *L, const lc_table_kv *kv, void *arg)
+lhap_characteristic_props_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
     return lc_traverse_table(L, -1, lhap_char_props_kvs,
         &((HAPBaseCharacteristic *)arg)->properties);
@@ -745,7 +745,7 @@ lhap_characteristic_units_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 }
 
 static bool
-lhap_char_constraints_max_length_cb(lua_State *L, const lc_table_kv *kv, void *arg)
+lhap_char_constraints_max_len_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
     HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
     switch (format) {
@@ -975,12 +975,12 @@ lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, const lc_table_kv *kv, 
 }
 
 static const lc_table_kv lhap_characteristic_constraints_kvs[] = {
-    {"maxLength", LUA_TNUMBER, lhap_char_constraints_max_length_cb},
-    {"minimumValue", LUA_TNUMBER, lhap_char_constraints_min_val_cb},
-    {"maximumValue", LUA_TNUMBER, lhap_char_constraints_max_val_cb},
-    {"stepValue", LUA_TNUMBER, lhap_char_constraints_step_val_cb},
-    {"validValues", LUA_TTABLE, lhap_char_constraints_valid_vals_cb},
-    {"validValuesRanges", LUA_TTABLE, lhap_char_constraints_valid_vals_ranges_cb},
+    {"maxLen", LUA_TNUMBER, lhap_char_constraints_max_len_cb},
+    {"minVal", LUA_TNUMBER, lhap_char_constraints_min_val_cb},
+    {"maxVal", LUA_TNUMBER, lhap_char_constraints_max_val_cb},
+    {"stepVal", LUA_TNUMBER, lhap_char_constraints_step_val_cb},
+    {"validVals", LUA_TTABLE, lhap_char_constraints_valid_vals_cb},
+    {"validValsRanges", LUA_TTABLE, lhap_char_constraints_valid_vals_ranges_cb},
     {NULL, LUA_TNONE, NULL},
 };
 
@@ -1327,7 +1327,7 @@ lhap_char_callbacks_handle_unsub_cb(lua_State *L, const lc_table_kv *kv, void *a
     return false;
 }
 
-static const lc_table_kv lhap_characteristic_callbacks_kvs[] = {
+static const lc_table_kv lhap_characteristic_cbs_kvs[] = {
     {"read", LUA_TFUNCTION, lhap_char_callbacks_handle_read_cb},
     {"write", LUA_TFUNCTION, lhap_char_callbacks_handle_write_cb},
     {"sub", LUA_TFUNCTION, lhap_char_callbacks_handle_sub_cb},
@@ -1336,19 +1336,19 @@ static const lc_table_kv lhap_characteristic_callbacks_kvs[] = {
 };
 
 static bool
-lhap_characteristic_callbacks_cb(lua_State *L, const lc_table_kv *kv, void *arg)
+lhap_characteristic_cbs_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
-    return lc_traverse_table(L, -1, lhap_characteristic_callbacks_kvs, arg);
+    return lc_traverse_table(L, -1, lhap_characteristic_cbs_kvs, arg);
 }
 
 static const lc_table_kv lhap_characteristic_kvs[] = {
     {"iid", LUA_TNUMBER, lhap_characteristic_iid_cb},
     {"type", LUA_TSTRING, lhap_characteristic_type_cb},
     {"mfgDesc", LUA_TSTRING, lhap_characteristic_mfg_desc_cb},
-    {"properties", LUA_TTABLE, lhap_characteristic_properties_cb},
+    {"props", LUA_TTABLE, lhap_characteristic_props_cb},
     {"units", LUA_TSTRING, lhap_characteristic_units_cb},
     {"constraints", LUA_TTABLE, lhap_characteristic_constraints_cb},
-    {"callbacks", LUA_TTABLE, lhap_characteristic_callbacks_cb},
+    {"cbs", LUA_TTABLE, lhap_characteristic_cbs_cb},
     {NULL, LUA_TNONE, NULL},
 };
 
@@ -1578,15 +1578,15 @@ lhap_accessory_cbs_identify_cb(lua_State *L, const lc_table_kv *kv, void *arg)
     return true;
 }
 
-static lc_table_kv lhap_accessory_callbacks_kvs[] = {
+static lc_table_kv lhap_accessory_cbs_kvs[] = {
     {"identify", LUA_TFUNCTION, lhap_accessory_cbs_identify_cb},
     {NULL, -1, NULL},
 };
 
 static bool
-lhap_accessory_callbacks_cb(lua_State *L, const lc_table_kv *kv, void *arg)
+lhap_accessory_cbs_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
-    return lc_traverse_table(L, -1, lhap_accessory_callbacks_kvs, arg);
+    return lc_traverse_table(L, -1, lhap_accessory_cbs_kvs, arg);
 }
 
 static const lc_table_kv lhap_accessory_kvs[] = {
@@ -1596,10 +1596,10 @@ static const lc_table_kv lhap_accessory_kvs[] = {
     {"mfg", LUA_TSTRING, lhap_accessory_mfg_cb},
     {"model", LUA_TSTRING, lhap_accessory_model_cb},
     {"sn", LUA_TSTRING, lhap_accessory_sn_cb},
-    {"firmwareVersion", LUA_TSTRING, lhap_accessory_firmwareversion_cb},
-    {"hardwareVersion", LUA_TSTRING, lhap_accessory_hardwareversion_cb},
+    {"fwVer", LUA_TSTRING, lhap_accessory_fw_ver_cb},
+    {"hwVer", LUA_TSTRING, lhap_accessory_hw_ver_cb},
     {"services", LUA_TTABLE, lhap_accessory_services_cb},
-    {"callbacks", LUA_TTABLE, lhap_accessory_callbacks_cb},
+    {"cbs", LUA_TTABLE, lhap_accessory_cbs_cb},
     {NULL, LUA_TNONE, NULL},
 };
 

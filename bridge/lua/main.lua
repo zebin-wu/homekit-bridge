@@ -10,14 +10,14 @@ return hap.configure({
     mfg = pal.board.getManufacturer(),
     model = pal.board.getModel(),
     sn = pal.board.getSerialNumber(),
-    firmwareVersion = pal.board.getFirmwareVersion(),
-    hardwareVersion = pal.board.getHardwareVersion(),
+    fwVer = pal.board.getFirmwareVersion(),
+    hwVer = pal.board.getHardwareVersion(),
     services = {
         hap.AccessoryInformationService,
         hap.HapProtocolInformationService,
         hap.PairingService,
     },
-    callbacks = {
+    cbs = {
         identify = function (request)
             logger:info("Identify callback is called.")
             logger:info(string.format("transportType: %s, remote: %s.",
