@@ -872,12 +872,11 @@ lhap_char_constraints_valid_vals_cb(lua_State *L, const lc_table_kv *kv, void *a
             *pValidValues = NULL;
             break;
         }
-        uint8_t **vals = lc_malloc(sizeof(uint8_t *) * len);
+        uint8_t **vals = lc_calloc(len, sizeof(uint8_t *));
         if (!vals) {
             HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
             return false;
         }
-        memset(vals, 0, sizeof(uint8_t *) * len);
         if (!lc_traverse_array(L, -1, lhap_char_constraints_valid_vals_arr_cb,
             vals)) {
             HAPLogError(&lhap_log, "%s: Failed to parse validValues.", __func__);
@@ -954,12 +953,11 @@ lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, const lc_table_kv *kv, 
             break;
         }
         HAPUInt8CharacteristicValidValuesRange **ranges =
-            lc_malloc(sizeof(HAPUInt8CharacteristicValidValuesRange *) * len);
+            lc_calloc(len, sizeof(HAPUInt8CharacteristicValidValuesRange *));
         if (!ranges) {
             HAPLogError(&lhap_log, "%s: Failed to alloc ranges.", __func__);
             return false;
         }
-        memset(ranges, 0, sizeof(HAPUInt8CharacteristicValidValuesRange *) * len);
         if (!lc_traverse_array(L, -1, lhap_char_constraints_valid_vals_ranges_arr_cb,
             ranges)) {
             HAPLogError(&lhap_log, "%s: Failed to parse validValues.", __func__);
@@ -1375,12 +1373,11 @@ static bool lhap_service_characteristics_arr_cb(lua_State *L, int i, void *arg)
         return false;
     }
 
-    HAPCharacteristic *c = lc_malloc(lhap_characteristic_struct_size[idx]);
+    HAPCharacteristic *c = lc_calloc(1, lhap_characteristic_struct_size[idx]);
     if (!c) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         return false;
     }
-    memset(c, 0, sizeof(HAPCharacteristic));
     ((HAPBaseCharacteristic *)c)->format = idx;
     characteristics[i] = c;
     if (!lc_traverse_table(L, -1, lhap_characteristic_kvs, c)) {
@@ -1478,11 +1475,10 @@ lhap_accessory_services_arr_cb(lua_State *L, int i, void *arg)
     if (!lua_istable(L, -1)) {
         return false;
     }
-    HAPService *s = lc_malloc(sizeof(HAPService));
+    HAPService *s = lc_calloc(1, sizeof(HAPService));
     if (!s) {
         return false;
     }
-    memset(s, 0, sizeof(HAPService));
     services[i] = s;
     if (!lc_traverse_table(L, -1, lhap_service_kvs, s)) {
         return false;
@@ -1503,12 +1499,11 @@ lhap_accessory_services_cb(lua_State *L, const lc_table_kv *kv, void *arg)
         return true;
     }
 
-    HAPService **services = lc_malloc(sizeof(HAPService *) * (len + 1));
+    HAPService **services = lc_calloc(len + 1, sizeof(HAPService *));
     if (!services) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         return false;
     }
-    memset(services, 0, sizeof(HAPService *) * (len + 1));
 
     if (!lc_traverse_array(L, -1, lhap_accessory_services_arr_cb, services)) {
         for (HAPService **s = services; *s; s++) {
@@ -1634,13 +1629,12 @@ lhap_accessories_arr_cb(lua_State *L, int i, void *arg)
             "%s: The type of the element is not table.", __func__);
         return false;
     }
-    HAPAccessory *a = lc_malloc(sizeof(HAPAccessory));
+    HAPAccessory *a = lc_calloc(1, sizeof(HAPAccessory));
     if (!a) {
         HAPLogError(&lhap_log,
             "%s: Failed to alloc memory.", __func__);
         return false;
     }
-    memset(a, 0, sizeof(HAPAccessory));
     accessories[i] = a;
     if (!lc_traverse_table(L, -1, lhap_accessory_kvs, a)) {
         HAPLogError(&lhap_log,
@@ -1741,14 +1735,12 @@ static int lhap_configure(lua_State *L)
     }
 
     desc->bridgedAccessories =
-        lc_malloc(sizeof(HAPAccessory *) * (len + 1));
+        lc_calloc(len + 1, sizeof(HAPAccessory *));
     if (!desc->bridgedAccessories) {
         HAPLogError(&lhap_log,
             "%s: Error type(bridgedAccessories).", __func__);
         goto err1;
     }
-    memset(desc->bridgedAccessories, 0,
-        sizeof(HAPAccessory *) * (len + 1));
 
     if (!lc_traverse_array(L, 2, lhap_accessories_arr_cb,
         desc->bridgedAccessories)) {
