@@ -16,6 +16,7 @@ extern "C" {
 #include <lua.h>
 
 #define lc_malloc(size)     malloc(size)
+#define lc_calloc(n, size)  calloc(n, size)
 #define lc_free(p)          free(p)
 #define lc_safe_free(p)     do { if (p) { lc_free((void *)p); (p) = NULL; } } while (0)
 
