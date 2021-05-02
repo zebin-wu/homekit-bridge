@@ -17,10 +17,10 @@ hap = {}
 ---@field mfg string The manufacturer of the accessory.
 ---@field model string The model name of the accessory.
 ---@field sn string The serial number of the accessory.
----@field firmwareVersion string The firmware version of the accessory.
----@field hardwareVersion string The hardware version of the accessory.
+---@field fwVer string The firmware version of the accessory.
+---@field hwVer string The hardware version of the accessory.
 ---@field services Service[] Array of provided services.
----@field callbacks AccessoryCallbacks Callbacks.
+---@field cbs AccessoryCallbacks Callbacks.
 
 ---@class AccessoryCallbacks:table Accessory Callbacks.
 ---
@@ -69,10 +69,10 @@ hap = {}
 ---@field iid integer Instance ID.
 ---@field type CharacteristicType The type of the characteristic.
 ---@field mfgDesc string Description of the characteristic provided by the manufacturer of the accessory.
----@field properties CharacteristicProperties Characteristic properties.
+---@field props CharacteristicProperties Characteristic properties.
 ---@field units CharacteristicUnits The units of the values for the characteristic. Format: UInt8|UInt16|UInt32|UInt64|Int|Float
 ---@field constraints StringCharacteristiConstraints|NumberCharacteristiConstraints|UInt8CharacteristiConstraints Value constraints.
----@field callbacks CharacteristicCallbacks Callbacks.
+---@field cbs CharacteristicCallbacks Callbacks.
 
 ---@class CharacteristicInformation
 ---
@@ -82,21 +82,21 @@ hap = {}
 
 ---@class StringCharacteristiConstraints:table Format: String|Data
 ---
----@field maxLength integer Maximum length.
+---@field maxLen integer Maximum length.
 
 ---@class NumberCharacteristiConstraints:table Format: UInt16|UInt32|Uint64|Int|Float
 ---
----@field minimumValue number Minimum value.
----@field maximumValue number Maximum value.
----@field stepValue number Step value.
+---@field minVal number Minimum value.
+---@field maxVal number Maximum value.
+---@field stepVal number Step value.
 
 ---@class UInt8CharacteristiConstraints:table Format: UInt8
 ---
----@field minimumValue integer Minimum value.
----@field maximumValue integer Maximum value.
----@field stepValue integer Step value.
----@field validValues integer[] List of valid values in ascending order.
----@field validValuesRanges integer[] List of valid values ranges in ascending order.
+---@field minVal integer Minimum value.
+---@field maxVal integer Maximum value.
+---@field stepVal integer Step value.
+---@field validVals integer[] List of valid values in ascending order.
+---@field validValsRanges integer[] List of valid values ranges in ascending order.
 
 ---@class UInt8CharacteristicValidValuesRange
 ---
