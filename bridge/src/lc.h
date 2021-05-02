@@ -12,12 +12,12 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
-#include <stdlib.h>
 #include <lua.h>
+#include <platform/memory.h>
 
-#define lc_malloc(size)     malloc(size)
-#define lc_calloc(n, size)  calloc(n, size)
-#define lc_free(p)          free(p)
+#define lc_malloc(size)     pal_mem_alloc(size)
+#define lc_calloc(n, size)  pal_mem_calloc(n, size)
+#define lc_free(p)          pal_mem_free(p)
 #define lc_safe_free(p)     do { if (p) { lc_free((void *)p); (p) = NULL; } } while (0)
 
 /**

@@ -33,6 +33,7 @@ configure_file(${TOP_DIR}/config/config.lua.in ${BRIDGE_WORK_DIR}/config.lua)
 # collect sources
 set(SRCS "${SRC_DIR}/main.c"
          "${SRC_DIR}/platform/board.c"
+         "${SRC_DIR}/platform/memory.c"
          "${ADK_SRCS}"
          "${ADK_PAL_LINUX}"
          "${ADK_PAL_OPENSSL_SRCS}"
