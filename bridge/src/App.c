@@ -87,7 +87,7 @@ size_t AppLuaEntry(const char *work_dir) {
     lua_State *L  = luaL_newstate();
     if (L == NULL) {
         HAPLogError(&kHAPLog_Default, "Cannot create state: not enough memory");
-        return 0;
+        goto err;
     }
 
     // load libraries
@@ -104,24 +104,28 @@ size_t AppLuaEntry(const char *work_dir) {
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
         lua_writestringerror("main.lua: %s\n", msg);
-        lua_pop(L, 1);
-        goto err;
+        goto err1;
     }
 
     if (!lua_isboolean(L, -1)) {
         HAPLogError(&kHAPLog_Default, "main.lua returned is not a boolean.");
-        goto err;
+        goto err1;
     }
 
     if (!lua_toboolean(L, -1)) {
         HAPLogError(&kHAPLog_Default, "Failed to configure.");
-        goto err;
+        goto err1;
     }
 
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
     appContext.L = L;
     return lhap_get_attribute_count();
+err1:
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
 err:
-    HAPFatalError();
+    HAPAssertionFailure();
 }
 
 void AppLuaClose(void) {
