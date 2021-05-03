@@ -25,7 +25,7 @@ set(LUAC_BINARY ${LUAC_BUILD_DIR}/luac)
 compile_luac(${LUAC_BINARY} ${CMAKE_CURRENT_SOURCE_DIR}/luac ${LUAC_BUILD_DIR})
 
 # generate lua binaries to work directory
-gen_lua_binary_from_dir(${BRIDGE_WORK_DIR} ${BRIDGE_LUA_DIR} ${LUAC_BINARY})
+gen_lua_binary_from_dir(${BRIDGE_WORK_DIR} ${BRIDGE_LUA_DIR} ${LUAC_BINARY} bridge_scripts)
 
 # generate config.lua
 configure_file(${TOP_DIR}/config/config.lua.in ${BRIDGE_WORK_DIR}/config.lua)
