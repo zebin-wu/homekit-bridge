@@ -1,15 +1,15 @@
 # generate lua binray from lua script
-function(gen_lua_binary bin script luac_bin)
+function(gen_lua_binary bin script luac)
     add_custom_command(OUTPUT ${bin}
-        COMMAND ${luac_bin} -s -o ${bin} ${script}
+        COMMAND ${luac} -s -o ${bin} ${script}
         COMMAND echo "Generated ${bin}"
-        DEPENDS ${luac_bin} ${script}
+        DEPENDS ${luac} ${script}
         COMMENT "Generating ${bin}"
     )
 endfunction(gen_lua_binary)
 
 # genrate lua binraies in a directory
-function(gen_lua_binary_from_dir dest_dir src_dir luac_bin)
+function(gen_lua_binary_from_dir dest_dir src_dir luac target)
     # get all lua scripts
     file(GLOB_RECURSE scripts ${src_dir}/*.lua)
     foreach(script ${scripts})
@@ -19,9 +19,9 @@ function(gen_lua_binary_from_dir dest_dir src_dir luac_bin)
         set(bins ${bins} ${bin})
         get_filename_component(dir ${bin} DIRECTORY)
         make_directory(${dir})
-        gen_lua_binary(${bin} ${script} ${luac_bin})
+        gen_lua_binary(${bin} ${script} ${luac})
     endforeach()
-    add_custom_target(lua_binary
+    add_custom_target(${target}
         ALL
         DEPENDS ${bins}
     )
