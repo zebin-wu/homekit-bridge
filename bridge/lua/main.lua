@@ -1,17 +1,18 @@
 local config = require("config")
-local plugin = require("plugin")
+local core = require("core")
 
 local logger = log.getLogger()
+local board = pal.board
 
 return hap.configure({
     aid = 1, -- Primary accessory must have aid 1.
     category = "Bridges",
     name = config.bridge.name or "HomeKit Bridge",
-    mfg = pal.board.getManufacturer(),
-    model = pal.board.getModel(),
-    sn = pal.board.getSerialNumber(),
-    fwVer = pal.board.getFirmwareVersion(),
-    hwVer = pal.board.getHardwareVersion(),
+    mfg = board.getManufacturer(),
+    model = board.getModel(),
+    sn = board.getSerialNumber(),
+    fwVer = board.getFirmwareVersion(),
+    hwVer = board.getHardwareVersion(),
     services = {
         hap.AccessoryInformationService,
         hap.HapProtocolInformationService,
@@ -25,7 +26,7 @@ return hap.configure({
             return hap.Error.None
         end
     }
-}, plugin.gen(config.accessiries), {
+}, core.gen(config.accessories), {
     updatedState = function (state)
         logger:default(string.format("Accessory Server State did update: %s.", state))
     end,
