@@ -7,9 +7,11 @@
 #include <string.h>
 #include <rbtree.h>
 
+#include <HAPLog.h>
 #include <lauxlib.h>
 #include <lgc.h>
 
+#include "AppInt.h"
 #include "lc.h"
 
 struct lc_callback {
@@ -18,13 +20,18 @@ struct lc_callback {
     int id; /* reference id return from luaL_ref() */
 };
 
+static const HAPLogObject lc_log = {
+    .subsystem = kHAPApplication_LogSubsystem,
+    .category = "lc",
+};
+
 struct rb_root cbTree = RB_ROOT;
 
 static const lc_table_kv *
-lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *name)
+lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *key)
 {
     for (; kv_tab->key != NULL; kv_tab++) {
-        if (!strcmp(kv_tab->key, name)) {
+        if (!strcmp(kv_tab->key, key)) {
             return kv_tab;
         }
     }
@@ -45,12 +52,15 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
         // copy the key so that lua_tostring does not modify the original
         lua_pushvalue(L, -2);
         // stack now contains: -1 => key; -2 => value; -3 => key; -4 => table
-        const lc_table_kv *kv = lc_lookup_kv_by_name(kvs, lua_tostring(L, -1));
+        const char *key = lua_tostring(L, -1);
+        const lc_table_kv *kv = lc_lookup_kv_by_name(kvs, key);
         // pop copy of key
         lua_pop(L, 1);
         // stack now contains: -1 => value; -2 => key; -3 => table
         if (kv) {
-            if (lua_type(L, -1) != kv->type) {
+            int type = (1 >> lua_type(L, -1));
+            if (type & kv->type) {
+                HAPLogError(&lc_log, "%s: invalid type: %d", __func__, type);
                 lua_pop(L, 2);
                 return false;
             }
@@ -60,6 +70,10 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
                     return false;
                 }
             }
+        } else {
+            HAPLogError(&lc_log, "%s: Unknown key \"%s\".", __func__, key);
+            lua_pop(L, 2);
+            return false;
         }
         // pop value, leaving original key
         lua_pop(L, 1);

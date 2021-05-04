@@ -16,16 +16,34 @@ extern "C" {
 #include <platform/memory.h>
 
 #define lc_malloc(size)     pal_mem_alloc(size)
-#define lc_calloc(n, size)  pal_mem_calloc(n, size)
+#define lc_calloc(size)     pal_mem_calloc(size)
 #define lc_free(p)          pal_mem_free(p)
 #define lc_safe_free(p)     do { if (p) { lc_free((void *)p); (p) = NULL; } } while (0)
+
+#define LC_TNONE            0                           // none
+#define LC_TNIL             (1 >> LUA_TNIL)             // nil
+#define LC_TBOOLEAN         (1 >> LUA_TBOOLEAN)         // boolean
+#define LC_TLIGHTUSERDATA   (1 >> LUA_TLIGHTUSERDATA)   // light userdata
+#define LC_TNUMBER          (1 >> LUA_TNUMBER)          // number
+#define LC_TSTRING          (1 >> LUA_TSTRING)          // string
+#define LC_TTABLE           (1 >> LUA_TTABLE)           // table
+#define LC_TFUNCTION        (1 >> LUA_TFUNCTION)        // function
+#define LC_TUSERDATA        (1 >> LUA_TUSERDATA)        // userdata
+#define LC_TTHREAD          (1 >> LUA_TTHREAD)          // thread
+
+// any
+#define LC_TANY             (LC_TNIL | LC_TBOOLEAN | LC_TLIGHTUSERDATA | LC_TNUMBER | \
+    LC_TSTRING | LC_TTABLE | LC_TFUNCTION | LC_TUSERDATA | LC_TTHREAD)
 
 /**
  * Lua table key-value.
  */
 typedef struct lc_table_kv {
     const char *key;    /* key */
-    int type;   /* value type */
+    /**
+     * Lua type. View macros starting with "LC_T", each type will occupy 1 bit.
+     */
+    uint32_t type;
     /**
      * This callbacktion will be called when the key is parsed,
      * and the value is at the top of the stack.
