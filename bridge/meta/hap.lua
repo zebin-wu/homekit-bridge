@@ -21,10 +21,11 @@ hap = {}
 ---@field hwVer string The hardware version of the accessory.
 ---@field services Service[] Array of provided services.
 ---@field cbs AccessoryCallbacks Callbacks.
+---@field context any Accessory context. Will be passed to callbacks.
 
 ---@class AccessoryCallbacks:table Accessory Callbacks.
 ---
----@field identify fun(request: AccessoryIdentifyRequest):integer The callback used to invoke the identify routine.
+---@field identify fun(request: AccessoryIdentifyRequest, context?:any):Error The callback used to invoke the identify routine.
 
 ---@class AccessoryInformation:table Accessory information.
 ---
@@ -36,7 +37,7 @@ hap = {}
 ---
 ---@field transportType TransportType Transport type over which the request has been received.
 ---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
----@field accessoryInfo AccessoryInformation
+---@field accessory AccessoryInformation
 
 ---@class Service:table HomeKit service.
 ---
@@ -106,31 +107,31 @@ hap = {}
 ---@class CharacteristicReadRequest:table Characteristic read request.
 ---
 ---@field transportType TransportType Transport type over which the request has been received.
----@field accessoryInfo AccessoryInformation
----@field serviceInfo ServiceInformation
----@field charInfo CharacteristicInformation
+---@field accessory AccessoryInformation
+---@field service ServiceInformation
+---@field characteristic CharacteristicInformation
 
 ---@class CharacteristicWriteRequest:table Characteristic write request.
 ---
 ---@field transportType TransportType Transport type over which the request has been received.
----@field accessoryInfo AccessoryInformation
----@field serviceInfo ServiceInformation
----@field charInfo CharacteristicInformation
+---@field accessory AccessoryInformation
+---@field service ServiceInformation
+---@field characteristic CharacteristicInformation
 ---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
 
 ---@class CharacteristicSubscriptionRequest:table Characteristic subscription request.
 ---
 ---@field transportType TransportType Transport type over which the request has been received.
----@field accessoryInfo AccessoryInformation
----@field serviceInfo ServiceInformation
----@field charInfo CharacteristicInformation
+---@field accessory AccessoryInformation
+---@field service ServiceInformation
+---@field characteristic CharacteristicInformation
 
 ---@class CharacteristicCallbacks:table Characteristic Callbacks.
 ---
----@field read fun(request:CharacteristicReadRequest):integer, any The callback used to handle read requests, it return error code and value.
----@field write fun(request:CharacteristicWriteRequest, val:any):integer, boolean The callback used to handle write requests, it return error code and changed flag.
----@field sub fun(request:CharacteristicSubscriptionRequest) The callback used to handle subscribe requests.
----@field unsub fun(request:CharacteristicSubscriptionRequest) The callback used to handle unsubscribe requests.
+---@field read fun(request:CharacteristicReadRequest, context?:any):any, Error The callback used to handle read requests, it returns value and error.
+---@field write fun(request:CharacteristicWriteRequest, val:any, context?:any):boolean, Error The callback used to handle write requests, it return changed flag and error.
+---@field sub fun(request:CharacteristicSubscriptionRequest, context?:any) The callback used to handle subscribe requests.
+---@field unsub fun(request:CharacteristicSubscriptionRequest, context?:any) The callback used to handle unsubscribe requests.
 
 ---@class CharacteristicProperties:table Properties that HomeKit characteristics can have.
 ---
@@ -369,6 +370,8 @@ hap = {}
 ---| '"Percentage"' # A percentage %.
 ---| '"Lux"'        # Lux (that is, illuminance).
 ---| '"Seconds"'    # Seconds.
+
+---@class Error:integer Error type.
 
 ---Error type.
 hap.Error = {
