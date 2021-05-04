@@ -5,6 +5,7 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <stdlib.h>
+#include <string.h>
 #include <platform/memory.h>
 
 void *pal_mem_alloc(size_t size)
@@ -12,9 +13,13 @@ void *pal_mem_alloc(size_t size)
     return malloc(size);
 }
 
-void *pal_mem_calloc(size_t nmemb, size_t size)
+void *pal_mem_calloc(size_t size)
 {
-    return calloc(nmemb, size);
+    void *ptr = malloc(size);
+    if (ptr) {
+        memset(ptr, 0, size);
+    }
+    return ptr;
 }
 
 void *pal_mem_realloc(void *ptr, size_t size)
