@@ -24,14 +24,9 @@ typedef struct {
 } lhap_conf;
 
 /**
- * Initialize lhap.
+ * Reset lhap.
  */
-void lhap_initialize(void);
-
-/**
- * De-initialize lhap.
- */
-void lhap_deinitialize(lua_State *L);
+void lhap_reset(lua_State *L);
 
 /**
  * Get configuration.
