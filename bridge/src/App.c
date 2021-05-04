@@ -72,8 +72,6 @@ static const luaL_Reg loadedlibs[] = {
 size_t AppLuaEntry(const char *work_dir) {
     HAPPrecondition(work_dir);
 
-    lhap_initialize();
-
     char path[256];
     // set work dir to env LUA_PATH
     int len = snprintf(path, sizeof(path), LUA_SCRIPT_PATH_FMT, work_dir, "?");
@@ -132,7 +130,7 @@ void AppLuaClose(void) {
     lua_State *L = appContext.L;
     if (L) {
         lc_remove_all_callbacks(L);
-        lhap_deinitialize(L);
+        lhap_reset(L);
         lua_close(L);
         appContext.L = NULL;
     }

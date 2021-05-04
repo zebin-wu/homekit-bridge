@@ -2143,6 +2143,8 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
         lua_pushlightuserdata(L, ud->ptr);
         lua_setfield(L, -2, ud->name);
     }
+
+    memset(gv_lhap_desc.ref_ids, LUA_REFNIL, sizeof(gv_lhap_desc.ref_ids));
     return 1;
 }
 
@@ -2164,14 +2166,7 @@ size_t lhap_get_attribute_count(void)
     return 0;
 }
 
-void lhap_initialize(void)
-{
-    struct lhap_desc *desc = &gv_lhap_desc;
-
-    memset(desc->ref_ids, -1, sizeof(desc->ref_ids));
-}
-
-void lhap_deinitialize(lua_State *L)
+void lhap_reset(lua_State *L)
 {
     struct lhap_desc *desc = &gv_lhap_desc;
 
