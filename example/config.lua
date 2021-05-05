@@ -6,7 +6,7 @@ return {
         {
             plugin = "lightbulb",
             name = "Acme Light Bulb",
-            sn = "w9dbn2e02nm",
+            sn = "099DB48E9E28",
         }
     }
 }
