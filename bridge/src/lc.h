@@ -56,12 +56,6 @@ typedef struct lc_table_kv {
 } lc_table_kv;
 
 /**
- * Lua callback.
- */
-struct lc_callback;
-typedef struct lc_callback lc_callback;
-
-/**
  * Traverse Lua table.
  */
 bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg);
@@ -72,26 +66,6 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
 bool lc_traverse_array(lua_State *L, int idx,
                         bool (*arr_cb)(lua_State *L, int i, void *arg),
                         void *arg);
-
-/**
- * Register callback.
- */
-bool lc_register_callback(lua_State *L, int idx, size_t key);
-
-/**
- * Unregister callback.
- */
-bool lc_unregister_callback(lua_State *L, size_t key);
-
-/**
- * Push callback to Lua stack.
- */
-bool lc_push_callback(lua_State *L, size_t key);
-
-/**
- * Remove all callbacks.
- */
-void lc_remove_all_callbacks(lua_State *L);
 
 /**
  * Create a enum table.

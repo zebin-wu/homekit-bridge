@@ -129,7 +129,6 @@ err:
 void AppLuaClose(void) {
     lua_State *L = appContext.L;
     if (L) {
-        lc_remove_all_callbacks(L);
         lhap_reset(L);
         lua_close(L);
         appContext.L = NULL;

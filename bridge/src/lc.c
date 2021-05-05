@@ -5,7 +5,6 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <string.h>
-#include <rbtree.h>
 
 #include <HAPLog.h>
 #include <lauxlib.h>
@@ -14,18 +13,10 @@
 #include "AppInt.h"
 #include "lc.h"
 
-struct lc_callback {
-    struct rb_node node; /* rbtree node */
-    size_t key; /* the only key that can find the callback */
-    int id; /* reference id return from luaL_ref() */
-};
-
 static const HAPLogObject lc_log = {
     .subsystem = kHAPApplication_LogSubsystem,
     .category = "lc",
 };
-
-struct rb_root cbTree = RB_ROOT;
 
 static const lc_table_kv *
 lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *key)
@@ -105,104 +96,6 @@ bool lc_traverse_array(lua_State *L, int idx,
     }
     lua_pop(L, 1);
     return true;
-}
-
-bool lc_register_callback(lua_State *L, int idx, size_t key)
-{
-    struct rb_root *root = &cbTree;
-    struct rb_node **t = &(root->rb_node);
-    struct rb_node *parent = NULL;
-
-  	// Figure out where to put new node.
-  	while (*t) {
-        lc_callback *this = container_of(*t, lc_callback, node);
-        parent = *t;
-        if (key < this->key) {
-            t = &((*t)->rb_left);
-        } else if (key > this->key) {
-            t = &((*t)->rb_right);
-        } else {
-            return false;
-        }
-  	}
-
-    lc_callback *new = lc_malloc(sizeof(*new));
-    if (!new) {
-        return false;
-    }
-
-    lua_pushvalue(L, idx);
-    int ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
-    if (ref_id == LUA_REFNIL) {
-        lc_free(new);
-        return false;
-    }
-
-    new->id = ref_id;
-    new->key = key;
-
-  	// Add new node and rebalance tree.
-  	rb_link_node(&new->node, parent, t);
-  	rb_insert_color(&new->node, root);
-
-    return true;
-}
-
-static lc_callback *lc_find_callback(struct rb_root *root, size_t key)
-{
-    struct rb_node *node = root->rb_node;
-
-    while (node) {
-        lc_callback *t = container_of(node, lc_callback, node);
-
-        if (key < t->key) {
-            node = node->rb_left;
-        } else if (key > t->key) {
-            node = node->rb_right;
-        } else {
-            return t;
-        }
-    }
-    return NULL;
-}
-
-bool lc_push_callback(lua_State *L, size_t key)
-{
-    lc_callback *cb = lc_find_callback(&cbTree, key);
-    if (!cb) {
-        return false;
-    }
-    lua_rawgeti(L, LUA_REGISTRYINDEX, cb->id);
-    return true;
-}
-
-bool lc_unregister_callback(lua_State *L, size_t key)
-{
-    lc_callback *cb = lc_find_callback(&cbTree, key);
-    if (!cb) {
-        return false;
-    }
-    rb_erase(&cb->node, &cbTree);
-    luaL_unref(L, LUA_REGISTRYINDEX, cb->id);
-    lc_free(cb);
-    return true;
-}
-
-static void _lc_remove_all_callbacks(lua_State *L, struct rb_node *root)
-{
-    if (root == NULL) {
-        return;
-    }
-    _lc_remove_all_callbacks(L, root->rb_left);
-    _lc_remove_all_callbacks(L, root->rb_right);
-    lc_callback *cb = container_of(root, lc_callback, node);
-    luaL_unref(L, LUA_REGISTRYINDEX, cb->id);
-    lc_free(cb);
-}
-
-void lc_remove_all_callbacks(lua_State *L)
-{
-    _lc_remove_all_callbacks(L, cbTree.rb_node);
 }
 
 void lc_create_enum_table(lua_State *L, const char *enum_array[], int len)
