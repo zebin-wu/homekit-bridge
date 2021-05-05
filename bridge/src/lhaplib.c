@@ -872,7 +872,7 @@ lhap_char_constraints_valid_vals_cb(lua_State *L, const lc_table_kv *kv, void *a
             *pValidValues = NULL;
             break;
         }
-        uint8_t **vals = lc_calloc(len * sizeof(uint8_t *));
+        uint8_t **vals = lc_calloc((len + 1) * sizeof(uint8_t *));
         if (!vals) {
             HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
             return false;
@@ -953,7 +953,7 @@ lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, const lc_table_kv *kv, 
             break;
         }
         HAPUInt8CharacteristicValidValuesRange **ranges =
-            lc_calloc(len * sizeof(HAPUInt8CharacteristicValidValuesRange *));
+            lc_calloc((len + 1) * sizeof(HAPUInt8CharacteristicValidValuesRange *));
         if (!ranges) {
             HAPLogError(&lhap_log, "%s: Failed to alloc ranges.", __func__);
             return false;
@@ -2148,10 +2148,10 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
     return 1;
 }
 
-const lhap_conf lhap_get_conf(void)
+lhap_conf lhap_get_conf(void)
 {
     HAPAssert(gv_lhap_desc.isConfigure);
-    return (const lhap_conf) {
+    return (lhap_conf) {
         .primaryAccessory = &gv_lhap_desc.accessory,
         .bridgedAccessories = (const HAPAccessory *const *)gv_lhap_desc.bridgedAccessories,
         .confChanged = gv_lhap_desc.confChanged,
