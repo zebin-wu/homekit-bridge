@@ -115,7 +115,7 @@ bool lc_register_callback(lua_State *L, int idx, size_t key)
 
   	// Figure out where to put new node.
   	while (*t) {
-        lc_callback *this = container_of(*t, struct lc_callback, node);
+        lc_callback *this = container_of(*t, lc_callback, node);
         parent = *t;
         if (key < this->key) {
             t = &((*t)->rb_left);
@@ -153,7 +153,7 @@ static lc_callback *lc_find_callback(struct rb_root *root, size_t key)
     struct rb_node *node = root->rb_node;
 
     while (node) {
-        lc_callback *t = container_of(node, struct lc_callback, node);
+        lc_callback *t = container_of(node, lc_callback, node);
 
         if (key < t->key) {
             node = node->rb_left;
@@ -195,7 +195,7 @@ static void _lc_remove_all_callbacks(lua_State *L, struct rb_node *root)
     }
     _lc_remove_all_callbacks(L, root->rb_left);
     _lc_remove_all_callbacks(L, root->rb_right);
-    lc_callback *cb = container_of(root, struct lc_callback, node);
+    lc_callback *cb = container_of(root, lc_callback, node);
     luaL_unref(L, LUA_REGISTRYINDEX, cb->id);
     lc_free(cb);
 }
@@ -227,5 +227,5 @@ char *lc_new_str(lua_State *L, int idx)
     size_t len;
     const char *str = lua_tolstring(L, idx, &len);
     char *copy = lc_malloc(len + 1);
-    return copy ? strcpy(copy, str) : NULL;
+    return copy ? memcpy(copy, str, len + 1) : NULL;
 }
