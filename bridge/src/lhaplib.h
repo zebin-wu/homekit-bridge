@@ -31,7 +31,7 @@ void lhap_reset(lua_State *L);
 /**
  * Get configuration.
  */
-const lhap_conf lhap_get_conf(void);
+lhap_conf lhap_get_conf(void);
 
 /**
  * Get attribute count.
