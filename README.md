@@ -34,12 +34,16 @@ TODO
     $ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev
     ```
 
-2. Compile and run
+2. Compile
     ```text
     $ mkdir build
     $ cd build
     $ cmake -G Ninja .. && ninja
-    $ ./platform/linux/homekit-bridge
+    ```
+
+3. Run the example
+    ```text
+    $ ./platform/linux/homekit-bridge -d ../../example_scripts
     ```
 
 ### Platform ESP

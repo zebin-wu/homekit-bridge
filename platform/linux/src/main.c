@@ -10,6 +10,8 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
 
+#include <stdio.h>
+
 #include "App.h"
 
 #include "HAP.h"
@@ -360,14 +362,66 @@ static void DeinitializeBLE(void) {
 }
 #endif
 
-int main(int argc HAP_UNUSED, char* _Nullable argv[_Nullable] HAP_UNUSED) {
+static const char *help = \
+    "usage: %s [options]\n"
+    "options:\n"
+    "  -d           set the scripts directory\n"
+    "  -e           set the entry script name\n"
+    "  -h, --help   display this help and exit\n";
+
+static const char *progname = "homekit-bridge";
+static const char *scripts_dir = BRIDGE_WORK_DIR;
+static const char *entry = "main";
+
+static void usage(const char* message) {
+    if (message) {
+        if (*message == '-') {
+            fprintf(stderr, "%s: unrecognized option '%s'\n", progname, message);
+        } else {
+            fprintf(stderr, "%s: %s\n", progname, message);
+        }
+    }
+    fprintf(stderr, help, progname);
+}
+
+static void doargs(int argc, char *argv[]) {
+    if (argv[0] && *argv[0] != 0) {
+        progname=argv[0];
+    }
+    for (int i = 1; i < argc; i++) {
+        if (HAPStringAreEqual(argv[i], "-h") || HAPStringAreEqual(argv[i], "--help")) {
+            usage(NULL);
+            exit(EXIT_SUCCESS);
+        } else if (HAPStringAreEqual(argv[i], "-d")) {
+            scripts_dir = argv[++i];
+            if (!scripts_dir || *scripts_dir == 0 || (*scripts_dir == '-' && scripts_dir[1] != 0)) {
+                usage("'-d' needs argument");
+                exit(EXIT_FAILURE);
+            }
+        } else if (HAPStringAreEqual(argv[i], "-e")) {
+            entry = argv[++i];
+            if (!entry || *entry == 0 || (*entry == '-' && entry[1] != 0)) {
+                usage("'-e' needs argument");
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            usage(argv[i]);
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+int main(int argc, char *argv[]) {
     HAPAssert(HAPGetCompatibilityVersion() == HAP_COMPATIBILITY_VERSION);
+
+    // Parse arguments.
+    doargs(argc, argv);
 
     // Initialize global platform objects.
     InitializePlatform();
 
     // Lua entry.
-    size_t attributeCount = AppLuaEntry(BRIDGE_WORK_DIR, "main");
+    size_t attributeCount = AppLuaEntry(scripts_dir, entry);
     HAPAssert(attributeCount);
 
 #if IP
