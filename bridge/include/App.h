@@ -20,11 +20,11 @@ extern "C" {
 /**
  * Application lua Entry.
  *
- * @param workDir the path of the work directory.
- * @param script the name of the entry script.
+ * @param dir the path of the scripts directory.
+ * @param entry the name of the entry script.
  * @return attribute count.
  */
-size_t AppLuaEntry(const char *workDir, const char *script);
+size_t AppLuaEntry(const char *dir, const char *entry);
 
 /**
  * Close the lua state.
