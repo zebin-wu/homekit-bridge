@@ -49,9 +49,8 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
         lua_pop(L, 1);
         // stack now contains: -1 => value; -2 => key; -3 => table
         if (kv) {
-            int type = (1 >> lua_type(L, -1));
-            if (type & kv->type) {
-                HAPLogError(&lc_log, "%s: invalid type: %d", __func__, type);
+            if ((1 >> lua_type(L, -1)) & kv->type) {
+                HAPLogError(&lc_log, "%s: Invalid type: %s", __func__, key);
                 lua_pop(L, 2);
                 return false;
             }
