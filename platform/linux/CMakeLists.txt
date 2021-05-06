@@ -9,7 +9,6 @@ set(SRC_DIR src)
 include(${TOP_DIR}/cmake/project.cmake)
 include(${TOP_DIR}/cmake/adk.cmake)
 include(${TOP_DIR}/cmake/bridge.cmake)
-include(${TOP_DIR}/cmake/datastruct.cmake)
 include(${TOP_DIR}/cmake/lua.cmake)
 include(${TOP_DIR}/cmake/platform.cmake)
 include(${TOP_DIR}/cmake/extension.cmake)
@@ -38,7 +37,6 @@ set(SRCS "${SRC_DIR}/main.c"
          "${ADK_PAL_LINUX}"
          "${ADK_PAL_OPENSSL_SRCS}"
          "${BRIDGE_SRCS}"
-         "${DATASTRUCT_SRCS}"
          "${LUA_SRCS}")
 add_executable(${PROJECT} ${SRCS})
 
@@ -48,7 +46,6 @@ target_include_directories(${PROJECT}
         ${ADK_INC_DIR}
         ${ADK_PAL_LINUX_DIR}
         ${BRIDGE_INC_DIR}
-        ${DATASTRUCT_INC_DIR}
         ${LUA_INC_DIR}
         ${PLATFORM_INC_DIR}
 )
