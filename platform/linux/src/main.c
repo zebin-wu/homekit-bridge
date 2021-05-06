@@ -367,7 +367,7 @@ int main(int argc HAP_UNUSED, char* _Nullable argv[_Nullable] HAP_UNUSED) {
     InitializePlatform();
 
     // Lua entry.
-    size_t attributeCount = AppLuaEntry(BRIDGE_WORK_DIR);
+    size_t attributeCount = AppLuaEntry(BRIDGE_WORK_DIR, "main");
     HAPAssert(attributeCount);
 
 #if IP

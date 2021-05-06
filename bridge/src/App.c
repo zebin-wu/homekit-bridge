@@ -69,14 +69,15 @@ static const luaL_Reg loadedlibs[] = {
     {NULL, NULL}
 };
 
-size_t AppLuaEntry(const char *work_dir) {
-    HAPPrecondition(work_dir);
+size_t AppLuaEntry(const char *workDir, const char *script) {
+    HAPPrecondition(workDir);
+    HAPPrecondition(script);
 
     char path[256];
     // set work dir to env LUA_PATH
-    int len = snprintf(path, sizeof(path), LUA_SCRIPT_PATH_FMT, work_dir, "?");
+    int len = snprintf(path, sizeof(path), LUA_SCRIPT_PATH_FMT, workDir, "?");
     HAPAssert(len > 0);
-    len = snprintf(path + len, sizeof(path) - len, ";" LUA_BINARY_PATH_FMT, work_dir, "?");
+    len = snprintf(path + len, sizeof(path) - len, ";" LUA_BINARY_PATH_FMT, workDir, "?");
     HAPAssert(len > 0);
     if (setenv("LUA_PATH", path, 1)) {
         HAPLogError(&kHAPLog_Default, "Failed to set env LUA_PATH.");
@@ -95,18 +96,18 @@ size_t AppLuaEntry(const char *work_dir) {
     }
 
     // run main scripts
-    len = snprintf(path, sizeof(path), LUA_BINARY_PATH_FMT, work_dir, "main");
+    len = snprintf(path, sizeof(path), LUA_BINARY_PATH_FMT, workDir, script);
     HAPAssert(len > 0);
     int status = luaL_dofile(L, path);
     lc_collectgarbage(L);
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
-        lua_writestringerror("main.lua: %s\n", msg);
+        HAPLogError(&kHAPLog_Default, "%s.luac: %s", script, msg);
         goto err1;
     }
 
     if (!lua_isboolean(L, -1)) {
-        HAPLogError(&kHAPLog_Default, "main.lua returned is not a boolean.");
+        HAPLogError(&kHAPLog_Default, "%s.luac returned is not a boolean.", script);
         goto err1;
     }
 
