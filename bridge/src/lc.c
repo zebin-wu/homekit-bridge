@@ -4,8 +4,6 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#include <string.h>
-
 #include <HAPLog.h>
 #include <lauxlib.h>
 #include <lgc.h>
@@ -22,7 +20,7 @@ static const lc_table_kv *
 lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *key)
 {
     for (; kv_tab->key != NULL; kv_tab++) {
-        if (!strcmp(kv_tab->key, key)) {
+        if (HAPStringAreEqual(kv_tab->key, key)) {
             return kv_tab;
         }
     }
@@ -119,5 +117,9 @@ char *lc_new_str(lua_State *L, int idx)
     size_t len;
     const char *str = lua_tolstring(L, idx, &len);
     char *copy = lc_malloc(len + 1);
-    return copy ? memcpy(copy, str, len + 1) : NULL;
+    if (!copy) {
+        return NULL;
+    }
+    HAPRawBufferCopyBytes(copy, str, len + 1);
+    return copy;
 }

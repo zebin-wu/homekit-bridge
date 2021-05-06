@@ -4,9 +4,6 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#include <stdbool.h>
-#include <string.h>
-
 #include <lualib.h>
 #include <lauxlib.h>
 #include <HAPCharacteristic.h>
@@ -422,7 +419,7 @@ static bool lhap_push_var(lua_State *L, int ref_id)
 static int lhap_lookup_by_name(const char *name, const char *strs[], int len)
 {
     for (int i = 0; i < len; i++) {
-        if (!strcmp(name, strs[i])) {
+        if (HAPStringAreEqual(name, strs[i])) {
             return i;
         }
     }
@@ -518,7 +515,7 @@ lhap_service_type_cb(lua_State *L, const lc_table_kv *kv, void *arg)
     const char *str = lua_tostring(L, -1);
     for (int i = 0; i < HAPArrayCount(lhap_service_type_tab);
         i++) {
-        if (!strcmp(str, lhap_service_type_tab[i].name)) {
+        if (HAPStringAreEqual(str, lhap_service_type_tab[i].name)) {
             service->serviceType = lhap_service_type_tab[i].type;
             service->debugDescription = lhap_service_type_tab[i].debugDescription;
             return true;
@@ -594,7 +591,7 @@ lhap_characteristic_type_cb(lua_State *L, const lc_table_kv *kv, void *arg)
     const char *str = lua_tostring(L, -1);
     for (int i = 0; i < HAPArrayCount(lhap_characteristic_type_tab);
         i++) {
-        if (!strcmp(str, lhap_characteristic_type_tab[i].name)) {
+        if (HAPStringAreEqual(str, lhap_characteristic_type_tab[i].name)) {
             if (c->format != lhap_characteristic_type_tab[i].format) {
                 HAPLogError(&lhap_log, "%s: Format error, %s expected, got %s",
                     __func__,
@@ -1336,7 +1333,7 @@ HAPError lhap_char_String_handleRead(
         HAPLogError(&lhap_log, "%s: value too long", __func__);
         goto end;
     }
-    strcpy(value, str);
+    HAPRawBufferCopyBytes(value, str, len + 1);
 
 end:
     lua_settop(L, 0);
@@ -2204,7 +2201,9 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
         lua_setfield(L, -2, ud->name);
     }
 
-    memset(gv_lhap_desc.server_cb_ref_ids, LUA_REFNIL, sizeof(gv_lhap_desc.server_cb_ref_ids));
+    for (size_t i = 0; i < HAPArrayCount(gv_lhap_desc.server_cb_ref_ids); i++) {
+        gv_lhap_desc.server_cb_ref_ids[i] = LUA_REFNIL;
+    }
     return 1;
 }
 
