@@ -18,7 +18,7 @@ compile_luac(${LUAC_BINARY} ${TOP_DIR}/platform/${HOST_PLATFORM}/luac ${LUAC_BUI
 
 # generate lua binaries to work directory
 set(BRIDGE_WORK_DIR ${CMAKE_BINARY_DIR}/.bridge)
-gen_lua_binary_from_dir(${BRIDGE_WORK_DIR} ${BRIDGE_LUA_DIR} ${LUAC_BINARY} bridge_scripts)
+gen_lua_binary_from_dir(${BRIDGE_WORK_DIR} ${BRIDGE_SCRIPTS_DIR} ${LUAC_BINARY} bridge_scripts)
 
 # generate config.lua
 configure_file(${TOP_DIR}/config/config.lua.in ${BRIDGE_WORK_DIR}/config.lua)
@@ -33,7 +33,7 @@ project(${PROJECT})
 spiffs_create_partition_image(storage
     ${BRIDGE_WORK_DIR}
     FLASH_IN_PROJECT
-    DEPENDS lua_binary
+    DEPENDS bridge_scripts
 )
 
 if(CONFIG_HAP_MFI_HW_AUTH)

@@ -2,7 +2,7 @@
 set(BRIDGE_DIR "${TOP_DIR}/bridge")
 set(BRIDGE_SRC_DIR "${BRIDGE_DIR}/src")
 set(BRIDGE_INC_DIR "${BRIDGE_DIR}/include")
-set(BRIDGE_LUA_DIR "${BRIDGE_DIR}/lua")
+set(BRIDGE_SCRIPTS_DIR "${BRIDGE_DIR}/scripts")
 
 # collect bridge sources
 set(BRIDGE_SRCS "${BRIDGE_SRC_DIR}/App.c"
