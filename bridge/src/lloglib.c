@@ -11,7 +11,6 @@
 #include "lloglib.h"
 
 #define LUA_LOGGER_NAME "logger"
-#define LUA_CATEGORY_LEN 32
 
 static const HAPLogObject llog_default_logger = {
     .subsystem = kHAPApplication_LogSubsystem,
