@@ -9,17 +9,19 @@ function(gen_lua_binary bin script luac)
 endfunction(gen_lua_binary)
 
 # genrate lua binraies in a directory
-function(gen_lua_binary_from_dir dest_dir src_dir luac target)
-    # get all lua scripts
-    file(GLOB_RECURSE scripts ${src_dir}/*.lua)
-    foreach(script ${scripts})
-        # get the relative path of the script
-        file(RELATIVE_PATH rel_path ${src_dir} ${script})
-        set(bin ${dest_dir}/${rel_path}c)
-        set(bins ${bins} ${bin})
-        get_filename_component(dir ${bin} DIRECTORY)
-        make_directory(${dir})
-        gen_lua_binary(${bin} ${script} ${luac})
+function(gen_lua_binary_from_dir dest_dir src_dirs luac target)
+    foreach(src_dir ${src_dirs})
+        # get all lua scripts
+        file(GLOB_RECURSE scripts ${src_dir}/*.lua)
+        foreach(script ${scripts})
+            # get the relative path of the script
+            file(RELATIVE_PATH rel_path ${src_dir} ${script})
+            set(bin ${dest_dir}/${rel_path}c)
+            set(bins ${bins} ${bin})
+            get_filename_component(dir ${bin} DIRECTORY)
+            make_directory(${dir})
+            gen_lua_binary(${bin} ${script} ${luac})
+        endforeach()
     endforeach()
     add_custom_target(${target}
         ALL
