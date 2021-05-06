@@ -23,7 +23,7 @@
 
 #define LHAP_LOG_TYPE_ERROR(L, name, excepted, got) \
 	do { \
-		HAPLogError(&lhap_log, "%s: invalid type: %s", __func__, name); \
+		HAPLogError(&lhap_log, "%s: Invalid type: %s", __func__, name); \
 		HAPLogError(&lhap_log, "%s: %s excepted, got %s", __func__, \
 		    lua_typename(L, excepted), \
 		    lua_typename(L, got)); \
@@ -321,7 +321,7 @@ static const lhap_characteristic_type lhap_characteristic_type_tab[] = {
 };
 
 /**
- * Accessory ref id;
+ * Store the ref id of the var that needs to be saved in the accessory. 
  */
 typedef struct {
     int context;
@@ -329,7 +329,7 @@ typedef struct {
 } accessory_ref;
 
 /**
- * Characteristic ref id;
+ * Store the ref id of the var that needs to be saved in the characterisitc. 
  */
 typedef struct {
     int handleRead;
@@ -338,15 +338,22 @@ typedef struct {
     int handleUnsubscribe;
 } char_ref;
 
-#define LHAP_ACCESSORY_REF(accessory) ((accessory_ref *)((char *)accessory + sizeof(HAPAccessory)))
+// Return the pointer to the structure accessory_ref.
+#define LHAP_ACCESSORY_REF(accessory) \
+    ((accessory_ref *)((char *)accessory + sizeof(HAPAccessory)))
+
+// Initialize the structure accessory_ref.
 #define LHAP_ACCESSORY_REF_INIT(accessory) \
 do { \
     LHAP_ACCESSORY_REF(accessory)->context = LUA_REFNIL; \
     LHAP_ACCESSORY_REF(accessory)->identify = LUA_REFNIL; \
 } while (0)
 
+// Return the pointer to the structure char_ref.
 #define LHAP_CHAR_REF(c, format) \
     ((char_ref *)((char *)c + (size_t)lhap_characteristic_struct_size[format]))
+
+// Initialize the structure char_ref.
 #define LHAP_CHAR_REF_INIT(c, format) \
 do { \
     LHAP_CHAR_REF(c, format)->handleRead = LUA_REFNIL; \
@@ -390,24 +397,19 @@ static void lhap_unref(lua_State *L, int ref_id)
     }
 }
 
-#define lhap_reg_ref(L, idx, pref_id) \
-    _lhap_reg_ref(__func__, L, idx, pref_id)
-
-static bool _lhap_reg_ref(const char *func, lua_State *L, int idx, int *ref_id)
+static bool lhap_ref_var(lua_State *L, int idx, int *ref_id)
 {
     if (*ref_id != LUA_REFNIL) {
-        HAPLogError(&lhap_log, "%s: Already set callback.", func);
         return false;
     }
     *ref_id = lhap_ref(L, idx);
     if (*ref_id == LUA_REFNIL) {
-        HAPLogError(&lhap_log, "%s: Failed to register callback.", func);
         return false;
     }
     return true;
 }
 
-static bool lhap_push_ref(lua_State *L, int ref_id)
+static bool lhap_push_var(lua_State *L, int ref_id)
 {
     if (ref_id != LUA_REFNIL) {
         lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id);
@@ -561,8 +563,7 @@ static const lc_table_kv lhap_service_props_ble_kvs[] = {
 static bool
 lhap_service_props_ble_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
-    return lc_traverse_table(L, -1, lhap_service_props_ble_kvs,
-        &((HAPService *)arg)->properties);
+    return lc_traverse_table(L, -1, lhap_service_props_ble_kvs, arg);
 }
 
 static const lc_table_kv lhap_service_props_kvs[] = {
@@ -696,8 +697,7 @@ static const lc_table_kv lhap_char_props_ip_kvs[] = {
 static bool
 lhap_char_props_ip_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
-    return lc_traverse_table(L, -1, lhap_char_props_ip_kvs,
-        &((HAPBaseCharacteristic *)arg)->properties);
+    return lc_traverse_table(L, -1, lhap_char_props_ip_kvs, arg);
 }
 
 static bool
@@ -759,8 +759,7 @@ static const lc_table_kv lhap_char_props_ble_kvs[] = {
 static bool
 lhap_char_props_ble_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
-    return lc_traverse_table(L, -1, lhap_char_props_ble_kvs,
-        &((HAPBaseCharacteristic *)arg)->properties);
+    return lc_traverse_table(L, -1, lhap_char_props_ble_kvs, arg);
 }
 
 static const lc_table_kv lhap_char_props_kvs[] = {
@@ -1158,7 +1157,7 @@ HAPError lhap_char_base_handleRead(
         const HAPService *service,
         const HAPBaseCharacteristic *characteristic)
 {
-    if (!lhap_push_ref(L, LHAP_CHAR_REF(characteristic, characteristic->format)->handleRead)) {
+    if (!lhap_push_var(L, LHAP_CHAR_REF(characteristic, characteristic->format)->handleRead)) {
         HAPLogError(&lhap_log, "%s: Failed to push callback.", __func__);
         return kHAPError_Unknown;
     }
@@ -1167,7 +1166,7 @@ HAPError lhap_char_base_handleRead(
         accessory, service, characteristic);
 
     // set the context
-    bool hasContext = lhap_push_ref(L,
+    bool hasContext = lhap_push_var(L,
         LHAP_ACCESSORY_REF(accessory)->context);
 
     if (lua_pcall(L, hasContext ? 2 : 1, 2, 0)) {
@@ -1379,7 +1378,7 @@ HAPError lhap_char_base_handleWrite(
         const HAPService *service,
         const HAPBaseCharacteristic *characteristic)
 {
-    if (!lhap_push_ref(L, LHAP_CHAR_REF(characteristic, characteristic->format)->handleWrite)) {
+    if (!lhap_push_var(L, LHAP_CHAR_REF(characteristic, characteristic->format)->handleWrite)) {
         HAPLogError(&lhap_log, "%s: Failed to push callback.", __func__);
         return kHAPError_Unknown;
     }
@@ -1397,7 +1396,7 @@ HAPError lhap_char_last_handleWrite(lua_State *L,
 {
     HAPError err = kHAPError_Unknown;
 
-    bool hasContext = lhap_push_ref(L,
+    bool hasContext = lhap_push_var(L,
         LHAP_ACCESSORY_REF(accessory)->context);
 
     if (lua_pcall(L, hasContext ? 3 : 2, 2, 0)) {
@@ -1615,8 +1614,9 @@ end:
 // This definitation is only used to register characteristic callbacks.
 #define LHAP_CASE_CHAR_REGISTER_CB(format, cb) \
 LHAP_CASE_CHAR_FORMAT_CODE(format, arg, \
-    if (!lhap_reg_ref(L, -1, &(LHAP_CHAR_REF(p, \
+    if (!lhap_ref_var(L, -1, &(LHAP_CHAR_REF(p, \
         kHAPCharacteristicFormat_ ## format)->cb))) { \
+        HAPLogError(&lhap_log, "%s: Failed to ref cb", __func__); \
         return false; \
     } \
     p->callbacks.cb = lhap_char_ ## format ## _ ## cb)
@@ -1904,7 +1904,7 @@ HAPError lhap_accessory_identify_cb(
     const HAPAccessory *accessory = request->accessory;
 
     // push the callback
-    if (!lhap_push_ref(L, LHAP_ACCESSORY_REF(accessory)->identify)) {
+    if (!lhap_push_var(L, LHAP_ACCESSORY_REF(accessory)->identify)) {
         HAPLogError(&lhap_log, "%s: Can't get lua function.", __func__);
         return err;
     }
@@ -1918,7 +1918,7 @@ HAPError lhap_accessory_identify_cb(
     lhap_create_accessory_info_table(L, -3, request->accessory);
 
     // push the context
-    bool hasContext = lhap_push_ref(L,
+    bool hasContext = lhap_push_var(L,
         LHAP_ACCESSORY_REF(accessory)->context);
 
     if (lua_pcall(L, hasContext ? 2 : 1, 1, 0)) {
@@ -1941,7 +1941,8 @@ end:
 static bool
 lhap_accessory_cbs_identify_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
-    if (!lhap_reg_ref(L, -1, &(LHAP_ACCESSORY_REF(arg)->identify))) {
+    if (!lhap_ref_var(L, -1, &(LHAP_ACCESSORY_REF(arg)->identify))) {
+        HAPLogError(&lhap_log, "%s: Failed to ref identify cb.", __func__);
         return false;
     }
     ((HAPAccessory *)arg)->callbacks.identify = lhap_accessory_identify_cb;
@@ -1962,7 +1963,7 @@ lhap_accessory_cbs_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 static bool
 lhap_accesory_context_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
-    return lhap_reg_ref(L, -1, &(LHAP_ACCESSORY_REF(arg)->context));
+    return lhap_ref_var(L, -1, &(LHAP_ACCESSORY_REF(arg)->context));
 }
 
 static const lc_table_kv lhap_accessory_kvs[] = {
@@ -2027,35 +2028,25 @@ lhap_accessories_arr_cb(lua_State *L, int i, void *arg)
     return true;
 }
 
-static bool lhap_reg_server_cb(lua_State *L, enum lhap_server_cb_idx idx)
-{
-    if (gv_lhap_desc.server_cb_ref_ids[idx] != LUA_REFNIL) {
-        return false;
-    }
-    int ref = lhap_ref(L, -1);
-    if (ref == LUA_REFNIL) {
-        return false;
-    }
-    gv_lhap_desc.server_cb_ref_ids[idx] = ref;
-    return true;
-}
-
 static bool
 lhap_server_cb_update_state_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
-    return lhap_reg_server_cb(L, LHAP_SERVER_CB_UPDATE_STATE);
+    return lhap_ref_var(L, -1, gv_lhap_desc.server_cb_ref_ids +
+        LHAP_SERVER_CB_UPDATE_STATE);
 }
 
 static bool
 lhap_server_cb_session_accept_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
-    return lhap_reg_server_cb(L, LHAP_SERVER_CB_SESSION_ACCEPT);
+    return lhap_ref_var(L, -1, gv_lhap_desc.server_cb_ref_ids +
+        LHAP_SERVER_CB_SESSION_ACCEPT);
 }
 
 static bool
 lhap_server_cb_session_invalid_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 {
-    return lhap_reg_server_cb(L, LHAP_SERVER_CB_SESSION_INVALIDATE);
+    return lhap_ref_var(L, -1, gv_lhap_desc.server_cb_ref_ids +
+        LHAP_SERVER_CB_SESSION_INVALIDATE);
 }
 
 static const lc_table_kv lhap_server_callbacks_kvs[] = {
@@ -2076,8 +2067,8 @@ static void lhap_unref_server_cb(lua_State *L)
 }
 
 /**
- * configure(accessory: table, bridgedAccessories?: table,
- * serverCallbacks?: table, confChanged: boolean) -> boolean
+ * configure(primaryAccessory: table, bridgedAccessories?: table,
+ * serverCallbacks: table, confChanged: boolean) -> boolean
  *
  * If the category of the accessory is bridge, the parameters
  * bridgedAccessories is valid.
@@ -2258,7 +2249,7 @@ void lhap_reset(lua_State *L)
 
 static bool lhap_push_server_cb(lua_State *L, enum lhap_server_cb_idx idx)
 {
-    return lhap_push_ref(L, gv_lhap_desc.server_cb_ref_ids[idx]);
+    return lhap_push_var(L, gv_lhap_desc.server_cb_ref_ids[idx]);
 }
 
 void lhap_server_handle_update_state(lua_State *L, HAPAccessoryServerState state)
