@@ -1,3 +1,5 @@
+local tab = require "tab"
+
 local core = {}
 
 local logger = log.getLogger("core")
@@ -13,21 +15,11 @@ local logger = log.getLogger("core")
 ---@field deinit fun() Deinitialize plugin.
 ---@field gen fun(conf:AccessoryConf):Accessory|nil Generate accessory via configuration.
 
----Check if table is empty.
----@param table table
----@return boolean
-local function tableIsEmpty(table)
-    if type(table) == "table" and _G.next(table) == nil then
-        return true
-    end
-    return false
-end
-
 ---Check if the plugin is valid.
 ---@param plugin Plugin
 ---@return boolean
 local function pluginIsValid(plugin)
-    if tableIsEmpty(plugin) then
+    if tab.isEmpty(plugin) then
         return false
     end
     return true
@@ -55,7 +47,7 @@ end
 ---@param confs AccessoryConf Accessory configuration.
 ---@return Accessory[]
 function core.gen(confs)
-    if tableIsEmpty(confs) then
+    if tab.isEmpty(confs) then
         return {}
     end
     local accessories = {}
