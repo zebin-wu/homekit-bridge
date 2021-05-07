@@ -11,7 +11,6 @@
 extern "C" {
 #endif
 
-#include <stdbool.h>
 #include <lua.h>
 #include <platform/memory.h>
 
