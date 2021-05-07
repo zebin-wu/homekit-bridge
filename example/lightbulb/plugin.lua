@@ -1,3 +1,5 @@
+local char = require "hap.char"
+
 local lightbulb = {}
 
 local logger = log.getLogger("lightbulb")
@@ -20,65 +22,6 @@ end
 
 local function checkAccessoryConf(conf)
     return true
-end
-
-local function lightBulbServiceSignatureCharacteristic()
-    return {
-        format = "Data",
-        iid = hap.getNewInstanceID(),
-        type = "ServiceSignature",
-        props = {
-            readable = true,
-            writable = false,
-            supportsEventNotification = false,
-            hidden = false,
-            requiresTimedWrite = false,
-            supportsAuthorizationData = false,
-            ip = { controlPoint = true },
-            ble = {
-                supportsBroadcastNotification = false,
-                supportsDisconnectedNotification = false,
-                readableWithoutSecurity = false,
-                writableWithoutSecurity = false
-            }
-        },
-        constraints = { maxLen = 2097152 },
-        cbs = {
-            read = function (request, context)
-                return "", hap.Error.None
-            end
-        }
-    }
-end
-
-local function lightBulbNameCharacteristic()
-    return {
-        format = "String",
-        iid = hap.getNewInstanceID(),
-        type = "Name",
-        props = {
-            readable = true,
-            writable = false,
-            supportsEventNotification = false,
-            hidden = false,
-            requiresTimedWrite = false,
-            supportsAuthorizationData = false,
-            ip = { controlPoint = false, supportsWriteResponse = false },
-            ble = {
-                supportsBroadcastNotification = false,
-                supportsDisconnectedNotification = false,
-                readableWithoutSecurity = false,
-                writableWithoutSecurity = false
-            }
-        },
-        constraints = { maxLen = 64 },
-        cbs = {
-            read = function (request, context)
-                logger:info(string.format("Read service name: %s", request.service.name))
-                return request.service.name, hap.Error.None
-            end
-        }
-    }
 end
 
 local function lightBulbOnCharacteristic()
@@ -151,8 +94,8 @@ function lightbulb.gen(conf)
                     }
                 },
                 chars = {
-                    lightBulbServiceSignatureCharacteristic(),
-                    lightBulbNameCharacteristic(),
+                    char.newServiceSignatureCharacteristic(),
+                    char.newNameCharacteristic(),
                     lightBulbOnCharacteristic()
                 }
             }
