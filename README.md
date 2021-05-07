@@ -43,7 +43,7 @@ TODO
 
 3. Run the example
     ```text
-    $ ./platform/linux/homekit-bridge -d ../../example_scripts
+    $ ./platform/linux/homekit-bridge -d example_scripts
     ```
 
 ### Platform ESP
