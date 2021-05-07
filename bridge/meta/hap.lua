@@ -200,6 +200,7 @@ hap = {}
 ---| '"GarageDoorOpener"'
 ---| '"LightBulb"'
 ---| '"LockManagement"'
+---| '"LockMechanism"'
 ---| '"Outlet"'
 ---| '"Switch"'
 ---| '"Thermostat"'
@@ -373,7 +374,7 @@ hap = {}
 
 ---@class Error:integer Error type.
 
----Error type.
+---``ENUM`` Error type.
 hap.Error = {
     None = 0,
     Unknown = 1,

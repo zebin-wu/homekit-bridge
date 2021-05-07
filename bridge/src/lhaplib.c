@@ -149,6 +149,7 @@ static const lhap_service_type lhap_service_type_tab[] = {
     LHAP_SERVICE_TYPE_FORMAT(GarageDoorOpener),
     LHAP_SERVICE_TYPE_FORMAT(LightBulb),
     LHAP_SERVICE_TYPE_FORMAT(LockManagement),
+    LHAP_SERVICE_TYPE_FORMAT(LockMechanism),
     LHAP_SERVICE_TYPE_FORMAT(Outlet),
     LHAP_SERVICE_TYPE_FORMAT(Switch),
     LHAP_SERVICE_TYPE_FORMAT(Thermostat),
