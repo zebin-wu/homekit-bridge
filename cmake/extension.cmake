@@ -1,16 +1,32 @@
-# generate lua binray from lua script
+# Generate lua binray from lua script.
+#
+# gen_lua_binary(BIN SCRIPT LUAC [DEBUG])
 function(gen_lua_binary bin script luac)
+    set(options DEBUG)
+    cmake_parse_arguments(arg "${options}" "" "" "${ARGN}")
+    if(NOT arg_DEBUG)
+        set(LUAC_FLAGS ${LUAC_FLAGS} -s)
+    endif()
     add_custom_command(OUTPUT ${bin}
-        COMMAND ${luac} -s -o ${bin} ${script}
+        COMMAND ${luac} ${LUAC_FLAGS} -o ${bin} ${script}
         COMMAND echo "Generated ${bin}"
         DEPENDS ${luac} ${script}
         COMMENT "Generating ${bin}"
     )
 endfunction(gen_lua_binary)
 
-# genrate lua binraies in a directory
-function(gen_lua_binary_from_dir dest_dir src_dirs luac target)
-    foreach(src_dir ${src_dirs})
+# Genrate lua binraies in a directory.
+#
+# gen_lua_binary_from_dir(TARGET DEST_DIR LUAC [DEBUG]
+#                         [SRC_DIRS dir1 [dir2...]])
+function(gen_lua_binary_from_dir target dest_dir luac)
+    set(options DEBUG)
+    set(multi SRC_DIRS)
+    cmake_parse_arguments(arg "${options}" "" "${multi}" "${ARGN}")
+    if(arg_DEBUG)
+        set(GEN_LUA_LIBRARY_OPTIONS DEBUG)
+    endif()
+    foreach(src_dir ${arg_SRC_DIRS})
         # get all lua scripts
         file(GLOB_RECURSE scripts ${src_dir}/*.lua)
         foreach(script ${scripts})
@@ -20,7 +36,9 @@ function(gen_lua_binary_from_dir dest_dir src_dirs luac target)
             set(bins ${bins} ${bin})
             get_filename_component(dir ${bin} DIRECTORY)
             make_directory(${dir})
-            gen_lua_binary(${bin} ${script} ${luac})
+            gen_lua_binary(${bin} ${script} ${luac}
+                ${GEN_LUA_LIBRARY_OPTIONS}
+            )
         endforeach()
     endforeach()
     add_custom_target(${target}
@@ -29,7 +47,9 @@ function(gen_lua_binary_from_dir dest_dir src_dirs luac target)
     )
 endfunction(gen_lua_binary_from_dir)
 
-# compile luac
+# Compile luac.
+#
+# compile_luac(BIN SRC_DIR BUILD_DIR)
 function(compile_luac bin src_dir build_dir)
     add_custom_command(OUTPUT ${bin}
         COMMAND cmake -H${src_dir} -B${build_dir} -G Ninja
@@ -40,7 +60,9 @@ function(compile_luac bin src_dir build_dir)
     add_custom_target(luac ALL DEPENDS ${bin})
 endfunction(compile_luac)
 
-# get host platform
+# Get host platform.
+#
+# get_host_platform(OUTPUT)
 macro(get_host_platform output)
     execute_process(
         COMMAND uname
