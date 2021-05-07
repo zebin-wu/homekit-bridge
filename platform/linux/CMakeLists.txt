@@ -25,16 +25,18 @@ set(LUAC_BINARY ${LUAC_BUILD_DIR}/luac)
 compile_luac(${LUAC_BINARY} ${CMAKE_CURRENT_SOURCE_DIR}/luac ${LUAC_BUILD_DIR})
 
 # generate lua binaries to work directory
-gen_lua_binary_from_dir(${BRIDGE_WORK_DIR}
-    ${BRIDGE_SCRIPTS_DIR}
+gen_lua_binary_from_dir(bridge_scripts
+    ${BRIDGE_WORK_DIR}
     ${LUAC_BINARY}
-    bridge_scripts
+    DEBUG
+    SRC_DIRS ${BRIDGE_SCRIPTS_DIR}
 )
 
-gen_lua_binary_from_dir(${EXAMPLE_WORK_DIR}
-    "${BRIDGE_SCRIPTS_DIR};${TOP_DIR}/example"
+gen_lua_binary_from_dir(example_scripts
+    ${EXAMPLE_WORK_DIR}
     ${LUAC_BINARY}
-    example_scripts
+    DEBUG
+    SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/example
 )
 
 # generate default config.lua
