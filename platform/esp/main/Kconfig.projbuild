@@ -1,0 +1,23 @@
+menu "Application"
+
+    choice LUA_APP_ENTRY
+        prompt "Lua Application"
+        default LUA_APP_DEFAULT
+        help
+            Lua Application.
+
+        config LUA_APP_DEFAULT
+            bool "default"
+        config LUA_APP_EXAMPLE
+            bool "example"
+        config LUA_APP_TEST
+            bool "test"
+    endchoice
+
+    config LUA_APP_ENTRY
+        string
+        default "main" if LUA_APP_DEFAULT
+        default "main" if LUA_APP_EXAMPLE
+        default "test" if LUA_APP_TEST
+
+endmenu
