@@ -71,3 +71,40 @@ macro(get_host_platform output)
     string(REPLACE "\n" "" ${output} ${${output}})
     string(TOLOWER ${${output}} ${output})
 endmacro(get_host_platform)
+
+# Check code style.
+#
+# check_style(TARGET TOP_DIR [SRCS src1 [src2...]])
+function(check_style target top_dir)
+    find_program(CPPLINT NAMES "cpplint")
+    if(NOT CPPLINT)
+        message(FATAL_ERROR "Please install cpplint via \"pip3 install cpplint\".")    
+    endif()
+
+    set(multi SRCS)
+    cmake_parse_arguments(arg "" "" "${multi}" "${ARGN}")
+
+    set(cstyle_dir ${CMAKE_BINARY_DIR}/cstyle)
+    foreach(src ${arg_SRCS})
+        # get the relative path of the script
+        file(RELATIVE_PATH rel_path ${top_dir} ${src})
+        set(output ${cstyle_dir}/${rel_path}.cs)
+        set(outputs ${outputs} ${output})
+        get_filename_component(dir ${output} DIRECTORY)
+        make_directory(${dir})
+        add_custom_command(OUTPUT ${output}
+            COMMENT "Check ${rel_path}"
+            COMMAND ${CPPLINT}
+                --linelength=120
+                --filter=-readability/casting,-build/include,-runtime/casting
+                ${rel_path}
+            COMMAND touch ${output}
+            WORKING_DIRECTORY ${top_dir}
+            DEPENDS ${src}
+        )
+    endforeach()
+    add_custom_target(${target}
+        ALL
+        DEPENDS ${outputs}
+    )
+endfunction(check_style)

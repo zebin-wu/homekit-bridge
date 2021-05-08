@@ -4,8 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef LLOGLIB_H
-#define LLOGLIB_H
+#ifndef BRIDGE_SRC_LLOGLIB_H_
+#define BRIDGE_SRC_LLOGLIB_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,4 +20,4 @@ LUAMOD_API int luaopen_log(lua_State *L);
 }
 #endif
 
-#endif /* LLOGLIB_H */
+#endif  // BRIDGE_SRC_LLOGLIB_H_

@@ -4,8 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_BOARD_H
-#define PLATFORM_BOARD_H
+#ifndef PLATFORM_INCLUDE_PAL_BOARD_H_
+#define PLATFORM_INCLUDE_PAL_BOARD_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,4 +45,4 @@ const char *pal_board_get_hardware_version(void);
 }
 #endif
 
-#endif /* PLATFORM_BOARD_H */
+#endif  // PLATFORM_INCLUDE_PAL_BOARD_H_

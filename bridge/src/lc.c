@@ -17,8 +17,7 @@ static const HAPLogObject lc_log = {
 };
 
 static const lc_table_kv *
-lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *key)
-{
+lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *key) {
     for (; kv_tab->key != NULL; kv_tab++) {
         if (HAPStringAreEqual(kv_tab->key, key)) {
             return kv_tab;
@@ -27,8 +26,7 @@ lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *key)
     return NULL;
 }
 
-bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
-{
+bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg) {
     // Push another reference to the table on top of the stack (so we know
     // where it is, and this function can work for negative, positive and
     // pseudo indices
@@ -76,9 +74,7 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
 }
 
 bool lc_traverse_array(lua_State *L, int idx,
-                         bool (*arr_cb)(lua_State *L, int i, void *arg),
-                         void *arg)
-{
+        bool (*arr_cb)(lua_State *L, int i, void *arg), void *arg) {
     if (!arr_cb) {
         return false;
     }
@@ -95,8 +91,7 @@ bool lc_traverse_array(lua_State *L, int idx,
     return true;
 }
 
-void lc_create_enum_table(lua_State *L, const char *enum_array[], int len)
-{
+void lc_create_enum_table(lua_State *L, const char *enum_array[], int len) {
     lua_createtable(L, len, 0);
     for (int i = 0; i < len; i++) {
         if (enum_array[i]) {
@@ -107,13 +102,11 @@ void lc_create_enum_table(lua_State *L, const char *enum_array[], int len)
     }
 }
 
-void lc_collectgarbage(lua_State *L)
-{
+void lc_collectgarbage(lua_State *L) {
     luaC_fullgc(L, 0);
 }
 
-char *lc_new_str(lua_State *L, int idx)
-{
+char *lc_new_str(lua_State *L, int idx) {
     size_t len;
     const char *str = lua_tolstring(L, idx, &len);
     char *copy = lc_malloc(len + 1);

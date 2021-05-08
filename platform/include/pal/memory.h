@@ -4,8 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_MEMORY_H
-#define PLATFORM_MEMORY_H
+#ifndef PLATFORM_INCLUDE_PAL_MEMORY_H_
+#define PLATFORM_INCLUDE_PAL_MEMORY_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,4 +46,4 @@ void pal_mem_free(void *p);
 }
 #endif
 
-#endif /* PLATFORM_MEMORY_H */
+#endif  // PLATFORM_INCLUDE_PAL_MEMORY_H_

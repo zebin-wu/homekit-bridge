@@ -79,8 +79,7 @@ void HandleUpdatedState(HAPAccessoryServerRef* _Nonnull server, void* _Nullable 
 /**
  * Generate setup code, setup info and setup ID, and put them in the key-value store.
  */
-static void AccessorySetupGenerate()
-{
+static void AccessorySetupGenerate() {
     bool found;
     size_t numBytes;
 
@@ -157,8 +156,8 @@ static void InitializePlatform() {
     HAPPlatformTCPStreamManagerCreate(
             &platform.tcpStreamManager,
             &(const HAPPlatformTCPStreamManagerOptions) {
-                    .interfaceName = NULL,       // Listen on all available network interfaces.
-                    .port = kHAPNetworkPort_Any, // Listen on unused port number from the ephemeral port range.
+                    .interfaceName = NULL,        // Listen on all available network interfaces.
+                    .port = kHAPNetworkPort_Any,  // Listen on unused port number from the ephemeral port range.
                     .maxConcurrentTCPStreams = kHAPIPSessionStorage_DefaultNumElements });
 
     // Service discovery.
@@ -386,7 +385,7 @@ static void usage(const char* message) {
 
 static void doargs(int argc, char *argv[]) {
     if (argv[0] && *argv[0] != 0) {
-        progname=argv[0];
+        progname = argv[0];
     }
     for (int i = 1; i < argc; i++) {
         if (HAPStringAreEqual(argv[i], "-h") || HAPStringAreEqual(argv[i], "--help")) {

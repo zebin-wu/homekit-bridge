@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
-set(SRC_DIR src)
+set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 include(${TOP_DIR}/cmake/project.cmake)
 include(${TOP_DIR}/cmake/adk.cmake)
@@ -43,15 +43,25 @@ gen_lua_binary_from_dir(example_scripts
 configure_file(${TOP_DIR}/config/config.lua.in ${BRIDGE_WORK_DIR}/config.lua)
 
 # collect sources
-set(SRCS "${SRC_DIR}/main.c"
-         "${SRC_DIR}/platform/board.c"
-         "${SRC_DIR}/platform/memory.c"
-         "${ADK_SRCS}"
-         "${ADK_PAL_LINUX}"
-         "${ADK_PAL_OPENSSL_SRCS}"
-         "${BRIDGE_SRCS}"
-         "${LUA_SRCS}")
+set(SRCS
+    ${PLATFORM_LINUX_SRCS}
+    ${ADK_SRCS}
+    ${ADK_PAL_LINUX}
+    ${ADK_PAL_OPENSSL_SRCS}
+    ${BRIDGE_SRCS}
+    ${LUA_SRCS}
+)
 add_executable(${PROJECT} ${SRCS})
+
+# check code style
+add_dependencies(${PROJECT} cstyle)
+check_style(cstyle ${TOP_DIR}
+    SRCS
+        ${BRIDGE_SRCS}
+        ${BRIDGE_HEADERS}
+        ${PLATFORM_LINUX_SRCS}
+        ${PLATFORM_HEADERS}
+)
 
 # add include directories
 target_include_directories(${PROJECT}

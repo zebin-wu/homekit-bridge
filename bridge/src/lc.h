@@ -4,15 +4,15 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef LUA_COMMON_H
-#define LUA_COMMON_H
+#ifndef BRIDGE_SRC_LC_H_
+#define BRIDGE_SRC_LC_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <lua.h>
-#include <platform/memory.h>
+#include <pal/memory.h>
 
 #define lc_malloc(size)     pal_mem_alloc(size)
 #define lc_calloc(size)     pal_mem_calloc(size)
@@ -85,4 +85,4 @@ char *lc_new_str(lua_State *L, int idx);
 }
 #endif
 
-#endif /* LUA_COMMON_H */
+#endif  // BRIDGE_SRC_LC_H_
