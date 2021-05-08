@@ -4,8 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef APP_INT_H
-#define APP_INT_H
+#ifndef BRIDGE_SRC_APPINT_H_
+#define BRIDGE_SRC_APPINT_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,4 +29,4 @@ typedef struct {
 }
 #endif
 
-#endif /* APP_INT_H */
+#endif  // BRIDGE_SRC_APPINT_H_

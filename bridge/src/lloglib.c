@@ -22,8 +22,7 @@ typedef struct __attribute__((__packed__)) {
     char category[1];
 } llog_logger;
 
-static int llog_get_logger(lua_State *L)
-{
+static int llog_get_logger(lua_State *L) {
     if (lua_isnone(L, 1)) {
         lua_pushlightuserdata(L, (void *)&llog_default_logger);
         luaL_setmetatable(L, LUA_LOGGER_NAME);
@@ -41,45 +40,37 @@ static int llog_get_logger(lua_State *L)
     return 1;
 }
 
-static int llog_log_with_type(lua_State *L, HAPLogType type)
-{
+static int llog_log_with_type(lua_State *L, HAPLogType type) {
     HAPLogObject *logger = luaL_checkudata(L, 1, LUA_LOGGER_NAME);
     HAPLogWithType(logger, type, "%s", luaL_checkstring(L, 2));
     return 0;
 }
 
-static int llog_logger_debug(lua_State *L)
-{
+static int llog_logger_debug(lua_State *L) {
     return llog_log_with_type(L, kHAPLogType_Debug);
 }
 
-static int llog_logger_info(lua_State *L)
-{
+static int llog_logger_info(lua_State *L) {
     return llog_log_with_type(L, kHAPLogType_Info);
 }
 
-static int llog_logger_default(lua_State *L)
-{
+static int llog_logger_default(lua_State *L) {
     return llog_log_with_type(L, kHAPLogType_Default);
 }
 
-static int llog_logger_error(lua_State *L)
-{
+static int llog_logger_error(lua_State *L) {
     return llog_log_with_type(L, kHAPLogType_Error);
 }
 
-static int llog_logger_fault(lua_State *L)
-{
+static int llog_logger_fault(lua_State *L) {
     return llog_log_with_type(L, kHAPLogType_Fault);
 }
 
-static int llog_logger_gc(lua_State *L)
-{
+static int llog_logger_gc(lua_State *L) {
     return 0;
 }
 
-static int llog_logger_tostring(lua_State *L)
-{
+static int llog_logger_tostring(lua_State *L) {
     HAPLogObject *logger = luaL_checkudata(L, 1, LUA_LOGGER_NAME);
     lua_pushfstring(L, "logger (%p)", logger);
     return 1;
@@ -113,7 +104,7 @@ static const luaL_Reg metameth[] = {
     {NULL, NULL}
 };
 
-static void createmeta (lua_State *L) {
+static void createmeta(lua_State *L) {
     luaL_newmetatable(L, LUA_LOGGER_NAME);  /* metatable for logger */
     luaL_setfuncs(L, metameth, 0);  /* add metamethods to new metatable */
     luaL_newlibtable(L, meth);  /* create method table */
@@ -122,8 +113,7 @@ static void createmeta (lua_State *L) {
     lua_pop(L, 1);  /* pop metatable */
 }
 
-LUAMOD_API int luaopen_log(lua_State *L)
-{
+LUAMOD_API int luaopen_log(lua_State *L) {
     luaL_newlib(L, loglib); /* new module */
     createmeta(L);
     return 1;

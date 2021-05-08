@@ -6,15 +6,13 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <platform/memory.h>
+#include <pal/memory.h>
 
-void *pal_mem_alloc(size_t size)
-{
+void *pal_mem_alloc(size_t size) {
     return malloc(size);
 }
 
-void *pal_mem_calloc(size_t size)
-{
+void *pal_mem_calloc(size_t size) {
     void *ptr = malloc(size);
     if (ptr) {
         memset(ptr, 0, size);
@@ -22,12 +20,10 @@ void *pal_mem_calloc(size_t size)
     return ptr;
 }
 
-void *pal_mem_realloc(void *ptr, size_t size)
-{
+void *pal_mem_realloc(void *ptr, size_t size) {
     return realloc(ptr, size);
 }
 
-void pal_mem_free(void *p)
-{
+void pal_mem_free(void *p) {
     return free(p);
 }

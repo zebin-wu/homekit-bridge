@@ -6,7 +6,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <platform/memory.h>
+#include <pal/memory.h>
 
 void *pal_mem_alloc(size_t size)
 {

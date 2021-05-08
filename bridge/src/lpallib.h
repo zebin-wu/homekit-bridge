@@ -4,8 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef LPALLIB_H
-#define LPALLIB_H
+#ifndef BRIDGE_SRC_LPALLIB_H_
+#define BRIDGE_SRC_LPALLIB_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,4 +20,4 @@ LUAMOD_API int luaopen_pal(lua_State *L);
 }
 #endif
 
-#endif /* LPALLIB_H */
+#endif  // BRIDGE_SRC_LPALLIB_H_

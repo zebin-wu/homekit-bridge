@@ -4,8 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef LHAPLIB_H
-#define LHAPLIB_H
+#ifndef BRIDGE_SRC_LHAPLIB_H_
+#define BRIDGE_SRC_LHAPLIB_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,4 +57,4 @@ void lhap_server_handle_session_invalidate(lua_State *L);
 }
 #endif
 
-#endif /* LHAPLIB_H */
+#endif  // BRIDGE_SRC_LHAPLIB_H_

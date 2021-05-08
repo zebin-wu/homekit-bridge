@@ -18,7 +18,7 @@ TODO
 
 ## Code style
 
-TODO
+The library supports code style checking, the checker is [cpplint](https://github.com/google/styleguide), a command line tool that checks for style issues in C/C++ files according to the [Google C++ Style Guide](http://google.github.io/styleguide/cppguide.html).
 
 ## Build
 
@@ -31,7 +31,8 @@ TODO
 ### Platform Linux (Ubuntu)
 1. Install dependencies
     ```text
-    $ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev
+    $ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev pip3
+    $ pip3 install cpplint
     ```
 
 2. Compile

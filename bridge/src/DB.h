@@ -4,8 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef DB_H
-#define DB_H
+#ifndef BRIDGE_SRC_DB_H_
+#define BRIDGE_SRC_DB_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,4 +57,4 @@ extern const HAPService pairingService;
 }
 #endif
 
-#endif
+#endif  // BRIDGE_SRC_DB_H_

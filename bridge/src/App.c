@@ -28,20 +28,6 @@
 #define LUA_BINARY_PATH_FMT LUA_PATH_FMT(LUA_BINARY_SUFFIX)
 
 /**
- * Domain used in the key value store for application data.
- *
- * Purged: On factory reset.
- */
-#define kAppKeyValueStoreDomain_Configuration ((HAPPlatformKeyValueStoreDomain) 0x00)
-
-/**
- * Key used in the key value store to store the configuration state.
- *
- * Purged: On factory reset.
- */
-#define kAppKeyValueStoreKey_Configuration_State ((HAPPlatformKeyValueStoreDomain) 0x00)
-
-/**
  * Global accessory configuration.
  */
 typedef struct {
@@ -77,7 +63,8 @@ size_t AppLuaEntry(const char *dir, const char *entry) {
     // set work dir to env LUA_PATH
     int len = snprintf(path, sizeof(path), LUA_SCRIPT_PATH_FMT, dir, "?");
     HAPAssert(len > 0);
-    len = snprintf(path + len, sizeof(path) - len, ";" LUA_BINARY_PATH_FMT, dir, "?");
+    len = snprintf(path + len, sizeof(path) - len,
+        ";" LUA_BINARY_PATH_FMT, dir, "?");
     HAPAssert(len > 0);
     if (setenv("LUA_PATH", path, 1)) {
         HAPLogError(&kHAPLog_Default, "Failed to set env LUA_PATH.");
@@ -107,7 +94,8 @@ size_t AppLuaEntry(const char *dir, const char *entry) {
     }
 
     if (!lua_isboolean(L, -1)) {
-        HAPLogError(&kHAPLog_Default, "%s.luac returned is not a boolean.", entry);
+        HAPLogError(&kHAPLog_Default,
+            "%s.luac returned is not a boolean.", entry);
         goto err1;
     }
 
@@ -136,7 +124,7 @@ void AppLuaClose(void) {
     }
 }
 
-void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyValueStore) {
+void AppCreate(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef keyValueStore) {
     HAPPrecondition(server);
     HAPPrecondition(keyValueStore);
 
@@ -161,7 +149,7 @@ void AppAccessoryServerStart(void) {
     }
 }
 
-void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef* server, void* _Nullable context) {
+void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef *server, void *_Nullable context) {
     HAPPrecondition(server);
     HAPPrecondition(appContext.L);
     lhap_server_handle_update_state(appContext.L, HAPAccessoryServerGetState(server));

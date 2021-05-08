@@ -4,8 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef APP_H
-#define APP_H
+#ifndef BRIDGE_INCLUDE_APP_H_
+#define BRIDGE_INCLUDE_APP_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,4 +94,4 @@ void AppDeinitialize();
 }
 #endif
 
-#endif
+#endif  // BRIDGE_INCLUDE_APP_H_
