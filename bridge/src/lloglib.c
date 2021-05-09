@@ -33,7 +33,7 @@ static int llog_get_logger(lua_State *L) {
     size_t len;
     const char *str = lua_tolstring(L, 1, &len);
     llog_logger *logger = lua_newuserdata(L, sizeof(llog_logger) + len);
-    HAPRawBufferCopyBytes(logger->category, str, len + sizeof('\0'));
+    HAPRawBufferCopyBytes(logger->category, str, len + 1);
     logger->obj.category = logger->category;
     logger->obj.subsystem = kHAPApplication_LogSubsystem;
     luaL_setmetatable(L, LUA_LOGGER_NAME);
