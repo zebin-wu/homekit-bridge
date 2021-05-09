@@ -14,10 +14,10 @@ char.LockTargetState = {
     Secured = 1
 }
 
-function char.newServiceSignatureCharacteristic()
+function char.newServiceSignatureCharacteristic(iid)
     return {
         format = "Data",
-        iid = hap.getNewInstanceID(),
+        iid = iid,
         type = "ServiceSignature",
         props = {
             readable = true,
@@ -43,10 +43,10 @@ function char.newServiceSignatureCharacteristic()
     }
 end
 
-function char.newNameCharacteristic()
+function char.newNameCharacteristic(iid)
     return {
         format = "String",
-        iid = hap.getNewInstanceID(),
+        iid = iid,
         type = "Name",
         props = {
             readable = true,

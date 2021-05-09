@@ -133,6 +133,7 @@ void AppCreate(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef keyVal
     HAPRawBufferZero(&accessoryConfiguration, sizeof accessoryConfiguration);
     accessoryConfiguration.server = server;
     accessoryConfiguration.keyValueStore = keyValueStore;
+    lhap_set_server(server);
 }
 
 void AppRelease(void) {

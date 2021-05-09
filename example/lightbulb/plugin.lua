@@ -24,10 +24,10 @@ local function checkAccessoryConf(conf)
     return true
 end
 
-local function lightBulbOnCharacteristic()
+local function lightBulbOnCharacteristic(iid)
     return {
         format = "Bool",
-        iid = hap.getNewInstanceID(),
+        iid = iid,
         type = "On",
         props = {
             readable = true,
@@ -94,9 +94,9 @@ function lightbulb.gen(conf)
                     }
                 },
                 chars = {
-                    char.newServiceSignatureCharacteristic(),
-                    char.newNameCharacteristic(),
-                    lightBulbOnCharacteristic()
+                    char.newServiceSignatureCharacteristic(hap.getNewInstanceID()),
+                    char.newNameCharacteristic(hap.getNewInstanceID()),
+                    lightBulbOnCharacteristic(hap.getNewInstanceID())
                 }
             }
         },

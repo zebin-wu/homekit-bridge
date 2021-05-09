@@ -24,6 +24,11 @@ typedef struct {
 } lhap_conf;
 
 /**
+ * Set HomeKit accessory server.
+ */
+void lhap_set_server(HAPAccessoryServerRef *server);
+
+/**
  * Reset lhap.
  */
 void lhap_reset(lua_State *L);
