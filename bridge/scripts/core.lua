@@ -56,6 +56,7 @@ function core.gen(confs)
         if plugin ~= nil then
             table.insert(accessories, plugin.gen(conf))
         end
+        collectgarbage()
     end
     return accessories
 end
