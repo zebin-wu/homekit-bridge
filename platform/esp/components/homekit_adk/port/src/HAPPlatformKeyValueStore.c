@@ -52,7 +52,7 @@ void HAPPlatformKeyValueStoreCreate(
     keyValueStore->namespace_prefix = strdup(options->namespace_prefix);
     keyValueStore->read_only = options->read_only;
 
-    HAPLog(&logObject, "keyValueStore %s Initialised", keyValueStore->part_name);
+    HAPLog(&logObject, "keyValueStore %s Initialized", keyValueStore->part_name);
 }
 
 /**
@@ -66,8 +66,7 @@ HAP_RESULT_USE_CHECK
 static esp_err_t HAPPlatformKeyValueStoreGetHandle(
     HAPPlatformKeyValueStoreRef keyValueStore,
     HAPPlatformKeyValueStoreDomain domain,
-    nvs_handle *store_handle)
-{
+    nvs_handle *store_handle) {
     HAPPrecondition(keyValueStore);
     HAPPrecondition(keyValueStore->namespace_prefix);
     char name_space[15];
