@@ -376,6 +376,7 @@ static struct lhap_desc {
     int server_cb_ref_ids[LHAP_SERVER_CB_MAX];
     HAPAccessory *accessory;
     HAPAccessory **bridgedAccessories;
+    HAPAccessoryServerRef *server;
 } gv_lhap_desc = {
     .attributeCount = kAttributeCount,
     .bridgedAid = LHAP_BRIDGED_ACCESSORY_IID_DFT,
@@ -1678,16 +1679,15 @@ static void lhap_reset_characteristic(lua_State *L, HAPCharacteristic *character
             *prange; prange++) {
             lc_free(*prange);
         }
-        lc_safe_free(p->constraints.validValuesRanges);
-        size_t size = lhap_characteristic_struct_size[format];
-        lhap_unref(L, LHAP_CHAR_REF(p, size)->handleRead);
-        lhap_unref(L, LHAP_CHAR_REF(p, size)->handleWrite);
-        lhap_unref(L, LHAP_CHAR_REF(p, size)->handleSubscribe);
-        lhap_unref(L, LHAP_CHAR_REF(p, size)->handleUnsubscribe);
     )
     default:
         break;
     }
+    size_t size = lhap_characteristic_struct_size[format];
+    lhap_unref(L, LHAP_CHAR_REF(characteristic, size)->handleRead);
+    lhap_unref(L, LHAP_CHAR_REF(characteristic, size)->handleWrite);
+    lhap_unref(L, LHAP_CHAR_REF(characteristic, size)->handleSubscribe);
+    lhap_unref(L, LHAP_CHAR_REF(characteristic, size)->handleUnsubscribe);
 }
 
 static bool
@@ -1975,7 +1975,7 @@ static void lhap_unref_server_cb(lua_State *L) {
  *
  * If the category of the accessory is bridge, the parameters
  * bridgedAccessories is valid.
-*/
+ */
 static int lhap_configure(lua_State *L) {
     lua_Unsigned len = 0;
     struct lhap_desc *desc = &gv_lhap_desc;
@@ -2067,6 +2067,86 @@ err:
     return 1;
 }
 
+/**
+ * raiseEvent(accessoryIID:integer, serviceIID:integer, characteristicIID:integer) -> boolean
+ */
+static int lhap_raise_event(lua_State *L) {
+    lua_Integer iid;
+    struct lhap_desc *desc = &gv_lhap_desc;
+
+    if (!desc->isConfigure) {
+        HAPLogError(&lhap_log,
+            "%s: Please configure first.", __func__);
+        goto err;
+    }
+    if (!desc->server) {
+        HAPLogError(&lhap_log,
+            "%s: Please set server first.", __func__);
+        goto err;
+    }
+
+    luaL_checktype(L, 1, LUA_TNUMBER);
+    luaL_checktype(L, 2, LUA_TNUMBER);
+    luaL_checktype(L, 3, LUA_TNUMBER);
+
+
+    HAPAccessory *a = NULL;
+    iid = lua_tointeger(L, 1);
+    if (desc->accessory->aid == iid) {
+        a = desc->accessory;
+        goto service;
+    }
+    if (!desc->bridgedAccessories) {
+        goto err;
+    }
+    for (HAPAccessory **pa = desc->bridgedAccessories; *pa != NULL; pa++) {
+        if ((*pa)->aid == iid) {
+            a = *pa;
+            goto service;
+        }
+    }
+    goto err;
+
+service:
+    if (!a->services) {
+        goto err;
+    }
+    HAPService *s = NULL;
+    iid = lua_tointeger(L, 2);
+    for (HAPService **ps = (HAPService **)a->services; *ps; ps++) {
+        if ((*ps)->iid == iid) {
+            s = *ps;
+            goto characteristic;
+        }
+    }
+    goto err;
+
+characteristic:
+    if (!s->characteristics) {
+        goto err;
+    }
+    HAPCharacteristic *c = NULL;
+    iid = lua_tointeger(L, 3);
+    for (HAPCharacteristic **pc = (HAPCharacteristic **)s->characteristics; *pc; pc++) {
+        if ((*(HAPBaseCharacteristic **)pc)->iid == iid) {
+            c = *pc;
+            break;
+        }
+    }
+    if (!c) {
+        goto err;
+    }
+
+    HAPAccessoryServerRaiseEvent(desc->server, c, s, a);
+
+    lua_pushboolean(L, true);
+    return 1;
+
+err:
+    lua_pushboolean(L, false);
+    return 1;
+}
+
 static int lhap_get_new_bridged_aid(lua_State *L) {
     lua_pushinteger(L, gv_lhap_desc.bridgedAid++);
     return 1;
@@ -2079,6 +2159,7 @@ static int lhap_get_new_iid(lua_State *L) {
 
 static const luaL_Reg haplib[] = {
     {"configure", lhap_configure},
+    {"raiseEvent", lhap_raise_event},
     {"getNewBridgedAccessoryID", lhap_get_new_bridged_aid},
     {"getNewInstanceID", lhap_get_new_iid},
     /* placeholders */
@@ -2125,6 +2206,11 @@ size_t lhap_get_attribute_count(void) {
         return gv_lhap_desc.attributeCount;
     }
     return 0;
+}
+
+void lhap_set_server(HAPAccessoryServerRef *server) {
+    HAPAssert(gv_lhap_desc.server == NULL);
+    gv_lhap_desc.server = server;
 }
 
 void lhap_reset(lua_State *L) {

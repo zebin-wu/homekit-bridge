@@ -25,10 +25,10 @@ local function checkAccessoryConf(conf)
     return true
 end
 
-local function lockMechanismLockCurrentStateCharacteristic()
+local function lockMechanismLockCurrentStateCharacteristic(iid)
     return {
         format = "UInt8",
-        iid = hap.getNewInstanceID(),
+        iid = iid,
         type = "LockCurrentState",
         props = {
             readable = true,
@@ -61,10 +61,10 @@ local function lockMechanismLockCurrentStateCharacteristic()
     }
 end
 
-local function lockMechanismLockTargetStateCharacteristic()
+local function lockMechanismLockTargetStateCharacteristic(iid)
     return {
         format = "UInt8",
-        iid = hap.getNewInstanceID(),
+        iid = iid,
         type = "LockTargetState",
         props = {
             readable = true,
@@ -99,6 +99,8 @@ local function lockMechanismLockTargetStateCharacteristic()
                     tab.findKey(char.LockTargetState, value)))
                 if value ~= context.tgtState then
                     context.tgtState = value
+                    context.curState = value
+                    hap.raiseEvent(context.aid, context.mechanismIID, context.curStateIID)
                     changed = true
                 end
                 return changed, hap.Error.None
@@ -168,12 +170,16 @@ function lock.gen(conf)
     if checkAccessoryConf(conf) == false then
         return nil
     end
-    local state = {
-        curState = char.LockCurrentState.Unsecured,
-        tgtState = char.LockTargetState.Unsecured
+    local context = {
+        aid = hap.getNewBridgedAccessoryID(),
+        mechanismIID = hap.getNewInstanceID(),
+        curStateIID = hap.getNewInstanceID(),
+        tgtStateIID = hap.getNewInstanceID(),
+        curState = char.LockCurrentState.Secured,
+        tgtState = char.LockTargetState.Secured
     }
     return {
-        aid = hap.getNewBridgedAccessoryID(),
+        aid = context.aid,
         category = "BridgedAccessory",
         name = conf.name,
         mfg = "Acme",
@@ -186,7 +192,7 @@ function lock.gen(conf)
             hap.HapProtocolInformationService,
             hap.PairingService,
             {
-                iid = hap.getNewInstanceID(),
+                iid = context.mechanismIID,
                 type = "LockMechanism",
                 name = "Lock",
                 props = {
@@ -197,10 +203,10 @@ function lock.gen(conf)
                     }
                 },
                 chars = {
-                    char.newServiceSignatureCharacteristic(),
-                    char.newNameCharacteristic(),
-                    lockMechanismLockCurrentStateCharacteristic(),
-                    lockMechanismLockTargetStateCharacteristic()
+                    char.newServiceSignatureCharacteristic(hap.getNewInstanceID()),
+                    char.newNameCharacteristic(hap.getNewInstanceID()),
+                    lockMechanismLockCurrentStateCharacteristic(context.curStateIID),
+                    lockMechanismLockTargetStateCharacteristic(context.tgtStateIID)
                 }
             },
             {
@@ -214,7 +220,7 @@ function lock.gen(conf)
                     }
                 },
                 chars = {
-                    char.newServiceSignatureCharacteristic(),
+                    char.newServiceSignatureCharacteristic(hap.getNewInstanceID()),
                     lockManagementLockControlPointCharacteristic(),
                     lockManagementVersionCharacteristic()
                 }
@@ -228,7 +234,7 @@ function lock.gen(conf)
                 return hap.Error.None
             end
         },
-        context = state,
+        context = context,
     }
 end
 

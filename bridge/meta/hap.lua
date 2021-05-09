@@ -405,6 +405,12 @@ hap.PairingService = {}
 ---@return boolean status true on success, false on failure.
 function hap.configure(primaryAccessory, bridgedAccessories, serverCallbacks, confChanged) end
 
+---Raises an event notification for a given characteristic in a given service provided by a given accessory.
+---@param accessoryIID integer Accessory instance ID.
+---@param serviceIID integer Service instance ID.
+---@param characteristicIID integer characteristic intstance ID.
+function hap.raiseEvent(accessoryIID, serviceIID, characteristicIID) end
+
 ---Get a new Instance ID for bridged accessory.
 ---@return integer iid Instance ID.
 function hap.getNewBridgedAccessoryID() end
