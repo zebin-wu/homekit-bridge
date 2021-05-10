@@ -2226,7 +2226,6 @@ size_t lhap_get_attribute_count(void) {
 }
 
 void lhap_set_server(HAPAccessoryServerRef *server) {
-    HAPAssert(gv_lhap_desc.server == NULL);
     gv_lhap_desc.server = server;
 }
 
@@ -2248,6 +2247,7 @@ void lhap_reset(lua_State *L) {
     desc->iid = kAttributeCount + 1;
     desc->confChanged = false;
     desc->isConfigure = false;
+    desc->server = NULL;
 }
 
 static bool lhap_push_server_cb(lua_State *L, enum lhap_server_cb_idx idx) {
