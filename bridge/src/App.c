@@ -137,6 +137,7 @@ void AppCreate(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef keyVal
 }
 
 void AppRelease(void) {
+    lhap_set_server(NULL);
 }
 
 void AppAccessoryServerStart(void) {
