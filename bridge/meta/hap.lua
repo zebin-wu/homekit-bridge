@@ -3,11 +3,13 @@
 ---@class haplib
 hap = {}
 
+---@class Session:lightuserdata HomeKit Session.
+
 ---@class ServerCallbacks:table Accessory server callbacks.
 ---
 ---@field updatedState fun(state: ServerState) Invoked when the accessory server state changes.
----@field sessionAccept fun() The callback used when a HomeKit Session is accepted.
----@field sessionInvalidate fun() The callback used when a HomeKit Session is invalidated.
+---@field sessionAccept fun(session: Session) The callback used when a HomeKit Session is accepted.
+---@field sessionInvalidate fun(session: Session) The callback used when a HomeKit Session is invalidated.
 
 ---@class Accessory:table HomeKit accessory.
 ---
@@ -37,6 +39,7 @@ hap = {}
 ---
 ---@field transportType TransportType Transport type over which the request has been received.
 ---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
+---@field session Session The session over which the request has been received.
 ---@field accessory AccessoryInformation
 
 ---@class Service:table HomeKit service.
@@ -107,6 +110,7 @@ hap = {}
 ---@class CharacteristicReadRequest:table Characteristic read request.
 ---
 ---@field transportType TransportType Transport type over which the request has been received.
+---@field session Session The session over which the request has been received.
 ---@field accessory AccessoryInformation
 ---@field service ServiceInformation
 ---@field characteristic CharacteristicInformation
@@ -114,6 +118,7 @@ hap = {}
 ---@class CharacteristicWriteRequest:table Characteristic write request.
 ---
 ---@field transportType TransportType Transport type over which the request has been received.
+---@field session Session The session over which the request has been received.
 ---@field accessory AccessoryInformation
 ---@field service ServiceInformation
 ---@field characteristic CharacteristicInformation
@@ -122,6 +127,7 @@ hap = {}
 ---@class CharacteristicSubscriptionRequest:table Characteristic subscription request.
 ---
 ---@field transportType TransportType Transport type over which the request has been received.
+---@field session Session The session over which the request has been received.
 ---@field accessory AccessoryInformation
 ---@field service ServiceInformation
 ---@field characteristic CharacteristicInformation
@@ -406,10 +412,12 @@ hap.PairingService = {}
 function hap.configure(primaryAccessory, bridgedAccessories, serverCallbacks, confChanged) end
 
 ---Raises an event notification for a given characteristic in a given service provided by a given accessory.
+---If has session, it raises event on a given session.
 ---@param accessoryIID integer Accessory instance ID.
 ---@param serviceIID integer Service instance ID.
 ---@param characteristicIID integer characteristic intstance ID.
-function hap.raiseEvent(accessoryIID, serviceIID, characteristicIID) end
+---@param session? Session The session on which to raise the event.
+function hap.raiseEvent(accessoryIID, serviceIID, characteristicIID, session) end
 
 ---Get a new Instance ID for bridged accessory.
 ---@return integer iid Instance ID.
