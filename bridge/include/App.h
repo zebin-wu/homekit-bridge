@@ -68,11 +68,6 @@ void AccessoryServerHandleSessionInvalidate(
         void* _Nullable context);
 
 /**
- * Restore platform specific factory settings.
- */
-void RestorePlatformFactorySettings(void);
-
-/**
  * Initialize App.
  */
 void AppInitialize(
