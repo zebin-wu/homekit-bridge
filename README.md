@@ -1,24 +1,17 @@
 # homekit-bridge
 
 ![](https://img.shields.io/badge/language-c|lua-orange.svg)
-![](https://img.shields.io/badge/platform-linux|esp-lightgrey.svg)
+![](https://img.shields.io/badge/platform-linux-lightgrey.svg)
+![](https://img.shields.io/badge/platform-esp-lightgrey.svg)
 [![license](https://img.shields.io/github/license/KNpTrue/lua-homekit-bridge)](LICENSE)
-
-## Contents
-
-- [Introduction](#introduction)
-- [Code style](#Code-style)
-- [Build](#Build)
-- [Usage](#usage)
-- [License](#license)
 
 ## Introduction
 
-TODO
+A HomeKit gateway specially designed for embedded devices, it allows you to connect non-HomeKit devices to HomeKit through simple configuration. 
 
 ## Code style
 
-The library supports code style checking, the checker is [cpplint](https://github.com/google/styleguide), a command line tool that checks for style issues in C/C++ files according to the [Google C++ Style Guide](http://google.github.io/styleguide/cppguide.html).
+HomeKit bridge supports code style checking, the checker is [cpplint](https://github.com/google/styleguide), a command line tool that checks for style issues in C/C++ files according to the [Google C++ Style Guide](http://google.github.io/styleguide/cppguide.html).
 
 ## Build
 
