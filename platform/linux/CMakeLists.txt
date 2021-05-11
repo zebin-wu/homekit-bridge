@@ -18,6 +18,7 @@ project(${PROJECT}-${PLATFORM})
 # set the work directory
 set(BRIDGE_WORK_DIR ${CMAKE_BINARY_DIR}/bridge_scripts)
 set(EXAMPLE_WORK_DIR ${CMAKE_BINARY_DIR}/example_scripts)
+set(TESTS_WORK_DIR ${CMAKE_BINARY_DIR}/tests_scripts)
 
 # compile luac
 set(LUAC_BUILD_DIR ${CMAKE_BINARY_DIR}/luac)
@@ -37,6 +38,13 @@ gen_lua_binary_from_dir(example_scripts
     ${LUAC_BINARY}
     DEBUG
     SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/example
+)
+
+gen_lua_binary_from_dir(tests_scripts
+    ${TESTS_WORK_DIR}
+    ${LUAC_BINARY}
+    DEBUG
+    SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/tests/bridge
 )
 
 # generate default config.lua
