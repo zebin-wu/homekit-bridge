@@ -29,9 +29,9 @@ typedef struct {
 void lhap_set_server(HAPAccessoryServerRef *server);
 
 /**
- * Reset lhap.
+ * Unconfigure all accessires.
  */
-void lhap_reset(lua_State *L);
+int lhap_unconfigure(lua_State *L);
 
 /**
  * Get configuration.

@@ -388,7 +388,7 @@ static inline int lhap_ref(lua_State *L, int idx) {
     return luaL_ref(L, LUA_REGISTRYINDEX);
 }
 
-static void lhap_unref(lua_State *L, int ref_id) {
+static inline void lhap_unref(lua_State *L, int ref_id) {
     if (ref_id != LUA_REFNIL) {
         luaL_unref(L, LUA_REGISTRYINDEX, ref_id);
     }
@@ -416,7 +416,7 @@ static bool lhap_push_var(lua_State *L, int ref_id) {
 // Find the string and return the string index.
 static int lhap_lookup_by_name(const char *name, const char *strs[], int len) {
     for (int i = 0; i < len; i++) {
-        if (HAPStringAreEqual(name, strs[i])) {
+        if (strs[i] && HAPStringAreEqual(name, strs[i])) {
             return i;
         }
     }
@@ -436,7 +436,11 @@ static bool lhap_service_is_light_userdata(HAPService *service) {
 
 static bool
 lhap_accessory_aid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    ((HAPAccessory *)arg)->aid = lua_tonumber(L, -1);
+    lua_Integer aid = lua_tointeger(L, -1);
+    if (aid <= 0) {
+        return false;
+    }
+    ((HAPAccessory *)arg)->aid = lua_tointeger(L, -1);
     return true;
 }
 
@@ -1971,10 +1975,8 @@ static const lc_table_kv lhap_server_callbacks_kvs[] = {
 
 static void lhap_unref_server_cb(lua_State *L) {
     for (int i = 0; i < HAPArrayCount(gv_lhap_desc.server_cb_ref_ids); i++) {
-        if (gv_lhap_desc.server_cb_ref_ids[i] != LUA_REFNIL) {
-            luaL_unref(L, LUA_REGISTRYINDEX, gv_lhap_desc.server_cb_ref_ids[i]);
-            gv_lhap_desc.server_cb_ref_ids[i] = LUA_REFNIL;
-        }
+        lhap_unref(L, gv_lhap_desc.server_cb_ref_ids[i]);
+        gv_lhap_desc.server_cb_ref_ids[i] = LUA_REFNIL;
     }
 }
 
@@ -2014,6 +2016,11 @@ static int lhap_configure(lua_State *L) {
         goto err1;
     }
 
+    if (accessory->aid != 1) {
+        HAPLogError(&lhap_log, "Primary accessory must have aid 1.");
+        goto err1;
+    }
+
     if (accessory->category != kHAPAccessoryCategory_Bridges) {
         goto parse_cbs;
     }
@@ -2036,6 +2043,11 @@ static int lhap_configure(lua_State *L) {
             "%s: Failed to generate bridged accessories structureies"
             " from table bridgedAccessories.", __func__);
         goto err2;
+    }
+    for (HAPAccessory **pa = desc->bridgedAccessories; *pa != NULL; pa++) {
+        if (!HAPBridgedAccessoryIsValid(*pa)) {
+            goto err2;
+        }
     }
     desc->confChanged = lua_toboolean(L, 4);
 
@@ -2074,6 +2086,30 @@ err1:
 err:
     lua_pushboolean(L, false);
     return 1;
+}
+
+int lhap_unconfigure(lua_State *L) {
+    struct lhap_desc *desc = &gv_lhap_desc;
+
+    if (desc->bridgedAccessories) {
+        for (HAPAccessory **pa = desc->bridgedAccessories; *pa != NULL; pa++) {
+            lhap_reset_accessory(L, *pa);
+            lc_free(*pa);
+        }
+        lc_safe_free(desc->bridgedAccessories);
+    }
+    if (desc->accessory) {
+        lhap_reset_accessory(L, desc->accessory);
+        lc_safe_free(desc->accessory);
+    }
+    lhap_unref_server_cb(L);
+    desc->attributeCount = kAttributeCount;
+    desc->bridgedAid = 1;
+    desc->iid = kAttributeCount + 1;
+    desc->confChanged = false;
+    desc->isConfigure = false;
+    desc->server = NULL;
+    return 0;
 }
 
 /**
@@ -2176,6 +2212,7 @@ static int lhap_get_new_iid(lua_State *L) {
 
 static const luaL_Reg haplib[] = {
     {"configure", lhap_configure},
+    {"unconfigure", lhap_unconfigure},
     {"raiseEvent", lhap_raise_event},
     {"getNewBridgedAccessoryID", lhap_get_new_bridged_aid},
     {"getNewInstanceID", lhap_get_new_iid},
@@ -2229,28 +2266,7 @@ void lhap_set_server(HAPAccessoryServerRef *server) {
     gv_lhap_desc.server = server;
 }
 
-void lhap_reset(lua_State *L) {
-    struct lhap_desc *desc = &gv_lhap_desc;
-
-    if (desc->bridgedAccessories) {
-        for (HAPAccessory **pa = desc->bridgedAccessories; *pa != NULL; pa++) {
-            lhap_reset_accessory(L, *pa);
-            lc_free(*pa);
-        }
-        lc_safe_free(desc->bridgedAccessories);
-    }
-    lhap_reset_accessory(L, desc->accessory);
-    lc_safe_free(desc->accessory);
-    lhap_unref_server_cb(L);
-    desc->attributeCount = kAttributeCount;
-    desc->bridgedAid = 1;
-    desc->iid = kAttributeCount + 1;
-    desc->confChanged = false;
-    desc->isConfigure = false;
-    desc->server = NULL;
-}
-
-static bool lhap_push_server_cb(lua_State *L, enum lhap_server_cb_idx idx) {
+static inline bool lhap_push_server_cb(lua_State *L, enum lhap_server_cb_idx idx) {
     return lhap_push_var(L, gv_lhap_desc.server_cb_ref_ids[idx]);
 }
 

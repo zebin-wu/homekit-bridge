@@ -193,7 +193,7 @@ hap = {}
 ---| '"RangeExtenders"'
 ---| '"IPCameras"'
 ---| '"AirPurifiers"'
----| '"Heaters = 20"'
+---| '"Heaters"'
 ---| '"AirConditioners"'
 ---| '"Humidifiers"'
 ---| '"Dehumidifiers"'
@@ -413,11 +413,15 @@ function hap.configure(primaryAccessory, bridgedAccessories, serverCallbacks, co
 
 ---Raises an event notification for a given characteristic in a given service provided by a given accessory.
 ---If has session, it raises event on a given session.
+---@overload fun(accessoryIID: integer, serviceIID: integer, characteristicIID: integer)
 ---@param accessoryIID integer Accessory instance ID.
 ---@param serviceIID integer Service instance ID.
 ---@param characteristicIID integer characteristic intstance ID.
 ---@param session? Session The session on which to raise the event.
 function hap.raiseEvent(accessoryIID, serviceIID, characteristicIID, session) end
+
+---Unconfigure all accessires then you can configure() again.
+function hap.unconfigure() end
 
 ---Get a new Instance ID for bridged accessory.
 ---@return integer iid Instance ID.

@@ -118,7 +118,7 @@ err:
 void AppLuaClose(void) {
     lua_State *L = appContext.L;
     if (L) {
-        lhap_reset(L);
+        lhap_unconfigure(L);
         lua_close(L);
         appContext.L = NULL;
     }
