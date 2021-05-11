@@ -1,7 +1,5 @@
 local logger = log.getLogger("testhap")
 
-logger:info("Testing ...")
-
 local defPrimaryAcc = {
     aid = 1, -- Primary accessory must have aid 1.
     category = "Bridges",
@@ -33,20 +31,20 @@ local defBridgedAcc = {
 }
 
 local function deepCopy(object)
-    local lookup_table = {}
-    local function _copy(object)
-        if type(object) ~= "table" then
-            return object
-        elseif lookup_table[object] then
-            return lookup_table[object]
+    local lookup = {}
+    local function _copy(o)
+        if type(o) ~= "table" then
+            return o
+        elseif lookup[o] then
+            return lookup[o]
         end
 
-        local new_table = {}
-        lookup_table[object] = new_table
-        for key, value in pairs(object) do
-            new_table[_copy(key)] = _copy(value)
+        local new = {}
+        lookup[o] = new
+        for k, v in pairs(o) do
+            new[_copy(k)] = _copy(v)
         end
-        return setmetatable(new_table, getmetatable(object))
+        return setmetatable(new, getmetatable(o))
     end
 
     return _copy(object)
