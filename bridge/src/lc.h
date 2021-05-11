@@ -20,15 +20,15 @@ extern "C" {
 #define lc_safe_free(p)     do { if (p) { lc_free((void *)p); (p) = NULL; } } while (0)
 
 #define LC_TNONE            0                           // none
-#define LC_TNIL             (1 >> LUA_TNIL)             // nil
-#define LC_TBOOLEAN         (1 >> LUA_TBOOLEAN)         // boolean
-#define LC_TLIGHTUSERDATA   (1 >> LUA_TLIGHTUSERDATA)   // light userdata
-#define LC_TNUMBER          (1 >> LUA_TNUMBER)          // number
-#define LC_TSTRING          (1 >> LUA_TSTRING)          // string
-#define LC_TTABLE           (1 >> LUA_TTABLE)           // table
-#define LC_TFUNCTION        (1 >> LUA_TFUNCTION)        // function
-#define LC_TUSERDATA        (1 >> LUA_TUSERDATA)        // userdata
-#define LC_TTHREAD          (1 >> LUA_TTHREAD)          // thread
+#define LC_TNIL             (1 << LUA_TNIL)             // nil
+#define LC_TBOOLEAN         (1 << LUA_TBOOLEAN)         // boolean
+#define LC_TLIGHTUSERDATA   (1 << LUA_TLIGHTUSERDATA)   // light userdata
+#define LC_TNUMBER          (1 << LUA_TNUMBER)          // number
+#define LC_TSTRING          (1 << LUA_TSTRING)          // string
+#define LC_TTABLE           (1 << LUA_TTABLE)           // table
+#define LC_TFUNCTION        (1 << LUA_TFUNCTION)        // function
+#define LC_TUSERDATA        (1 << LUA_TUSERDATA)        // userdata
+#define LC_TTHREAD          (1 << LUA_TTHREAD)          // thread
 
 // any
 #define LC_TANY             (LC_TNIL | LC_TBOOLEAN | LC_TLIGHTUSERDATA | LC_TNUMBER | \
