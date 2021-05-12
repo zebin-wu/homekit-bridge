@@ -1,34 +1,6 @@
+local char = require "hap.char"
+
 local logger = log.getLogger("testhap")
-
-local defPrimaryAcc = {
-    aid = 1, -- Primary accessory must have aid 1.
-    category = "Bridges",
-    name = "test",
-    mfg = "mfg1",
-    model = "model1",
-    sn = "1234567890",
-    fwVer = "1",
-    services = {
-        hap.AccessoryInformationService,
-        hap.HapProtocolInformationService,
-        hap.PairingService,
-    }
-}
-
-local defBridgedAcc = {
-    aid = 2,
-    category = "BridgedAccessory",
-    name = "test",
-    mfg = "mfg1",
-    model = "model1",
-    sn = "1234567890",
-    fwVer = "1",
-    services = {
-        hap.AccessoryInformationService,
-        hap.HapProtocolInformationService,
-        hap.PairingService,
-    }
-}
 
 local function deepCopy(object)
     local lookup = {}
@@ -59,47 +31,126 @@ local function fillStr(n, fill)
     return s .. string.sub(fill, 0, n - #s)
 end
 
+---Test function ``f`` with each argument in ``args``.
+---@param f function The function to test.
+---@param args any[] Array of arguments.
+local function testFn(f, args)
+    for i, arg in ipairs(args) do
+        f(arg)
+        collectgarbage()
+    end
+end
+
 ---Test configure() with a accessory.
 ---@param expect boolean The expected value returned by configure().
 ---@param primary boolean Primary or bridged accessory.
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
-local function testAccessory(expect, primary, k, vals)
+---@param log? boolean
+local function testAccessory(expect, primary, k, vals, log)
     assert(type(expect) == "boolean")
     assert(type(primary) == "boolean")
     assert(type(k) == "string")
     assert(type(vals) == "table")
 
+    if type(log) ~= "boolean" then
+        log = true
+    end
+
+    local t
+    if primary then
+        t = "primary"
+    else
+        t = "bridged"
+    end
+
     local function _test(v)
-        local primaryAcc = defPrimaryAcc
-        local bridgedAcc = defBridgedAcc
-        local accType
-        if primary then
-            primaryAcc = deepCopy(defPrimaryAcc)
-            primaryAcc[k] = v
-            accType = "primary"
+        local accs = {
+            primary = {
+                aid = 1, -- Primary accessory must have aid 1.
+                category = "Bridges",
+                name = "test",
+                mfg = "mfg1",
+                model = "model1",
+                sn = "1234567890",
+                fwVer = "1",
+                services = {
+                    hap.AccessoryInformationService,
+                    hap.HapProtocolInformationService,
+                    hap.PairingService,
+                }
+            },
+            bridged = {
+                aid = 2,
+                category = "BridgedAccessory",
+                name = "test",
+                mfg = "mfg1",
+                model = "model1",
+                sn = "1234567890",
+                fwVer = "1",
+                services = {
+                    hap.AccessoryInformationService,
+                    hap.HapProtocolInformationService,
+                    hap.PairingService,
+                }
+            }
+        }
+        if k == "service" then
+            table.insert(accs[t].services, v)
         else
-            bridgedAcc = deepCopy(defBridgedAcc)
-            bridgedAcc[k] = v
-            accType = "bridged"
+            accs[t][k] = v
         end
-        logger:info(string.format("Testing configure() with %s accessory %s: %s = %s", accType, k, type(v), v))
-        assert(hap.configure(primaryAcc, { bridgedAcc }, {}, false) == expect)
+        if log then
+            logger:info(
+                string.format("Testing configure() with %s accessory %s: %s = %s",
+                    t, k, type(v), v)
+            )
+        end
+        assert(hap.configure(accs.primary, { accs.bridged }, {}, false) == expect)
         hap.unconfigure()
     end
-    for i, v in ipairs(vals) do
-        _test(v)
-        collectgarbage()
-    end
+    testFn(_test, vals)
 end
 
----Configure with default accessory.
-assert(hap.configure(defPrimaryAcc, { defBridgedAcc }, {}, false) == true)
-hap.unconfigure()
+local function testService(expect, k, vals, log)
+    if type(log) ~= "boolean" then
+        log = true
+    end
+    local function _test(v)
+        local service = {
+            iid = hap.getNewInstanceID(),
+            type = "LightBulb",
+            props = {
+                primaryService = true,
+                hidden = false,
+                ble = {
+                    supportsConfiguration = false,
+                }
+            },
+            chars = {
+                char.newServiceSignatureCharacteristic(hap.getNewInstanceID()),
+                char.newServiceSignatureCharacteristic(hap.getNewInstanceID())
+            }
+        }
+        service[k] = v
+        if log then
+            logger:info(
+                string.format("Testing configure() with service %s: %s = %s",
+                    k, type(v), v)
+            )
+        end
+        testAccessory(expect, false, "service", { service }, false)
+    end
+    testFn(_test, vals)
+end
 
----Configure with invalid accessory IID.
+---Configure with valid accessory IID.
 ---Primary accessory must have aid 1.
 ---Bridged accessory must have aid other than 1.
+testAccessory(true, true, "aid", { 1 })
+testAccessory(true, false, "aid", { 2 })
+
+---Configure with invalid accessory IID.
 testAccessory(false, true, "aid", { -1, 0, 2, "1", {} })
 testAccessory(false, false, "aid", { 1 })
 
@@ -192,3 +243,12 @@ testAccessory(false, true, "fwVer", { nil, {}, true, 1 })
 
 ---Configure with invalid accessory hardware version.
 testAccessory(false, true, "hwVer", { nil, {}, true, 1 })
+
+---Configure with valid accessory cbs.
+testAccessory(true, true, "cbs", { {}, { identify = function () end}})
+
+---Configure with invalid accessory cbs.
+testAccessory(false, true, "cbs", { nil })
+
+---Configure with invalid service IID.
+testService(false, "iid", { -1 })
