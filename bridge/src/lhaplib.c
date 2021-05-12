@@ -494,7 +494,11 @@ lhap_accessory_hw_ver_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
 
 static bool
 lhap_service_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    ((HAPService *)arg)->iid = lua_tonumber(L, -1);
+    lua_Integer iid = lua_tointeger(L, -1);
+    if (iid <= (lua_Integer)gv_lhap_desc.attributeCount) {
+        return false;
+    }
+    ((HAPService *)arg)->iid = iid;
     gv_lhap_desc.attributeCount++;
     return true;
 }
@@ -539,7 +543,7 @@ lhap_service_props_supports_conf_cb(lua_State *L, const lc_table_kv *kv, void *a
 }
 
 static const lc_table_kv lhap_service_props_ble_kvs[] = {
-    {"supportsConfiguration", LUA_TBOOLEAN, lhap_service_props_supports_conf_cb},
+    {"supportsConfiguration", LC_TBOOLEAN, lhap_service_props_supports_conf_cb},
     {NULL, LUA_TNONE, NULL},
 };
 
@@ -563,7 +567,11 @@ lhap_service_props_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
 
 static bool
 lhap_characteristic_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    ((HAPBaseCharacteristic *)arg)->iid = lua_tointeger(L, -1);
+    lua_Integer iid = lua_tointeger(L, -1);
+    if (iid <= (lua_Integer)gv_lhap_desc.attributeCount) {
+        return false;
+    }
+    ((HAPBaseCharacteristic *)arg)->iid = iid;
     return true;
 }
 
@@ -1628,7 +1636,7 @@ lhap_characteristic_cbs_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
 }
 
 static const lc_table_kv lhap_characteristic_kvs[] = {
-    {"format", LC_TNUMBER, NULL},
+    {"format", LC_TSTRING, NULL},
     {"iid", LC_TNUMBER, lhap_characteristic_iid_cb},
     {"type", LC_TSTRING, lhap_characteristic_type_cb},
     {"mfgDesc", LC_TSTRING, lhap_characteristic_mfg_desc_cb},
@@ -1694,11 +1702,10 @@ static void lhap_reset_characteristic(lua_State *L, HAPCharacteristic *character
     default:
         break;
     }
-    size_t size = lhap_characteristic_struct_size[format];
-    lhap_unref(L, LHAP_CHAR_REF(characteristic, size)->handleRead);
-    lhap_unref(L, LHAP_CHAR_REF(characteristic, size)->handleWrite);
-    lhap_unref(L, LHAP_CHAR_REF(characteristic, size)->handleSubscribe);
-    lhap_unref(L, LHAP_CHAR_REF(characteristic, size)->handleUnsubscribe);
+    lhap_unref(L, LHAP_CHAR_REF(characteristic, format)->handleRead);
+    lhap_unref(L, LHAP_CHAR_REF(characteristic, format)->handleWrite);
+    lhap_unref(L, LHAP_CHAR_REF(characteristic, format)->handleSubscribe);
+    lhap_unref(L, LHAP_CHAR_REF(characteristic, format)->handleUnsubscribe);
 }
 
 static bool
