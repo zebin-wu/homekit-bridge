@@ -81,6 +81,12 @@ void lc_collectgarbage(lua_State *L);
  */
 char *lc_new_str(lua_State *L, int idx);
 
+/**
+ * Add searcher to package.searchers.
+ * table.insert(package.searchers, searcher)
+ */
+void lc_add_searcher(lua_State *L, lua_CFunction searcher);
+
 #ifdef __cplusplus
 }
 #endif

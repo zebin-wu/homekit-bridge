@@ -38,7 +38,7 @@ typedef struct {
 static ApplicationContext appContext;
 static AccessoryConfiguration accessoryConfiguration;
 
-static const luaL_Reg loadedlibs[] = {
+static const luaL_Reg globallibs[] = {
     {LUA_GNAME, luaopen_base},
     {LUA_LOADLIBNAME, luaopen_package},
     {LUA_COLIBNAME, luaopen_coroutine},
@@ -49,11 +49,36 @@ static const luaL_Reg loadedlibs[] = {
     {LUA_MATHLIBNAME, luaopen_math},
     {LUA_UTF8LIBNAME, luaopen_utf8},
     {LUA_DBLIBNAME, luaopen_debug},
-    {LUA_HAPNAME, luaopen_hap},
-    {LUA_PALNAME, luaopen_pal},
     {LUA_LOGNAME, luaopen_log},
     {NULL, NULL}
 };
+
+static const luaL_Reg dynamiclibs[] = {
+    {LUA_HAPNAME, luaopen_hap},
+    {LUA_PAL_BOARDNAME, luaopen_pal_board},
+    {NULL, NULL}
+};
+
+static inline const luaL_Reg *find_dl(const char *name) {
+    for (const luaL_Reg *lib = dynamiclibs; lib->func; lib++) {
+        if (HAPStringAreEqual(lib->name, name)) {
+            return lib;
+        }
+    }
+    return NULL;
+}
+
+static int searcher_dl(lua_State *L) {
+    const char *name = luaL_checkstring(L, 1);
+
+    const luaL_Reg *lib = find_dl(name);
+    if (lib) {
+        lua_pushcfunction(L, lib->func);
+    } else {
+        lua_pushfstring(L, "no module '%s' in dynamiclibs", name);
+    }
+    return 1;
+}
 
 size_t AppLuaEntry(const char *dir, const char *entry) {
     HAPPrecondition(dir);
@@ -76,11 +101,14 @@ size_t AppLuaEntry(const char *dir, const char *entry) {
         goto err;
     }
 
-    // load libraries
-    for (const luaL_Reg *lib = loadedlibs; lib->func; lib++) {
+    // load global libraries
+    for (const luaL_Reg *lib = globallibs; lib->func; lib++) {
         luaL_requiref(L, lib->name, lib->func, 1);
         lua_pop(L, 1);  /* remove lib */
     }
+
+    // add searcher_dl to package.searcher
+    lc_add_searcher(L, searcher_dl);
 
     // run main scripts
     len = snprintf(path, sizeof(path), LUA_BINARY_PATH_FMT, dir, entry);

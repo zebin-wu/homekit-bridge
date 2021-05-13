@@ -43,18 +43,8 @@ static const luaL_Reg board_funcs[] = {
     {NULL, NULL},
 };
 
-static const luaL_Reg pallib[] = {
-    {"board", NULL},
-    {NULL, NULL},
-};
-
-LUAMOD_API int luaopen_pal(lua_State *L) {
-    luaL_newlib(L, pallib);
-
-    /* set board */
-    lua_newtable(L);
-    luaL_setfuncs(L, board_funcs, 0);
-    lua_setfield(L, -2, "board");
+LUAMOD_API int luaopen_pal_board(lua_State *L) {
+    luaL_newlib(L, board_funcs);
 
     return 1;
 }

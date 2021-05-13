@@ -13,8 +13,8 @@ extern "C" {
 
 #include <lua.h>
 
-#define LUA_PALNAME "pal"
-LUAMOD_API int luaopen_pal(lua_State *L);
+#define LUA_PAL_BOARDNAME "pal.board"
+LUAMOD_API int luaopen_pal_board(lua_State *L);
 
 #ifdef __cplusplus
 }

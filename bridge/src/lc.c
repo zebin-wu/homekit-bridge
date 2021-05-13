@@ -116,3 +116,13 @@ char *lc_new_str(lua_State *L, int idx) {
     HAPRawBufferCopyBytes(copy, str, len + 1);
     return copy;
 }
+
+void lc_add_searcher(lua_State *L, lua_CFunction searcher) {
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "searchers");
+
+    int len = lua_rawlen(L, -1);
+    lua_pushcfunction(L, searcher);
+    lua_rawseti(L, -2, len);
+    lua_pop(L, 2);
+}

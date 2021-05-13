@@ -1,8 +1,9 @@
 local config = require "config"
 local core = require "core"
+local hap = require "hap"
+local board = require "pal.board"
 
 local logger = log.getLogger()
-local board = pal.board
 
 return hap.configure({
     aid = 1, -- Primary accessory must have aid 1.
