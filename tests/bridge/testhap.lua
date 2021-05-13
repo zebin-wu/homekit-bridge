@@ -1,25 +1,17 @@
+local hap = require "hap"
 local char = require "hap.char"
 
 local logger = log.getLogger("testhap")
 
-local function deepCopy(object)
-    local lookup = {}
-    local function _copy(o)
-        if type(o) ~= "table" then
-            return o
-        elseif lookup[o] then
-            return lookup[o]
-        end
-
-        local new = {}
-        lookup[o] = new
-        for k, v in pairs(o) do
-            new[_copy(k)] = _copy(v)
-        end
-        return setmetatable(new, getmetatable(o))
+local function fmtVal(v)
+    local t = type(v)
+    if t == "string" then
+        return "\"" .. v .. "\""
+    elseif t == "table" then
+        return v
+    else
+        return v
     end
-
-    return _copy(object)
 end
 
 local function fillStr(n, fill)
@@ -101,12 +93,9 @@ local function testAccessory(expect, primary, k, vals, log)
             accs[t][k] = v
         end
         if log then
-            logger:info(
-                string.format("Testing configure() with %s accessory %s: %s = %s",
-                    t, k, type(v), v)
-            )
+            logger:info(string.format("Testing configure() with %s accessory %s: %s = %s, expect: %s", t, k, type(v), fmtVal(v), expect))
         end
-        assert(hap.configure(accs.primary, { accs.bridged }, {}, false) == expect)
+        assert(hap.configure(accs.primary, { accs.bridged }, {}, false) == expect, string.format("configure() return %s", not expect))
         hap.unconfigure()
     end
     testFn(_test, vals)
@@ -134,9 +123,7 @@ local function testService(expect, k, vals, log)
         }
         service[k] = v
         if log then
-            logger:info(
-                string.format("Testing configure() with service %s: %s = %s",
-                    k, type(v), v)
+            logger:info(string.format("Testing configure() with service %s: %s = %s", k, type(v), fmtVal(v))
             )
         end
         testAccessory(expect, false, "service", { service }, false)
@@ -151,7 +138,7 @@ testAccessory(true, true, "aid", { 1 })
 testAccessory(true, false, "aid", { 2 })
 
 ---Configure with invalid accessory IID.
-testAccessory(false, true, "aid", { -1, 0, 2, "1", {} })
+testAccessory(false, true, "aid", { -1, 0, 1.1, 2, "1", {} })
 testAccessory(false, false, "aid", { 1 })
 
 ---Configure with valid accessory category.
@@ -185,7 +172,7 @@ testAccessory(true, true, "category", {
 })
 
 ---Configure with invalid accessory category.
-testAccessory(false, true, "category",  { nil, "", "category1", {}, true, 1 })
+testAccessory(false, true, "category",  { "", "category1", {}, true, 1 })
 testAccessory(false, false, "category", {
     "Other",
     "Bridges",
@@ -215,40 +202,84 @@ testAccessory(false, false, "category", {
 })
 
 ---Configure with valid accessory name
-testAccessory(true, true, "name", { "", fillStr(64) })
+testAccessory(true, false, "name", { "", fillStr(64) })
 
 ---Configure with invalid accessory name.
-testAccessory(false, true, "name", { nil, fillStr(64 + 1), {}, true, 1 })
+testAccessory(false, false, "name", { fillStr(64 + 1), {}, true, 1 })
 
 ---Configure with valid accessory manufacturer.
-testAccessory(true, true, "mfg", { "", fillStr(64) })
+testAccessory(true, false, "mfg", { "", fillStr(64) })
 
 ---Configure with invalid accessory manufacturer.
-testAccessory(false, true, "mfg", { nil, fillStr(64 + 1), {}, true, 1 })
+testAccessory(false, false, "mfg", { fillStr(64 + 1), {}, true, 1 })
 
 ---Configure with valid accessory model.
-testAccessory(true, true, "model", { fillStr(1), fillStr(64) })
+testAccessory(true, false, "model", { fillStr(1), fillStr(64) })
 
 ---Configure with invalid accessory model.
-testAccessory(false, true, "model", { nil, "", fillStr(64 + 1), {}, true, 1 })
+testAccessory(false, false, "model", { "", fillStr(64 + 1), {}, true, 1 })
 
 ---Configure with valid accessory serial number.
-testAccessory(true, true, "sn", { fillStr(2), fillStr(64) })
+testAccessory(true, false, "sn", { fillStr(2), fillStr(64) })
 
 ---Configure with invalid accessory serial number.
-testAccessory(false, true, "sn", { nil, "", fillStr(1), fillStr(64 + 1), {}, true, 1 })
+testAccessory(false, false, "sn", { "", fillStr(1), fillStr(64 + 1), {}, true, 1 })
 
 ---Configure with invalid accessory firmware version.
-testAccessory(false, true, "fwVer", { nil, {}, true, 1 })
+testAccessory(false, false, "fwVer", { {}, true, 1 })
 
 ---Configure with invalid accessory hardware version.
-testAccessory(false, true, "hwVer", { nil, {}, true, 1 })
+testAccessory(false, false, "hwVer", { {}, true, 1 })
 
 ---Configure with valid accessory cbs.
-testAccessory(true, true, "cbs", { {}, { identify = function () end}})
-
----Configure with invalid accessory cbs.
-testAccessory(false, true, "cbs", { nil })
+testAccessory(true, false, "cbs", { {}, { identify = function () end}})
 
 ---Configure with invalid service IID.
-testService(false, "iid", { -1 })
+testService(false, "iid", { -1, 1.1, {}, true })
+
+---Configure with valid service type.
+testService(true, "type", {
+    "AccessoryInformation",
+    "GarageDoorOpener",
+    "LightBulb",
+    "LockManagement",
+    "LockMechanism",
+    "Outlet",
+    "Switch",
+    "Thermostat",
+    "Pairing",
+    "SecuritySystem",
+    "CarbonMonoxideSensor",
+    "ContactSensor",
+    "Door",
+    "HumiditySensor",
+    "LeakSensor",
+    "LightSensor",
+    "MotionSensor",
+    "OccupancySensor",
+    "SmokeSensor",
+    "StatelessProgrammableSwitch",
+    "TemperatureSensor",
+    "Window",
+    "WindowCovering",
+    "AirQualitySensor",
+    "BatteryService",
+    "CarbonDioxideSensor",
+    "HAPProtocolInformation",
+    "Fan",
+    "Slat",
+    "FilterMaintenance",
+    "AirPurifier",
+    "HeaterCooler",
+    "HumidifierDehumidifier",
+    "ServiceLabel",
+    "IrrigationSystem",
+    "Valve",
+    "Faucet",
+    "CameraRTPStreamManagement",
+    "Microphone",
+    "Speaker",
+})
+
+---Configure with invalid service type.
+testService(false, "type", { "type1", "", {}, true, 1 })
