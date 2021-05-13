@@ -1,5 +1,5 @@
 ---@class haplib
-hap = {}
+local hap = {}
 
 ---@class Session:lightuserdata HomeKit Session.
 
