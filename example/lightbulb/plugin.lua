@@ -1,3 +1,4 @@
+local hap = require "hap"
 local char = require "hap.char"
 
 local lightbulb = {}
