@@ -18,9 +18,9 @@ extern "C" {
 LUAMOD_API int luaopen_hap(lua_State *L);
 
 typedef struct {
-    const HAPAccessory *primaryAccessory;
-    const HAPAccessory *const *bridgedAccessories;
-    bool confChanged;
+    const HAPAccessory *primary_acc;
+    const HAPAccessory *const *bridge_accs;
+    bool conf_changed;
 } lhap_conf;
 
 /**

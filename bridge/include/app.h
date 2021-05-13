@@ -24,37 +24,37 @@ extern "C" {
  * @param entry the name of the entry script.
  * @return attribute count.
  */
-size_t AppLuaEntry(const char *dir, const char *entry);
+size_t app_lua_entry(const char *dir, const char *entry);
 
 /**
  * Close the lua state.
  */
-void AppLuaClose(void);
+void app_lua_close(void);
 
 /**
  * Initialize the application.
  */
-void AppCreate(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef keyValueStore);
+void app_create(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef kv_store);
 
 /**
  * Deinitialize the application.
  */
-void AppRelease(void);
+void app_release(void);
 
 /**
  * Start the accessory server for the app.
  */
-void AppAccessoryServerStart(void);
+void app_accessory_server_start(void);
 
 /**
  * Handle the updated state of the Accessory Server.
  */
-void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef* server, void* _Nullable context);
+void app_accessory_server_handle_update_state(HAPAccessoryServerRef* server, void* _Nullable context);
 
 /**
  * Handle the session accept of the Accessory Server.
  */
-void AccessoryServerHandleSessionAccept(
+void app_accessory_server_handle_session_accept(
         HAPAccessoryServerRef* server,
         HAPSessionRef* session,
         void* _Nullable context);
@@ -62,7 +62,7 @@ void AccessoryServerHandleSessionAccept(
 /**
  * Handle the session invalidate of the Accessory Server.
  */
-void AccessoryServerHandleSessionInvalidate(
+void app_accessory_server_handle_session_invalidate(
         HAPAccessoryServerRef* server,
         HAPSessionRef* session,
         void* _Nullable context);
@@ -70,7 +70,7 @@ void AccessoryServerHandleSessionInvalidate(
 /**
  * Initialize App.
  */
-void AppInitialize(
+void app_init(
         HAPAccessoryServerOptions* hapAccessoryServerOptions,
         HAPPlatform* hapPlatform,
         HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks,
@@ -79,7 +79,7 @@ void AppInitialize(
 /**
  * De-initialize App.
  */
-void AppDeinitialize();
+void app_deinit();
 
 #if __has_feature(nullability)
 #pragma clang assume_nonnull end

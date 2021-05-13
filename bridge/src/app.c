@@ -11,9 +11,9 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
-#include <App.h>
+#include <app.h>
 
-#include "AppInt.h"
+#include "app_int.h"
 #include "lc.h"
 #include "lhaplib.h"
 #include "lpallib.h"
@@ -32,11 +32,11 @@
  */
 typedef struct {
     HAPAccessoryServerRef* server;
-    HAPPlatformKeyValueStoreRef keyValueStore;
-} AccessoryConfiguration;
+    HAPPlatformKeyValueStoreRef kv_store;
+} app_accessory_conf;
 
-static ApplicationContext appContext;
-static AccessoryConfiguration accessoryConfiguration;
+static app_context gv_app_context;
+static app_accessory_conf gv_acc_conf;
 
 static const luaL_Reg globallibs[] = {
     {LUA_GNAME, luaopen_base},
@@ -80,7 +80,7 @@ static int searcher_dl(lua_State *L) {
     return 1;
 }
 
-size_t AppLuaEntry(const char *dir, const char *entry) {
+size_t app_lua_entry(const char *dir, const char *entry) {
     HAPPrecondition(dir);
     HAPPrecondition(entry);
 
@@ -134,7 +134,7 @@ size_t AppLuaEntry(const char *dir, const char *entry) {
 
     lua_settop(L, 0);
     lc_collectgarbage(L);
-    appContext.L = L;
+    gv_app_context.L = L;
     return lhap_get_attribute_count();
 err1:
     lua_settop(L, 0);
@@ -143,73 +143,73 @@ err:
     HAPAssertionFailure();
 }
 
-void AppLuaClose(void) {
-    lua_State *L = appContext.L;
+void app_lua_close(void) {
+    lua_State *L = gv_app_context.L;
     if (L) {
         lhap_unconfigure(L);
         lua_close(L);
-        appContext.L = NULL;
+        gv_app_context.L = NULL;
     }
 }
 
-void AppCreate(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef keyValueStore) {
+void app_create(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef kv_store) {
     HAPPrecondition(server);
-    HAPPrecondition(keyValueStore);
+    HAPPrecondition(kv_store);
 
     HAPLogInfo(&kHAPLog_Default, "%s", __func__);
 
-    HAPRawBufferZero(&accessoryConfiguration, sizeof accessoryConfiguration);
-    accessoryConfiguration.server = server;
-    accessoryConfiguration.keyValueStore = keyValueStore;
+    HAPRawBufferZero(&gv_acc_conf, sizeof(gv_acc_conf));
+    gv_acc_conf.server = server;
+    gv_acc_conf.kv_store = kv_store;
     lhap_set_server(server);
 }
 
-void AppRelease(void) {
+void app_release(void) {
     lhap_set_server(NULL);
 }
 
-void AppAccessoryServerStart(void) {
+void app_accessory_server_start(void) {
     const lhap_conf conf = lhap_get_conf();
 
-    if (conf.bridgedAccessories) {
-        HAPAccessoryServerStartBridge(accessoryConfiguration.server, conf.primaryAccessory,
-            conf.bridgedAccessories, conf.confChanged);
+    if (conf.bridge_accs) {
+        HAPAccessoryServerStartBridge(gv_acc_conf.server, conf.primary_acc,
+            conf.bridge_accs, conf.conf_changed);
     } else {
-        HAPAccessoryServerStart(accessoryConfiguration.server, conf.primaryAccessory);
+        HAPAccessoryServerStart(gv_acc_conf.server, conf.primary_acc);
     }
 }
 
-void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef *server, void *_Nullable context) {
+void app_accessory_server_handle_update_state(HAPAccessoryServerRef *server, void *_Nullable context) {
     HAPPrecondition(server);
-    HAPPrecondition(appContext.L);
-    lhap_server_handle_update_state(appContext.L, HAPAccessoryServerGetState(server));
+    HAPPrecondition(gv_app_context.L);
+    lhap_server_handle_update_state(gv_app_context.L, HAPAccessoryServerGetState(server));
 }
 
-void AccessoryServerHandleSessionAccept(
+void app_accessory_server_handle_session_accept(
         HAPAccessoryServerRef* server,
         HAPSessionRef* session,
         void* _Nullable context) {
     HAPPrecondition(server);
-    HAPPrecondition(appContext.L);
-    lhap_server_handle_session_accept(appContext.L);
+    HAPPrecondition(gv_app_context.L);
+    lhap_server_handle_session_accept(gv_app_context.L);
 }
 
-void AccessoryServerHandleSessionInvalidate(
+void app_accessory_server_handle_session_invalidate(
         HAPAccessoryServerRef* server,
         HAPSessionRef* session,
         void* _Nullable context) {
     HAPPrecondition(server);
-    HAPPrecondition(appContext.L);
-    lhap_server_handle_session_invalidate(appContext.L);
+    HAPPrecondition(gv_app_context.L);
+    lhap_server_handle_session_invalidate(gv_app_context.L);
 }
 
-void AppInitialize(
+void app_init(
         HAPAccessoryServerOptions* hapAccessoryServerOptions,
         HAPPlatform* hapPlatform,
         HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks,
         void* _Nonnull * _Nonnull pcontext) {
     HAPPrecondition(pcontext);
-    *pcontext = &appContext;
+    *pcontext = &gv_app_context;
 
     // Display setup code.
     HAPSetupCode setupCode;
@@ -217,6 +217,6 @@ void AppInitialize(
     HAPLogInfo(&kHAPLog_Default, "Setup code: %s", setupCode.stringValue);
 }
 
-void AppDeinitialize() {
+void app_deinit() {
     /*no-op*/
 }
