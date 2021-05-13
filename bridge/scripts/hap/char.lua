@@ -1,3 +1,5 @@
+local hap = require "hap"
+
 local char = {}
 
 ---``ENUM`` Lock Current State.
