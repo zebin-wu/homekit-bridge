@@ -8,11 +8,11 @@
 #include <lauxlib.h>
 #include <lgc.h>
 
-#include "AppInt.h"
+#include "app_int.h"
 #include "lc.h"
 
 static const HAPLogObject lc_log = {
-    .subsystem = kHAPApplication_LogSubsystem,
+    .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
     .category = "lc",
 };
 

@@ -12,29 +12,29 @@
 
 #include <stdio.h>
 
-#include "App.h"
+#include <app.h>
 
-#include "HAP.h"
-#include "HAPAccessorySetup.h"
-#include "HAPPlatform+Init.h"
-#include "HAPPlatformAccessorySetup+Init.h"
-#include "HAPPlatformBLEPeripheralManager+Init.h"
-#include "HAPPlatformKeyValueStore+Init.h"
-#include "HAPPlatformKeyValueStore+SDKDomains.h"
-#include "HAPPlatformMFiTokenAuth+Init.h"
-#include "HAPPlatformRunLoop+Init.h"
+#include <HAP.h>
+#include <HAPAccessorySetup.h>
+#include <HAPPlatform+Init.h>
+#include <HAPPlatformAccessorySetup+Init.h>
+#include <HAPPlatformBLEPeripheralManager+Init.h>
+#include <HAPPlatformKeyValueStore+Init.h>
+#include <HAPPlatformKeyValueStore+SDKDomains.h>
+#include <HAPPlatformMFiTokenAuth+Init.h>
+#include <HAPPlatformRunLoop+Init.h>
 #if IP
-#include "HAPPlatformServiceDiscovery+Init.h"
-#include "HAPPlatformTCPStreamManager+Init.h"
+#include <HAPPlatformServiceDiscovery+Init.h>
+#include <HAPPlatformTCPStreamManager+Init.h>
 #endif
 
 #if HAVE_MFI_HW_AUTH
-#include "HAPPlatformMFiHWAuth+Init.h"
+#include <HAPPlatformMFiHWAuth+Init.h>
 #endif
 
 #include <signal.h>
-static bool requestedFactoryReset = false;
-static bool clearPairings = false;
+static bool requested_factory_reset = false;
+static bool clear_pairings = false;
 
 #define PREFERRED_ADVERTISING_INTERVAL (HAPBLEAdvertisingIntervalCreateFromMilliseconds(417.5f))
 
@@ -44,7 +44,7 @@ static bool clearPairings = false;
 
 /**
  * Global platform objects.
- * Only tracks objects that will be released in DeinitializePlatform.
+ * Only tracks objects that will be released in deinit_platform.
  */
 static struct {
     HAPPlatformKeyValueStore keyValueStore;
@@ -74,12 +74,12 @@ static struct {
  */
 static HAPAccessoryServerRef accessoryServer;
 
-void HandleUpdatedState(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context);
+static void handle_update_state(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context);
 
 /**
  * Generate setup code, setup info and setup ID, and put them in the key-value store.
  */
-static void AccessorySetupGenerate() {
+static void accessory_setup_gen() {
     bool found;
     size_t numBytes;
 
@@ -137,7 +137,7 @@ static void AccessorySetupGenerate() {
 /**
  * Initialize global platform objects.
  */
-static void InitializePlatform() {
+static void init_platform() {
     // Key-value store.
     HAPPlatformKeyValueStoreCreate(
             &platform.keyValueStore, &(const HAPPlatformKeyValueStoreOptions) { .rootDirectory = ".HomeKitStore" });
@@ -149,7 +149,7 @@ static void InitializePlatform() {
             &accessorySetup, &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = &platform.keyValueStore });
     platform.hapPlatform.accessorySetup = &accessorySetup;
 
-    AccessorySetupGenerate();
+    accessory_setup_gen();
 
 #if IP
     // TCP stream manager.
@@ -183,9 +183,6 @@ static void InitializePlatform() {
 #if HAVE_MFI_HW_AUTH
     // Apple Authentication Coprocessor provider.
     HAPPlatformMFiHWAuthCreate(&platform.mfiHWAuth);
-#endif
-
-#if HAVE_MFI_HW_AUTH
     platform.hapPlatform.authentication.mfiHWAuth = &platform.mfiHWAuth;
 #endif
 
@@ -202,15 +199,15 @@ static void InitializePlatform() {
     platform.hapPlatform.authentication.mfiTokenAuth =
             HAPPlatformMFiTokenAuthIsProvisioned(&platform.mfiTokenAuth) ? &platform.mfiTokenAuth : NULL;
 
-    platform.hapAccessoryServerCallbacks.handleUpdatedState = HandleUpdatedState;
-    platform.hapAccessoryServerCallbacks.handleSessionAccept = AccessoryServerHandleSessionAccept;
-    platform.hapAccessoryServerCallbacks.handleSessionInvalidate = AccessoryServerHandleSessionInvalidate;
+    platform.hapAccessoryServerCallbacks.handleUpdatedState = handle_update_state;
+    platform.hapAccessoryServerCallbacks.handleSessionAccept = app_accessory_server_handle_session_accept;
+    platform.hapAccessoryServerCallbacks.handleSessionInvalidate = app_accessory_server_handle_session_invalidate;
 }
 
 /**
  * Deinitialize global platform objects.
  */
-static void DeinitializePlatform() {
+static void deinit_platform() {
 #if HAVE_MFI_HW_AUTH
     // Apple Authentication Coprocessor provider.
     HAPPlatformMFiHWAuthRelease(&platform.mfiHWAuth);
@@ -228,14 +225,14 @@ static void DeinitializePlatform() {
 /**
  * Restore platform specific factory settings.
  */
-void RestorePlatformFactorySettings(void) {
+void restore_platform_factory_settings(void) {
 }
 
 /**
  * Either simply passes State handling to app, or processes Factory Reset
  */
-void HandleUpdatedState(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context) {
-    if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && requestedFactoryReset) {
+void handle_update_state(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context) {
+    if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && requested_factory_reset) {
         HAPPrecondition(server);
 
         HAPError err;
@@ -257,34 +254,34 @@ void HandleUpdatedState(HAPAccessoryServerRef* _Nonnull server, void* _Nullable 
         }
 
         // Restore platform specific factory settings.
-        RestorePlatformFactorySettings();
+        restore_platform_factory_settings();
 
         // De-initialize App.
-        AppRelease();
+        app_release();
 
-        requestedFactoryReset = false;
+        requested_factory_reset = false;
 
         // Re-initialize App.
-        AppCreate(server, &platform.keyValueStore);
+        app_create(server, &platform.keyValueStore);
 
         // Restart accessory server.
-        AppAccessoryServerStart();
+        app_accessory_server_start();
         return;
-    } else if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && clearPairings) {
+    } else if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && clear_pairings) {
         HAPError err;
         err = HAPRemoveAllPairings(&platform.keyValueStore);
         if (err) {
             HAPAssert(err == kHAPError_Unknown);
             HAPFatalError();
         }
-        AppAccessoryServerStart();
+        app_accessory_server_start();
     } else {
-        AccessoryServerHandleUpdatedState(server, context);
+        app_accessory_server_handle_update_state(server, context);
     }
 }
 
 #if IP
-static void InitializeIP(size_t attributeCount) {
+static void init_ip(size_t attribute_cnt) {
     // Prepare accessory server storage.
     static HAPIPSession ipSessions[kHAPIPSessionStorage_DefaultNumElements];
     static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][kHAPIPSession_DefaultInboundBufferSize];
@@ -294,13 +291,13 @@ static void InitializeIP(size_t attributeCount) {
         ipSessions[i].inboundBuffer.numBytes = sizeof ipInboundBuffers[i];
         ipSessions[i].outboundBuffer.bytes = ipOutboundBuffers[i];
         ipSessions[i].outboundBuffer.numBytes = sizeof ipOutboundBuffers[i];
-        ipSessions[i].eventNotifications = malloc(sizeof(HAPIPEventNotificationRef) * attributeCount);
+        ipSessions[i].eventNotifications = malloc(sizeof(HAPIPEventNotificationRef) * attribute_cnt);
         HAPAssert(ipSessions[i].eventNotifications);
-        ipSessions[i].numEventNotifications = attributeCount;
+        ipSessions[i].numEventNotifications = attribute_cnt;
     }
-    HAPIPReadContextRef *ipReadContexts = malloc(sizeof(HAPIPReadContextRef) * attributeCount);
+    HAPIPReadContextRef *ipReadContexts = malloc(sizeof(HAPIPReadContextRef) * attribute_cnt);
     HAPAssert(ipReadContexts);
-    HAPIPWriteContextRef *ipWriteContexts = malloc(sizeof(HAPIPWriteContextRef) * attributeCount);
+    HAPIPWriteContextRef *ipWriteContexts = malloc(sizeof(HAPIPWriteContextRef) * attribute_cnt);
     HAPAssert(ipWriteContexts);
     static uint8_t ipScratchBuffer[kHAPIPSession_DefaultScratchBufferSize];
     static HAPIPAccessoryServerStorage ipAccessoryServerStorage = {
@@ -309,9 +306,9 @@ static void InitializeIP(size_t attributeCount) {
         .scratchBuffer = { .bytes = ipScratchBuffer, .numBytes = sizeof ipScratchBuffer }
     };
     ipAccessoryServerStorage.readContexts = ipReadContexts;
-    ipAccessoryServerStorage.numReadContexts = attributeCount;
+    ipAccessoryServerStorage.numReadContexts = attribute_cnt;
     ipAccessoryServerStorage.writeContexts = ipWriteContexts;
-    ipAccessoryServerStorage.numWriteContexts = attributeCount;
+    ipAccessoryServerStorage.numWriteContexts = attribute_cnt;
 
     platform.hapAccessoryServerOptions.ip.transport = &kHAPAccessoryServerTransport_IP;
     platform.hapAccessoryServerOptions.ip.accessoryServerStorage = &ipAccessoryServerStorage;
@@ -319,7 +316,7 @@ static void InitializeIP(size_t attributeCount) {
     platform.hapPlatform.ip.tcpStreamManager = &platform.tcpStreamManager;
 }
 
-static void DeinitializeIP(void) {
+static void deinit_ip(void) {
     HAPIPAccessoryServerStorage *storage = platform.hapAccessoryServerOptions.ip.accessoryServerStorage;
     for (size_t i = 0; i < storage->numSessions; i++) {
         free(storage->sessions + i);
@@ -330,13 +327,13 @@ static void DeinitializeIP(void) {
 #endif
 
 #if BLE
-static void InitializeBLE(size_t attributeCount) {
+static void init_ble(size_t attribute_cnt) {
     static HAPBLESessionCacheElementRef sessionCacheElements[kHAPBLESessionCache_MinElements];
     static HAPSessionRef session;
     static uint8_t procedureBytes[2048];
     static HAPBLEProcedureRef procedures[1];
     static HAPBLEGATTTableElementRef *gattTableElements =
-        malloc(sizeof(HAPBLEGATTTableElementRef) * attributeCount);
+        malloc(sizeof(HAPBLEGATTTableElementRef) * attribute_cnt);
     HAPAssert(gattTableElements);
 
     static HAPBLEAccessoryServerStorage bleAccessoryServerStorage = {
@@ -348,7 +345,7 @@ static void InitializeBLE(size_t attributeCount) {
         .procedureBuffer = { .bytes = procedureBytes, .numBytes = sizeof procedureBytes }
     };
     bleAccessoryServerStorage.gattTableElements = gattTableElements;
-    bleAccessoryServerStorage.numGATTTableElements = attributeCount;
+    bleAccessoryServerStorage.numGATTTableElements = attribute_cnt;
 
     platform.hapAccessoryServerOptions.ble.transport = &kHAPAccessoryServerTransport_BLE;
     platform.hapAccessoryServerOptions.ble.accessoryServerStorage = &bleAccessoryServerStorage;
@@ -356,7 +353,7 @@ static void InitializeBLE(size_t attributeCount) {
     platform.hapAccessoryServerOptions.ble.preferredNotificationDuration = kHAPBLENotification_MinDuration;
 }
 
-static void DeinitializeBLE(void) {
+static void deinit_ble(void) {
     free(platform.hapAccessoryServerOptions.ble.accessoryServerStorage->gattTableElements);
 }
 #endif
@@ -417,23 +414,23 @@ int main(int argc, char *argv[]) {
     doargs(argc, argv);
 
     // Initialize global platform objects.
-    InitializePlatform();
+    init_platform();
 
     // Lua entry.
-    size_t attributeCount = AppLuaEntry(scripts_dir, entry);
-    HAPAssert(attributeCount);
+    size_t attribute_cnt = app_lua_entry(scripts_dir, entry);
+    HAPAssert(attribute_cnt);
 
 #if IP
-    InitializeIP(attributeCount);
+    init_ip(attribute_cnt);
 #endif
 
 #if BLE
-    InitializeBLE(attributeCount);
+    init_ble(attribute_cnt);
 #endif
 
     // Perform Application-specific initalizations such as setting up callbacks
     // and configure any additional unique platform dependencies
-    AppInitialize(&platform.hapAccessoryServerOptions, &platform.hapPlatform,
+    app_init(&platform.hapAccessoryServerOptions, &platform.hapPlatform,
         &platform.hapAccessoryServerCallbacks, &platform.context);
 
     // Initialize accessory server.
@@ -445,34 +442,34 @@ int main(int argc, char *argv[]) {
             platform.context);
 
     // Create app object.
-    AppCreate(&accessoryServer, &platform.keyValueStore);
+    app_create(&accessoryServer, &platform.keyValueStore);
 
     // Start accessory server for App.
-    AppAccessoryServerStart();
+    app_accessory_server_start();
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
     // Run loop stopped explicitly by calling function HAPPlatformRunLoopStop.
 
     // Cleanup.
-    AppRelease();
+    app_release();
 
     HAPAccessoryServerRelease(&accessoryServer);
 
-    AppDeinitialize();
+    app_deinit();
 
 #if IP
-    DeinitializeIP();
+    deinit_ip();
 #endif
 
 #if BLE
-    DeinitializeBLE();
+    deinit_ble();
 #endif
 
     // Close lua state.
-    AppLuaClose();
+    app_lua_close();
 
-    DeinitializePlatform();
+    deinit_platform();
 
     return 0;
 }

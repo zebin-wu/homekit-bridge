@@ -7,13 +7,13 @@
 #include <HAPLog.h>
 #include <lauxlib.h>
 
-#include "AppInt.h"
+#include "app_int.h"
 #include "lloglib.h"
 
 #define LUA_LOGGER_NAME "logger"
 
 static const HAPLogObject llog_default_logger = {
-    .subsystem = kHAPApplication_LogSubsystem,
+    .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
     .category = NULL,
 };
 
@@ -35,7 +35,7 @@ static int llog_get_logger(lua_State *L) {
     llog_logger *logger = lua_newuserdata(L, sizeof(llog_logger) + len);
     HAPRawBufferCopyBytes(logger->category, str, len + 1);
     logger->obj.category = logger->category;
-    logger->obj.subsystem = kHAPApplication_LogSubsystem;
+    logger->obj.subsystem = APP_BRIDGE_LOG_SUBSYSTEM;
     luaL_setmetatable(L, LUA_LOGGER_NAME);
     return 1;
 }
