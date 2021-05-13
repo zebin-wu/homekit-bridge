@@ -436,11 +436,12 @@ static bool lhap_service_is_light_userdata(HAPService *service) {
 
 static bool
 lhap_accessory_aid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    lua_Integer aid = lua_tointeger(L, -1);
-    if (aid <= 0) {
+    int isnum;
+    lua_Integer aid = lua_tointegerx(L, -1, &isnum);
+    if (!isnum || aid <= 0) {
         return false;
     }
-    ((HAPAccessory *)arg)->aid = lua_tointeger(L, -1);
+    ((HAPAccessory *)arg)->aid = aid;
     return true;
 }
 
@@ -494,8 +495,9 @@ lhap_accessory_hw_ver_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
 
 static bool
 lhap_service_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    lua_Integer iid = lua_tointeger(L, -1);
-    if (iid <= (lua_Integer)gv_lhap_desc.attributeCount) {
+    int isnum;
+    lua_Integer iid = lua_tointegerx(L, -1, &isnum);
+    if (!isnum || iid <= (lua_Integer)gv_lhap_desc.attributeCount) {
         return false;
     }
     ((HAPService *)arg)->iid = iid;
@@ -567,8 +569,9 @@ lhap_service_props_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
 
 static bool
 lhap_characteristic_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    lua_Integer iid = lua_tointeger(L, -1);
-    if (iid <= (lua_Integer)gv_lhap_desc.attributeCount) {
+    int isnum;
+    lua_Integer iid = lua_tointegerx(L, -1, &isnum);
+    if (!isnum || iid <= (lua_Integer)gv_lhap_desc.attributeCount) {
         return false;
     }
     ((HAPBaseCharacteristic *)arg)->iid = iid;
