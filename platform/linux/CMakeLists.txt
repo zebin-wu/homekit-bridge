@@ -23,7 +23,11 @@ set(TESTS_WORK_DIR ${CMAKE_BINARY_DIR}/tests_scripts)
 # compile luac
 set(LUAC_BUILD_DIR ${CMAKE_BINARY_DIR}/luac)
 set(LUAC_BINARY ${LUAC_BUILD_DIR}/luac)
-compile_luac(${LUAC_BINARY} ${CMAKE_CURRENT_SOURCE_DIR}/luac ${LUAC_BUILD_DIR})
+compile_luac(${LUAC_BINARY}
+    ${CMAKE_CURRENT_SOURCE_DIR}/luac
+    ${LUAC_BUILD_DIR}
+    DEPENDS ${LUA_SRCS} ${LUAC_SRCS} ${LUA_HEADERS}
+)
 
 # generate lua binaries to work directory
 gen_lua_binary_from_dir(bridge_scripts
