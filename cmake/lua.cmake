@@ -40,3 +40,34 @@ set(LUA_SRCS
 )
 
 set(LUAC_SRCS ${LUA_SRC_DIR}/luac.c)
+
+# collect lua headers
+set(LUA_HEADERS
+    ${LUA_SRC_DIR}/lapi.h
+    ${LUA_SRC_DIR}/lauxlib.h
+    ${LUA_SRC_DIR}/lcode.h
+    ${LUA_SRC_DIR}/lctype.h
+    ${LUA_SRC_DIR}/ldebug.h
+    ${LUA_SRC_DIR}/ldo.h
+    ${LUA_SRC_DIR}/lfunc.h
+    ${LUA_SRC_DIR}/lgc.h
+    ${LUA_SRC_DIR}/ljumptab.h
+    ${LUA_SRC_DIR}/llex.h
+    ${LUA_SRC_DIR}/llimits.h
+    ${LUA_SRC_DIR}/lmem.h
+    ${LUA_SRC_DIR}/lobject.h
+    ${LUA_SRC_DIR}/lopcodes.h
+    ${LUA_SRC_DIR}/lopnames.h
+    ${LUA_SRC_DIR}/lparser.h
+    ${LUA_SRC_DIR}/lprefix.h
+    ${LUA_SRC_DIR}/lstate.h
+    ${LUA_SRC_DIR}/lstring.h
+    ${LUA_SRC_DIR}/ltable.h
+    ${LUA_SRC_DIR}/ltm.h
+    ${LUA_SRC_DIR}/lua.h
+    ${LUA_SRC_DIR}/luaconf.h
+    ${LUA_SRC_DIR}/lualib.h
+    ${LUA_SRC_DIR}/lundump.h
+    ${LUA_SRC_DIR}/lvm.h
+    ${LUA_SRC_DIR}/lzio.h
+)

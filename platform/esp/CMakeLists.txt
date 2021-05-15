@@ -14,7 +14,11 @@ get_host_platform(HOST_PLATFORM)
 # compile luac
 set(LUAC_BUILD_DIR ${CMAKE_BINARY_DIR}/luac)
 set(LUAC_BINARY ${LUAC_BUILD_DIR}/luac)
-compile_luac(${LUAC_BINARY} ${TOP_DIR}/platform/${HOST_PLATFORM}/luac ${LUAC_BUILD_DIR})
+compile_luac(${LUAC_BINARY}
+    ${TOP_DIR}/platform/${HOST_PLATFORM}/luac
+    ${LUAC_BUILD_DIR}
+    DEPENDS ${LUA_SRCS} ${LUAC_SRCS} ${LUA_HEADERS}
+)
 
 # set extra component directroies
 set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/system/console/components)

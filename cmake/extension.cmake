@@ -49,12 +49,15 @@ endfunction(gen_lua_binary_from_dir)
 
 # Compile luac.
 #
-# compile_luac(BIN SRC_DIR BUILD_DIR)
-function(compile_luac bin src_dir build_dir)
+# compile_luac(BIN MAKE_DIR BUILD_DIR
+#              [DEPENDS depend depend depend ... ])
+function(compile_luac bin make_dir build_dir)
+    set(multi DEPENDS)
+    cmake_parse_arguments(arg "" "" "${multi}" "${ARGN}")
     add_custom_command(OUTPUT ${bin}
-        COMMAND cmake -H${src_dir} -B${build_dir} -G Ninja
+        COMMAND cmake -H${make_dir} -B${build_dir} -G Ninja
         COMMAND cmake --build ${build_dir} -j10
-        DEPENDS ${src_dir}/CMakeLists.txt
+        DEPENDS ${make_dir}/CMakeLists.txt ${arg_DEPENDS}
         COMMENT "Compiling luac"
     )
     add_custom_target(luac ALL DEPENDS ${bin})
