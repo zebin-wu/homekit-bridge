@@ -18,13 +18,13 @@ HomeKit bridge supports code style checking, the checker is [cpplint](https://gi
 ### Clone the repo
 > Add `--recursive` to initialize submodules in the clone.
 ```
-    git clone --recursive https://github.com/KNpTrue/lua-homekit-bridge.git
+    git clone --recursive https://github.com/KNpTrue/homekit-bridge.git
 ```
 
 ### Platform Linux (Ubuntu)
 1. Install dependencies:
     ```bash
-    $ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev pip3
+    $ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev python3-pip
     $ pip3 install cpplint
     ```
 
