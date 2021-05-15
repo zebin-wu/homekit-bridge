@@ -1,4 +1,4 @@
-local tab = require "tab"
+local util = require "util"
 
 local core = {}
 
@@ -15,28 +15,34 @@ local logger = log.getLogger("core")
 ---@field deinit fun() Deinitialize plugin.
 ---@field gen fun(conf:AccessoryConf):Accessory|nil Generate accessory via configuration.
 
----Check if the plugin is valid.
----@param plugin Plugin
----@return boolean
-local function pluginIsValid(plugin)
-    if tab.isEmpty(plugin) then
-        return false
-    end
-    return true
-end
-
 ---Load plugin.
 ---@param name string plugin name.
 ---@return Plugin|nil
 local function loadPlugin(name)
     local plugin = require(name .. ".plugin")
-    if pluginIsValid(plugin) == false then
-        logger:error(string.format("Plugin \"%s\" is invalid.", name))
+    if util.isEmptyTable(plugin) then
         return nil
+    end
+    local fields = {
+        isInited = "function",
+        init = "function",
+        deinit = "function",
+        gen = "function",
+    }
+    for k, t in pairs(fields) do
+        if not plugin[k] then
+            logger:error(string.format("No field '%s' in plugin '%s'", k, name))
+            return nil
+        end
+        local _t = type(plugin[k])
+        if _t ~= t then
+            logger:error(string.format("%s.%s: type error, expected %s, got %s", name, k, t, _t))
+            return nil
+        end
     end
     if plugin.isInited() == false then
         if plugin.init() == false then
-            logger:error(string.format("Failed to init plugin \"%s\"", name))
+            logger:error(string.format("Failed to init plugin '%s'", name))
             return nil
         end
     end
@@ -47,7 +53,7 @@ end
 ---@param confs AccessoryConf Accessory configuration.
 ---@return Accessory[]
 function core.gen(confs)
-    if tab.isEmpty(confs) then
+    if util.isEmptyTable(confs) then
         return {}
     end
     local accessories = {}
