@@ -34,7 +34,7 @@ void app_lua_close(void);
 /**
  * Initialize the application.
  */
-void app_create(HAPAccessoryServerRef* server, HAPPlatformKeyValueStoreRef kv_store);
+void app_create(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef kv_store);
 
 /**
  * Deinitialize the application.
@@ -49,32 +49,32 @@ void app_accessory_server_start(void);
 /**
  * Handle the updated state of the Accessory Server.
  */
-void app_accessory_server_handle_update_state(HAPAccessoryServerRef* server, void* _Nullable context);
+void app_accessory_server_handle_update_state(HAPAccessoryServerRef *server, void *_Nullable context);
 
 /**
  * Handle the session accept of the Accessory Server.
  */
 void app_accessory_server_handle_session_accept(
-        HAPAccessoryServerRef* server,
-        HAPSessionRef* session,
-        void* _Nullable context);
+        HAPAccessoryServerRef *server,
+        HAPSessionRef *session,
+        void *_Nullable context);
 
 /**
  * Handle the session invalidate of the Accessory Server.
  */
 void app_accessory_server_handle_session_invalidate(
-        HAPAccessoryServerRef* server,
-        HAPSessionRef* session,
-        void* _Nullable context);
+        HAPAccessoryServerRef *server,
+        HAPSessionRef *session,
+        void *_Nullable context);
 
 /**
  * Initialize App.
  */
 void app_init(
-        HAPAccessoryServerOptions* hapAccessoryServerOptions,
-        HAPPlatform* hapPlatform,
-        HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks,
-        void* _Nonnull * _Nonnull pcontext);
+        HAPAccessoryServerOptions *server_opts,
+        HAPPlatform *platform,
+        HAPAccessoryServerCallbacks *server_cbs,
+        void *_Nonnull *_Nonnull pcontext);
 
 /**
  * De-initialize App.

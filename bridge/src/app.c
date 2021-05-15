@@ -156,8 +156,6 @@ void app_create(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef kv_st
     HAPPrecondition(server);
     HAPPrecondition(kv_store);
 
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
-
     HAPRawBufferZero(&gv_acc_conf, sizeof(gv_acc_conf));
     gv_acc_conf.server = server;
     gv_acc_conf.kv_store = kv_store;
@@ -186,34 +184,34 @@ void app_accessory_server_handle_update_state(HAPAccessoryServerRef *server, voi
 }
 
 void app_accessory_server_handle_session_accept(
-        HAPAccessoryServerRef* server,
-        HAPSessionRef* session,
-        void* _Nullable context) {
+        HAPAccessoryServerRef *server,
+        HAPSessionRef *session,
+        void *_Nullable context) {
     HAPPrecondition(server);
     HAPPrecondition(gv_app_context.L);
     lhap_server_handle_session_accept(gv_app_context.L);
 }
 
 void app_accessory_server_handle_session_invalidate(
-        HAPAccessoryServerRef* server,
-        HAPSessionRef* session,
-        void* _Nullable context) {
+        HAPAccessoryServerRef *server,
+        HAPSessionRef *session,
+        void *_Nullable context) {
     HAPPrecondition(server);
     HAPPrecondition(gv_app_context.L);
     lhap_server_handle_session_invalidate(gv_app_context.L);
 }
 
 void app_init(
-        HAPAccessoryServerOptions* hapAccessoryServerOptions,
-        HAPPlatform* hapPlatform,
-        HAPAccessoryServerCallbacks* hapAccessoryServerCallbacks,
-        void* _Nonnull * _Nonnull pcontext) {
+        HAPAccessoryServerOptions *server_opts,
+        HAPPlatform *platform,
+        HAPAccessoryServerCallbacks *server_cbs,
+        void *_Nonnull *_Nonnull pcontext) {
     HAPPrecondition(pcontext);
     *pcontext = &gv_app_context;
 
     // Display setup code.
     HAPSetupCode setupCode;
-    HAPPlatformAccessorySetupLoadSetupCode(hapPlatform->accessorySetup, &setupCode);
+    HAPPlatformAccessorySetupLoadSetupCode(platform->accessorySetup, &setupCode);
     HAPLogInfo(&kHAPLog_Default, "Setup code: %s", setupCode.stringValue);
 }
 
