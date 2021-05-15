@@ -44,7 +44,7 @@ gen_lua_binary_from_dir(tests_scripts
     ${TESTS_WORK_DIR}
     ${LUAC_BINARY}
     DEBUG
-    SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/tests/bridge
+    SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/tests
 )
 
 # generate default config.lua
