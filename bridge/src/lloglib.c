@@ -40,7 +40,7 @@ static int llog_get_logger(lua_State *L) {
     return 1;
 }
 
-static int llog_log_with_type(lua_State *L, HAPLogType type) {
+static inline int llog_log_with_type(lua_State *L, HAPLogType type) {
     HAPLogObject *logger = luaL_checkudata(L, 1, LUA_LOGGER_NAME);
     HAPLogWithType(logger, type, "%s", luaL_checkstring(L, 2));
     return 0;
