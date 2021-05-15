@@ -232,7 +232,7 @@ testAccessory(false, false, "fwVer", { {}, true, 1 })
 testAccessory(false, false, "hwVer", { {}, true, 1 })
 
 ---Configure with valid accessory cbs.
-testAccessory(true, false, "cbs", { {}, { identify = function () end}})
+testAccessory(true, false, "cbs", { {}, { identify = function () end } })
 
 ---Configure with invalid service IID.
 testService(false, "iid", { -1, 1.1, {}, true })

@@ -21,5 +21,4 @@ function board.getFirmwareVersion() end
 ---@return string
 function board.getHardwareVersion() end
 
-
 return board
