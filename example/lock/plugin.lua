@@ -1,6 +1,6 @@
 local hap = require "hap"
 local char = require "hap.char"
-local tab = require "tab"
+local util = require "util"
 
 local lock = {}
 
@@ -55,7 +55,7 @@ local function lockMechanismLockCurrentStateCharacteristic(iid)
         cbs = {
             read = function (request, context)
                 logger:info(string.format("Read currentState: %s",
-                    tab.findKey(char.LockCurrentState, context.curState)))
+                    util.searchKey(char.LockCurrentState, context.curState)))
                 return context.curState, hap.Error.None
             end
         }
@@ -91,13 +91,13 @@ local function lockMechanismLockTargetStateCharacteristic(iid)
         cbs = {
             read = function (request, context)
                 logger:info(string.format("Read targetState: %s",
-                    tab.findKey(char.LockTargetState, context.tgtState)))
+                    util.searchKey(char.LockTargetState, context.tgtState)))
                 return context.tgtState, hap.Error.None
             end,
             write = function (request, value, context)
                 local changed = false
                 logger:info(string.format("Write targetState: %s",
-                    tab.findKey(char.LockTargetState, value)))
+                    util.searchKey(char.LockTargetState, value)))
                 if value ~= context.tgtState then
                     context.tgtState = value
                     context.curState = value
