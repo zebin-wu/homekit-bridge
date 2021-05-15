@@ -1910,7 +1910,7 @@ static const lc_table_kv lhap_accessory_kvs[] = {
     {"hwVer", LC_TSTRING, lhap_accessory_hw_ver_cb},
     {"services", LC_TTABLE, lhap_accessory_services_cb},
     {"cbs", LC_TTABLE, lhap_accessory_cbs_cb},
-    {"context", LC_TNONE, lhap_accesory_context_cb},
+    {"context", LC_TTABLE, lhap_accesory_context_cb},
     {NULL, LC_TNONE, NULL},
 };
 
