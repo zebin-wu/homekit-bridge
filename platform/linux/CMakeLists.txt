@@ -105,3 +105,10 @@ target_link_libraries(${PROJECT}
         dns_sd
         dl
 )
+
+# add compile options
+target_compile_options(${PROJECT}
+    PRIVATE
+        -Wall
+        -Werror
+)
