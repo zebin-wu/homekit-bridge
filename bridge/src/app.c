@@ -80,7 +80,7 @@ static int searcher_dl(lua_State *L) {
     return 1;
 }
 
-size_t app_lua_entry(const char *dir, const char *entry) {
+size_t app_lua_run(const char *dir, const char *entry) {
     HAPPrecondition(dir);
     HAPPrecondition(entry);
 
@@ -110,7 +110,7 @@ size_t app_lua_entry(const char *dir, const char *entry) {
     // add searcher_dl to package.searcher
     lc_add_searcher(L, searcher_dl);
 
-    // run main scripts
+    // run entry scripts
     len = snprintf(path, sizeof(path), LUA_BINARY_PATH_FMT, dir, entry);
     HAPAssert(len > 0);
     int status = luaL_dofile(L, path);

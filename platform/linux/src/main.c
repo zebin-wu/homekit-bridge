@@ -158,7 +158,7 @@ static void init_platform() {
             &(const HAPPlatformTCPStreamManagerOptions) {
                     .interfaceName = NULL,        // Listen on all available network interfaces.
                     .port = kHAPNetworkPort_Any,  // Listen on unused port number from the ephemeral port range.
-                    .maxConcurrentTCPStreams = kHAPIPSessionStorage_DefaultNumElements });
+                    .maxConcurrentTCPStreams = BRIDGE_IP_SESSION_STORAGE_NUM_ELEMENTS });
 
     // Service discovery.
     static HAPPlatformServiceDiscovery serviceDiscovery;
@@ -283,9 +283,9 @@ void handle_update_state(HAPAccessoryServerRef* _Nonnull server, void* _Nullable
 #if IP
 static void init_ip(size_t attribute_cnt) {
     // Prepare accessory server storage.
-    static HAPIPSession ipSessions[kHAPIPSessionStorage_DefaultNumElements];
-    static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][kHAPIPSession_DefaultInboundBufferSize];
-    static uint8_t ipOutboundBuffers[HAPArrayCount(ipSessions)][kHAPIPSession_DefaultOutboundBufferSize];
+    static HAPIPSession ipSessions[BRIDGE_IP_SESSION_STORAGE_NUM_ELEMENTS];
+    static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][BRIDGE_IP_SESSION_STORAGE_INBOUND_BUFSIZE];
+    static uint8_t ipOutboundBuffers[HAPArrayCount(ipSessions)][BRIDGE_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE];
     for (size_t i = 0; i < HAPArrayCount(ipSessions); i++) {
         ipSessions[i].inboundBuffer.bytes = ipInboundBuffers[i];
         ipSessions[i].inboundBuffer.numBytes = sizeof ipInboundBuffers[i];
@@ -299,7 +299,7 @@ static void init_ip(size_t attribute_cnt) {
     HAPAssert(ipReadContexts);
     HAPIPWriteContextRef *ipWriteContexts = malloc(sizeof(HAPIPWriteContextRef) * attribute_cnt);
     HAPAssert(ipWriteContexts);
-    static uint8_t ipScratchBuffer[kHAPIPSession_DefaultScratchBufferSize];
+    static uint8_t ipScratchBuffer[BRIDGE_IP_SESSION_STORAGE_SCRATCH_BUFSIZE];
     static HAPIPAccessoryServerStorage ipAccessoryServerStorage = {
         .sessions = ipSessions,
         .numSessions = HAPArrayCount(ipSessions),
@@ -367,7 +367,7 @@ static const char *help = \
 
 static const char *progname = "homekit-bridge";
 static const char *scripts_dir = BRIDGE_WORK_DIR;
-static const char *entry = "main";
+static const char *entry = BRIDGE_LUA_ENTRY_DEFAULT;
 
 static void usage(const char* message) {
     if (message) {
@@ -416,8 +416,8 @@ int main(int argc, char *argv[]) {
     // Initialize global platform objects.
     init_platform();
 
-    // Lua entry.
-    size_t attribute_cnt = app_lua_entry(scripts_dir, entry);
+    // Run lua entry.
+    size_t attribute_cnt = app_lua_run(scripts_dir, entry);
     HAPAssert(attribute_cnt);
 
 #if IP

@@ -48,11 +48,6 @@ extern "C" {
 
 #include "HAPPlatform.h"
 
-#define kHAPIPSessionStorage_MinimumNumElements 9
-#define kHAPIPSession_MinimumInboundBufferSize  1024
-#define kHAPIPSession_MinimumOutboundBufferSize 1536
-#define kHAPIPSession_MinimumScratchBufferSize  1536
-
 #if __has_feature(nullability)
 #pragma clang assume_nonnull begin
 #endif

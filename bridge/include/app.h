@@ -17,14 +17,29 @@ extern "C" {
 #pragma clang assume_nonnull begin
 #endif
 
+// Default lua entry script name.
+#define BRIDGE_LUA_ENTRY_DEFAULT "main"
+
+// Number of elements in a HAPIPSessionStorage.
+#define BRIDGE_IP_SESSION_STORAGE_NUM_ELEMENTS ((size_t) 9)
+
+// Size for the inbound buffer of an IP session.
+#define BRIDGE_IP_SESSION_STORAGE_INBOUND_BUFSIZE ((size_t) 1500)
+
+// Size for the outbound buffer of an IP session.
+#define BRIDGE_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE ((size_t) 1500)
+
+// Size for the scratch buffer of an IP session.
+#define BRIDGE_IP_SESSION_STORAGE_SCRATCH_BUFSIZE ((size_t) 1500)
+
 /**
- * Application lua Entry.
+ * Run the application lua entry.
  *
  * @param dir the path of the scripts directory.
  * @param entry the name of the entry script.
  * @return attribute count.
  */
-size_t app_lua_entry(const char *dir, const char *entry);
+size_t app_lua_run(const char *dir, const char *entry);
 
 /**
  * Close the lua state.
