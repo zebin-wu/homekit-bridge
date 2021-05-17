@@ -1,4 +1,5 @@
 local hap = require "hap"
+local util = require "util"
 local char = require "hap.char"
 
 local logger = log.getLogger("testhap")
@@ -20,7 +21,7 @@ local function fillStr(n, fill)
     while #s < n - #fill do
         s = s .. fill
     end
-    return s .. string.sub(fill, 0, n - #s)
+    return s .. fill:sub(0, n - #s)
 end
 
 ---Test function ``f`` with each argument in ``args``.
@@ -31,6 +32,24 @@ local function testFn(f, args)
         f(arg)
         collectgarbage()
     end
+end
+
+---Log test information.
+---@param fn string Function name.
+---@param t string The table to test.
+---@param k string Key.
+---@param v any Value.
+---@param e any The expected value returned by ``fn``.
+local function logTestInfo(fn, t, k, v, e)
+    logger:info(("Testing %s() with %s.%s: %s = %s, expected: %s"):format(fn, t, k, type(v), fmtVal(v), e))
+end
+
+---Format assert message.
+---@param fn string Function name.
+---@param e boolean The expected value returned by ``fn``.
+---@return string message
+local function fmtAssertMsg(fn, e)
+    return ("%s() return %s"):format(fn, not e)
 end
 
 ---Test configure() with a accessory.
@@ -93,9 +112,9 @@ local function testAccessory(expect, primary, k, vals, log)
             accs[t][k] = v
         end
         if log then
-            logger:info(string.format("Testing configure() with %s accessory %s: %s = %s, expect: %s", t, k, type(v), fmtVal(v), expect))
+            logTestInfo("configure", t .. "Accessory", k, v, expect)
         end
-        assert(hap.configure(accs.primary, { accs.bridged }, {}, false) == expect, string.format("configure() return %s", not expect))
+        assert(hap.configure(accs.primary, { accs.bridged }, {}, false) == expect, fmtAssertMsg("configure", expect))
         hap.unconfigure()
     end
     testFn(_test, vals)
@@ -123,10 +142,35 @@ local function testService(expect, k, vals, log)
         }
         service[k] = v
         if log then
-            logger:info(string.format("Testing configure() with service %s: %s = %s", k, type(v), fmtVal(v))
-            )
+            logTestInfo("configure", "service", k, v, expect)
         end
         testAccessory(expect, false, "service", { service }, false)
+    end
+    testFn(_test, vals)
+end
+
+local function testServiceProp(expect, k, vals, log)
+    if type(log) ~= "boolean" then
+        log = true
+    end
+    local function _test(v)
+        local props = {
+            primaryService = true,
+            hidden = false,
+            ble = {
+                supportsConfiguration = false,
+            }
+        }
+        local rl = util.split(k, ".")
+        if #rl == 2 and rl[1] ~= k then
+            props[rl[1]][rl[2]] = v
+        else
+            props[k] = v
+        end
+        if log then
+            logTestInfo("configure", "service.props", k, v, expect)
+        end
+        testService(expect, "props", { props }, false)
     end
     testFn(_test, vals)
 end
@@ -283,3 +327,34 @@ testService(true, "type", {
 
 ---Configure with invalid service type.
 testService(false, "type", { "type1", "", {}, true, 1 })
+
+---Configure with invalid service props.
+testService(true, "props", { {} })
+
+---Configure with invalid service props.
+testService(false, "props", { "test", true, 1 })
+
+---Configure with valid service property primaryService.
+testServiceProp(true, "primaryService", { true, false })
+
+---Configure with invalid service property primaryService.
+testServiceProp(false, "primaryService", { {}, 1, "test" })
+
+---Configure with valid service property hidden.
+testServiceProp(true, "hidden", { true, false })
+
+---Configure with invalid service property hidden.
+testServiceProp(false, "hidden", { {}, 1, "test" })
+
+---Configure with valid service proeprty ble.
+testServiceProp(true, "ble", { {} })
+
+---Configure with invalid service property ble.
+testServiceProp(false, "ble", { "test", true, 1 })
+
+---Configure with valid service property ble.supportsConfiguration.
+testServiceProp(true, "ble.supportsConfiguration", { false })
+
+---Configure with invalid service property ble.supportsConfiguration.
+---Only the HAP Protocol Information service may support configuration.
+testServiceProp(false, "ble.supportsConfiguration", { true, "test", {}, 1 })
