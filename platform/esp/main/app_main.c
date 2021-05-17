@@ -184,10 +184,11 @@ static void init_platform() {
 
 #if IP
     // TCP stream manager.
-    HAPPlatformTCPStreamManagerCreate(&platform.tcpStreamManager, &(const HAPPlatformTCPStreamManagerOptions) {
+    HAPPlatformTCPStreamManagerCreate(&platform.tcpStreamManager,
+        &(const HAPPlatformTCPStreamManagerOptions) {
         /* Listen on all available network interfaces. */
         .port = 0 /* Listen on unused port number from the ephemeral port range. */,
-        .maxConcurrentTCPStreams = 9
+        .maxConcurrentTCPStreams = BRIDGE_IP_SESSION_STORAGE_NUM_ELEMENTS
     });
 
     // Service discovery.
@@ -323,9 +324,9 @@ void handle_update_state(HAPAccessoryServerRef* _Nonnull server, void* _Nullable
 #if IP
 static void init_ip(size_t attribute_cnt) {
     // Prepare accessory server storage.
-    static HAPIPSession ipSessions[kHAPIPSessionStorage_MinimumNumElements];
-    static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][kHAPIPSession_MinimumInboundBufferSize];
-    static uint8_t ipOutboundBuffers[HAPArrayCount(ipSessions)][kHAPIPSession_MinimumOutboundBufferSize];
+    static HAPIPSession ipSessions[BRIDGE_IP_SESSION_STORAGE_NUM_ELEMENTS];
+    static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][BRIDGE_IP_SESSION_STORAGE_INBOUND_BUFSIZE];
+    static uint8_t ipOutboundBuffers[HAPArrayCount(ipSessions)][BRIDGE_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE];
     for (size_t i = 0; i < HAPArrayCount(ipSessions); i++) {
         ipSessions[i].inboundBuffer.bytes = ipInboundBuffers[i];
         ipSessions[i].inboundBuffer.numBytes = sizeof ipInboundBuffers[i];
@@ -339,7 +340,7 @@ static void init_ip(size_t attribute_cnt) {
     HAPAssert(ipReadContexts);
     HAPIPWriteContextRef *ipWriteContexts = malloc(sizeof(HAPIPWriteContextRef) * attribute_cnt);
     HAPAssert(ipWriteContexts);
-    static uint8_t ipScratchBuffer[kHAPIPSession_MinimumScratchBufferSize];
+    static uint8_t ipScratchBuffer[BRIDGE_IP_SESSION_STORAGE_SCRATCH_BUFSIZE];
     static HAPIPAccessoryServerStorage ipAccessoryServerStorage = {
         .sessions = ipSessions,
         .numSessions = HAPArrayCount(ipSessions),
@@ -404,8 +405,8 @@ void app_main_task(void *arg) {
     // Initialize global platform objects.
     init_platform();
 
-    // Lua entry.
-    size_t attribute_cnt = app_lua_entry(APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY);
+    // Run lua entry.
+    size_t attribute_cnt = app_lua_run(APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY);
     HAPAssert(attribute_cnt);
 
 #if IP
