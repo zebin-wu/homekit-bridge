@@ -54,7 +54,7 @@ local function lockMechanismLockCurrentStateCharacteristic(iid)
         },
         cbs = {
             read = function (request, context)
-                logger:info(string.format("Read currentState: %s",
+                logger:info(("Read currentState: %s"):format(
                     util.searchKey(char.LockCurrentState, context.curState)))
                 return context.curState, hap.Error.None
             end
@@ -90,13 +90,13 @@ local function lockMechanismLockTargetStateCharacteristic(iid)
         },
         cbs = {
             read = function (request, context)
-                logger:info(string.format("Read targetState: %s",
+                logger:info(("Read targetState: %s"):format(
                     util.searchKey(char.LockTargetState, context.tgtState)))
                 return context.tgtState, hap.Error.None
             end,
             write = function (request, value, context)
                 local changed = false
-                logger:info(string.format("Write targetState: %s",
+                logger:info(("Write targetState: %s"):format(
                     util.searchKey(char.LockTargetState, value)))
                 if value ~= context.tgtState then
                     context.tgtState = value
@@ -110,10 +110,10 @@ local function lockMechanismLockTargetStateCharacteristic(iid)
     }
 end
 
-local function lockManagementLockControlPointCharacteristic()
+local function lockManagementLockControlPointCharacteristic(iid)
     return {
         format = "TLV8",
-        iid = hap.getNewInstanceID(),
+        iid = iid,
         type = "LockControlPoint",
         props = {
             readable = false,
@@ -138,10 +138,10 @@ local function lockManagementLockControlPointCharacteristic()
     }
 end
 
-local function lockManagementVersionCharacteristic()
+local function lockManagementVersionCharacteristic(iid)
     return {
         format = "String",
-        iid = hap.getNewInstanceID(),
+        iid = iid,
         type = "Version",
         props = {
             readable = true,
@@ -222,16 +222,14 @@ function lock.gen(conf)
                 },
                 chars = {
                     char.newServiceSignatureCharacteristic(hap.getNewInstanceID()),
-                    lockManagementLockControlPointCharacteristic(),
-                    lockManagementVersionCharacteristic()
+                    lockManagementLockControlPointCharacteristic(hap.getNewInstanceID()),
+                    lockManagementVersionCharacteristic(hap.getNewInstanceID())
                 }
             }
         },
         cbs = {
             identify = function (request, context)
                 logger:info("Identify callback is called.")
-                logger:info(string.format("transportType: %s, remote: %s.",
-                    request.transportType, request.remote))
                 return hap.Error.None
             end
         },

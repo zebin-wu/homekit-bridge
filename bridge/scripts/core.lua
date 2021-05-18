@@ -31,18 +31,18 @@ local function loadPlugin(name)
     }
     for k, t in pairs(fields) do
         if not plugin[k] then
-            logger:error(string.format("No field '%s' in plugin '%s'", k, name))
+            logger:error(("No field '%s' in plugin '%s'"):format(k, name))
             return nil
         end
         local _t = type(plugin[k])
         if _t ~= t then
-            logger:error(string.format("%s.%s: type error, expected %s, got %s", name, k, t, _t))
+            logger:error(("%s.%s: type error, expected %s, got %s"):format(name, k, t, _t))
             return nil
         end
     end
     if plugin.isInited() == false then
         if plugin.init() == false then
-            logger:error(string.format("Failed to init plugin '%s'", name))
+            logger:error(("Failed to init plugin '%s'"):format(name))
             return nil
         end
     end
