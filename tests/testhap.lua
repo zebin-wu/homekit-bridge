@@ -52,6 +52,14 @@ local function fmtAssertMsg(fn, e)
     return ("%s() return %s"):format(fn, not e)
 end
 
+local function setField(t, k, v)
+    local rl = util.split(k, ".")
+    for i = 1, #rl - 1, 1 do
+        t = t[rl[i]]
+    end
+    t[rl[#rl]] = v
+end
+
 ---Test configure() with a accessory.
 ---@param expect boolean The expected value returned by configure().
 ---@param primary boolean Primary or bridged accessory.
@@ -89,7 +97,8 @@ local function testAccessory(expect, primary, k, vals, log)
                     hap.AccessoryInformationService,
                     hap.HapProtocolInformationService,
                     hap.PairingService,
-                }
+                },
+                cbs = {}
             },
             bridged = {
                 aid = 2,
@@ -103,16 +112,17 @@ local function testAccessory(expect, primary, k, vals, log)
                     hap.AccessoryInformationService,
                     hap.HapProtocolInformationService,
                     hap.PairingService,
-                }
+                },
+                cbs = {}
             }
         }
+        if log then
+            logTestInfo("configure", t .. "Accessory", k, v, expect)
+        end
         if k == "service" then
             table.insert(accs[t].services, v)
         else
-            accs[t][k] = v
-        end
-        if log then
-            logTestInfo("configure", t .. "Accessory", k, v, expect)
+            setField(accs[t], k, v)
         end
         assert(hap.configure(accs.primary, { accs.bridged }, {}, false) == expect, fmtAssertMsg("configure", expect))
         hap.unconfigure()
@@ -120,6 +130,11 @@ local function testAccessory(expect, primary, k, vals, log)
     testFn(_test, vals)
 end
 
+---Test configure() with a service.
+---@param expect boolean The expected value returned by configure().
+---@param k string The key want to test.
+---@param vals any[] Array of values.
+---@param log? boolean
 local function testService(expect, k, vals, log)
     if type(log) ~= "boolean" then
         log = true
@@ -140,37 +155,52 @@ local function testService(expect, k, vals, log)
                 char.newServiceSignatureCharacteristic(hap.getNewInstanceID())
             }
         }
-        service[k] = v
         if log then
             logTestInfo("configure", "service", k, v, expect)
+        end
+        if k == "char" then
+            table.insert(service.chars, v)
+        else
+            setField(service, k, v)
         end
         testAccessory(expect, false, "service", { service }, false)
     end
     testFn(_test, vals)
 end
 
-local function testServiceProp(expect, k, vals, log)
-    if type(log) ~= "boolean" then
-        log = true
-    end
+---Test configure() with a characteristic.
+---@param expect boolean The expected value returned by configure().
+---@param k string The key want to test.
+---@param vals any[] Array of values.
+local function testCharacteristic(expect, k, vals, type, format)
     local function _test(v)
-        local props = {
-            primaryService = true,
-            hidden = false,
-            ble = {
-                supportsConfiguration = false,
+        local c = {
+            format = format or "Bool",
+            iid = hap.getNewInstanceID(),
+            type = type or "On",
+            props = {
+                readable = true,
+                writable = true,
+                supportsEventNotification = true,
+                hidden = false,
+                requiresTimedWrite = false,
+                supportsAuthorizationData = false,
+                ip = { controlPoint = false, supportsWriteResponse = false },
+                ble = {
+                    supportsBroadcastNotification = true,
+                    supportsDisconnectedNotification = true,
+                    readableWithoutSecurity = false,
+                    writableWithoutSecurity = false
+                }
+            },
+            cbs = {
+                read = function (request, context) end,
+                write = function (request, value, context) end
             }
         }
-        local rl = util.split(k, ".")
-        if #rl == 2 and rl[1] ~= k then
-            props[rl[1]][rl[2]] = v
-        else
-            props[k] = v
-        end
-        if log then
-            logTestInfo("configure", "service.props", k, v, expect)
-        end
-        testService(expect, "props", { props }, false)
+        logTestInfo("configure", "char", k, v, expect)
+        setField(c, k, v)
+        testService(expect, false, "char", { c }, false)
     end
     testFn(_test, vals)
 end
@@ -276,7 +306,16 @@ testAccessory(false, false, "fwVer", { {}, true, 1 })
 testAccessory(false, false, "hwVer", { {}, true, 1 })
 
 ---Configure with valid accessory cbs.
-testAccessory(true, false, "cbs", { {}, { identify = function () end } })
+testAccessory(true, false, "cbs", { {} })
+
+---Configure with invalid accessory cbs.
+testAccessory(false, false, "cbs", { true, 1, "test" })
+
+---Configure with valid accessory identify callback.
+testAccessory(true, false, "cbs.identify", { function () end })
+
+---Configure with invalid accessory identify calback.
+testAccessory(false, false, "cbs.identify", { true, 1, "test", {} })
 
 ---Configure with invalid service IID.
 testService(false, "iid", { -1, 1.1, {}, true })
@@ -335,26 +374,29 @@ testService(true, "props", { {} })
 testService(false, "props", { "test", true, 1 })
 
 ---Configure with valid service property primaryService.
-testServiceProp(true, "primaryService", { true, false })
+testService(true, "props.primaryService", { true, false })
 
 ---Configure with invalid service property primaryService.
-testServiceProp(false, "primaryService", { {}, 1, "test" })
+testService(false, "props.primaryService", { {}, 1, "test" })
 
 ---Configure with valid service property hidden.
-testServiceProp(true, "hidden", { true, false })
+testService(true, "props.hidden", { true, false })
 
 ---Configure with invalid service property hidden.
-testServiceProp(false, "hidden", { {}, 1, "test" })
+testService(false, "props.hidden", { {}, 1, "test" })
 
 ---Configure with valid service proeprty ble.
-testServiceProp(true, "ble", { {} })
+testService(true, "props.ble", { {} })
 
 ---Configure with invalid service property ble.
-testServiceProp(false, "ble", { "test", true, 1 })
+testService(false, "props.ble", { "test", true, 1 })
 
 ---Configure with valid service property ble.supportsConfiguration.
-testServiceProp(true, "ble.supportsConfiguration", { false })
+testService(true, "props.ble.supportsConfiguration", { false })
 
 ---Configure with invalid service property ble.supportsConfiguration.
 ---Only the HAP Protocol Information service may support configuration.
-testServiceProp(false, "ble.supportsConfiguration", { true, "test", {}, 1 })
+testService(false, "props.ble.supportsConfiguration", { true, "test", {}, 1 })
+
+---Configure with invalid characteristic iid.
+testCharacteristic(false, "iid", { -1, 1.1, true, {} })
