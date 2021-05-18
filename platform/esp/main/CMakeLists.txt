@@ -17,3 +17,4 @@ idf_component_register(
 )
 
 add_definitions(-DHAP_LOG_LEVEL=${CONFIG_HAP_LOG_LEVEL})
+add_definitions(-DIP=1)

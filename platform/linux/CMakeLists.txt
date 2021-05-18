@@ -56,6 +56,7 @@ configure_file(${TOP_DIR}/config/config.lua.in ${BRIDGE_WORK_DIR}/config.lua)
 
 # collect sources
 set(SRCS
+    ${PLATFORM_COMMON_SRCS}
     ${PLATFORM_LINUX_SRCS}
     ${ADK_SRCS}
     ${ADK_PAL_LINUX}

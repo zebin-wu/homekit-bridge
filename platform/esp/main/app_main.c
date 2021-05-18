@@ -29,16 +29,13 @@
 #include <cmd_system.h>
 
 #include <app.h>
-
-#define IP 1
+#include <pal/hap.h>
 
 #include <HAP.h>
-#include <HAPAccessorySetup.h>
 #include <HAPPlatform+Init.h>
 #include <HAPPlatformAccessorySetup+Init.h>
 #include <HAPPlatformBLEPeripheralManager+Init.h>
 #include <HAPPlatformKeyValueStore+Init.h>
-#include <HAPPlatformKeyValueStore+SDKDomains.h>
 #include <HAPPlatformMFiTokenAuth+Init.h>
 #include <HAPPlatformRunLoop+Init.h>
 #if IP
@@ -58,8 +55,6 @@
 
 static bool requested_factory_reset = false;
 static bool clear_pairings = false;
-
-#define PREFERRED_ADVERTISING_INTERVAL (HAPBLEAdvertisingIntervalCreateFromMilliseconds(417.5f))
 
 /**
  * Global platform objects.
@@ -96,64 +91,6 @@ static HAPAccessoryServerRef accessoryServer;
 static void handle_update_state(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context);
 
 /**
- * Generate setup code, setup info and setup ID, and put them in the key-value store.
- */
-static void accessory_setup_gen() {
-    bool found;
-    size_t numBytes;
-
-    // Setup code.
-    HAPSetupCode setupCode;
-    HAPAssert(HAPPlatformKeyValueStoreGet(&platform.keyValueStore,
-            kSDKKeyValueStoreDomain_Provisioning,
-            kSDKKeyValueStoreKey_Provisioning_SetupCode,
-            &setupCode, sizeof(setupCode), &numBytes,
-            &found) == kHAPError_None);
-    if (!found) {
-        HAPAccessorySetupGenerateRandomSetupCode(&setupCode);
-        HAPAssert(HAPPlatformKeyValueStoreSet(&platform.keyValueStore,
-            kSDKKeyValueStoreDomain_Provisioning,
-            kSDKKeyValueStoreKey_Provisioning_SetupCode,
-            &setupCode, sizeof(setupCode)) == kHAPError_None);
-    }
-
-    // Setup info.
-    HAPSetupInfo setupInfo;
-    HAPAssert(HAPPlatformKeyValueStoreGet(&platform.keyValueStore,
-            kSDKKeyValueStoreDomain_Provisioning,
-            kSDKKeyValueStoreKey_Provisioning_SetupInfo,
-            &setupInfo, sizeof(setupInfo), &numBytes,
-            &found) == kHAPError_None);
-    if (!found) {
-        HAPPlatformRandomNumberFill(setupInfo.salt, sizeof setupInfo.salt);
-        const uint8_t srpUserName[] = "Pair-Setup";
-        HAP_srp_verifier(
-                setupInfo.verifier,
-                setupInfo.salt,
-                srpUserName,
-                sizeof srpUserName - 1,
-                (const uint8_t*) setupCode.stringValue,
-                sizeof setupCode.stringValue - 1);
-        HAPAssert(HAPPlatformKeyValueStoreSet(&platform.keyValueStore,
-            kSDKKeyValueStoreDomain_Provisioning,
-            kSDKKeyValueStoreKey_Provisioning_SetupInfo,
-            &setupInfo, sizeof(setupInfo)) == kHAPError_None);
-    }
-
-    // Setup ID.
-    HAPSetupID setupID;
-    bool hasSetupID;
-    HAPPlatformAccessorySetupLoadSetupID(platform.hapPlatform.accessorySetup, &hasSetupID, &setupID);
-    if (!hasSetupID) {
-        HAPAccessorySetupGenerateRandomSetupID(&setupID);
-        HAPAssert(HAPPlatformKeyValueStoreSet(&platform.keyValueStore,
-            kSDKKeyValueStoreDomain_Provisioning,
-            kSDKKeyValueStoreKey_Provisioning_SetupID,
-            &setupID, sizeof(setupID)) == kHAPError_None);
-    }
-}
-
-/**
  * Initialize global platform objects.
  */
 static void init_platform() {
@@ -172,7 +109,7 @@ static void init_platform() {
     platform.hapPlatform.accessorySetup = &accessorySetup;
 
     // Generate setup code, setup info and setup ID.
-    accessory_setup_gen();
+    pal_hap_acc_setup_gen(&platform.keyValueStore, platform.hapPlatform.accessorySetup);
 
     app_console_init();
     app_wifi_init();
@@ -188,8 +125,9 @@ static void init_platform() {
         &(const HAPPlatformTCPStreamManagerOptions) {
         /* Listen on all available network interfaces. */
         .port = 0 /* Listen on unused port number from the ephemeral port range. */,
-        .maxConcurrentTCPStreams = BRIDGE_IP_SESSION_STORAGE_NUM_ELEMENTS
+        .maxConcurrentTCPStreams = PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS
     });
+    platform.hapPlatform.ip.tcpStreamManager = &platform.tcpStreamManager;
 
     // Service discovery.
     static HAPPlatformServiceDiscovery serviceDiscovery;
@@ -321,84 +259,6 @@ void handle_update_state(HAPAccessoryServerRef* _Nonnull server, void* _Nullable
     }
 }
 
-#if IP
-static void init_ip(size_t attribute_cnt) {
-    // Prepare accessory server storage.
-    static HAPIPSession ipSessions[BRIDGE_IP_SESSION_STORAGE_NUM_ELEMENTS];
-    static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][BRIDGE_IP_SESSION_STORAGE_INBOUND_BUFSIZE];
-    static uint8_t ipOutboundBuffers[HAPArrayCount(ipSessions)][BRIDGE_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE];
-    for (size_t i = 0; i < HAPArrayCount(ipSessions); i++) {
-        ipSessions[i].inboundBuffer.bytes = ipInboundBuffers[i];
-        ipSessions[i].inboundBuffer.numBytes = sizeof ipInboundBuffers[i];
-        ipSessions[i].outboundBuffer.bytes = ipOutboundBuffers[i];
-        ipSessions[i].outboundBuffer.numBytes = sizeof ipOutboundBuffers[i];
-        ipSessions[i].eventNotifications = malloc(sizeof(HAPIPEventNotificationRef) * attribute_cnt);
-        HAPAssert(ipSessions[i].eventNotifications);
-        ipSessions[i].numEventNotifications = attribute_cnt;
-    }
-    HAPIPReadContextRef *ipReadContexts = malloc(sizeof(HAPIPReadContextRef) * attribute_cnt);
-    HAPAssert(ipReadContexts);
-    HAPIPWriteContextRef *ipWriteContexts = malloc(sizeof(HAPIPWriteContextRef) * attribute_cnt);
-    HAPAssert(ipWriteContexts);
-    static uint8_t ipScratchBuffer[BRIDGE_IP_SESSION_STORAGE_SCRATCH_BUFSIZE];
-    static HAPIPAccessoryServerStorage ipAccessoryServerStorage = {
-        .sessions = ipSessions,
-        .numSessions = HAPArrayCount(ipSessions),
-        .scratchBuffer = { .bytes = ipScratchBuffer, .numBytes = sizeof ipScratchBuffer }
-    };
-    ipAccessoryServerStorage.readContexts = ipReadContexts;
-    ipAccessoryServerStorage.numReadContexts = attribute_cnt;
-    ipAccessoryServerStorage.writeContexts = ipWriteContexts;
-    ipAccessoryServerStorage.numWriteContexts = attribute_cnt;
-
-    platform.hapAccessoryServerOptions.ip.transport = &kHAPAccessoryServerTransport_IP;
-    platform.hapAccessoryServerOptions.ip.accessoryServerStorage = &ipAccessoryServerStorage;
-
-    platform.hapPlatform.ip.tcpStreamManager = &platform.tcpStreamManager;
-}
-
-static void deinit_ip(void) {
-    HAPIPAccessoryServerStorage *storage = platform.hapAccessoryServerOptions.ip.accessoryServerStorage;
-    for (size_t i = 0; i < storage->numSessions; i++) {
-        free(storage->sessions + i);
-    }
-    free(storage->readContexts);
-    free(storage->writeContexts);
-}
-#endif
-
-#if BLE
-static void init_ble(size_t attribute_cnt) {
-    static HAPBLESessionCacheElementRef sessionCacheElements[kHAPBLESessionCache_MinElements];
-    static HAPSessionRef session;
-    static uint8_t procedureBytes[2048];
-    static HAPBLEProcedureRef procedures[1];
-    static HAPBLEGATTTableElementRef *gattTableElements =
-        malloc(sizeof(HAPBLEGATTTableElementRef) * attribute_cnt);
-    HAPAssert(gattTableElements);
-
-    static HAPBLEAccessoryServerStorage bleAccessoryServerStorage = {
-        .sessionCacheElements = sessionCacheElements,
-        .numSessionCacheElements = HAPArrayCount(sessionCacheElements),
-        .session = &session,
-        .procedures = procedures,
-        .numProcedures = HAPArrayCount(procedures),
-        .procedureBuffer = { .bytes = procedureBytes, .numBytes = sizeof procedureBytes }
-    };
-    bleAccessoryServerStorage.gattTableElements = gattTableElements;
-    bleAccessoryServerStorage.numGATTTableElements = attribute_cnt;
-
-    platform.hapAccessoryServerOptions.ble.transport = &kHAPAccessoryServerTransport_BLE;
-    platform.hapAccessoryServerOptions.ble.accessoryServerStorage = &bleAccessoryServerStorage;
-    platform.hapAccessoryServerOptions.ble.preferredAdvertisingInterval = PREFERRED_ADVERTISING_INTERVAL;
-    platform.hapAccessoryServerOptions.ble.preferredNotificationDuration = kHAPBLENotification_MinDuration;
-}
-
-static void deinit_ble(void) {
-    free(platform.hapAccessoryServerOptions.ble.accessoryServerStorage->gattTableElements);
-}
-#endif
-
 void app_main_task(void *arg) {
     HAPAssert(HAPGetCompatibilityVersion() == HAP_COMPATIBILITY_VERSION);
 
@@ -410,11 +270,11 @@ void app_main_task(void *arg) {
     HAPAssert(attribute_cnt);
 
 #if IP
-    init_ip(attribute_cnt);
+    pal_hap_init_ip(&platform.hapAccessoryServerOptions, attribute_cnt);
 #endif
 
 #if BLE
-    init_ble(attribute_cnt);
+    pal_hap_init_ble(&platform.hapAccessoryServerOptions, attribute_cnt);
 #endif
 
     // Perform Application-specific initalizations such as setting up callbacks
@@ -448,11 +308,11 @@ void app_main_task(void *arg) {
     app_deinit();
 
 #if IP
-    deinit_ip();
+    pal_hap_deinit_ip(&platform.hapAccessoryServerOptions);
 #endif
 
 #if BLE
-    deinit_ble();
+    pal_hap_deinit_ble(&platform.hapAccessoryServerOptions);
 #endif
 
     // Close lua state.

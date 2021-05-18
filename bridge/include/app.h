@@ -20,18 +20,6 @@ extern "C" {
 // Default lua entry script name.
 #define BRIDGE_LUA_ENTRY_DEFAULT "main"
 
-// Number of elements in a HAPIPSessionStorage.
-#define BRIDGE_IP_SESSION_STORAGE_NUM_ELEMENTS ((size_t) 9)
-
-// Size for the inbound buffer of an IP session.
-#define BRIDGE_IP_SESSION_STORAGE_INBOUND_BUFSIZE ((size_t) 1500)
-
-// Size for the outbound buffer of an IP session.
-#define BRIDGE_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE ((size_t) 1500)
-
-// Size for the scratch buffer of an IP session.
-#define BRIDGE_IP_SESSION_STORAGE_SCRATCH_BUFSIZE ((size_t) 1500)
-
 /**
  * Run the application lua entry.
  *
