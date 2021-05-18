@@ -47,12 +47,12 @@ local function lightBulbOnCharacteristic(iid)
         },
         cbs = {
             read = function (request, context)
-                logger:info(string.format("Read lightBulbOn: %s", context.lightBulbOn))
+                logger:info(("Read lightBulbOn: %s"):format(context.lightBulbOn))
                 return context.lightBulbOn, hap.Error.None
             end,
             write = function (request, value, context)
                 local changed = false
-                logger:info(string.format("Write lightBulbOn: %s", value))
+                logger:info(("Write lightBulbOn: %s"):format(value))
                 if value ~= context.lightBulbOn then
                     context.lightBulbOn = value
                     changed = true
@@ -104,8 +104,6 @@ function lightbulb.gen(conf)
         cbs = {
             identify = function (request, context)
                 logger:info("Identify callback is called.")
-                logger:info(string.format("transportType: %s, remote: %s.",
-                    request.transportType, request.remote))
                 return hap.Error.None
             end
         },

@@ -22,14 +22,12 @@ return hap.configure({
     cbs = {
         identify = function (request)
             logger:info("Identify callback is called.")
-            logger:info(string.format("transportType: %s, remote: %s.",
-                request.transportType, request.remote))
             return hap.Error.None
         end
     }
 }, core.gen(config.accessories), {
     updatedState = function (state)
-        logger:default(string.format("Accessory Server State did update: %s.", state))
+        logger:default("Accessory Server State did update: " .. state .. ".")
     end,
     sessionAccept = function ()
         logger:default("Session is accepted")
