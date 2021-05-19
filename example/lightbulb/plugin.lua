@@ -1,6 +1,3 @@
-local hap = require "hap"
-local char = require "hap.char"
-
 local lightbulb = {}
 
 local logger = log.getLogger("lightbulb")
@@ -25,49 +22,17 @@ local function checkAccessoryConf(conf)
     return true
 end
 
-local function lightBulbOnCharacteristic(iid)
-    return {
-        format = "Bool",
-        iid = iid,
-        type = "On",
-        props = {
-            readable = true,
-            writable = true,
-            supportsEventNotification = true,
-            hidden = false,
-            requiresTimedWrite = false,
-            supportsAuthorizationData = false,
-            ip = { controlPoint = false, supportsWriteResponse = false },
-            ble = {
-                supportsBroadcastNotification = true,
-                supportsDisconnectedNotification = true,
-                readableWithoutSecurity = false,
-                writableWithoutSecurity = false
-            }
-        },
-        cbs = {
-            read = function (request, context)
-                logger:info(("Read lightBulbOn: %s"):format(context.lightBulbOn))
-                return context.lightBulbOn, hap.Error.None
-            end,
-            write = function (request, value, context)
-                local changed = false
-                logger:info(("Write lightBulbOn: %s"):format(value))
-                if value ~= context.lightBulbOn then
-                    context.lightBulbOn = value
-                    changed = true
-                end
-                return changed, hap.Error.None
-            end
-        }
-    }
-end
-
 function lightbulb.gen(conf)
     if checkAccessoryConf(conf) == false then
         return nil
     end
-    local state = {
+
+    local hap = require("hap")
+    local ServiceSignature = require("hap.char.ServiceSignature")
+    local Name = require("hap.char.Name")
+    local On = require("hap.char.On")
+
+    local context = {
         lightBulbOn = false,
     }
     return {
@@ -95,9 +60,22 @@ function lightbulb.gen(conf)
                     }
                 },
                 chars = {
-                    char.newServiceSignatureCharacteristic(hap.getNewInstanceID()),
-                    char.newNameCharacteristic(hap.getNewInstanceID()),
-                    lightBulbOnCharacteristic(hap.getNewInstanceID())
+                    ServiceSignature.new(hap.getNewInstanceID()),
+                    Name.new(hap.getNewInstanceID()),
+                    On.new(hap.getNewInstanceID(),
+                        function (request)
+                            logger:info(("Read lightBulbOn: %s"):format(context.lightBulbOn))
+                            return context.lightBulbOn, hap.Error.None
+                        end,
+                        function (request, value)
+                            local changed = false
+                            logger:info(("Write lightBulbOn: %s"):format(value))
+                            if value ~= context.lightBulbOn then
+                                context.lightBulbOn = value
+                                changed = true
+                            end
+                            return changed, hap.Error.None
+                        end)
                 }
             }
         },
@@ -106,8 +84,7 @@ function lightbulb.gen(conf)
                 logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        },
-        context = state,
+        }
     }
 end
 

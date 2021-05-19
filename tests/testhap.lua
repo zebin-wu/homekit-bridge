@@ -1,6 +1,5 @@
 local hap = require "hap"
 local util = require "util"
-local char = require "hap.char"
 
 local logger = log.getLogger("testhap")
 
@@ -151,8 +150,8 @@ local function testService(expect, k, vals, log)
                 }
             },
             chars = {
-                char.newServiceSignatureCharacteristic(hap.getNewInstanceID()),
-                char.newServiceSignatureCharacteristic(hap.getNewInstanceID())
+                require("hap.char.ServiceSignature").new(hap.getNewInstanceID()),
+                require("hap.char.Name").new(hap.getNewInstanceID())
             }
         }
         if log then
