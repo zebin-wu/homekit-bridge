@@ -21,8 +21,20 @@
 
 #define PROMPT_STR CONFIG_IDF_TARGET
 
+typedef enum {
+    APP_CONSOLE_STATE_NOINIT,
+    APP_CONSOLE_STATE_INITED,
+    APP_CONSOLE_STATE_STARTED,
+} console_state;
+
+static const char *console_state_strs[] = {
+    [APP_CONSOLE_STATE_NOINIT] = "noinit",
+    [APP_CONSOLE_STATE_INITED] = "inited",
+    [APP_CONSOLE_STATE_STARTED] = "started",
+};
+
 static const char *TAG = "console";
-static bool inited = false;
+static console_state gv_state = APP_CONSOLE_STATE_NOINIT;
 
 static void app_console_task(void *arg)
 {
@@ -51,6 +63,7 @@ static void app_console_task(void *arg)
         prompt = PROMPT_STR "> ";
 #endif //CONFIG_LOG_COLORS
     }
+    gv_state = APP_CONSOLE_STATE_STARTED;
 
     /* Main loop */
     while(true) {
@@ -81,10 +94,16 @@ static void app_console_task(void *arg)
         /* linenoise allocates line buffer on the heap, so need to free it */
         linenoiseFree(line);
     }
+    gv_state = APP_CONSOLE_STATE_INITED;
 }
 
 void app_console_init(void)
 {
+    if (gv_state != APP_CONSOLE_STATE_NOINIT) {
+        ESP_LOGE(TAG, "%s: Invalid state. Current state: %s.", __func__, console_state_strs[gv_state]);
+        return;
+    }
+
     /* Drain stdout before reconfiguring it */
     fflush(stdout);
     fsync(fileno(stdout));
@@ -155,15 +174,16 @@ void app_console_init(void)
 
     /* Register commands */
     esp_console_register_help_command();
-    inited = true;
+    gv_state = APP_CONSOLE_STATE_INITED;
 }
 
 void app_console_start(void)
 {
-    if (inited == false) {
-        ESP_LOGE(TAG, "Please call app_console_init() first.");
+    if (gv_state != APP_CONSOLE_STATE_INITED) {
+        ESP_LOGE(TAG, "%s: Invalid state. Current state: %s.", __func__, console_state_strs[gv_state]);
         return;
     }
+
     xTaskCreate(app_console_task, "console", APP_CONSOLE_TASK_STACKSIZE,
         NULL, APP_CONSOLE_TASK_PRIORITY, NULL);
 }
