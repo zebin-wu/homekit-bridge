@@ -1,7 +1,3 @@
-local hap = require "hap"
-local char = require "hap.char"
-local util = require "util"
-
 local lock = {}
 
 local logger = log.getLogger("lock")
@@ -26,158 +22,27 @@ local function checkAccessoryConf(conf)
     return true
 end
 
-local function lockMechanismLockCurrentStateCharacteristic(iid)
-    return {
-        format = "UInt8",
-        iid = iid,
-        type = "LockCurrentState",
-        props = {
-            readable = true,
-            writable = false,
-            supportsEventNotification = true,
-            hidden = false,
-            requiresTimedWrite = false,
-            supportsAuthorizationData = false,
-            ip = { controlPoint = false, supportsWriteResponse = false },
-            ble = {
-                supportsBroadcastNotification = true,
-                supportsDisconnectedNotification = true,
-                readableWithoutSecurity = false,
-                writableWithoutSecurity = false
-            }
-        },
-        units = "None",
-        constraints = {
-            minVal = 0,
-            maxVal = 3,
-            stepVal = 1
-        },
-        cbs = {
-            read = function (request, context)
-                logger:info(("Read currentState: %s"):format(
-                    util.searchKey(char.LockCurrentState, context.curState)))
-                return context.curState, hap.Error.None
-            end
-        }
-    }
-end
-
-local function lockMechanismLockTargetStateCharacteristic(iid)
-    return {
-        format = "UInt8",
-        iid = iid,
-        type = "LockTargetState",
-        props = {
-            readable = true,
-            writable = true,
-            supportsEventNotification = true,
-            hidden = false,
-            requiresTimedWrite = true,
-            supportsAuthorizationData = false,
-            ip = { controlPoint = false, supportsWriteResponse = false },
-            ble = {
-                supportsBroadcastNotification = true,
-                supportsDisconnectedNotification = true,
-                readableWithoutSecurity = false,
-                writableWithoutSecurity = false
-            }
-        },
-        units = "None",
-        constraints = {
-            minVal = 0,
-            maxVal = 1,
-            stepVal = 1
-        },
-        cbs = {
-            read = function (request, context)
-                logger:info(("Read targetState: %s"):format(
-                    util.searchKey(char.LockTargetState, context.tgtState)))
-                return context.tgtState, hap.Error.None
-            end,
-            write = function (request, value, context)
-                local changed = false
-                logger:info(("Write targetState: %s"):format(
-                    util.searchKey(char.LockTargetState, value)))
-                if value ~= context.tgtState then
-                    context.tgtState = value
-                    context.curState = value
-                    hap.raiseEvent(context.aid, context.mechanismIID, context.curStateIID)
-                    changed = true
-                end
-                return changed, hap.Error.None
-            end
-        }
-    }
-end
-
-local function lockManagementLockControlPointCharacteristic(iid)
-    return {
-        format = "TLV8",
-        iid = iid,
-        type = "LockControlPoint",
-        props = {
-            readable = false,
-            writable = true,
-            supportsEventNotification = false,
-            hidden = false,
-            requiresTimedWrite = true,
-            supportsAuthorizationData = false,
-            ip = { controlPoint = false, supportsWriteResponse = false },
-            ble = {
-                supportsBroadcastNotification = false,
-                supportsDisconnectedNotification = false,
-                readableWithoutSecurity = false,
-                writableWithoutSecurity = false
-            }
-        },
-        cbs = {
-            write = function (request, value, context)
-                return false, hap.Error.None
-            end
-        }
-    }
-end
-
-local function lockManagementVersionCharacteristic(iid)
-    return {
-        format = "String",
-        iid = iid,
-        type = "Version",
-        props = {
-            readable = true,
-            writable = false,
-            supportsEventNotification = false,
-            hidden = false,
-            requiresTimedWrite = false,
-            supportsAuthorizationData = false,
-            ip = { controlPoint = false, supportsWriteResponse = false },
-            ble = {
-                supportsBroadcastNotification = false,
-                supportsDisconnectedNotification = false,
-                readableWithoutSecurity = false,
-                writableWithoutSecurity = false
-            }
-        },
-        constraints = { maxLen = 64 },
-        cbs = {
-            read = function (request, context)
-                return "1.0", hap.Error.None
-            end
-        }
-    }
-end
-
 function lock.gen(conf)
     if checkAccessoryConf(conf) == false then
         return nil
     end
+
+    local hap = require ("hap")
+    local util = require ("util")
+    local LockCurrentState = require("hap.char.LockCurrentState")
+    local LockTargetState = require("hap.char.LockTargetState")
+    local LockControlPoint = require("hap.char.LockControlPoint")
+    local ServiceSignature = require("hap.char.ServiceSignature")
+    local Version = require("hap.char.Version")
+    local Name = require("hap.char.Name")
+
     local context = {
         aid = hap.getNewBridgedAccessoryID(),
         mechanismIID = hap.getNewInstanceID(),
         curStateIID = hap.getNewInstanceID(),
         tgtStateIID = hap.getNewInstanceID(),
-        curState = char.LockCurrentState.Secured,
-        tgtState = char.LockTargetState.Secured
+        curState = LockCurrentState.value.Secured,
+        tgtState = LockTargetState.value.Secured
     }
     return {
         aid = context.aid,
@@ -204,10 +69,32 @@ function lock.gen(conf)
                     }
                 },
                 chars = {
-                    char.newServiceSignatureCharacteristic(hap.getNewInstanceID()),
-                    char.newNameCharacteristic(hap.getNewInstanceID()),
-                    lockMechanismLockCurrentStateCharacteristic(context.curStateIID),
-                    lockMechanismLockTargetStateCharacteristic(context.tgtStateIID)
+                    ServiceSignature.new(hap.getNewInstanceID()),
+                    Name.new(hap.getNewInstanceID()),
+                    LockCurrentState.new(context.curStateIID,
+                        function (request)
+                            logger:info(("Read currentState: %s"):format(
+                                util.searchKey(LockCurrentState.value, context.curState)))
+                            return context.curState, hap.Error.None
+                        end),
+                    LockTargetState.new(context.tgtStateIID,
+                        function (request)
+                            logger:info(("Read targetState: %s"):format(
+                                util.searchKey(LockTargetState.value, context.tgtState)))
+                            return context.tgtState, hap.Error.None
+                        end,
+                        function (request, value)
+                            local changed = false
+                            logger:info(("Write targetState: %s"):format(
+                                util.searchKey(LockTargetState.value, value)))
+                            if value ~= context.tgtState then
+                                context.tgtState = value
+                                context.curState = value
+                                hap.raiseEvent(context.aid, context.mechanismIID, context.curStateIID)
+                                changed = true
+                            end
+                            return changed, hap.Error.None
+                        end)
                 }
             },
             {
@@ -221,19 +108,24 @@ function lock.gen(conf)
                     }
                 },
                 chars = {
-                    char.newServiceSignatureCharacteristic(hap.getNewInstanceID()),
-                    lockManagementLockControlPointCharacteristic(hap.getNewInstanceID()),
-                    lockManagementVersionCharacteristic(hap.getNewInstanceID())
+                    ServiceSignature.new(hap.getNewInstanceID()),
+                    LockControlPoint.new(hap.getNewInstanceID(),
+                        function (request, value)
+                            return false, hap.Error.None
+                        end),
+                    Version.new(hap.getNewInstanceID(),
+                        function (request, context)
+                            return "1.0", hap.Error.None
+                        end)
                 }
             }
         },
         cbs = {
-            identify = function (request, context)
+            identify = function (request)
                 logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        },
-        context = context,
+        }
     }
 end
 
