@@ -1155,8 +1155,20 @@ HAPError lhap_char_Data_handleRead(
         goto end;
     }
 
-    // TODO(KNpTrue): Implement byte array in lua.
-    HAPAssertionFailure();
+    if (!lua_isstring(L, -2)) {
+        LHAP_LOG_TYPE_ERROR(L, "value", LUA_TSTRING, lua_type(L, -2));
+        goto end;
+    }
+    size_t len;
+    const char *data = luaL_tolstring(L, -2, &len);
+    if (len >= maxValueBytes) {
+        HAPLogError(&lhap_log, "%s: value too long", __func__);
+        goto end;
+    }
+    *numValueBytes = len;
+    if (len) {
+        HAPRawBufferCopyBytes(valueBytes, data, len);
+    }
 
 end:
     lua_settop(L, 0);
@@ -1393,8 +1405,7 @@ HAPError lhap_char_Data_handleWrite(
         goto end;
     }
 
-    // TODO(KNpTrue): Implement byte array in lua.
-    HAPAssertionFailure();
+    lua_pushlstring(L, valueBytes, numValueBytes);
 
     err = lhap_char_last_handleWrite(L, server, request->accessory,
         request->service, (const HAPBaseCharacteristic *)request->characteristic);
