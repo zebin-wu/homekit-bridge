@@ -7,8 +7,7 @@ local lockControlPoint = {
     }
 }
 
-function lockControlPoint.new(iid, write)
-    local self = lockControlPoint
+function lockControlPoint:new(iid, write)
     return {
         format = self.format,
         iid = iid,

@@ -7,8 +7,7 @@ local serviceSignature = {
     }
 }
 
-function serviceSignature.new(iid)
-    local self = serviceSignature
+function serviceSignature:new(iid)
     local hap = require("hap")
     return {
         format = self.format,

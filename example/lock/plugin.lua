@@ -69,15 +69,15 @@ function lock.gen(conf)
                     }
                 },
                 chars = {
-                    ServiceSignature.new(hap.getNewInstanceID()),
-                    Name.new(hap.getNewInstanceID()),
-                    LockCurrentState.new(context.curStateIID,
+                    ServiceSignature:new(hap.getNewInstanceID()),
+                    Name:new(hap.getNewInstanceID()),
+                    LockCurrentState:new(context.curStateIID,
                         function (request)
                             logger:info(("Read currentState: %s"):format(
                                 util.searchKey(LockCurrentState.value, context.curState)))
                             return context.curState, hap.Error.None
                         end),
-                    LockTargetState.new(context.tgtStateIID,
+                    LockTargetState:new(context.tgtStateIID,
                         function (request)
                             logger:info(("Read targetState: %s"):format(
                                 util.searchKey(LockTargetState.value, context.tgtState)))
@@ -108,13 +108,13 @@ function lock.gen(conf)
                     }
                 },
                 chars = {
-                    ServiceSignature.new(hap.getNewInstanceID()),
-                    LockControlPoint.new(hap.getNewInstanceID(),
+                    ServiceSignature:new(hap.getNewInstanceID()),
+                    LockControlPoint:new(hap.getNewInstanceID(),
                         function (request, value)
                             return false, hap.Error.None
                         end),
-                    Version.new(hap.getNewInstanceID(),
-                        function (request, context)
+                    Version:new(hap.getNewInstanceID(),
+                        function (request)
                             return "1.0", hap.Error.None
                         end)
                 }

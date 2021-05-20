@@ -60,9 +60,9 @@ function lightbulb.gen(conf)
                     }
                 },
                 chars = {
-                    ServiceSignature.new(hap.getNewInstanceID()),
-                    Name.new(hap.getNewInstanceID()),
-                    On.new(hap.getNewInstanceID(),
+                    ServiceSignature:new(hap.getNewInstanceID()),
+                    Name:new(hap.getNewInstanceID()),
+                    On:new(hap.getNewInstanceID(),
                         function (request)
                             logger:info(("Read lightBulbOn: %s"):format(context.lightBulbOn))
                             return context.lightBulbOn, hap.Error.None

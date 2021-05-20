@@ -7,8 +7,7 @@ local name = {
     }
 }
 
-function name.new(iid)
-    local self = name
+function name:new(iid)
     local hap = require("hap")
     return {
         format = self.format,
