@@ -48,7 +48,7 @@ end
 ---@param e boolean The expected value returned by ``fn``.
 ---@return string message
 local function fmtAssertMsg(fn, e)
-    return ("%s() return %s"):format(fn, not e)
+    return ("assertion failed: %s() return %s"):format(fn, not e)
 end
 
 local function setField(t, k, v)
@@ -150,8 +150,8 @@ local function testService(expect, k, vals, log)
                 }
             },
             chars = {
-                require("hap.char.ServiceSignature").new(hap.getNewInstanceID()),
-                require("hap.char.Name").new(hap.getNewInstanceID())
+                require("hap.char.ServiceSignature"):new(hap.getNewInstanceID()),
+                require("hap.char.Name"):new(hap.getNewInstanceID())
             }
         }
         if log then
@@ -159,7 +159,7 @@ local function testService(expect, k, vals, log)
         end
         if k == "char" then
             table.insert(service.chars, v)
-        else
+        else  
             setField(service, k, v)
         end
         testAccessory(expect, false, "service", { service }, false)
@@ -171,12 +171,17 @@ end
 ---@param expect boolean The expected value returned by configure().
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
-local function testCharacteristic(expect, k, vals, type, format)
+---@param format? CharacteristicFormat Characteristic format.
+local function testCharacteristic(expect, k, vals, format)
+    local tab = "char"
+    if format then
+        tab = ("char[%s]"):format(format)
+    end
     local function _test(v)
         local c = {
             format = format or "Bool",
             iid = hap.getNewInstanceID(),
-            type = type or "On",
+            type = "On",
             props = {
                 readable = true,
                 writable = true,
@@ -192,14 +197,15 @@ local function testCharacteristic(expect, k, vals, type, format)
                     writableWithoutSecurity = false
                 }
             },
+            constraints = {},
             cbs = {
                 read = function (request, context) end,
                 write = function (request, value, context) end
             }
         }
-        logTestInfo("configure", "char", k, v, expect)
+        logTestInfo("configure", tab, k, v, expect)
         setField(c, k, v)
-        testService(expect, false, "char", { c }, false)
+        testService(expect, "char", { c }, false)
     end
     testFn(_test, vals)
 end
@@ -275,7 +281,7 @@ testAccessory(false, false, "category", {
 })
 
 ---Configure with valid accessory name
-testAccessory(true, false, "name", { "", fillStr(64) })
+testAccessory(true, false, "name", { "", "附件名称", fillStr(64) })
 
 ---Configure with invalid accessory name.
 testAccessory(false, false, "name", { fillStr(64 + 1), {}, true, 1 })
@@ -366,23 +372,11 @@ testService(true, "type", {
 ---Configure with invalid service type.
 testService(false, "type", { "type1", "", {}, true, 1 })
 
----Configure with invalid service props.
+---Configure with valid service props.
 testService(true, "props", { {} })
 
 ---Configure with invalid service props.
 testService(false, "props", { "test", true, 1 })
-
----Configure with valid service property primaryService.
-testService(true, "props.primaryService", { true, false })
-
----Configure with invalid service property primaryService.
-testService(false, "props.primaryService", { {}, 1, "test" })
-
----Configure with valid service property hidden.
-testService(true, "props.hidden", { true, false })
-
----Configure with invalid service property hidden.
-testService(false, "props.hidden", { {}, 1, "test" })
 
 ---Configure with valid service proeprty ble.
 testService(true, "props.ble", { {} })
@@ -390,12 +384,223 @@ testService(true, "props.ble", { {} })
 ---Configure with invalid service property ble.
 testService(false, "props.ble", { "test", true, 1 })
 
----Configure with valid service property ble.supportsConfiguration.
-testService(true, "props.ble.supportsConfiguration", { false })
 
----Configure with invalid service property ble.supportsConfiguration.
----Only the HAP Protocol Information service may support configuration.
-testService(false, "props.ble.supportsConfiguration", { true, "test", {}, 1 })
+for i, k in ipairs({ "primaryService", "hidden", "ble.supportsConfiguration" }) do
+    ---Configure with invalid service property ``k``.
+    testService(false, "props." .. k, { {}, 1, "test" })
+end
 
 ---Configure with invalid characteristic iid.
 testCharacteristic(false, "iid", { -1, 1.1, true, {} })
+
+---Configrue with valid characteristic format.
+testCharacteristic(true, "format", {
+    "Data",
+    "Bool",
+    "UInt8",
+    "UInt16",
+    "UInt32",
+    "UInt64",
+    "Int",
+    "Float",
+    "String",
+    "TLV8",
+})
+
+---Configrue with invalid characteristic format.
+testCharacteristic(false, "format", { {}, 1, true, "test" })
+
+---Configure with valid characteristic type.
+testCharacteristic(true, "type", {
+    "AdministratorOnlyAccess",
+    "AudioFeedback",
+    "Brightness",
+    "CoolingThresholdTemperature",
+    "CurrentDoorState",
+    "CurrentHeatingCoolingState",
+    "CurrentRelativeHumidity",
+    "CurrentTemperature",
+    "HeatingThresholdTemperature",
+    "Hue",
+    "Identify",
+    "LockControlPoint",
+    "LockManagementAutoSecurityTimeout",
+    "LockLastKnownAction",
+    "LockCurrentState",
+    "LockTargetState",
+    "Logs",
+    "Manufacturer",
+    "Model",
+    "MotionDetected",
+    "Name",
+    "ObstructionDetected",
+    "On",
+    "OutletInUse",
+    "RotationDirection",
+    "RotationSpeed",
+    "Saturation",
+    "SerialNumber",
+    "TargetDoorState",
+    "TargetHeatingCoolingState",
+    "TargetRelativeHumidity",
+    "TargetTemperature",
+    "TemperatureDisplayUnits",
+    "Version",
+    "PairSetup",
+    "PairVerify",
+    "PairingFeatures",
+    "PairingPairings",
+    "FirmwareRevision",
+    "HardwareRevision",
+    "AirParticulateDensity",
+    "AirParticulateSize",
+    "SecuritySystemCurrentState",
+    "SecuritySystemTargetState",
+    "BatteryLevel",
+    "CarbonMonoxideDetected",
+    "ContactSensorState",
+    "CurrentAmbientLightLevel",
+    "CurrentHorizontalTiltAngle",
+    "CurrentPosition",
+    "CurrentVerticalTiltAngle",
+    "HoldPosition",
+    "LeakDetected",
+    "OccupancyDetected",
+    "PositionState",
+    "ProgrammableSwitchEvent",
+    "StatusActive",
+    "SmokeDetected",
+    "StatusFault",
+    "StatusJammed",
+    "StatusLowBattery",
+    "StatusTampered",
+    "TargetHorizontalTiltAngle",
+    "TargetPosition",
+    "TargetVerticalTiltAngle",
+    "SecuritySystemAlarmType",
+    "ChargingState",
+    "CarbonMonoxideLevel",
+    "CarbonMonoxidePeakLevel",
+    "CarbonDioxideDetected",
+    "CarbonDioxideLevel",
+    "CarbonDioxidePeakLevel",
+    "AirQuality",
+    "ServiceSignature",
+    "AccessoryFlags",
+    "LockPhysicalControls",
+    "TargetAirPurifierState",
+    "CurrentAirPurifierState",
+    "CurrentSlatState",
+    "FilterLifeLevel",
+    "FilterChangeIndication",
+    "ResetFilterIndication",
+    "CurrentFanState",
+    "Active",
+    "CurrentHeaterCoolerState",
+    "TargetHeaterCoolerState",
+    "CurrentHumidifierDehumidifierState",
+    "TargetHumidifierDehumidifierState",
+    "WaterLevel",
+    "SwingMode",
+    "TargetFanState",
+    "SlatType",
+    "CurrentTiltAngle",
+    "TargetTiltAngle",
+    "OzoneDensity",
+    "NitrogenDioxideDensity",
+    "SulphurDioxideDensity",
+    "PM2_5Density",
+    "PM10Density",
+    "VOCDensity",
+    "RelativeHumidityDehumidifierThreshold",
+    "RelativeHumidityHumidifierThreshold",
+    "ServiceLabelIndex",
+    "ServiceLabelNamespace",
+    "ColorTemperature",
+    "ProgramMode",
+    "InUse",
+    "SetDuration",
+    "RemainingDuration",
+    "ValveType",
+    "IsConfigured",
+    "ActiveIdentifier",
+    "ADKVersion",
+})
+
+---Configure with invalid characteristic type.
+testCharacteristic(false, "type", { {}, "test", true, 1 })
+
+---Configure with valid characteristic manufacturer description.
+testCharacteristic(true, "mfgDesc", { "", "manufacturer description", "厂商描述" })
+
+---Configure with invalid characteristic manufacturer description.
+testCharacteristic(false, "mfgDesc", { {}, 1, true })
+
+---Configure with valid characteristic props.
+testCharacteristic(true, "props", { {} })
+
+---Configure with invalid characteristic props.
+testCharacteristic(false, "props", { "test", true, 1 })
+
+---Configure with valid characteristic property ip.
+testCharacteristic(true, "props.ip", { {} })
+
+---Configure with invalid characteristic property ip.
+testCharacteristic(false, "props.ip", { "test", true, 1 })
+
+---Configure with valid characteristic property ble.
+testCharacteristic(true, "props.ble", { {} })
+
+---Configure with invalid characteristic property ble.
+testCharacteristic(false, "props.ble", { "test", true, 1 })
+
+for i, k in ipairs({
+    "readable",
+    "writable",
+    "supportsEventNotification",
+    "hidden",
+    "readRequiresAdminPermissions",
+    "writeRequiresAdminPermissions",
+    "requiresTimedWrite",
+    "supportsAuthorizationData",
+    "ip.controlPoint",
+    "ip.supportsWriteResponse",
+    "ble.supportsBroadcastNotification",
+    "ble.supportsDisconnectedNotification",
+    "ble.readableWithoutSecurity",
+    "ble.writableWithoutSecurity"
+}) do
+    ---Configure with invalid characteristic property ``k``.
+    testCharacteristic(false, "props." .. k, { {}, 1, "test" })
+end
+
+local units = {
+    "None",
+    "Celsius",
+    "ArcDegrees",
+    "Percentage",
+    "Lux",
+    "Seconds"
+}
+
+---Configure with valid units.
+for i, fmt in ipairs({ "UInt8", "UInt16", "UInt32", "UInt64", "Int", "Float" }) do
+    testCharacteristic(true, "units", units, fmt)
+end
+
+---Configure with invalid units.
+for i, fmt in ipairs({ "Data", "String", "TLV8", "Bool" }) do
+    testCharacteristic(false, "units", { "None" }, fmt)
+end
+testCharacteristic(false, "units", { "test", {}, true, 1 }, "UInt8")
+
+---Configure with valid constraints.
+testCharacteristic(true, "constraints", { {} })
+
+---Configure with invalid constraints.
+testCharacteristic(false, "constraints", { true, "test", 1 })
+
+---Configure with valid constraints maxLen.
+for i, fmt in ipairs({ "String", "Data" }) do
+    testCharacteristic(true, "constraints.maxLen", { 0, 64, 0xffffffff }, fmt)
+end
