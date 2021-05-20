@@ -192,131 +192,129 @@ typedef struct {
     const char *name;
     const HAPUUID *type;
     const char *debugDescription;
-    HAPCharacteristicFormat format;
 } lhap_characteristic_type;
 
-#define LHAP_CHARACTERISTIC_TYPE_FORMAT(type, format) \
+#define LHAP_CHARACTERISTIC_TYPE_FORMAT(type) \
 { \
     #type, \
     &kHAPCharacteristicType_##type, \
     kHAPCharacteristicDebugDescription_##type, \
-    kHAPCharacteristicFormat_##format \
 }
 
 static const lhap_characteristic_type lhap_characteristic_type_tab[] = {
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(AdministratorOnlyAccess, Bool),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(AudioFeedback, Bool),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(Brightness, Int),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CoolingThresholdTemperature, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentDoorState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHeatingCoolingState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentRelativeHumidity, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentTemperature, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(HeatingThresholdTemperature, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(Hue, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(Identify, Bool),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockControlPoint, TLV8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockManagementAutoSecurityTimeout, UInt32),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockLastKnownAction, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockCurrentState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockTargetState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(Logs, TLV8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(Manufacturer, String),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(Model, String),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(MotionDetected, Bool),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(Name, String),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ObstructionDetected, Bool),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(On, Bool),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(OutletInUse, Bool),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(RotationDirection, Int),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(RotationSpeed, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(Saturation, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(SerialNumber, String),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetDoorState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHeatingCoolingState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetRelativeHumidity, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetTemperature, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TemperatureDisplayUnits, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(Version, String),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairSetup, TLV8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairVerify, TLV8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairingFeatures, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairingPairings, TLV8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(FirmwareRevision, String),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(HardwareRevision, String),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(AirParticulateDensity, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(AirParticulateSize, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(SecuritySystemCurrentState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(SecuritySystemTargetState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(BatteryLevel, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonMonoxideDetected, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ContactSensorState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentAmbientLightLevel, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHorizontalTiltAngle, Int),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentPosition, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentVerticalTiltAngle, Int),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(HoldPosition, Bool),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(LeakDetected, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(OccupancyDetected, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(PositionState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ProgrammableSwitchEvent, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusActive, Bool),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(SmokeDetected, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusFault, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusJammed, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusLowBattery, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusTampered, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHorizontalTiltAngle, Int),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetPosition, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetVerticalTiltAngle, Int),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(SecuritySystemAlarmType, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ChargingState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonMonoxideLevel, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonMonoxidePeakLevel, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonDioxideDetected, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonDioxideLevel, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonDioxidePeakLevel, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(AirQuality, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ServiceSignature, Data),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(AccessoryFlags, UInt32),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockPhysicalControls, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetAirPurifierState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentAirPurifierState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentSlatState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(FilterLifeLevel, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(FilterChangeIndication, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ResetFilterIndication, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentFanState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(Active, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHeaterCoolerState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHeaterCoolerState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHumidifierDehumidifierState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHumidifierDehumidifierState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(WaterLevel, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(SwingMode, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetFanState, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(SlatType, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentTiltAngle, Int),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetTiltAngle, Int),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(OzoneDensity, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(NitrogenDioxideDensity, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(SulphurDioxideDensity, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(PM2_5Density, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(PM10Density, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(VOCDensity, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(RelativeHumidityDehumidifierThreshold, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(RelativeHumidityHumidifierThreshold, Float),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ServiceLabelIndex, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ServiceLabelNamespace, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ColorTemperature, UInt32),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ProgramMode, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(InUse, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(SetDuration, UInt32),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(RemainingDuration, UInt32),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ValveType, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(IsConfigured, UInt8),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ActiveIdentifier, UInt32),
-    LHAP_CHARACTERISTIC_TYPE_FORMAT(ADKVersion, String),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AdministratorOnlyAccess),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AudioFeedback),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Brightness),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CoolingThresholdTemperature),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentDoorState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHeatingCoolingState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentRelativeHumidity),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentTemperature),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(HeatingThresholdTemperature),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Hue),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Identify),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockControlPoint),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockManagementAutoSecurityTimeout),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockLastKnownAction),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockCurrentState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockTargetState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Logs),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Manufacturer),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Model),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(MotionDetected),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Name),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ObstructionDetected),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(On),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(OutletInUse),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(RotationDirection),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(RotationSpeed),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Saturation),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SerialNumber),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetDoorState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHeatingCoolingState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetRelativeHumidity),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetTemperature),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TemperatureDisplayUnits),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Version),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairSetup),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairVerify),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairingFeatures),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PairingPairings),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(FirmwareRevision),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(HardwareRevision),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AirParticulateDensity),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AirParticulateSize),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SecuritySystemCurrentState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SecuritySystemTargetState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(BatteryLevel),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonMonoxideDetected),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ContactSensorState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentAmbientLightLevel),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHorizontalTiltAngle),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentPosition),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentVerticalTiltAngle),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(HoldPosition),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LeakDetected),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(OccupancyDetected),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PositionState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ProgrammableSwitchEvent),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusActive),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SmokeDetected),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusFault),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusJammed),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusLowBattery),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(StatusTampered),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHorizontalTiltAngle),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetPosition),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetVerticalTiltAngle),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SecuritySystemAlarmType),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ChargingState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonMonoxideLevel),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonMonoxidePeakLevel),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonDioxideDetected),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonDioxideLevel),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CarbonDioxidePeakLevel),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AirQuality),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ServiceSignature),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(AccessoryFlags),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(LockPhysicalControls),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetAirPurifierState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentAirPurifierState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentSlatState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(FilterLifeLevel),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(FilterChangeIndication),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ResetFilterIndication),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentFanState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(Active),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHeaterCoolerState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHeaterCoolerState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentHumidifierDehumidifierState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetHumidifierDehumidifierState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(WaterLevel),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SwingMode),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetFanState),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SlatType),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(CurrentTiltAngle),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(TargetTiltAngle),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(OzoneDensity),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(NitrogenDioxideDensity),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SulphurDioxideDensity),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PM2_5Density),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(PM10Density),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(VOCDensity),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(RelativeHumidityDehumidifierThreshold),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(RelativeHumidityHumidifierThreshold),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ServiceLabelIndex),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ServiceLabelNamespace),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ColorTemperature),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ProgramMode),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(InUse),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(SetDuration),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(RemainingDuration),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ValveType),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(IsConfigured),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ActiveIdentifier),
+    LHAP_CHARACTERISTIC_TYPE_FORMAT(ADKVersion),
 };
 
 /**
@@ -498,7 +496,8 @@ static bool
 lhap_service_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     int isnum;
     lua_Integer iid = lua_tointegerx(L, -1, &isnum);
-    if (!isnum || iid <= (lua_Integer)gv_lhap_desc.attribute_cnt) {
+    if (!isnum || iid <= (lua_Integer)kAttributeCount) {
+        HAPLogError(&lhap_log, "%s: Invalid IID.", __func__);
         return false;
     }
     ((HAPService *)arg)->iid = iid;
@@ -572,10 +571,12 @@ static bool
 lhap_characteristic_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     int isnum;
     lua_Integer iid = lua_tointegerx(L, -1, &isnum);
-    if (!isnum || iid <= (lua_Integer)gv_lhap_desc.attribute_cnt) {
+    if (!isnum || iid <= (lua_Integer)kAttributeCount) {
+        HAPLogError(&lhap_log, "%s: Invalid IID.", __func__);
         return false;
     }
     ((HAPBaseCharacteristic *)arg)->iid = iid;
+    gv_lhap_desc.attribute_cnt++;
     return true;
 }
 
@@ -586,13 +587,6 @@ lhap_characteristic_type_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     for (int i = 0; i < HAPArrayCount(lhap_characteristic_type_tab);
         i++) {
         if (HAPStringAreEqual(str, lhap_characteristic_type_tab[i].name)) {
-            if (c->format != lhap_characteristic_type_tab[i].format) {
-                HAPLogError(&lhap_log, "%s: Format error, %s expected, got %s",
-                    __func__,
-                    lhap_characteristic_format_strs[lhap_characteristic_type_tab[i].format],
-                    lhap_characteristic_format_strs[c->format]);
-                return false;
-            }
             c->characteristicType = lhap_characteristic_type_tab[i].type;
             c->debugDescription = lhap_characteristic_type_tab[i].debugDescription;
             return true;
@@ -761,7 +755,7 @@ lhap_characteristic_units_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
     if (format < kHAPCharacteristicFormat_UInt8 ||
         format > kHAPCharacteristicFormat_Float) {
-        HAPLogError(&lhap_log, "%s: The value of the %s characteristic has no unit.",
+        HAPLogError(&lhap_log, "%s: %s characteristic has no unit.",
             __func__, lhap_characteristic_format_strs[format]);
         return false;
     }
@@ -790,16 +784,29 @@ lhap_characteristic_units_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
 
 static bool
 lhap_char_constraints_max_len_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+    int isnum;
+    lua_Integer num;
     HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
     switch (format) {
     LHAP_CASE_CHAR_FORMAT_CODE(String, arg,
-        p->constraints.maxLength = lua_tointeger(L, -1))
+        num = lua_tointegerx(L, -1, &isnum);
+        p->constraints.maxLength = num;
+    )
     LHAP_CASE_CHAR_FORMAT_CODE(Data, arg,
-        p->constraints.maxLength = lua_tointeger(L, -1))
+        p->constraints.maxLength = lua_tointegerx(L, -1, &isnum)
+    )
     default:
         HAPLogError(&lhap_log, "%s: The constraints of the %s "
             "characteristic has no maxLength.",
             __func__, lhap_characteristic_format_strs[format]);
+        return false;
+    }
+    if (!isnum) {
+        HAPLogError(&lhap_log, "%s: Invalid maxLength", __func__);
+    }
+    num = lua_tointegerx(L, -1, &isnum);
+    if (num > UINT32_MAX) {
+        HAPLogError(&lhap_log, "%s: maxLength is larger than UINT32_MAX.", __func__);
         return false;
     }
     return true;
@@ -1020,13 +1027,6 @@ static const lc_table_kv lhap_characteristic_constraints_kvs[] = {
 
 static bool
 lhap_characteristic_constraints_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
-    if (format == kHAPCharacteristicFormat_Bool ||
-        format == kHAPCharacteristicFormat_TLV8) {
-        HAPLogError(&lhap_log, "%s: The %s characteristic has no constraints.",
-            __func__, lhap_characteristic_format_strs[format]);
-        return false;
-    }
     return lc_traverse_table(L, -1, lhap_characteristic_constraints_kvs, arg);
 }
 
@@ -1672,6 +1672,7 @@ static bool lhap_service_characteristics_arr_cb(lua_State *L, int i, void *arg) 
     lua_pushstring(L, "format");
     lua_gettable(L, -2);
     if (!lua_isstring(L, -1)) {
+        LHAP_LOG_TYPE_ERROR(L, "format", LUA_TSTRING, lua_type(L, -1));
         return false;
     }
     int format = lhap_lookup_by_name(lua_tostring(L, -1),
@@ -1679,6 +1680,7 @@ static bool lhap_service_characteristics_arr_cb(lua_State *L, int i, void *arg) 
         HAPArrayCount(lhap_characteristic_format_strs));
     lua_pop(L, 1);
     if (format == -1) {
+        HAPLogError(&lhap_log, "%s: Invalid format.", __func__);
         return false;
     }
 
@@ -1691,6 +1693,7 @@ static bool lhap_service_characteristics_arr_cb(lua_State *L, int i, void *arg) 
     ((HAPBaseCharacteristic *)c)->format = format;
     characteristics[i] = c;
     if (!lc_traverse_table(L, -1, lhap_characteristic_kvs, c)) {
+        HAPLogError(&lhap_log, "%s: Failed to parse characteristic.", __func__);
         return false;
     }
     return true;
@@ -1702,16 +1705,21 @@ static void lhap_reset_characteristic(lua_State *L, HAPCharacteristic *character
     lc_safe_free(((HAPBaseCharacteristic *)characteristic)->manufacturerDescription);
     switch (format) {
     LHAP_CASE_CHAR_FORMAT_CODE(UInt8, characteristic,
-        for (uint8_t **pval = (uint8_t **)p->constraints.validValues;
-            *pval; pval++) {
-            lc_free(*pval);
+        if (p->constraints.validValues) {
+            for (uint8_t **pval = (uint8_t **)p->constraints.validValues;
+                *pval; pval++) {
+                lc_free(*pval);
+            }
+            lc_safe_free(p->constraints.validValues);
         }
-        lc_safe_free(p->constraints.validValues);
-        for (HAPUInt8CharacteristicValidValuesRange **prange =
-            (HAPUInt8CharacteristicValidValuesRange **)
-            p->constraints.validValuesRanges;
-            *prange; prange++) {
-            lc_free(*prange);
+        if (p->constraints.validValuesRanges) {
+            for (HAPUInt8CharacteristicValidValuesRange **prange =
+                (HAPUInt8CharacteristicValidValuesRange **)
+                p->constraints.validValuesRanges;
+                *prange; prange++) {
+                lc_free(*prange);
+            }
+            lc_safe_free(p->constraints.validValuesRanges);
         }
     )
     default:
