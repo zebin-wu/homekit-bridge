@@ -7,8 +7,7 @@ local version = {
     }
 }
 
-function version.new(iid, read)
-    local self = version
+function version:new(iid, read)
     return {
         format = self.format,
         iid = iid,

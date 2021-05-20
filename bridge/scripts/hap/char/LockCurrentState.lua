@@ -16,8 +16,7 @@ local lockCurrentState = {
     }
 }
 
-function lockCurrentState.new(iid, read)
-    local self = lockCurrentState
+function lockCurrentState:new(iid, read)
     return {
         format = self.format,
         iid = iid,

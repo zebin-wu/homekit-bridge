@@ -7,8 +7,7 @@ local on = {
     }
 }
 
-function on.new(iid, read, write)
-    local self = on
+function on:new(iid, read, write)
     return {
         format = self.format,
         iid = iid,

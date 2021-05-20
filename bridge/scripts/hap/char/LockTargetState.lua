@@ -14,8 +14,7 @@ local lockTargetState = {
     }
 }
 
-function lockTargetState.new(iid, read, write)
-    local self = lockTargetState
+function lockTargetState:new(iid, read, write)
     return {
         format = self.format,
         iid = iid,
