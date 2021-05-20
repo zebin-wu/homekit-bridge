@@ -57,7 +57,7 @@ local hap = {}
 
 ---@class ServicePropertiesBLE:table These properties only affect connections over Bluetooth LE.
 ---
----@field supportsConfiguration boolean The service supports configuration.
+---@field supportsConfiguration boolean The service supports configuration. Only the HAP Protocol Information service may support configuration.
 
 ---@class ServiceInformation
 ---
