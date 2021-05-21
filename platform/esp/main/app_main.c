@@ -90,6 +90,11 @@ static HAPAccessoryServerRef accessoryServer;
 
 static void handle_update_state(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context);
 
+static void app_console_start_cb(void* _Nullable context, size_t contextSize)
+{
+    app_console_start();
+}
+
 /**
  * Initialize global platform objects.
  */
@@ -169,6 +174,10 @@ static void init_platform() {
     platform.hapAccessoryServerCallbacks.handleUpdatedState = handle_update_state;
     platform.hapAccessoryServerCallbacks.handleSessionAccept = app_accessory_server_handle_session_accept;
     platform.hapAccessoryServerCallbacks.handleSessionInvalidate = app_accessory_server_handle_session_invalidate;
+
+    // Run console after starting the run loop.
+    HAPError err = HAPPlatformRunLoopScheduleCallback(app_console_start_cb, NULL, 0);
+    HAPAssert(err == kHAPError_None);
 }
 
 /**
@@ -249,11 +258,8 @@ void handle_update_state(HAPAccessoryServerRef* _Nonnull server, void* _Nullable
         break;
     case kHAPAccessoryServerState_Running:
         app_accessory_server_handle_update_state(server, context);
-
-        // Start the console.
-        app_console_start();
         break;
-    default:
+    case kHAPAccessoryServerState_Stopping:
         app_accessory_server_handle_update_state(server, context);
         break;
     }
