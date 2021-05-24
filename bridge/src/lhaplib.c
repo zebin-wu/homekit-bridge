@@ -793,7 +793,8 @@ lhap_char_constraints_max_len_cb(lua_State *L, const lc_table_kv *kv, void *arg)
         p->constraints.maxLength = num;
     )
     LHAP_CASE_CHAR_FORMAT_CODE(Data, arg,
-        p->constraints.maxLength = lua_tointegerx(L, -1, &isnum)
+        num = lua_tointegerx(L, -1, &isnum);
+        p->constraints.maxLength = num;
     )
     default:
         HAPLogError(&lhap_log, "%s: The constraints of the %s "
@@ -803,10 +804,11 @@ lhap_char_constraints_max_len_cb(lua_State *L, const lc_table_kv *kv, void *arg)
     }
     if (!isnum) {
         HAPLogError(&lhap_log, "%s: Invalid maxLength", __func__);
+        return false;
     }
-    num = lua_tointegerx(L, -1, &isnum);
-    if (num > UINT32_MAX) {
-        HAPLogError(&lhap_log, "%s: maxLength is larger than UINT32_MAX.", __func__);
+    if (num < 0 || num > UINT32_MAX) {
+        HAPLogError(&lhap_log, "%s: maxLength is out of range(0, %u).",
+            __func__, UINT32_MAX);
         return false;
     }
     return true;
@@ -814,25 +816,60 @@ lhap_char_constraints_max_len_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 
 static bool
 lhap_char_constraints_min_val_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+    int isnum;
+    lua_Integer num;
+    lua_Integer max;
+    lua_Integer min;
     HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
+    if (format >= kHAPCharacteristicFormat_UInt8 &&
+        format <= kHAPCharacteristicFormat_Int) {
+        num = lua_tointegerx(L, -1, &isnum);
+    }
     switch (format) {
     LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
-        p->constraints.minimumValue = lua_tointeger(L, -1))
+        max = UINT8_MAX;
+        min = 0;
+        p->constraints.minimumValue = num;
+    )
     LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg,
-        p->constraints.minimumValue = lua_tointeger(L, -1))
+        max = UINT16_MAX;
+        min = 0;
+        p->constraints.minimumValue = num;
+    )
     LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg,
-        p->constraints.minimumValue = lua_tointeger(L, -1))
+        max = UINT32_MAX;
+        min = 0;
+        p->constraints.minimumValue = num;
+    )
     LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg,
-        p->constraints.minimumValue = lua_tointeger(L, -1))
+        max = INT64_MAX;
+        min = 0;
+        p->constraints.minimumValue = num;
+    )
     LHAP_CASE_CHAR_FORMAT_CODE(Int, arg,
-        p->constraints.minimumValue = lua_tointeger(L, -1))
+        max = INT32_MAX;
+        min = INT32_MIN;
+        p->constraints.minimumValue = num;
+    )
     LHAP_CASE_CHAR_FORMAT_CODE(Float, arg,
-        p->constraints.minimumValue = lua_tonumber(L, -1))
+        p->constraints.minimumValue = lua_tonumberx(L, -1, &isnum))
     default:
         HAPLogError(&lhap_log, "%s: The constraints of the %s "
             "characteristic has no minimumValue.",
             __func__, lhap_characteristic_format_strs[format]);
         return false;
+    }
+    if (!isnum) {
+        HAPLogError(&lhap_log, "%s: Invalid minVal", __func__);
+        return false;
+    }
+    if (format >= kHAPCharacteristicFormat_UInt8 &&
+        format <= kHAPCharacteristicFormat_Int) {
+        if (num < min || num > max) {
+            HAPLogError(&lhap_log, "%s: maxLength is out of range(%lld, %lld).",
+                __func__, min, max);
+            return false;
+        }
     }
     return true;
 }
