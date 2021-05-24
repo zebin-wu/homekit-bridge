@@ -172,14 +172,16 @@ end
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
 ---@param format? CharacteristicFormat Characteristic format.
-local function testCharacteristic(expect, k, vals, format)
+---@param constraints? StringCharacteristiConstraints|NumberCharacteristiConstraints|UInt8CharacteristiConstraints Value constraints.
+local function testCharacteristic(expect, k, vals, format, constraints)
+    format = format or "Bool"
     local tab = "char"
     if format then
         tab = ("char[%s]"):format(format)
     end
     local function _test(v)
         local c = {
-            format = format or "Bool",
+            format = format,
             iid = hap.getNewInstanceID(),
             type = "On",
             props = {
@@ -197,7 +199,7 @@ local function testCharacteristic(expect, k, vals, format)
                     writableWithoutSecurity = false
                 }
             },
-            constraints = {},
+            constraints = constraints or {},
             cbs = {
                 read = function (request, context) end,
                 write = function (request, value, context) end
@@ -603,4 +605,46 @@ testCharacteristic(false, "constraints", { true, "test", 1 })
 ---Configure with valid constraints maxLen.
 for i, fmt in ipairs({ "String", "Data" }) do
     testCharacteristic(true, "constraints.maxLen", { 0, 64, 0xffffffff }, fmt)
+end
+
+---Configure with invalid constraints maxLen.
+testCharacteristic(false, "constraints.maxLen", { math.maxinteger, 1.1, -1, "test", {}, false }, "String")
+testCharacteristic(false, "constraints.maxLen", { 0 }, "Bool")
+
+local format = {
+    UInt8 = {
+        min = 0,
+        max = 0xff
+    },
+    UInt16 = {
+        min = 0,
+        max = 0xffff
+    },
+    UInt32 = {
+        min = 0,
+        max = 0xffffffff
+    },
+    UInt64 = {
+        min = 0,
+        max = math.maxinteger
+    },
+    Int = {
+        min = -2147483648,
+        max = 2147483647
+    }
+}
+
+local function getDftNumberConstraints(fmt)
+    return {
+        minVal = format[fmt].min,
+        maxVal = format[fmt].max,
+        stepVal = 1
+    }
+end
+
+for i, fmt in ipairs({ "UInt8", "UInt16", "UInt32", "UInt64", "Int" }) do
+    ---Configure with valid constraints minVal.
+    testCharacteristic(true, "constraints.minVal", { format[fmt].min, format[fmt].max }, fmt, getDftNumberConstraints(fmt))
+    ---Configure with invalid constraints minVal.
+    testCharacteristic(false, "constraints.minVal", { format[fmt].min - 1, format[fmt].max + 1, "test", {}, false }, fmt, getDftNumberConstraints(fmt))
 end
