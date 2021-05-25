@@ -317,6 +317,23 @@ static const lhap_characteristic_type lhap_characteristic_type_tab[] = {
     LHAP_CHARACTERISTIC_TYPE_FORMAT(ADKVersion),
 };
 
+#if LUA_MAXINTEGER < UINT32_MAX
+#define LHAP_UINT32_MAX LUA_MAXINTEGER
+#else
+#define LHAP_UINT32_MAX UINT32_MAX
+#endif
+
+static const struct {
+    lua_Integer min;
+    lua_Integer max;
+} lhap_char_integer_value_range_tab[] = {
+    [kHAPCharacteristicFormat_UInt8] = {0, UINT8_MAX},
+    [kHAPCharacteristicFormat_UInt16] = {0, UINT16_MAX},
+    [kHAPCharacteristicFormat_UInt32] = {0, LHAP_UINT32_MAX},
+    [kHAPCharacteristicFormat_UInt64] = {0, LUA_MAXINTEGER},
+    [kHAPCharacteristicFormat_Int] = {INT32_MIN, INT32_MAX},
+};
+
 /**
  * Store the ref id of the var that needs to be saved in the accessory. 
  */
@@ -431,6 +448,25 @@ static bool lhap_service_is_light_userdata(HAPService *service) {
         }
     }
     return false;
+}
+
+static lua_Integer
+lhap_tointegerx(lua_State *L, int idx, int *isnum, HAPCharacteristicFormat format, bool is_unsigned) {
+    lua_Integer num;
+    num = lua_tointegerx(L, -1, isnum);
+    if (!(*isnum)) {
+        return num;
+    }
+    lua_Integer min = is_unsigned ? 0 : lhap_char_integer_value_range_tab[format].min;
+    if (num < min || num > lhap_char_integer_value_range_tab[format].max) {
+        HAPLogError(&lhap_log, "%s: Integer is out of range("
+            LUA_INTEGER_FMT ", " LUA_INTEGER_FMT ").",
+            __func__, lhap_char_integer_value_range_tab[format].min,
+            lhap_char_integer_value_range_tab[format].max);
+        *isnum = false;
+        return 0;
+    }
+    return num;
 }
 
 static bool
@@ -806,123 +842,58 @@ lhap_char_constraints_max_len_cb(lua_State *L, const lc_table_kv *kv, void *arg)
         HAPLogError(&lhap_log, "%s: Invalid maxLength", __func__);
         return false;
     }
-    if (num < 0 || num > UINT32_MAX) {
+    if (num < 0 || num > LHAP_UINT32_MAX) {
         HAPLogError(&lhap_log, "%s: maxLength is out of range(0, %u).",
-            __func__, UINT32_MAX);
+            __func__, LHAP_UINT32_MAX);
         return false;
     }
     return true;
 }
 
+#define LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(member, is_unsigned) \
+    int isnum; \
+    lua_Integer num; \
+    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format; \
+    if (format >= kHAPCharacteristicFormat_UInt8 && \
+        format <= kHAPCharacteristicFormat_Int) { \
+        num = lhap_tointegerx(L, -1, &isnum, format, is_unsigned); \
+    } \
+    switch (format) { \
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg, p->constraints.member = num) \
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg, p->constraints.member = num) \
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg, p->constraints.member = num) \
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg, p->constraints.member = num) \
+    LHAP_CASE_CHAR_FORMAT_CODE(Int, arg, p->constraints.member = num) \
+    LHAP_CASE_CHAR_FORMAT_CODE(Float, arg, \
+        p->constraints.member = lua_tonumberx(L, -1, &isnum)) \
+    default: \
+        HAPLogError(&lhap_log, "%s: The constraints of the %s " \
+            "characteristic has no %s.", __func__, \
+            lhap_characteristic_format_strs[format], #member); \
+        return false; \
+    } \
+    if (!isnum) { \
+        HAPLogError(&lhap_log, "%s: Invalid %s", __func__, #member); \
+        return false; \
+    } \
+    return true;
+
 static bool
 lhap_char_constraints_min_val_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    int isnum;
-    lua_Integer num;
-    lua_Integer max;
-    lua_Integer min;
-    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
-    if (format >= kHAPCharacteristicFormat_UInt8 &&
-        format <= kHAPCharacteristicFormat_Int) {
-        num = lua_tointegerx(L, -1, &isnum);
-    }
-    switch (format) {
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
-        max = UINT8_MAX;
-        min = 0;
-        p->constraints.minimumValue = num;
-    )
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg,
-        max = UINT16_MAX;
-        min = 0;
-        p->constraints.minimumValue = num;
-    )
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg,
-        max = UINT32_MAX;
-        min = 0;
-        p->constraints.minimumValue = num;
-    )
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg,
-        max = INT64_MAX;
-        min = 0;
-        p->constraints.minimumValue = num;
-    )
-    LHAP_CASE_CHAR_FORMAT_CODE(Int, arg,
-        max = INT32_MAX;
-        min = INT32_MIN;
-        p->constraints.minimumValue = num;
-    )
-    LHAP_CASE_CHAR_FORMAT_CODE(Float, arg,
-        p->constraints.minimumValue = lua_tonumberx(L, -1, &isnum))
-    default:
-        HAPLogError(&lhap_log, "%s: The constraints of the %s "
-            "characteristic has no minimumValue.",
-            __func__, lhap_characteristic_format_strs[format]);
-        return false;
-    }
-    if (!isnum) {
-        HAPLogError(&lhap_log, "%s: Invalid minVal", __func__);
-        return false;
-    }
-    if (format >= kHAPCharacteristicFormat_UInt8 &&
-        format <= kHAPCharacteristicFormat_Int) {
-        if (num < min || num > max) {
-            HAPLogError(&lhap_log, "%s: maxLength is out of range(%lld, %lld).",
-                __func__, min, max);
-            return false;
-        }
-    }
-    return true;
+    LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(minimumValue, false)
 }
 
 static bool
 lhap_char_constraints_max_val_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
-    switch (format) {
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
-        p->constraints.maximumValue = lua_tointeger(L, -1))
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg,
-        p->constraints.maximumValue = lua_tointeger(L, -1))
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg,
-        p->constraints.maximumValue = lua_tointeger(L, -1))
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg,
-        p->constraints.maximumValue = lua_tointeger(L, -1))
-    LHAP_CASE_CHAR_FORMAT_CODE(Int, arg,
-        p->constraints.maximumValue = lua_tointeger(L, -1))
-    LHAP_CASE_CHAR_FORMAT_CODE(Float, arg,
-        p->constraints.maximumValue = lua_tonumber(L, -1))
-    default:
-        HAPLogError(&lhap_log, "%s: The constraints of the %s "
-            "characteristic has no maximumValue.",
-            __func__, lhap_characteristic_format_strs[format]);
-        return false;
-    }
-    return true;
+    LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(maximumValue, false)
 }
 
 static bool
 lhap_char_constraints_step_val_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
-    switch (format) {
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
-        p->constraints.stepValue = lua_tointeger(L, -1))
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg,
-        p->constraints.stepValue = lua_tointeger(L, -1))
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg,
-        p->constraints.stepValue = lua_tointeger(L, -1))
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg,
-        p->constraints.stepValue = lua_tointeger(L, -1))
-    LHAP_CASE_CHAR_FORMAT_CODE(Int, arg,
-        p->constraints.stepValue = lua_tointeger(L, -1))
-    LHAP_CASE_CHAR_FORMAT_CODE(Float, arg,
-        p->constraints.stepValue = lua_tonumber(L, -1))
-    default:
-        HAPLogError(&lhap_log, "%s: The constraints of the %s "
-            "characteristic has no stepValue.",
-            __func__, lhap_characteristic_format_strs[format]);
-        return false;
-    }
-    return true;
+    LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(stepValue, true)
 }
+
+#undef LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE
 
 static bool
 lhap_char_constraints_valid_vals_arr_cb(lua_State *L, int i, void *arg) {
@@ -1003,7 +974,7 @@ lhap_char_constraints_valid_vals_ranges_arr_cb(lua_State *L, int i, void *arg) {
         return false;
     }
     HAPUInt8CharacteristicValidValuesRange *range =
-        lc_malloc(sizeof(HAPUInt8CharacteristicValidValuesRange));
+        lc_calloc(sizeof(HAPUInt8CharacteristicValidValuesRange));
     if (!range) {
         HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
         return false;
@@ -2131,7 +2102,8 @@ parse_cbs:
         lhap_accessory_category_strs[accessory->category]);
     if (len) {
         HAPLogInfo(&lhap_log,
-            "%llu bridged accessories have been configured.", len);
+            "%" LUA_INTEGER_FRMLEN "u"
+            " bridged accessories have been configured.", len);
     }
     desc->is_configure = true;
     lua_pushboolean(L, true);
