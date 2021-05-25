@@ -602,15 +602,6 @@ testCharacteristic(true, "constraints", { {} })
 ---Configure with invalid constraints.
 testCharacteristic(false, "constraints", { true, "test", 1 })
 
----Configure with valid constraints maxLen.
-for i, fmt in ipairs({ "String", "Data" }) do
-    testCharacteristic(true, "constraints.maxLen", { 0, 64, 0xffffffff }, fmt)
-end
-
----Configure with invalid constraints maxLen.
-testCharacteristic(false, "constraints.maxLen", { math.maxinteger, 1.1, -1, "test", {}, false }, "String")
-testCharacteristic(false, "constraints.maxLen", { 0 }, "Bool")
-
 local format = {
     UInt8 = {
         min = 0,
@@ -634,6 +625,15 @@ local format = {
     }
 }
 
+---Configure with valid constraints maxLen.
+for i, fmt in ipairs({ "String", "Data" }) do
+    testCharacteristic(true, "constraints.maxLen", { format.UInt32.min, 64, format.UInt32.max }, fmt)
+end
+
+---Configure with invalid constraints maxLen.
+testCharacteristic(false, "constraints.maxLen", { format.UInt32.max + 1, 1.1, format.UInt32.min - 1, "test", {}, false }, "String")
+testCharacteristic(false, "constraints.maxLen", { 0 }, "Bool")
+
 local function getDftNumberConstraints(fmt)
     return {
         minVal = format[fmt].min,
@@ -642,9 +642,12 @@ local function getDftNumberConstraints(fmt)
     }
 end
 
+---Configure with valid/invalid constraints minVal, maxVal, stepVal.
 for i, fmt in ipairs({ "UInt8", "UInt16", "UInt32", "UInt64", "Int" }) do
-    ---Configure with valid constraints minVal.
-    testCharacteristic(true, "constraints.minVal", { format[fmt].min, format[fmt].max }, fmt, getDftNumberConstraints(fmt))
-    ---Configure with invalid constraints minVal.
-    testCharacteristic(false, "constraints.minVal", { format[fmt].min - 1, format[fmt].max + 1, "test", {}, false }, fmt, getDftNumberConstraints(fmt))
+    for i, key in ipairs({ "minVal", "maxVal" }) do
+        testCharacteristic(true, "constraints." .. key, { format[fmt].min, format[fmt].max }, fmt, getDftNumberConstraints(fmt))
+        testCharacteristic(false, "constraints." .. key, { format[fmt].min - 1, format[fmt].max + 1, "test", {}, false }, fmt, getDftNumberConstraints(fmt))
+    end
+    testCharacteristic(true, "constraints.stepVal", { 0, format[fmt].max }, fmt, getDftNumberConstraints(fmt))
+    testCharacteristic(false, "constraints.stepVal", { -1, format[fmt].max + 1, "test", {}, false }, fmt, getDftNumberConstraints(fmt))
 end
