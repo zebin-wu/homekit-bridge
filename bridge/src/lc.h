@@ -61,9 +61,11 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
 
 /**
  * Traverse Lua array.
+ *
+ * @attention The index of the array starts from 0.
  */
 bool lc_traverse_array(lua_State *L, int idx,
-                        bool (*arr_cb)(lua_State *L, int i, void *arg),
+                        bool (*arr_cb)(lua_State *L, size_t i, void *arg),
                         void *arg);
 
 /**

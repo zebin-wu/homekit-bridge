@@ -74,21 +74,33 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
 }
 
 bool lc_traverse_array(lua_State *L, int idx,
-        bool (*arr_cb)(lua_State *L, int i, void *arg), void *arg) {
+        bool (*arr_cb)(lua_State *L, size_t i, void *arg), void *arg) {
     if (!arr_cb) {
         return false;
     }
-
     lua_pushvalue(L, idx);
     lua_pushnil(L);
-    for (int i = 0; lua_next(L, -2); lua_pop(L, 1), i++) {
+    for (size_t i = 0; lua_next(L, -2); lua_pop(L, 1), i++) {
+        if (!lua_isinteger(L, -2)) {
+            goto invalid_array;
+        }
+        int isnum;
+        lua_Integer num = lua_tointegerx(L, -2, &isnum);
+        if (!isnum || num != i + 1) {
+            goto invalid_array;
+        }
         if (!arr_cb(L, i, arg)) {
-            lua_pop(L, 2);
-            return false;
+            goto err;
         }
     }
     lua_pop(L, 1);
     return true;
+
+invalid_array:
+    HAPLogError(&lc_log, "%s: Invalid array.", __func__);
+err:
+    lua_pop(L, 2);
+    return false;
 }
 
 void lc_create_enum_table(lua_State *L, const char *enum_array[], int len) {
