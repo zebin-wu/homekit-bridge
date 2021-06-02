@@ -97,13 +97,15 @@ local hap = {}
 ---@field minVal integer Minimum value.
 ---@field maxVal integer Maximum value.
 ---@field stepVal integer Step value.
+---
+---Only supported for Apple defined characteristics.
 ---@field validVals integer[] List of valid values in ascending order.
 ---@field validValsRanges UInt8CharacteristicValidValuesRange[] List of valid values ranges in ascending order.
 
 ---@class UInt8CharacteristicValidValuesRange
 ---
 ---@field start integer Starting value.
----@field end integer Ending value.
+---@field stop integer Ending value.
 
 ---@class CharacteristicReadRequest:table Characteristic read request.
 ---
