@@ -896,7 +896,7 @@ lhap_char_constraints_step_val_cb(lua_State *L, const lc_table_kv *kv, void *arg
 #undef LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE
 
 static bool
-lhap_char_constraints_valid_vals_arr_cb(lua_State *L, int i, void *arg) {
+lhap_char_constraints_valid_vals_arr_cb(lua_State *L, size_t i, void *arg) {
     uint8_t **vals = arg;
 
     if (!lua_isnumber(L, -1)) {
@@ -904,13 +904,20 @@ lhap_char_constraints_valid_vals_arr_cb(lua_State *L, int i, void *arg) {
             LUA_TNUMBER, lua_type(L, -1));
         return false;
     }
-    uint8_t *val = lc_malloc(sizeof(uint8_t));
-    if (!val) {
+
+    int isnum;
+    lua_Integer num = lhap_tointegerx(L, -1, &isnum, kHAPCharacteristicFormat_UInt8, true);
+    if (!isnum) {
+        return false;
+    }
+
+    uint8_t *pval = lc_malloc(sizeof(uint8_t));
+    if (!pval) {
         HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
         return false;
     }
-    *val = lua_tointeger(L, -1);
-    vals[i] = val;
+    *pval = num;
+    vals[i] = pval;
     return true;
 }
 
@@ -922,8 +929,8 @@ lhap_char_constraints_valid_vals_cb(lua_State *L, const lc_table_kv *kv, void *a
         uint8_t ***pValidValues = (uint8_t ***)&(p->constraints.validValues);
         lua_Unsigned len = lua_rawlen(L, -1);
         if (!len) {
-            *pValidValues = NULL;
-            break;
+            HAPLogError(&lhap_log, "%s: Invalid array.", __func__);
+            return false;
         }
         uint8_t **vals = lc_calloc((len + 1) * sizeof(uint8_t *));
         if (!vals) {
@@ -948,24 +955,28 @@ lhap_char_constraints_valid_vals_cb(lua_State *L, const lc_table_kv *kv, void *a
 
 static bool
 lhap_char_constraints_valid_val_range_start_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    ((HAPUInt8CharacteristicValidValuesRange *)arg)->start = lua_tointeger(L, -1);
-    return true;
+    int isnum;
+    ((HAPUInt8CharacteristicValidValuesRange *)arg)->start = lhap_tointegerx(L, -1,
+        &isnum, kHAPCharacteristicFormat_UInt8, true);
+    return isnum;
 }
 
 static bool
 lhap_char_constraints_valid_val_range_end_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    ((HAPUInt8CharacteristicValidValuesRange *)arg)->end = lua_tointeger(L, -1);
-    return true;
+    int isnum;
+    ((HAPUInt8CharacteristicValidValuesRange *)arg)->end = lhap_tointegerx(L, -1,
+        &isnum, kHAPCharacteristicFormat_UInt8, true);
+    return isnum;
 }
 
 static const lc_table_kv lhap_char_constraints_valid_val_range_kvs[] = {
     {"start", LC_TNUMBER, lhap_char_constraints_valid_val_range_start_cb},
-    {"end", LC_TNUMBER, lhap_char_constraints_valid_val_range_end_cb},
+    {"stop", LC_TNUMBER, lhap_char_constraints_valid_val_range_end_cb},
     {NULL, LC_TNONE, NULL},
 };
 
 static bool
-lhap_char_constraints_valid_vals_ranges_arr_cb(lua_State *L, int i, void *arg) {
+lhap_char_constraints_valid_vals_ranges_arr_cb(lua_State *L, size_t i, void *arg) {
     HAPUInt8CharacteristicValidValuesRange **ranges = arg;
 
     if (!lua_istable(L, -1)) {
@@ -998,8 +1009,8 @@ lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, const lc_table_kv *kv, 
             &(p->constraints.validValuesRanges);
         lua_Unsigned len = lua_rawlen(L, -1);
         if (!len) {
-            *pValidValuesRanges = NULL;
-            break;
+            HAPLogError(&lhap_log, "%s: Invalid array.", __func__);
+            return false;
         }
         HAPUInt8CharacteristicValidValuesRange **ranges =
             lc_calloc((len + 1) * sizeof(HAPUInt8CharacteristicValidValuesRange *));
@@ -1670,7 +1681,7 @@ static const lc_table_kv lhap_characteristic_kvs[] = {
     {NULL, LC_TNONE, NULL},
 };
 
-static bool lhap_service_characteristics_arr_cb(lua_State *L, int i, void *arg) {
+static bool lhap_service_characteristics_arr_cb(lua_State *L, size_t i, void *arg) {
     HAPCharacteristic **characteristics = arg;
 
     if (!lua_istable(L, -1)) {
@@ -1789,7 +1800,7 @@ static void lhap_reset_service(lua_State *L, HAPService *service) {
 }
 
 static bool
-lhap_accessory_services_arr_cb(lua_State *L, int i, void *arg) {
+lhap_accessory_services_arr_cb(lua_State *L, size_t i, void *arg) {
     HAPService **services = arg;
 
     if (lua_islightuserdata(L, -1)) {
@@ -1962,7 +1973,7 @@ static void lhap_reset_accessory(lua_State *L, HAPAccessory *accessory) {
 }
 
 static bool
-lhap_accessories_arr_cb(lua_State *L, int i, void *arg) {
+lhap_accessories_arr_cb(lua_State *L, size_t i, void *arg) {
     HAPAccessory **accessories = arg;
     if (!lua_istable(L, -1)) {
         HAPLogError(&lhap_log,
