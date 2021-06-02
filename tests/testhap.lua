@@ -8,7 +8,15 @@ local function fmtVal(v)
     if t == "string" then
         return "\"" .. v .. "\""
     elseif t == "table" then
-        return v
+        local s = "{"
+        for _k, _v in pairs(v) do
+            if type(_k) == "string" then
+                s = s .. _k .. ": "
+            end
+            s = s .. ("%s, "):format(fmtVal(_v))
+        end
+        s = s .. "}"
+        return s
     else
         return v
     end
@@ -627,7 +635,7 @@ local format = {
 
 ---Configure with valid constraints maxLen.
 for i, fmt in ipairs({ "String", "Data" }) do
-    testCharacteristic(true, "constraints.maxLen", { format.UInt32.min, 64, format.UInt32.max }, fmt)
+    testCharacteristic(true, "constraints.maxLen", { format.UInt32.min, (format.UInt32.min + format.UInt32.max) // 2, format.UInt32.max }, fmt)
 end
 
 ---Configure with invalid constraints maxLen.
@@ -651,3 +659,17 @@ for i, fmt in ipairs({ "UInt8", "UInt16", "UInt32", "UInt64", "Int" }) do
     testCharacteristic(true, "constraints.stepVal", { 0, format[fmt].max }, fmt, getDftNumberConstraints(fmt))
     testCharacteristic(false, "constraints.stepVal", { -1, format[fmt].max + 1, "test", {}, false }, fmt, getDftNumberConstraints(fmt))
 end
+
+---Configure with valid constraints validVals.
+testCharacteristic(true, "constraints.validVals", { { format.UInt8.min, format.UInt8.max } }, "UInt8")
+
+---Configure with invalid constraints validVals.
+testCharacteristic(false, "constraints.validVals", { { format.UInt8.min - 1, format.UInt8.max + 1 }, { true, "test" }, "test", true, 1 }, "UInt8")
+testCharacteristic(false, "constraints.validVals", { { format.UInt8.min, format.UInt8.max } }, "Bool")
+
+---Configure with valid constraints validValsRanges.
+testCharacteristic(true, "constraints.validValsRanges", { { { start = format.UInt8.min, stop = format.UInt8.max } } }, "UInt8")
+
+---Configure with invalid constraints validValsRanges.
+testCharacteristic(false, "constraints.validValsRanges", { false, "test", 1, { false }, { "test" }, { start = false }, { { start = format.UInt8.min, stop = true } } }, "UInt8")
+testCharacteristic(false, "constraints.validValsRanges", { { { start = format.UInt8.min, stop = format.UInt8.max } } }, "Bool")
