@@ -13,6 +13,9 @@
 typedef enum {
     PAL_NET_ERR_OK,  // No error.
     PAL_NET_ERR_UNKNOWN,  // Unknown.
+    PAL_NET_ERR_ALLOC,  // Failed to alloc.
+    PAL_NET_ERR_INVALID_ARG,  // Invalid argument.
+    PAL_NET_ERR_NOT_CONN,  // Not connected.
 } pal_net_err;
 
 /**
