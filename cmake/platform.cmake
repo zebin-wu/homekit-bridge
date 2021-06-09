@@ -16,6 +16,7 @@ set(PLATFORM_LINUX_SRCS
 # collect platform common sources
 set(PLATFORM_COMMON_SRCS
     ${PLATFORM_COMMON_SRC_DIR}/hap.c
+    ${PLATFORM_COMMON_SRC_DIR}/net/udp.c
 )
 
 # collect platform headers
@@ -23,4 +24,6 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/board.h
     ${PLATFORM_INC_DIR}/pal/memory.h
     ${PLATFORM_INC_DIR}/pal/hap.h
+    ${PLATFORM_INC_DIR}/pal/net/types.h
+    ${PLATFORM_INC_DIR}/pal/net/udp.h
 )
