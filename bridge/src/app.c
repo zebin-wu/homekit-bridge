@@ -49,13 +49,13 @@ static const luaL_Reg globallibs[] = {
     {LUA_MATHLIBNAME, luaopen_math},
     {LUA_UTF8LIBNAME, luaopen_utf8},
     {LUA_DBLIBNAME, luaopen_debug},
-    {LUA_LOGNAME, luaopen_log},
+    {LUA_LOG_NAME, luaopen_log},
     {NULL, NULL}
 };
 
 static const luaL_Reg dynamiclibs[] = {
-    {LUA_HAPNAME, luaopen_hap},
-    {LUA_PAL_BOARDNAME, luaopen_pal_board},
+    {LUA_HAP_NAME, luaopen_hap},
+    {LUA_PAL_BOARD_NAME, luaopen_pal_board},
     {NULL, NULL}
 };
 

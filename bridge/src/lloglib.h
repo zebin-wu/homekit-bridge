@@ -13,7 +13,7 @@ extern "C" {
 
 #include <lua.h>
 
-#define LUA_LOGNAME "log"
+#define LUA_LOG_NAME "log"
 LUAMOD_API int luaopen_log(lua_State *L);
 
 #ifdef __cplusplus
