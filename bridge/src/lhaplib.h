@@ -14,7 +14,7 @@ extern "C" {
 #include <lua.h>
 #include <HAP.h>
 
-#define LUA_HAPNAME "hap"
+#define LUA_HAP_NAME "hap"
 LUAMOD_API int luaopen_hap(lua_State *L);
 
 typedef struct {
