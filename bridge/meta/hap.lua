@@ -25,7 +25,7 @@ local hap = {}
 
 ---@class AccessoryCallbacks:table Accessory Callbacks.
 ---
----@field identify fun(request: AccessoryIdentifyRequest, context?:any):Error The callback used to invoke the identify routine.
+---@field identify fun(request: AccessoryIdentifyRequest, context?: any):Error The callback used to invoke the identify routine.
 
 ---@class AccessoryInformation:table Accessory information.
 ---
