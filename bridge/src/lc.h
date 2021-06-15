@@ -89,6 +89,21 @@ char *lc_new_str(lua_State *L, int idx);
  */
 void lc_add_searcher(lua_State *L, lua_CFunction searcher);
 
+/**
+ * Creates and returns a reference.
+ */
+int lc_ref(lua_State *L, int idx);
+
+/**
+ * Delete the reference.
+ */
+void lc_unref(lua_State *L, int ref_id);
+
+/**
+ * Push the reference to lua stack.
+ */
+bool lc_push_ref(lua_State *L, int ref_id);
+
 #ifdef __cplusplus
 }
 #endif

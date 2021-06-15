@@ -138,3 +138,22 @@ void lc_add_searcher(lua_State *L, lua_CFunction searcher) {
     lua_rawseti(L, -2, len);
     lua_pop(L, 2);
 }
+
+int lc_ref(lua_State *L, int idx) {
+    lua_pushvalue(L, idx);
+    return luaL_ref(L, LUA_REGISTRYINDEX);
+}
+
+void lc_unref(lua_State *L, int ref_id) {
+    if (ref_id != LUA_REFNIL) {
+        luaL_unref(L, LUA_REGISTRYINDEX, ref_id);
+    }
+}
+
+bool lc_push_ref(lua_State *L, int ref_id) {
+    if (ref_id != LUA_REFNIL) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id);
+        return true;
+    }
+    return false;
+}
