@@ -148,7 +148,7 @@ static void pal_net_udp_raw_recv(pal_net_udp *udp) {
             }
             from_port = ntohs(sa.sin_port);
             inet_ntop(AF_INET, &sa.sin_addr.s_addr,
-                from_addr, sizeof(sa.sin_addr.s_addr));
+                from_addr, sizeof(from_addr));
             break;
         }
         case PAL_NET_DOMAIN_INET6: {
@@ -163,7 +163,7 @@ static void pal_net_udp_raw_recv(pal_net_udp *udp) {
             }
             from_port = ntohs(sa.sin6_port);
             inet_ntop(AF_INET, &sa.sin6_addr,
-                from_addr, sizeof(sa.sin6_addr));
+                from_addr, sizeof(from_addr));
             break;
         }
         default:

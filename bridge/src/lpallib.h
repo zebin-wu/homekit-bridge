@@ -16,6 +16,9 @@ extern "C" {
 #define LUA_PAL_BOARD_NAME "pal.board"
 LUAMOD_API int luaopen_pal_board(lua_State *L);
 
+#define LUA_PAL_NET_UDP_NAME "pal.net.udp"
+LUAMOD_API int luaopen_pal_net_udp(lua_State *L);
+
 #ifdef __cplusplus
 }
 #endif

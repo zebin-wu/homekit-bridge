@@ -22,8 +22,15 @@ typedef enum {
  * Communication domain.
  */
 typedef enum {
-    PAL_NET_DOMAIN_INET,  // IPv4 Internet protocols
-    PAL_NET_DOMAIN_INET6,  // IPv6 Internet protocols
+    PAL_NET_DOMAIN_INET,  // IPv4 Internet protocols.
+    PAL_NET_DOMAIN_INET6,  // IPv6 Internet protocols.
+
+    PAL_NET_DOMAIN_COUNT,  // Count of enums.
 } pal_net_domain;
+
+#define PAL_NET_DOMAIN_STRS { \
+    [PAL_NET_DOMAIN_INET] = "inet", \
+    [PAL_NET_DOMAIN_INET6] = "inet6", \
+}
 
 #endif  // PLATFORM_INCLUDE_PAL_NET_TYPES_H_
