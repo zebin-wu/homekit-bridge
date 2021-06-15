@@ -56,6 +56,7 @@ static const luaL_Reg globallibs[] = {
 static const luaL_Reg dynamiclibs[] = {
     {LUA_HAP_NAME, luaopen_hap},
     {LUA_PAL_BOARD_NAME, luaopen_pal_board},
+    {LUA_PAL_NET_UDP_NAME, luaopen_pal_net_udp},
     {NULL, NULL}
 };
 
@@ -89,7 +90,7 @@ size_t app_lua_run(const char *dir, const char *entry) {
     int len = snprintf(path, sizeof(path), LUA_SCRIPT_PATH_FMT, dir, "?");
     HAPAssert(len > 0);
     len = snprintf(path + len, sizeof(path) - len,
-        ";" LUA_BINARY_PATH_FMT, dir, "?");
+        LUA_PATH_SEP LUA_BINARY_PATH_FMT, dir, "?");
     HAPAssert(len > 0);
     if (setenv("LUA_PATH", path, 1)) {
         HAPLogError(&kHAPLog_Default, "Failed to set env LUA_PATH.");
