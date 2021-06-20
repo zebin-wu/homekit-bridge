@@ -9,6 +9,9 @@ local handle = {}
 ---@return UdpHandle|nil
 function udp.open(domain) end
 
+---Enable broadcast.
+function handle:enableBroadcast() end
+
 ---Bind a UDP handle to a local IP address and port.
 ---@param addr string Local address to use.
 ---@param port integer Local UDP port number, in host order.
