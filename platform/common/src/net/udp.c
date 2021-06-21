@@ -76,12 +76,11 @@ static void pal_net_udp_file_handle_callback(
 static bool
 pal_net_addr_get_ipv4(struct sockaddr_in *dst_addr, const char *src_addr, uint16_t port) {
     dst_addr->sin_family = AF_INET;
-    in_addr_t addr = inet_addr(src_addr);
-    if (addr == INADDR_NONE) {
+    int ret = inet_pton(AF_INET, src_addr, &dst_addr->sin_addr.s_addr);
+    if (ret <= 0) {
         return false;
     }
     dst_addr->sin_port = htons(port);
-    dst_addr->sin_addr.s_addr = addr;
     return true;
 }
 
@@ -431,6 +430,8 @@ pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len) {
     HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
         pal_net_udp_file_handle_callback, udp);
     UDP_LOG(Debug, udp, "%s(len = %lu)", __func__, len);
+    HAPLogBufferDebug(&udp_log_obj, data, len, "(id=%lu) %s(len = %lu)",
+        udp->id, __func__, len);
     return PAL_NET_ERR_OK;
 }
 
@@ -476,7 +477,8 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
     udp->interests.isReadyForWriting = true;
     HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
         pal_net_udp_file_handle_callback, udp);
-    UDP_LOG(Debug, udp, "%s(len = %lu, addr = %s, port = %u)", __func__, len, addr, port);
+    HAPLogBufferDebug(&udp_log_obj, data, len, "(id=%lu) %s(len = %lu, addr = %s, port = %u)",
+        udp->id, __func__, len, addr, port);
     return PAL_NET_ERR_OK;
 }
 
