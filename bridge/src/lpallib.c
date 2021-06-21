@@ -116,6 +116,13 @@ err:
     return 1;
 }
 
+static int lhap_net_udp_handle_enable_broadcast(lua_State *L) {
+    pal_net_udp *udp = lpal_net_udp_to_pcb(L, 1);
+    lua_pushboolean(L,
+        pal_net_udp_enable_broadcast(udp) == PAL_NET_ERR_OK ? true : false);
+    return 1;
+}
+
 static bool lpal_net_port_valid(lua_Integer port) {
     return ((port >= 0) && (port <= 65535));
 }
@@ -324,6 +331,7 @@ static const luaL_Reg lpal_net_udp_funcs[] = {
  * methods for UdpHandle
  */
 static const luaL_Reg lpal_net_udp_handle_meth[] = {
+    {"enableBroadcast", lhap_net_udp_handle_enable_broadcast},
     {"bind", lpal_net_udp_handle_bind},
     {"connect", lpal_net_udp_handle_connect},
     {"send", lpal_net_udp_handle_send},
