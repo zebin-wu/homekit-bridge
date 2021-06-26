@@ -323,8 +323,8 @@ pal_net_udp *pal_net_udp_new(pal_net_domain domain) {
 pal_net_err pal_net_udp_enable_broadcast(pal_net_udp *udp) {
     HAPPrecondition(udp);
 
-    bool on = true;
-    int ret = setsockopt(udp->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
+    int optval = 1;
+    int ret = setsockopt(udp->fd, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
     if (ret) {
         return PAL_NET_ERR_UNKNOWN;
     }
