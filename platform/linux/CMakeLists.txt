@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.5)
 
 set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(PLUGINS_DIR ${TOP_DIR}/plugins)
 
 include(${TOP_DIR}/cmake/project.cmake)
 include(${TOP_DIR}/cmake/adk.cmake)
@@ -34,7 +35,7 @@ gen_lua_binary_from_dir(bridge_scripts
     ${BRIDGE_WORK_DIR}
     ${LUAC_BINARY}
     DEBUG
-    SRC_DIRS ${BRIDGE_SCRIPTS_DIR}
+    SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${PLUGINS_DIR}
 )
 
 gen_lua_binary_from_dir(example_scripts
