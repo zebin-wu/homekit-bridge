@@ -1,6 +1,10 @@
 local udp = require "pal.net.udp"
+local timer = require "pal.timer"
 
 local protocol = {}
+local logger = log.getLogger("miio.protocol")
+
+ProtocolPriv = {}
 
 ---
 --- Packet format
@@ -58,42 +62,56 @@ local protocol = {}
 ---@param unknown integer Unknown: 32-bit.
 ---@param did integer Device ID: 32-bit.
 ---@param stamp integer Stamp: 32 bit unsigned int.
----@param checksum integer[] A array of 32-bit integers. MD5 checksnum: 128-bit.
----@param opt? string Optional variable-sized data.
-function protocol.pack(unknown, did, stamp, checksum, opt)
-    assert(#checksum == 4)
+---@param checksum string MD5 checksnum: 128-bit.
+---@param data? string Optional variable-sized data.
+---@return string packet
+function protocol.pack(unknown, did, stamp, checksum, data)
+    assert(#checksum == 16)
     local len = 32
-    local fmt = ">I2>I2>I4>I4>I4>I4>I4>I4>I4"
-    if opt then
-        len = len + #opt
-        fmt = fmt .. "z"
+    local fmt = ">I2>I2>I4>I4>I4c" .. #checksum
+    if data then
+        len = len + #data
+        fmt = fmt .. "c" .. #data
     end
-    return string.pack(fmt, 0x2131, len, unknown, did, stamp,
-        checksum[1], checksum[2], checksum[3], checksum[4], opt)
+    return string.pack(fmt, 0x2131, len, unknown, did, stamp, checksum, data)
 end
 
+---Pack a hello packet.
+---@return string packet
 function protocol.packHello()
     return protocol.pack(
         0xffffffff,
         0xffffffff,
         0xffffffff,
-        { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff }
+        string.pack(">I4>I4>I4>I4", 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff)
     )
 end
 
 ---Scan for devices in the network.
----@param addr string
----@param cb fun(device: table)
----@param timeout integer
-function protocol.scan(addr, cb, timeout)
+---@param cb fun(device: table) Function call when the device is scaned.
+---@param timeout integer Timeout period (in seconds).
+---@param addr? string Target Address.
+---@return boolean status true on success, false on failure.
+function protocol.scan(cb, timeout, addr)
+    if ProtocolPriv.scanHandle then
+        return false
+    end
     local handle = udp.open("inet")
     if not addr then
-        handle:enableBroadcast()
+        if handle:enableBroadcast() == false then
+            logger:error("Failed to enable UDP broadcast.")
+            return false
+        end
     end
-    handle:sendto(protocol.packHello(), addr or "255.255.255.255", 54321)
-    handle:setRecvCb(function (data, from_addr, from_port)
-
+    ProtocolPriv.scanTimer = timer.create(timeout * 1000, function()
+        logger:debug("Scan done.")
+        ProtocolPriv.scanHandle = nil
+        ProtocolPriv.scanTimer = nil
     end)
+    handle:sendto(protocol.packHello(), addr or "255.255.255.255", 54321)
+    handle:setRecvCb(function (data, from_addr, from_port) end)
+    ProtocolPriv.scanHandle = handle
+    return true
 end
 
 return protocol
