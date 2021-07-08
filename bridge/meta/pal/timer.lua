@@ -8,7 +8,7 @@ local handle = {}
 ---@param ms integer Monotonic trigger time in milliseconds.
 ---@param cb fun(...) Function to call when the timer expires.
 ---@vararg any Arguments passed to the callback.
----@return TimerHandle handle
+---@return TimerHandle|nil handle
 function timer.create(ms, cb, ...) end
 
 ---Destroy a timer before trigger.
