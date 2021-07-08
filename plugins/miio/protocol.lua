@@ -4,8 +4,6 @@ local timer = require "pal.timer"
 local protocol = {}
 local logger = log.getLogger("miio.protocol")
 
-ProtocolPriv = {}
-
 ---
 --- Message format.
 ---
@@ -106,7 +104,7 @@ function protocol.unpack(package)
 end
 
 ---Pack a hello package.
----@return string packet
+---@return string package
 function protocol.packHello()
     return protocol.pack(
         0xffffffff,
@@ -117,34 +115,49 @@ function protocol.packHello()
 end
 
 ---Scan for devices in the network.
----@param cb fun(addr: string, devId: integer) Function call when the device is scaned.
+---@param cb fun(addr: string, port: integer, devId: integer) Function call when the device is scaned.
 ---@param timeout integer Timeout period (in seconds).
 ---@param addr? string Target Address.
 ---@return boolean status true on success, false on failure.
 function protocol.scan(cb, timeout, addr)
-    if ProtocolPriv.scanHandle then
+    assert(type(cb) == "function")
+    assert(timeout > 0)
+
+    local c = {}
+    local h = udp.open("inet")
+    if not h then
+        logger:error("Fail to open a UDP handle.")
         return false
     end
-    local handle = udp.open("inet")
     if not addr then
-        if handle:enableBroadcast() == false then
+        if h:enableBroadcast() == false then
             logger:error("Failed to enable UDP broadcast.")
+            h:close()
             return false
         end
     end
-    ProtocolPriv.scanTimer = timer.create(timeout * 1000, function()
+    local t = timer.create(timeout * 1000, function(context)
         logger:debug("Scan done.")
-        ProtocolPriv.scanHandle = nil
-        ProtocolPriv.scanTimer = nil
-    end)
-    handle:sendto(protocol.packHello(), addr or "255.255.255.255", 54321)
-    handle:setRecvCb(function (data, from_addr, from_port, cb)
+    end, c)
+    if not t then
+        logger:error("Failed to create a timer.")
+        h:close()
+        return false
+    end
+    if not h:sendto(protocol.packHello(), addr or "255.255.255.255", 54321) then
+        logger:error("Failed to send hello message.")
+        h:close()
+        t:destroy()
+        return false
+    end
+    h:setRecvCb(function (data, from_addr, from_port, cb)
         local m = protocol.unpack(data)
         if m and m.unknown == 0 and m.data == nil then
-            cb(from_addr, m.did)
+            cb(from_addr, from_port, m.did)
         end
     end, cb)
-    ProtocolPriv.scanHandle = handle
+    c.handle = h
+    c.timer = t
     return true
 end
 
