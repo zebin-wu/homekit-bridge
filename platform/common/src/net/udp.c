@@ -169,8 +169,8 @@ static void pal_net_udp_raw_recv(pal_net_udp *udp) {
             HAPAssertionFailure();
         }
     }
-    UDP_LOG(Debug, udp, "%s: Receive packet(len=%ld) from %s:%u", __func__,
-        rc, from_addr, from_port);
+    HAPLogBufferDebug(&udp_log_obj, buf, rc, "(id=%lu) %s: Receive packet(len=%ld) from %s:%u",
+        udp->id, __func__, rc, from_addr, from_port);
     if (udp->recv_cb) {
         udp->recv_cb(udp, buf, rc, from_addr, from_port, udp->recv_arg);
     }
@@ -195,7 +195,8 @@ static void pal_net_udp_raw_send(pal_net_udp *udp) {
             pal_net_udp_file_handle_callback, udp);
     }
 
-    UDP_LOG(Debug, udp, "%s: Sent packet(len=%ld) to %s:%u", __func__,
+    HAPLogBufferDebug(&udp_log_obj, mbuf->buf, mbuf->len,
+        "(id=%lu) %s: Sent packet(len=%ld) to %s:%u", udp->id, __func__,
         mbuf->len, mbuf->to_addr, mbuf->to_port);
 
     ssize_t rc;
@@ -323,8 +324,8 @@ pal_net_udp *pal_net_udp_new(pal_net_domain domain) {
 pal_net_err pal_net_udp_enable_broadcast(pal_net_udp *udp) {
     HAPPrecondition(udp);
 
-    bool on = true;
-    int ret = setsockopt(udp->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
+    int optval = 1;
+    int ret = setsockopt(udp->fd, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
     if (ret) {
         return PAL_NET_ERR_UNKNOWN;
     }
@@ -430,8 +431,6 @@ pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len) {
     HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
         pal_net_udp_file_handle_callback, udp);
     UDP_LOG(Debug, udp, "%s(len = %lu)", __func__, len);
-    HAPLogBufferDebug(&udp_log_obj, data, len, "(id=%lu) %s(len = %lu)",
-        udp->id, __func__, len);
     return PAL_NET_ERR_OK;
 }
 
@@ -477,8 +476,7 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
     udp->interests.isReadyForWriting = true;
     HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
         pal_net_udp_file_handle_callback, udp);
-    HAPLogBufferDebug(&udp_log_obj, data, len, "(id=%lu) %s(len = %lu, addr = %s, port = %u)",
-        udp->id, __func__, len, addr, port);
+    UDP_LOG(Debug, udp, "%s(len = %lu, addr = %s, port = %u)", __func__, len, addr, port);
     return PAL_NET_ERR_OK;
 }
 
