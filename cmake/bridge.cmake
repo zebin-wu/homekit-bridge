@@ -11,6 +11,7 @@ set(BRIDGE_SRCS
     ${BRIDGE_SRC_DIR}/lloglib.c
     ${BRIDGE_SRC_DIR}/lhaplib.c
     ${BRIDGE_SRC_DIR}/lpallib.c
+    ${BRIDGE_SRC_DIR}/ltimerlib.c
     ${BRIDGE_SRC_DIR}/lc.c
 )
 
@@ -23,4 +24,5 @@ set(BRIDGE_HEADERS
     ${BRIDGE_SRC_DIR}/lhaplib.h
     ${BRIDGE_SRC_DIR}/lloglib.h
     ${BRIDGE_SRC_DIR}/lpallib.h
+    ${BRIDGE_SRC_DIR}/ltimerlib.h
 )
