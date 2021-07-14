@@ -1,11 +1,11 @@
 local udp = require "pal.net.udp"
-local timer = require "pal.timer"
+local timer = require "timer"
 
 local protocol = {}
 local logger = log.getLogger("miio.protocol")
 
 ---
---- Message format.
+--- Message format
 ---
 --- 0                   1                   2                   3
 --- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -62,6 +62,38 @@ local logger = log.getLogger("miio.protocol")
 ---@field stamp integer
 ---@field checksum string
 ---@field data string
+
+---
+--- Encryption
+---
+--- The variable-sized data payload is encrypted with the Advanced Encryption Standard (AES).
+---
+--- A 128-bit key and Initialization Vector are both derived from the Token as follows:
+---   Key = MD5(Token)
+---   IV  = MD5(MD5(Key) + Token)
+--- PKCS#7 padding is used prior to encryption.
+---
+--- The mode of operation is Cipher Block Chaining (CBC).
+---
+
+---Gen key and IV for AES CBC mode.
+---@param token string Device token.
+---@return string key 128-bit binary of the key.
+---@return string iv 128-bit binary of the IV.
+local function genKeyIV(token)
+    local md5 = require("hash").md5
+    local key = md5(token)
+    local iv = md5(key .. token)
+    return key, iv
+end
+
+---Encrypt data.
+function protocol.encrypt(data, token)
+end
+
+---Decrypt data.
+function protocol.decrypt(data, token)
+end
 
 ---Pack a message to a binary package.
 ---@param unknown integer Unknown: 32-bit.

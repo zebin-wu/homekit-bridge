@@ -18,6 +18,7 @@
 #include "lhaplib.h"
 #include "lpallib.h"
 #include "lloglib.h"
+#include "ltimerlib.h"
 
 #define LUA_SCRIPT_SUFFIX "lua"
 #define LUA_BINARY_SUFFIX "luac"
@@ -57,7 +58,7 @@ static const luaL_Reg dynamiclibs[] = {
     {LUA_HAP_NAME, luaopen_hap},
     {LUA_PAL_BOARD_NAME, luaopen_pal_board},
     {LUA_PAL_NET_UDP_NAME, luaopen_pal_net_udp},
-    {LUA_PAL_TIMER_NAME, luaopen_pal_timer},
+    {LUA_TIMER_NAME, luaopen_timer},
     {NULL, NULL}
 };
 
