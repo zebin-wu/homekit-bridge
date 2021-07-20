@@ -81,7 +81,11 @@ local logger = log.getLogger("miio.protocol")
 ---@return string key 128-bit binary of the key.
 ---@return string iv 128-bit binary of the IV.
 local function genKeyIV(token)
-    local md5 = require("hash").md5
+    local function md5(data)
+        local m = require("hash").md5()
+        m:update(token)
+        return m:digest()
+    end
     local key = md5(token)
     local iv = md5(key .. token)
     return key, iv
@@ -179,7 +183,7 @@ function protocol.scan(cb, timeout, addr)
     if not h:sendto(protocol.packHello(), addr or "255.255.255.255", 54321) then
         logger:error("Failed to send hello message.")
         h:close()
-        t:destroy()
+        t:cancel()
         return false
     end
     h:setRecvCb(function (data, from_addr, from_port, cb)
