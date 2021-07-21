@@ -20,21 +20,17 @@ extern "C" {
 /**
  * MD5 context.
  */
-typedef struct md5_ctx md5_ctx;
+typedef struct {
+    uint32_t digest[MD5_HASHSIZE / sizeof(uint32_t)];
+    size_t len;
+} md5_ctx;
 
 /**
- * New a MD5 context.
+ * Initialize a MD5 context.
  *
- * @return MD5 context.
- */
-md5_ctx *md5_new(void);
-
-/**
- * Free the MD5 context.
- * 
  * @param ctx MD5 context.
  */
-void md5_free(md5_ctx *ctx);
+void md5_init(md5_ctx *ctx);
 
 /**
  * Update MD5 context with data.
