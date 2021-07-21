@@ -156,10 +156,10 @@ static const luaL_Reg ltimer_obj_meth[] = {
 };
 
 static void ltimer_createmeta(lua_State *L) {
-    luaL_newmetatable(L, LUA_TIMER_HANDLE_NAME);  /* metatable for UDP obj */
+    luaL_newmetatable(L, LUA_TIMER_HANDLE_NAME);  /* metatable for timer handle */
     luaL_setfuncs(L, ltimer_obj_metameth, 0);  /* add metamethods to new metatable */
     luaL_newlibtable(L, ltimer_obj_meth);  /* create method table */
-    luaL_setfuncs(L, ltimer_obj_meth, 0);  /* add udp obj methods to method table */
+    luaL_setfuncs(L, ltimer_obj_meth, 0);  /* add timer handle methods to method table */
     lua_setfield(L, -2, "__index");  /* metatable.__index = method table */
     lua_pop(L, 1);  /* pop metatable */
 }
