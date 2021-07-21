@@ -91,12 +91,11 @@ local function genKeyIV(token)
     return key, iv
 end
 
----Encrypt data.
-function protocol.encrypt(data, token)
-end
-
----Decrypt data.
-function protocol.decrypt(data, token)
+---Create a crypto context.
+---@param token string Device token.
+---@return _aes ctx Crypto context.
+function protocol.createCtx(token)
+    return require("crypto.aes").create(genKeyIV(token))
 end
 
 ---Pack a message to a binary package.
