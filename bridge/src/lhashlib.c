@@ -13,24 +13,20 @@
 
 #define LUA_HASH_OBJ_NAME "HashObj"
 
-#define LPAL_HASH_GET_OBJ(L, idx) \
+#define LHASH_GET_OBJ(L, idx) \
     luaL_checkudata(L, idx, LUA_HASH_OBJ_NAME)
 
 typedef struct {
     const char *name;
+    size_t ctx_len; /* The length of the context. */
     size_t digest_len;  /* The length of the digest. */
-    void *(*new)(void); /* New a hash ctxect. */
-    void (*free)(void *ctx); /* Free the hash ctxect. */
+    void (*init)(void *ctx); /* Initialize context. */
     bool (*update)(void *ctx, const void *data, size_t len); /* Update data. */
     void (*digest)(void *ctx, void *output); /* Get the digest. */
 } lhash_method;
 
-static void *lhash_md5_new(void) {
-    return md5_new();
-}
-
-void lhash_md5_free(void *ctx) {
-    md5_free((md5_ctx *)ctx);
+static void lhash_md5_init(void *ctx) {
+    md5_init((md5_ctx *)ctx);
 }
 
 bool lhash_md5_update(void *ctx, const void *data, size_t len) {
@@ -44,9 +40,9 @@ void lhash_md5_digest(void *ctx, void *output) {
 static const lhash_method lhash_mths[] = {
     {
         .name = "md5",
+        .ctx_len = sizeof(md5_ctx),
         .digest_len = MD5_HASHSIZE,
-        .new = lhash_md5_new,
-        .free = lhash_md5_free,
+        .init = lhash_md5_init,
         .update = lhash_md5_update,
         .digest = lhash_md5_digest,
     },
@@ -56,9 +52,8 @@ static const lhash_method lhash_mths[] = {
  * Hash object.
  */
 typedef struct __attribute__((__packed__)) {
-    void *ctx;
     const lhash_method *mth;
-    char output[1];
+    char ctx[1];
 } lhash_obj;
 
 static const lhash_method *lhash_method_lookup_by_name(const char *name) {
@@ -75,16 +70,10 @@ static int lhash_new(lua_State *L, const char *name) {
     if (!mth) {
         luaL_error(L, "'%s' hash algorithm does not support", name);
     }
-    lhash_obj *obj = lua_newuserdata(L, sizeof(lhash_obj) + mth->digest_len - 1);
+    lhash_obj *obj = lua_newuserdata(L, sizeof(lhash_obj) + mth->ctx_len - 1);
     luaL_setmetatable(L, LUA_HASH_OBJ_NAME);
     obj->mth = mth;
-    obj->ctx = mth->new();
-    if (!obj->ctx) {
-        goto err;
-    }
-    return 1;
-err:
-    luaL_pushfail(L);
+    mth->init(obj->ctx);
     return 1;
 }
 
@@ -99,9 +88,9 @@ static const luaL_Reg hashlib[] = {
 
 static int lhash_obj_update(lua_State *L) {
     size_t len;
-    lhash_obj *obj = LPAL_HASH_GET_OBJ(L, 1);
-    if (!obj->ctx) {
-        luaL_error(L, "attempt to use a freed hash object");
+    lhash_obj *obj = LHASH_GET_OBJ(L, 1);
+    if (!obj->mth) {
+        luaL_error(L, "attempt to use a destroyed hash object");
     }
     const char *s = luaL_checklstring(L, 2, &len);
     lua_pushboolean(L, obj->mth->update(obj->ctx, s, len));
@@ -109,36 +98,35 @@ static int lhash_obj_update(lua_State *L) {
 }
 
 static int lhash_obj_digest(lua_State *L) {
-    lhash_obj *obj = LPAL_HASH_GET_OBJ(L, 1);
-    if (!obj->ctx) {
-        luaL_error(L, "attempt to use a freed hash object");
+    lhash_obj *obj = LHASH_GET_OBJ(L, 1);
+    if (!obj->mth) {
+        luaL_error(L, "attempt to use a destroyed hash object");
     }
-    obj->mth->digest(obj->ctx, obj->output);
-    lua_pushlstring(L, obj->output, obj->mth->digest_len);
+    luaL_Buffer B;
+    char *out = luaL_buffinitsize(L, &B, obj->mth->digest_len);
+    obj->mth->digest(obj->ctx, out);
+    luaL_pushresult(&B);
     return 1;
 }
 
 static int lhash_obj_gc(lua_State *L) {
-    lhash_obj *obj = LPAL_HASH_GET_OBJ(L, 1);
-    if (obj->ctx) {
-        obj->mth->free(obj->ctx);
-        obj->ctx = NULL;
-    }
+    lhash_obj *obj = LHASH_GET_OBJ(L, 1);
+    obj->mth = NULL;
     return 0;
 }
 
 static int lhash_obj_tostring(lua_State *L) {
-    lhash_obj *obj = LPAL_HASH_GET_OBJ(L, 1);
-    if (obj->ctx) {
-        lua_pushfstring(L, "hash object (%p)", obj->ctx);
+    lhash_obj *obj = LHASH_GET_OBJ(L, 1);
+    if (obj->mth) {
+        lua_pushfstring(L, "hash object (%p)", obj);
     } else {
-        lua_pushliteral(L, "hash object (freed)");
+        lua_pushliteral(L, "hash object (destroyed)");
     }
     return 1;
 }
 
 /*
- * metamethods for HashObj
+ * metamethods for hash object
  */
 static const luaL_Reg lhash_obj_metameth[] = {
     {"__index", NULL},  /* place holder */
@@ -149,7 +137,7 @@ static const luaL_Reg lhash_obj_metameth[] = {
 };
 
 /*
- * methods for HashObj
+ * methods for hash object
  */
 static const luaL_Reg lhash_obj_meth[] = {
     {"update", lhash_obj_update},
@@ -158,10 +146,10 @@ static const luaL_Reg lhash_obj_meth[] = {
 };
 
 static void lhash_createmeta(lua_State *L) {
-    luaL_newmetatable(L, LUA_HASH_OBJ_NAME);  /* metatable for UDP obj */
+    luaL_newmetatable(L, LUA_HASH_OBJ_NAME);  /* metatable for hash object */
     luaL_setfuncs(L, lhash_obj_metameth, 0);  /* add metamethods to new metatable */
     luaL_newlibtable(L, lhash_obj_meth);  /* create method table */
-    luaL_setfuncs(L, lhash_obj_meth, 0);  /* add udp obj methods to method table */
+    luaL_setfuncs(L, lhash_obj_meth, 0);  /* add hash object methods to method table */
     lua_setfield(L, -2, "__index");  /* metatable.__index = method table */
     lua_pop(L, 1);  /* pop metatable */
 }

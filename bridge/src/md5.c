@@ -5,17 +5,8 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <HAPBase.h>
-#include <pal/memory.h>
 
 #include "md5.h"
-
-/**
- * MD5 context.
- */
-struct md5_ctx {
-    uint32_t digest[MD5_HASHSIZE / sizeof(uint32_t)];
-    size_t len;
-};
 
 // Perform a clockwise rotation of the bit of the uint32_t type variable "D".
 // Bits are shifted from 'num' positions.
@@ -167,11 +158,7 @@ static int converte(uint32_t *x, const uint8_t *pt, int num, int old_status) {
     return new_status;
 }
 
-md5_ctx *md5_new(void) {
-    md5_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
-    if (!ctx) {
-        return NULL;
-    }
+void md5_init(md5_ctx *ctx) {
     uint32_t *d = ctx->digest;
 
     d[0] = 0x67452301;
@@ -180,12 +167,6 @@ md5_ctx *md5_new(void) {
     d[3] = 0x10325476;
 
     ctx->len = 0;
-
-    return ctx;
-}
-
-void md5_free(md5_ctx *ctx) {
-    pal_mem_free(ctx);
 }
 
 bool md5_update(md5_ctx *ctx, const void *data, size_t len) {
