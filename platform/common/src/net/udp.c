@@ -169,8 +169,8 @@ static void pal_net_udp_raw_recv(pal_net_udp *udp) {
             HAPAssertionFailure();
         }
     }
-    HAPLogBufferDebug(&udp_log_obj, buf, rc, "(id=%lu) %s: Receive packet(len=%ld) from %s:%u",
-        udp->id, __func__, rc, from_addr, from_port);
+    HAPLogBufferDebug(&udp_log_obj, buf, rc, "(id=%lu) Receive packet(len=%ld) from %s:%u",
+        udp->id, rc, from_addr, from_port);
     if (udp->recv_cb) {
         udp->recv_cb(udp, buf, rc, from_addr, from_port, udp->recv_arg);
     }
@@ -194,10 +194,6 @@ static void pal_net_udp_raw_send(pal_net_udp *udp) {
         HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
             pal_net_udp_file_handle_callback, udp);
     }
-
-    HAPLogBufferDebug(&udp_log_obj, mbuf->buf, mbuf->len,
-        "(id=%lu) %s: Sent packet(len=%ld) to %s:%u", udp->id, __func__,
-        mbuf->len, mbuf->to_addr, mbuf->to_port);
 
     ssize_t rc;
     if (mbuf->to_addr[0]) {
@@ -241,6 +237,10 @@ static void pal_net_udp_raw_send(pal_net_udp *udp) {
         err = PAL_NET_ERR_UNKNOWN;
         goto err;
     }
+
+    HAPLogBufferDebug(&udp_log_obj, mbuf->buf, mbuf->len,
+        "(id=%lu) Sent packet(len=%ld) to %s:%u", udp->id,
+        mbuf->len, mbuf->to_addr, mbuf->to_port);
     pal_mem_free(mbuf);
     return;
 
