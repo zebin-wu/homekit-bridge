@@ -11,9 +11,7 @@
 extern "C" {
 #endif
 
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include <HAPBase.h>
 
 #define MD5_HASHSIZE    16
 
