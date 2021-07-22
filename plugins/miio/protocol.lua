@@ -1,4 +1,4 @@
-local udp = require "pal.net.udp"
+local udp = require "net.udp"
 local timer = require "timer"
 
 local protocol = {}

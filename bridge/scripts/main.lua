@@ -1,7 +1,7 @@
 local config = require "config"
 local core = require "core"
 local hap = require "hap"
-local board = require "pal.board"
+local board = require "board"
 
 local logger = log.getLogger()
 

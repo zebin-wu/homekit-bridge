@@ -16,7 +16,8 @@
 #include "app_int.h"
 #include "lc.h"
 #include "lhaplib.h"
-#include "lpallib.h"
+#include "lboardlib.h"
+#include "lnetlib.h"
 #include "lloglib.h"
 #include "ltimerlib.h"
 #include "lhashlib.h"
@@ -58,8 +59,8 @@ static const luaL_Reg globallibs[] = {
 
 static const luaL_Reg dynamiclibs[] = {
     {LUA_HAP_NAME, luaopen_hap},
-    {LUA_PAL_BOARD_NAME, luaopen_pal_board},
-    {LUA_PAL_NET_UDP_NAME, luaopen_pal_net_udp},
+    {LUA_BOARD_NAME, luaopen_board},
+    {LUA_NET_UDP_NAME, luaopen_net_udp},
     {LUA_TIMER_NAME, luaopen_timer},
     {LUA_HASH_NAME, luaopen_hash},
     {LUA_CRYPTO_AES_NAME, luaopen_crypto_aes},
