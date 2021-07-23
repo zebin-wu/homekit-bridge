@@ -833,7 +833,7 @@ lhap_char_constraints_max_len_cb(lua_State *L, const lc_table_kv *kv, void *arg)
 
 #define LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(member, is_unsigned) \
     int isnum; \
-    lua_Integer num; \
+    lua_Integer num = 0; \
     HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format; \
     if (format >= kHAPCharacteristicFormat_UInt8 && \
         format <= kHAPCharacteristicFormat_Int) { \

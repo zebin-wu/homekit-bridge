@@ -25,10 +25,11 @@
  * Log with type.
  *
  * @param type [Debug|Info|Default|Error|Fault]
+ * @param udp The pointer to udp object.
  */
 #define UDP_LOG(type, udp, fmt, arg...) \
     HAPLogWithType(&udp_log_obj, kHAPLogType_ ## type, \
-    "(id=%lu) " fmt, udp ? udp->id : 0, ##arg)
+    "(id=%u) " fmt, (udp) ? (udp)->id : 0, ##arg)
 
 #define UDP_LOG_ERRNO(udp, func) \
     UDP_LOG(Error, udp, "%s: %s() error: %s.", __func__, func, strerror(errno))
@@ -36,7 +37,7 @@
 typedef struct pal_net_udp_mbuf {
     char to_addr[PAL_NET_ADDR_MAX_LEN];
     uint16_t to_port;
-    struct pal_net_udp_mbuf *next;
+    struct pal_net_udp_mbuf *next; 
     size_t len;
     char buf[0];
 } pal_net_udp_mbuf;
@@ -44,7 +45,7 @@ typedef struct pal_net_udp_mbuf {
 struct pal_net_udp {
     bool bound:1;
     bool connected:1;
-    size_t id;
+    uint16_t id;
     int fd;
     pal_net_domain domain;
     char remote_addr[PAL_NET_ADDR_MAX_LEN];
@@ -169,7 +170,7 @@ static void pal_net_udp_raw_recv(pal_net_udp *udp) {
             HAPAssertionFailure();
         }
     }
-    HAPLogBufferDebug(&udp_log_obj, buf, rc, "(id=%lu) Receive packet(len=%ld) from %s:%u",
+    HAPLogBufferDebug(&udp_log_obj, buf, rc, "(id=%u) Receive packet(len=%zd) from %s:%u",
         udp->id, rc, from_addr, from_port);
     if (udp->recv_cb) {
         udp->recv_cb(udp, buf, rc, from_addr, from_port, udp->recv_arg);
@@ -232,14 +233,14 @@ static void pal_net_udp_raw_send(pal_net_udp *udp) {
         if (rc <= 0) {
             UDP_LOG_ERRNO(udp, "send");
         } else {
-            UDP_LOG(Error, udp, "%s: Only sent %ld byte.", __func__, rc);
+            UDP_LOG(Error, udp, "%s: Only sent %zd byte.", __func__, rc);
         }
         err = PAL_NET_ERR_UNKNOWN;
         goto err;
     }
 
     HAPLogBufferDebug(&udp_log_obj, mbuf->buf, mbuf->len,
-        "(id=%lu) Sent packet(len=%ld) to %s:%u", udp->id,
+        "(id=%u) Sent packet(len=%zd) to %s:%u", udp->id,
         mbuf->len, mbuf->to_addr, mbuf->to_port);
     pal_mem_free(mbuf);
     return;
@@ -430,7 +431,7 @@ pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len) {
     udp->interests.isReadyForWriting = true;
     HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
         pal_net_udp_file_handle_callback, udp);
-    UDP_LOG(Debug, udp, "%s(len = %lu)", __func__, len);
+    UDP_LOG(Debug, udp, "%s(len = %zu)", __func__, len);
     return PAL_NET_ERR_OK;
 }
 
@@ -476,7 +477,7 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
     udp->interests.isReadyForWriting = true;
     HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
         pal_net_udp_file_handle_callback, udp);
-    UDP_LOG(Debug, udp, "%s(len = %lu, addr = %s, port = %u)", __func__, len, addr, port);
+    UDP_LOG(Debug, udp, "%s(len = %zu, addr = %s, port = %u)", __func__, len, addr, port);
     return PAL_NET_ERR_OK;
 }
 

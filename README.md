@@ -42,7 +42,7 @@ HomeKit bridge supports code style checking, the checker is [cpplint](https://gi
     ```
 
 ### Platform ESP
-1. Set up the host environment and ESP-IDF (**v4.3-beta3**) as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
+1. Set up the host environment and ESP-IDF (**v4.3**) as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
 
 2. ESP-IDF currently uses MbedTLS 2.16.x, whereas HomeKit ADK requires 2.18. A branch mbedtls-2.16.6-adk is being maintained [here](https://github.com/espressif/mbedtls/tree/mbedtls-2.16.6-adk) which has the required patches from 2.18, on top of 2.16.6. To switch to this, follow these steps:
     ```bash
