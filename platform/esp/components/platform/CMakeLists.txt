@@ -14,4 +14,7 @@ idf_component_register(
     PRIV_REQUIRES app_update homekit_adk
 )
 
-add_definitions(-DIP=1)
+add_definitions(
+    -DIP=1
+    -DHAP_LOG_LEVEL=${CONFIG_HAP_LOG_LEVEL}
+)
