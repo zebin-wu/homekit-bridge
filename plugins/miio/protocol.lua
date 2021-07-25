@@ -91,13 +91,6 @@ local function genKeyIV(token)
     return key, iv
 end
 
----Create a crypto context.
----@param token string Device token.
----@return _aes ctx Crypto context.
-function protocol.createCtx(token)
-    return require("crypto.aes").create(genKeyIV(token))
-end
-
 ---Pack a message to a binary package.
 ---@param unknown integer Unknown: 32-bit.
 ---@param did integer Device ID: 32-bit.
