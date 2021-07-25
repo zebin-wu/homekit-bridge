@@ -8,6 +8,7 @@ set(PLATFORM_LINUX_SRC_DIR ${PLATFORM_LINUX_DIR}/src)
 
 # collect platform linux sources
 set(PLATFORM_LINUX_SRCS
+    ${PLATFORM_LINUX_SRC_DIR}/pal/crypto/aes.c
     ${PLATFORM_LINUX_SRC_DIR}/pal/board.c
     ${PLATFORM_LINUX_SRC_DIR}/pal/memory.c
     ${PLATFORM_LINUX_SRC_DIR}/main.c
@@ -26,4 +27,5 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/hap.h
     ${PLATFORM_INC_DIR}/pal/net/types.h
     ${PLATFORM_INC_DIR}/pal/net/udp.h
+    ${PLATFORM_INC_DIR}/pal/crypto/aes.h
 )

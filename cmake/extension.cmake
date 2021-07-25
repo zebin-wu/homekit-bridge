@@ -99,7 +99,7 @@ function(check_style target top_dir)
             COMMENT "Check ${rel_path}"
             COMMAND ${CPPLINT}
                 --linelength=120
-                --filter=-readability/casting,-build/include,-runtime/casting
+                --filter=-readability/casting,-build/include,-runtime/casting,-runtime/arrays
                 ${rel_path}
             COMMAND touch ${output}
             WORKING_DIRECTORY ${top_dir}
