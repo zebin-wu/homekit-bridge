@@ -101,10 +101,9 @@ static int lhash_obj_digest(lua_State *L) {
     if (!obj->mth) {
         luaL_error(L, "attempt to use a destroyed hash object");
     }
-    luaL_Buffer B;
-    char *out = luaL_buffinitsize(L, &B, obj->mth->digest_len);
+    char out[obj->mth->digest_len];
     obj->mth->digest(obj->ctx, out);
-    luaL_pushresult(&B);
+    lua_pushlstring(L, out, obj->mth->digest_len);
     return 1;
 }
 
