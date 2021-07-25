@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include <stddef.h>
+#include <HAPBase.h>
 
 /**
  * Allocate and free dynamic memory.

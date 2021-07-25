@@ -4,7 +4,6 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
