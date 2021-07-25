@@ -5,7 +5,6 @@ set(SRCS
     ${PLATFORM_COMMON_SRCS}
     src/board.c
     src/memory.c
-    src/crypto/aes.c
 )
 
 idf_component_register(
