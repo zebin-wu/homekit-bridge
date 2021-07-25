@@ -7,8 +7,7 @@
 #ifndef PLATFORM_INCLUDE_PAL_NET_UDP_H_
 #define PLATFORM_INCLUDE_PAL_NET_UDP_H_
 
-#include <stdint.h>
-#include <stddef.h>
+#include <HAPBase.h>
 #include <pal/net/types.h>
 
 /**
