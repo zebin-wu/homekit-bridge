@@ -21,6 +21,7 @@
 #include "lloglib.h"
 #include "ltimerlib.h"
 #include "lhashlib.h"
+#include "lcipherlib.h"
 
 #define LUA_SCRIPT_SUFFIX "lua"
 #define LUA_BINARY_SUFFIX "luac"
@@ -62,6 +63,7 @@ static const luaL_Reg dynamiclibs[] = {
     {LUA_NET_UDP_NAME, luaopen_net_udp},
     {LUA_TIMER_NAME, luaopen_timer},
     {LUA_HASH_NAME, luaopen_hash},
+    {LUA_CIPHER_NAME, luaopen_cipher},
     {NULL, NULL}
 };
 
