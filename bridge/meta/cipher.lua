@@ -2,47 +2,51 @@
 local cipher = {}
 
 ---@alias CipherType
+---| '"None"'
 ---| '"AES-128-CBC"'
 
----@alias PaddingMode
----|>'"NONE"'   # Never pad (full blocks only).
----| '"PKCS7"'  # PKCS#7 padding.
+---@alias CipherPadding
+---|>'"NONE"'           # Never pad (full blocks only).
+---| '"PKCS7"'          # PKCS7 padding (default).
+---| '"ISO7816_4"'      # ISO/IEC 7816-4 padding.
+---| '"ANSI923"'        # ANSI X.923 padding.
+---| '"ZERO"'           # Zero padding (not reversible).
 
 ---@class _cipher:userdata Cipher context.
 local _cipher = {}
 
----New a cipher context.
+---Create a cipher context.
 ---@param type CipherType Cipher type.
-function cipher.new(type) end
+---@return _cipher context Cipher context.
+function cipher.create(type) end
 
----Return the key length of the cipher.
----@return integer bits The length of the key.
-function _cipher:getKeyBitLen() end
+---Return the length of the key in bytes.
+---@return integer bytes The key length.
+function _cipher:getKeyLen() end
 
----Return the size of the IV or nonce of the cipher, in Bytes.
----@return integer bytes The size of the IV in bytes.
-function _cipher:getIvSize() end
-
----Set the key to use.
----@param opt '"encrypt"'|'"decrypt"' Operation.
----@param key string The key to use.
-function _cipher:setKey(opt, key) end
+---Return the length of the initialization vector (IV) in bytes.
+---@return integer bytes The IV length.
+function _cipher:getIVLen() end
 
 ---Set the padding mode, for cipher modes that use padding.
----@param mode PaddingMode The padding mode.
-function _cipher:setPaddingMode(mode) end
+---@param padding CipherPadding The padding mode.
+---@return boolean status true on success, false on failure.
+function _cipher:setPadding(padding) end
 
----Set the initialization vector (IV) or nonce.
+---Begin a encryption/decryption process.
+---@param op '"encrypt"'|'"decrypt"' Operation.
+---@param key string The key to use.
 ---@param iv string The initialization vector (IV).
-function _cipher:setIv(iv) end
+---@return boolean status true on success, false on failure.
+function _cipher:begin(op, key, iv) end
 
 ---The generic cipher update function.
 ---@param input string Input binary data.
----@return string output Output binary data.
+---@return string|nil output Output binary data.
 function _cipher:update(input) end
 
 ---The generic cipher finalization function.
----@return string output Output binary data.
+---@return string|nil output Output binary data.
 function _cipher:finsh() end
 
 return cipher
