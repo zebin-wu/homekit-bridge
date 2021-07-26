@@ -5,13 +5,14 @@ set(SRCS
     ${PLATFORM_COMMON_SRCS}
     src/board.c
     src/memory.c
+    src/cipher.c
 )
 
 idf_component_register(
     SRCS ${SRCS}
     INCLUDE_DIRS ${PLATFORM_INC_DIR}
     REQUIRES
-    PRIV_REQUIRES app_update homekit_adk
+    PRIV_REQUIRES app_update homekit_adk mbedtls
 )
 
 add_definitions(
