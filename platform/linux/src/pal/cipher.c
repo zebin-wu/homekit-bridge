@@ -124,8 +124,11 @@ bool pal_cipher_begin(pal_cipher_ctx *ctx, pal_cipher_operation op, const uint8_
     HAPPrecondition(ctx->op == PAL_CIPHER_OP_NONE);
     HAPPrecondition(op > PAL_CIPHER_OP_NONE && op < PAL_CIPHER_OP_MAX);
 
-    ctx->op = op;
-    return pal_cipher_crypt_funcs[ctx->op].init(ctx->ctx, ctx->cipher, NULL, key, iv);
+    bool status = pal_cipher_crypt_funcs[op].init(ctx->ctx, ctx->cipher, NULL, key, iv);
+    if (status) {
+        ctx->op = op;
+    }
+    return status;
 }
 
 bool pal_cipher_update(pal_cipher_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
@@ -142,6 +145,9 @@ bool pal_cipher_finsh(pal_cipher_ctx *ctx, void *out, size_t *olen) {
     HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);
     HAPPrecondition(out);
 
-    ctx->op = PAL_CIPHER_OP_NONE;
-    return pal_cipher_crypt_funcs[ctx->op].final(ctx->ctx, out, (int *)olen);
+    bool status = pal_cipher_crypt_funcs[ctx->op].final(ctx->ctx, out, (int *)olen);
+    if (status) {
+        ctx->op = PAL_CIPHER_OP_NONE;
+    }
+    return status;
 }
