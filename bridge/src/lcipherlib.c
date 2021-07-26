@@ -145,8 +145,16 @@ static int lcipher_ctx_begin(lua_State *L) {
     if (op == PAL_CIPHER_OP_NONE) {
         luaL_error(L, "invalid operation");
     }
-    const char *key = luaL_checkstring(L, 3);
-    const char *iv = luaL_checkstring(L, 4);
+    size_t keylen;
+    const char *key = luaL_checklstring(L, 3, &keylen);
+    if (pal_cipher_get_key_len(ctx->ctx) != keylen) {
+        luaL_error(L, "invalid key length");
+    }
+    size_t ivlen;
+    const char *iv = luaL_checklstring(L, 4, &ivlen);
+    if (pal_cipher_get_iv_len(ctx->ctx) != ivlen) {
+        luaL_error(L, "invalid IV length");
+    }
     lua_pushboolean(L, pal_cipher_begin(ctx->ctx, op, (const uint8_t *)key, (const uint8_t *)iv));
     return 1;
 }
