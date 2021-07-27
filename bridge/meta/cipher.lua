@@ -36,7 +36,7 @@ function _cipher:setPadding(padding) end
 ---Begin a encryption/decryption process.
 ---@param op '"encrypt"'|'"decrypt"' Operation.
 ---@param key string The key to use.
----@param iv string The initialization vector (IV).
+---@param iv? string The initialization vector (IV).
 ---@return boolean status true on success, false on failure.
 function _cipher:begin(op, key, iv) end
 
