@@ -42,20 +42,83 @@ static const int pal_cipher_openssl_paddings[] = {
 };
 
 static const EVP_CIPHER *pal_cipher_get_cipher(pal_cipher_type type) {
-    const EVP_CIPHER *cipher = NULL;
+    const EVP_CIPHER *(*pal_cipher_get_cipher_funcs[])(void) = {
+        [PAL_CIPHER_TYPE_AES_128_ECB] = EVP_aes_128_ecb,
+        [PAL_CIPHER_TYPE_AES_192_ECB] = EVP_aes_192_ecb,
+        [PAL_CIPHER_TYPE_AES_256_ECB] = EVP_aes_256_ecb,
+        [PAL_CIPHER_TYPE_AES_128_CBC] = EVP_aes_128_cbc,
+        [PAL_CIPHER_TYPE_AES_192_CBC] = EVP_aes_192_cbc,
+        [PAL_CIPHER_TYPE_AES_256_CBC] = EVP_aes_256_cbc,
+        [PAL_CIPHER_TYPE_AES_128_CFB128] = EVP_aes_128_cfb128,
+        [PAL_CIPHER_TYPE_AES_192_CFB128] = EVP_aes_192_cfb128,
+        [PAL_CIPHER_TYPE_AES_256_CFB128] = EVP_aes_256_cfb128,
+        [PAL_CIPHER_TYPE_AES_128_CTR] = EVP_aes_128_ctr,
+        [PAL_CIPHER_TYPE_AES_192_CTR] = EVP_aes_192_ctr,
+        [PAL_CIPHER_TYPE_AES_256_CTR] = EVP_aes_256_ctr,
+        [PAL_CIPHER_TYPE_AES_128_GCM] = EVP_aes_128_gcm,
+        [PAL_CIPHER_TYPE_AES_192_GCM] = EVP_aes_192_gcm,
+        [PAL_CIPHER_TYPE_AES_256_GCM] = EVP_aes_256_gcm,
+        [PAL_CIPHER_TYPE_CAMELLIA_128_ECB] = EVP_camellia_128_ecb,
+        [PAL_CIPHER_TYPE_CAMELLIA_192_ECB] = EVP_camellia_192_ecb,
+        [PAL_CIPHER_TYPE_CAMELLIA_256_ECB] = EVP_camellia_256_ecb,
+        [PAL_CIPHER_TYPE_CAMELLIA_128_CBC] = EVP_camellia_128_cbc,
+        [PAL_CIPHER_TYPE_CAMELLIA_192_CBC] = EVP_camellia_192_cbc,
+        [PAL_CIPHER_TYPE_CAMELLIA_256_CBC] = EVP_camellia_256_cbc,
+        [PAL_CIPHER_TYPE_CAMELLIA_128_CFB128] = EVP_camellia_128_cfb128,
+        [PAL_CIPHER_TYPE_CAMELLIA_192_CFB128] = EVP_camellia_192_cfb128,
+        [PAL_CIPHER_TYPE_CAMELLIA_256_CFB128] = EVP_camellia_256_cfb128,
+        [PAL_CIPHER_TYPE_CAMELLIA_128_CTR] = EVP_camellia_128_ctr,
+        [PAL_CIPHER_TYPE_CAMELLIA_192_CTR] = EVP_camellia_192_ctr,
+        [PAL_CIPHER_TYPE_CAMELLIA_256_CTR] = EVP_camellia_256_ctr,
+        [PAL_CIPHER_TYPE_DES_ECB] = EVP_des_ecb,
+        [PAL_CIPHER_TYPE_DES_CBC] = EVP_des_cbc,
+        [PAL_CIPHER_TYPE_DES_EDE_ECB] = EVP_des_ede_ecb,
+        [PAL_CIPHER_TYPE_DES_EDE_CBC] = EVP_des_ede_cbc,
+        [PAL_CIPHER_TYPE_DES_EDE3_ECB] = EVP_des_ede3_ecb,
+        [PAL_CIPHER_TYPE_DES_EDE3_CBC] = EVP_des_ede3_cbc,
+        [PAL_CIPHER_TYPE_BLOWFISH_ECB] = EVP_bf_ecb,
+        [PAL_CIPHER_TYPE_BLOWFISH_CBC] = EVP_bf_cbc,
+        [PAL_CIPHER_TYPE_BLOWFISH_CFB64] = EVP_bf_cfb64,
+        [PAL_CIPHER_TYPE_ARC4_128] = EVP_rc4,
+        [PAL_CIPHER_TYPE_AES_128_CCM] = EVP_aes_128_ccm,
+        [PAL_CIPHER_TYPE_AES_192_CCM] = EVP_aes_192_ccm,
+        [PAL_CIPHER_TYPE_AES_256_CCM] = EVP_aes_256_ccm,
+        [PAL_CIPHER_TYPE_ARIA_128_ECB] = EVP_aria_128_ecb,
+        [PAL_CIPHER_TYPE_ARIA_192_ECB] = EVP_aria_192_ecb,
+        [PAL_CIPHER_TYPE_ARIA_256_ECB] = EVP_aria_256_ecb,
+        [PAL_CIPHER_TYPE_ARIA_128_CBC] = EVP_aria_128_cbc,
+        [PAL_CIPHER_TYPE_ARIA_192_CBC] = EVP_aria_192_cbc,
+        [PAL_CIPHER_TYPE_ARIA_256_CBC] = EVP_aria_256_cbc,
+        [PAL_CIPHER_TYPE_ARIA_128_CFB128] = EVP_aria_128_cfb128,
+        [PAL_CIPHER_TYPE_ARIA_192_CFB128] = EVP_aria_192_cfb128,
+        [PAL_CIPHER_TYPE_ARIA_256_CFB128] = EVP_aria_256_cfb128,
+        [PAL_CIPHER_TYPE_ARIA_128_CTR] = EVP_aria_128_ctr,
+        [PAL_CIPHER_TYPE_ARIA_192_CTR] = EVP_aria_192_ctr,
+        [PAL_CIPHER_TYPE_ARIA_256_CTR] = EVP_aria_256_ctr,
+        [PAL_CIPHER_TYPE_ARIA_128_GCM] = EVP_aria_128_gcm,
+        [PAL_CIPHER_TYPE_ARIA_192_GCM] = EVP_aria_192_gcm,
+        [PAL_CIPHER_TYPE_ARIA_256_GCM] = EVP_aria_256_gcm,
+        [PAL_CIPHER_TYPE_ARIA_128_CCM] = EVP_aria_128_ccm,
+        [PAL_CIPHER_TYPE_ARIA_192_CCM] = EVP_aria_192_ccm,
+        [PAL_CIPHER_TYPE_ARIA_256_CCM] = EVP_aria_256_ccm,
+        [PAL_CIPHER_TYPE_AES_128_OFB] = EVP_aes_128_ofb,
+        [PAL_CIPHER_TYPE_AES_192_OFB] = EVP_aes_192_ofb,
+        [PAL_CIPHER_TYPE_AES_256_OFB] = EVP_aes_256_ofb,
+        [PAL_CIPHER_TYPE_AES_128_XTS] = EVP_aes_128_xts,
+        [PAL_CIPHER_TYPE_AES_256_XTS] = EVP_aes_256_xts,
+        [PAL_CIPHER_TYPE_CHACHA20] = EVP_chacha20,
+        [PAL_CIPHER_TYPE_CHACHA20_POLY1305] = EVP_chacha20_poly1305,
+    };
 
-    switch (type) {
-    case PAL_CIPHER_TYPE_AES_128_CBC:
-        cipher = EVP_aes_128_cbc();
-        break;
-    default:
-        break;
+    if (!pal_cipher_get_cipher_funcs[type]) {
+        return NULL;
     }
-    return cipher;
+
+    return pal_cipher_get_cipher_funcs[type]();
 }
 
 pal_cipher_ctx *pal_cipher_new(pal_cipher_type type) {
-    HAPPrecondition(type > PAL_CIPHER_TYPE_NONE && type < PAL_CIPHER_TYPE_MAX);
+    HAPPrecondition(type >= 0 && type < PAL_CIPHER_TYPE_MAX);
     pal_cipher_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
     if (!ctx) {
         return NULL;
