@@ -11,6 +11,7 @@ include(${TOP_DIR}/cmake/project.cmake)
 include(${TOP_DIR}/cmake/adk.cmake)
 include(${TOP_DIR}/cmake/bridge.cmake)
 include(${TOP_DIR}/cmake/lua.cmake)
+include(${TOP_DIR}/cmake/lua-cjson.cmake)
 include(${TOP_DIR}/cmake/platform.cmake)
 include(${TOP_DIR}/cmake/extension.cmake)
 
@@ -64,6 +65,7 @@ set(SRCS
     ${ADK_PAL_OPENSSL_SRCS}
     ${BRIDGE_SRCS}
     ${LUA_SRCS}
+    ${LUA_CJSON_SRCS}
 )
 add_executable(${PROJECT} ${SRCS})
 

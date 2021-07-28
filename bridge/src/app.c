@@ -31,6 +31,10 @@
 #define LUA_SCRIPT_PATH_FMT LUA_PATH_FMT(LUA_SCRIPT_SUFFIX)
 #define LUA_BINARY_PATH_FMT LUA_PATH_FMT(LUA_BINARY_SUFFIX)
 
+// Declare the function of lua-cjson.
+#define LUA_CJSON_NAME "cjson"
+extern int luaopen_cjson(lua_State *L);
+
 /**
  * Global accessory configuration.
  */
@@ -64,6 +68,7 @@ static const luaL_Reg dynamiclibs[] = {
     {LUA_TIMER_NAME, luaopen_timer},
     {LUA_HASH_NAME, luaopen_hash},
     {LUA_CIPHER_NAME, luaopen_cipher},
+    {LUA_CJSON_NAME, luaopen_cjson},
     {NULL, NULL}
 };
 
