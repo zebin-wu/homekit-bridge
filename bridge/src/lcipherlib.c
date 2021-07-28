@@ -6,6 +6,7 @@
 
 #include <lauxlib.h>
 #include <pal/cipher.h>
+#include <HAPBase.h>
 
 #include "lcipherlib.h"
 
