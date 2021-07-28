@@ -4,6 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
+#include <HAPBase.h>
+
 #include "md5.h"
 
 // Perform a clockwise rotation of the bit of the uint32_t type variable "D".
