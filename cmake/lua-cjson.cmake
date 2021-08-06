@@ -1,6 +1,5 @@
 # directory
 set(LUA_CJSON_DIR ${TOP_DIR}/ext/lua-cjson)
-set(LUA_CJSON_INC_DIR ${LUA_CJSON_DIR})
 set(LUA_CJSON_SRC_DIR ${LUA_CJSON_DIR})
 
 # collect lua-cjson sources
