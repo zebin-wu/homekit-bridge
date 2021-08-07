@@ -3,21 +3,32 @@ set(PLATFORM_DIR ${TOP_DIR}/platform)
 set(PLATFORM_INC_DIR ${PLATFORM_DIR}/include)
 set(PLATFORM_COMMON_DIR ${PLATFORM_DIR}/common)
 set(PLATFORM_COMMON_SRC_DIR ${PLATFORM_COMMON_DIR}/src)
+set(PLATFORM_MBEDTLS_DIR ${PLATFORM_DIR}/mbedtls)
+set(PLATFORM_MBEDTLS_SRC_DIR ${PLATFORM_MBEDTLS_DIR}/src)
+set(PLATFORM_OPENSSL_DIR ${PLATFORM_DIR}/openssl)
+set(PLATFORM_OPENSSL_SRC_DIR ${PLATFORM_OPENSSL_DIR}/src)
 set(PLATFORM_LINUX_DIR ${PLATFORM_DIR}/linux)
 set(PLATFORM_LINUX_SRC_DIR ${PLATFORM_LINUX_DIR}/src)
+set(PLATFORM_ESP_DIR ${PLATFORM_DIR}/esp/components/platform)
+set(PLATFORM_ESP_SRC_DIR ${PLATFORM_ESP_DIR}/src)
 
-# collect platform linux sources
+# collect platform Linux sources
 set(PLATFORM_LINUX_SRCS
-    ${PLATFORM_LINUX_SRC_DIR}/pal/board.c
-    ${PLATFORM_LINUX_SRC_DIR}/pal/memory.c
-    ${PLATFORM_LINUX_SRC_DIR}/pal/cipher.c
+    ${PLATFORM_COMMON_SRC_DIR}/hap.c
+    ${PLATFORM_COMMON_SRC_DIR}/net/udp.c
+    ${PLATFORM_OPENSSL_SRC_DIR}/cipher.c
+    ${PLATFORM_LINUX_SRC_DIR}/board.c
+    ${PLATFORM_LINUX_SRC_DIR}/memory.c
     ${PLATFORM_LINUX_SRC_DIR}/main.c
 )
 
-# collect platform common sources
-set(PLATFORM_COMMON_SRCS
+# collect platform ESP sources
+set(PLATFORM_ESP_SRCS
     ${PLATFORM_COMMON_SRC_DIR}/hap.c
     ${PLATFORM_COMMON_SRC_DIR}/net/udp.c
+    ${PLATFORM_MBEDTLS_SRC_DIR}/cipher.c
+    ${PLATFORM_ESP_SRC_DIR}/board.c
+    ${PLATFORM_ESP_SRC_DIR}/memory.c
 )
 
 # collect platform headers

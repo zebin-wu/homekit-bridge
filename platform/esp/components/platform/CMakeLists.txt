@@ -1,15 +1,8 @@
 set(TOP_DIR ${COMPONENT_DIR}/../../../..)
 include(${TOP_DIR}/cmake/platform.cmake)
 
-set(SRCS
-    ${PLATFORM_COMMON_SRCS}
-    src/board.c
-    src/memory.c
-    src/cipher.c
-)
-
 idf_component_register(
-    SRCS ${SRCS}
+    SRCS ${PLATFORM_ESP_SRCS}
     INCLUDE_DIRS ${PLATFORM_INC_DIR}
     REQUIRES
     PRIV_REQUIRES app_update homekit_adk mbedtls
