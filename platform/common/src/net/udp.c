@@ -36,7 +36,7 @@
 typedef struct pal_net_udp_mbuf {
     char to_addr[PAL_NET_ADDR_MAX_LEN];
     uint16_t to_port;
-    struct pal_net_udp_mbuf *next; 
+    struct pal_net_udp_mbuf *next;
     size_t len;
     char buf[0];
 } pal_net_udp_mbuf;
@@ -97,7 +97,9 @@ pal_net_addr_get_ipv6(struct sockaddr_in6 *dst_addr, const char *src_addr, uint1
 
 static void pal_net_udp_add_mbuf(pal_net_udp *udp, pal_net_udp_mbuf *mbuf) {
     pal_net_udp_mbuf **node = &udp->mbuf_list_head;
-    for (; *node; node = &(*node)->next);
+    while (*node) {
+        node = &(*node)->next;
+    }
     *node = mbuf;
 }
 
@@ -131,7 +133,7 @@ static void pal_net_udp_raw_recv(pal_net_udp *udp) {
             err = PAL_NET_ERR_UNKNOWN;
             goto err;
         }
-        strcpy(from_addr, udp->remote_addr);
+        HAPRawBufferCopyBytes(from_addr, udp->remote_addr, PAL_NET_ADDR_MAX_LEN);
         from_port = udp->remote_port;
     } else {
         switch (udp->domain) {
@@ -298,7 +300,7 @@ pal_net_udp *pal_net_udp_new(pal_net_domain domain) {
         break;
     default:
         HAPAssertionFailure();
-    };
+    }
 
     udp->id = ++gudp_pcb_count;
 
@@ -358,7 +360,7 @@ pal_net_err pal_net_udp_bind(pal_net_udp *udp, const char *addr, uint16_t port) 
     }
     default:
         HAPAssertionFailure();
-    };
+    }
     if (ret == -1) {
         UDP_LOG_ERRNO(udp, "bind");
         return PAL_NET_ERR_UNKNOWN;
@@ -369,9 +371,11 @@ pal_net_err pal_net_udp_bind(pal_net_udp *udp, const char *addr, uint16_t port) 
 }
 
 pal_net_err pal_net_udp_connect(pal_net_udp *udp, const char *addr, uint16_t port) {
+    size_t addr_len = HAPStringGetNumBytes(addr);
+
     HAPPrecondition(udp);
     HAPPrecondition(addr);
-    HAPPrecondition(strlen(addr) < PAL_NET_ADDR_MAX_LEN);
+    HAPPrecondition(addr_len < PAL_NET_ADDR_MAX_LEN);
 
     int ret;
     switch (udp->domain) {
@@ -400,7 +404,7 @@ pal_net_err pal_net_udp_connect(pal_net_udp *udp, const char *addr, uint16_t por
         UDP_LOG_ERRNO(udp, "connect");
         return PAL_NET_ERR_UNKNOWN;
     }
-    strcpy(udp->remote_addr, addr);
+    HAPRawBufferCopyBytes(udp->remote_addr, addr, addr_len);
     udp->remote_port = port;
     udp->connected = true;
     UDP_LOG(Debug, udp, "Connected to %s:%u", addr, port);
@@ -421,7 +425,7 @@ pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len) {
         UDP_LOG(Error, udp, "%s: Failed to alloc memory.", __func__);
         return PAL_NET_ERR_ALLOC;
     }
-    memcpy(mbuf->buf, data, len);
+    HAPRawBufferCopyBytes(mbuf->buf, data, len);
     mbuf->len = len;
     mbuf->to_addr[0] = '\0';
     mbuf->to_port = 0;
@@ -436,11 +440,13 @@ pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len) {
 
 pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
     const char *addr, uint16_t port) {
+    size_t addr_len = HAPStringGetNumBytes(addr);
+
     HAPPrecondition(udp);
     HAPPrecondition(data);
     HAPPrecondition(len > 0);
     HAPPrecondition(addr);
-    HAPPrecondition(strlen(addr) < PAL_NET_ADDR_MAX_LEN);
+    HAPPrecondition(addr_len < PAL_NET_ADDR_MAX_LEN);
 
     switch (udp->domain) {
     case PAL_NET_DOMAIN_INET: {
@@ -467,9 +473,9 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
         UDP_LOG(Error, udp, "%s: Failed to alloc memory.", __func__);
         return PAL_NET_ERR_ALLOC;
     }
-    memcpy(mbuf->buf, data, len);
+    HAPRawBufferCopyBytes(mbuf->buf, data, len);
     mbuf->len = len;
-    strcpy(mbuf->to_addr, addr);
+    HAPRawBufferCopyBytes(mbuf->to_addr, addr, addr_len);
     mbuf->to_port = port;
     mbuf->next = NULL;
     pal_net_udp_add_mbuf(udp, mbuf);
