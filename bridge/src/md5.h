@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include <pal/types.h>
+#include <HAPBase.h>
 
 #define MD5_HASHSIZE    16
 

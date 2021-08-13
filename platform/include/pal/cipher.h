@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include <pal/types.h>
+#include <HAPBase.h>
 
 /**
  * @brief Supported {cipher type, cipher mode} pairs.
