@@ -39,5 +39,4 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/net/types.h
     ${PLATFORM_INC_DIR}/pal/net/udp.h
     ${PLATFORM_INC_DIR}/pal/cipher.h
-    ${PLATFORM_INC_DIR}/pal/types.h
 )
