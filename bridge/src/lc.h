@@ -90,6 +90,12 @@ char *lc_new_str(lua_State *L, int idx);
 void lc_add_searcher(lua_State *L, lua_CFunction searcher);
 
 /**
+ * Set search path for lua scripts.
+ * package.path = path
+ */
+void lc_set_path(lua_State *L, const char *path);
+
+/**
  * Creates and returns a reference.
  */
 int lc_ref(lua_State *L, int idx);

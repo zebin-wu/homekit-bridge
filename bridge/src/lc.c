@@ -139,6 +139,14 @@ void lc_add_searcher(lua_State *L, lua_CFunction searcher) {
     lua_pop(L, 2);
 }
 
+void lc_set_path(lua_State *L, const char *path) {
+    lua_getglobal(L, "package");
+
+    lua_pushstring(L, path);
+    lua_setfield(L, -2, "path");
+    lua_pop(L, 1);
+}
+
 int lc_ref(lua_State *L, int idx) {
     lua_pushvalue(L, idx);
     return luaL_ref(L, LUA_REGISTRYINDEX);

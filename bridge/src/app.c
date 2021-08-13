@@ -4,8 +4,6 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#include <stdlib.h>
-
 #include <HAP.h>
 #include <HAPAccessorySetup.h>
 #include <lauxlib.h>
@@ -22,14 +20,6 @@
 #include "ltimerlib.h"
 #include "lhashlib.h"
 #include "lcipherlib.h"
-
-#define LUA_SCRIPT_SUFFIX "lua"
-#define LUA_BINARY_SUFFIX "luac"
-
-#define LUA_PATH_FMT(suffix) "%s/%s." suffix
-
-#define LUA_SCRIPT_PATH_FMT LUA_PATH_FMT(LUA_SCRIPT_SUFFIX)
-#define LUA_BINARY_PATH_FMT LUA_PATH_FMT(LUA_BINARY_SUFFIX)
 
 // Declare the function of lua-cjson.
 #define LUA_CJSON_NAME "cjson"
@@ -98,15 +88,6 @@ size_t app_lua_run(const char *dir, const char *entry) {
     HAPPrecondition(entry);
 
     char path[256];
-    // set work dir to env LUA_PATH
-    int len = snprintf(path, sizeof(path), LUA_SCRIPT_PATH_FMT, dir, "?");
-    HAPAssert(len > 0);
-    len = snprintf(path + len, sizeof(path) - len,
-        LUA_PATH_SEP LUA_BINARY_PATH_FMT, dir, "?");
-    HAPAssert(len > 0);
-    if (setenv("LUA_PATH", path, 1)) {
-        HAPLogError(&kHAPLog_Default, "Failed to set env LUA_PATH.");
-    }
 
     lua_State *L  = luaL_newstate();
     if (L == NULL) {
@@ -120,12 +101,15 @@ size_t app_lua_run(const char *dir, const char *entry) {
         lua_pop(L, 1);  /* remove lib */
     }
 
+    // set search path
+    HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/?.lua;%s/?.luac", dir, dir) == kHAPError_None);
+    lc_set_path(L, path);
+
     // add searcher_dl to package.searcher
     lc_add_searcher(L, searcher_dl);
 
     // run entry scripts
-    len = snprintf(path, sizeof(path), LUA_BINARY_PATH_FMT, dir, entry);
-    HAPAssert(len > 0);
+    HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/%s.luac", dir, entry) == kHAPError_None);
     int status = luaL_dofile(L, path);
     lc_collectgarbage(L);
     if (status != LUA_OK) {
