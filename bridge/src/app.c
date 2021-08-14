@@ -62,20 +62,17 @@ static const luaL_Reg dynamiclibs[] = {
     {NULL, NULL}
 };
 
-static inline const luaL_Reg *find_dl(const char *name) {
-    for (const luaL_Reg *lib = dynamiclibs; lib->func; lib++) {
-        if (HAPStringAreEqual(lib->name, name)) {
-            return lib;
-        }
-    }
-    return NULL;
-}
-
+// Method to search module in dynamiclibs.
 static int searcher_dl(lua_State *L) {
     const char *name = luaL_checkstring(L, 1);
+    const luaL_Reg *lib = dynamiclibs;
 
-    const luaL_Reg *lib = find_dl(name);
-    if (lib) {
+    for (; lib->func; lib++) {
+        if (HAPStringAreEqual(lib->name, name)) {
+            break;
+        }
+    }
+    if (lib->func) {
         lua_pushcfunction(L, lib->func);
     } else {
         lua_pushfstring(L, "no module '%s' in dynamiclibs", name);
@@ -111,7 +108,6 @@ size_t app_lua_run(const char *dir, const char *entry) {
     // run entry scripts
     HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/%s.luac", dir, entry) == kHAPError_None);
     int status = luaL_dofile(L, path);
-    lc_collectgarbage(L);
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
         HAPLogError(&kHAPLog_Default, "%s.luac: %s", entry, msg);

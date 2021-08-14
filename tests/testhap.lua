@@ -37,7 +37,6 @@ end
 local function testFn(f, args)
     for i, arg in ipairs(args) do
         f(arg)
-        collectgarbage()
     end
 end
 
