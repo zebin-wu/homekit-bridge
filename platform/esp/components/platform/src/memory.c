@@ -14,12 +14,8 @@ void *pal_mem_alloc(size_t size)
 }
 
 void *pal_mem_calloc(size_t size)
-{
-    void *ptr = malloc(size);
-    if (ptr) {
-        memset(ptr, 0, size);
-    }
-    return ptr;
+{ 
+    return calloc(1, size);;
 }
 
 void *pal_mem_realloc(void *ptr, size_t size)
