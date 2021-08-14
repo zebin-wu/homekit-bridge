@@ -8,7 +8,6 @@ local function run()
     end
     for i, suite in ipairs(suites) do
         runSuite(suite)
-        collectgarbage()
     end
     return true
 end
