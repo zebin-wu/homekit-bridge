@@ -242,7 +242,8 @@ static void pal_net_udp_raw_send(pal_net_udp *udp) {
 
     HAPLogBufferDebug(&udp_log_obj, mbuf->buf, mbuf->len,
         "(id=%u) Sent packet(len=%zd) to %s:%u", udp->id,
-        mbuf->len, mbuf->to_addr, mbuf->to_port);
+        mbuf->len, mbuf->to_addr[0] ? mbuf->to_addr : udp->remote_addr,
+        mbuf->to_addr[0] ? mbuf->to_port : udp->remote_port);
     pal_mem_free(mbuf);
     return;
 
