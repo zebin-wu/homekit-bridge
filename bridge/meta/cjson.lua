@@ -13,7 +13,7 @@ local cjson = {}
 function cjson.decode(s) end
 
 ---Serialise a Lua value into a string containing the JSON representation.
----@param v any Lua value.
+---@param v any Lua value or table.
 ---@return string s JSON format string.
 function cjson.encode(v) end
 
