@@ -6,6 +6,7 @@ local _hash = {}
 
 ---Update hash object with binary data.
 ---@param data string Binary data.
+---@return boolean status true on success, false on failure.
 function _hash:update(data) end
 
 ---Return the digest of the data passed to the update() method so far.

@@ -6,8 +6,8 @@
 
 #include <lauxlib.h>
 #include <HAPBase.h>
+#include <pal/md5.h>
 
-#include "md5.h"
 #include "lhashlib.h"
 
 #define LUA_HASH_OBJ_NAME "HashObject"
@@ -17,31 +17,35 @@
 
 typedef struct {
     const char *name;
-    size_t ctx_len; /* The length of the context. */
-    size_t digest_len;  /* The length of the digest. */
-    void (*init)(void *ctx); /* Initialize context. */
+    size_t digest_len; /* The length of the digest. */
+    void *(*new)(void); /* New a context. */
+    void (*free)(void *); /* Free a context. */
     bool (*update)(void *ctx, const void *data, size_t len); /* Update data. */
-    void (*digest)(void *ctx, void *output); /* Get the digest. */
+    bool (*digest)(void *ctx, void *output); /* Get the digest. */
 } lhash_method;
 
-static void lhash_md5_init(void *ctx) {
-    md5_init((md5_ctx *)ctx);
+static void *lhash_md5_new() {
+    return pal_md5_new();
+}
+
+static void lhash_md5_free(void *ctx) {
+    pal_md5_free((pal_md5_ctx *)ctx);
 }
 
 bool lhash_md5_update(void *ctx, const void *data, size_t len) {
-    return md5_update((md5_ctx *)ctx, data, len);
+    return pal_md5_update((pal_md5_ctx *)ctx, data, len);
 }
 
-void lhash_md5_digest(void *ctx, void *output) {
-    md5_digest(ctx, output);
+bool lhash_md5_digest(void *ctx, void *output) {
+    return pal_md5_digest((pal_md5_ctx *)ctx, output);
 }
 
 static const lhash_method lhash_mths[] = {
     {
         .name = "md5",
-        .ctx_len = sizeof(md5_ctx),
-        .digest_len = MD5_HASHSIZE,
-        .init = lhash_md5_init,
+        .digest_len = PAL_MD5_HASHSIZE,
+        .new = lhash_md5_new,
+        .free = lhash_md5_free,
         .update = lhash_md5_update,
         .digest = lhash_md5_digest,
     },
@@ -52,7 +56,7 @@ static const lhash_method lhash_mths[] = {
  */
 typedef struct __attribute__((__packed__)) {
     const lhash_method *mth;
-    char ctx[1];
+    void *ctx;
 } lhash_obj;
 
 static const lhash_method *lhash_method_lookup_by_name(const char *name) {
@@ -69,10 +73,13 @@ static int lhash_new(lua_State *L, const char *name) {
     if (!mth) {
         luaL_error(L, "'%s' hash algorithm does not support", name);
     }
-    lhash_obj *obj = lua_newuserdata(L, sizeof(lhash_obj) + mth->ctx_len - 1);
+    lhash_obj *obj = lua_newuserdata(L, sizeof(lhash_obj));
     luaL_setmetatable(L, LUA_HASH_OBJ_NAME);
     obj->mth = mth;
-    mth->init(obj->ctx);
+    obj->ctx = mth->new();
+    if (!obj->ctx) {
+        luaL_pushfail(L);
+    }
     return 1;
 }
 
@@ -102,13 +109,18 @@ static int lhash_obj_digest(lua_State *L) {
         luaL_error(L, "attempt to use a destroyed hash object");
     }
     char out[obj->mth->digest_len];
-    obj->mth->digest(obj->ctx, out);
+    if (!obj->mth->digest(obj->ctx, out)) {
+        luaL_pushfail(L);
+        return 1;
+    }
     lua_pushlstring(L, out, obj->mth->digest_len);
     return 1;
 }
 
 static int lhash_obj_gc(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
+    obj->mth->free(obj->ctx);
+    obj->ctx = NULL;
     obj->mth = NULL;
     return 0;
 }
