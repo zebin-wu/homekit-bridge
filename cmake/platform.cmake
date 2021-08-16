@@ -22,6 +22,7 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/net/types.h
     ${PLATFORM_INC_DIR}/pal/net/udp.h
     ${PLATFORM_INC_DIR}/pal/cipher.h
+    ${PLATFORM_INC_DIR}/pal/md5.h
 )
 
 # collect platform Linux sources
@@ -29,6 +30,7 @@ set(PLATFORM_LINUX_SRCS
     ${PLATFORM_COMMON_SRC_DIR}/hap.c
     ${PLATFORM_COMMON_POSIX_SRC_DIR}/net/udp.c
     ${PLATFORM_OPENSSL_SRC_DIR}/cipher.c
+    ${PLATFORM_OPENSSL_SRC_DIR}/md5.c
     ${PLATFORM_LINUX_SRC_DIR}/board.c
     ${PLATFORM_LINUX_SRC_DIR}/memory.c
     ${PLATFORM_LINUX_SRC_DIR}/main.c
@@ -39,6 +41,7 @@ set(PLATFORM_ESP_SRCS
     ${PLATFORM_COMMON_SRC_DIR}/hap.c
     ${PLATFORM_COMMON_POSIX_SRC_DIR}/net/udp.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/cipher.c
+    ${PLATFORM_MBEDTLS_SRC_DIR}/md5.c
     ${PLATFORM_ESP_SRC_DIR}/board.c
     ${PLATFORM_ESP_SRC_DIR}/memory.c
 )

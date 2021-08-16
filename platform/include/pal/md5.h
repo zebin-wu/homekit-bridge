@@ -4,8 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef BRIDGE_SRC_MD5_H_
-#define BRIDGE_SRC_MD5_H_
+#ifndef PLATFORM_INCLUDE_PAL_MD5_H_
+#define PLATFORM_INCLUDE_PAL_MD5_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,22 +13,26 @@ extern "C" {
 
 #include <HAPBase.h>
 
-#define MD5_HASHSIZE    16
+#define PAL_MD5_HASHSIZE    16
 
 /**
  * MD5 context.
  */
-typedef struct {
-    uint32_t digest[MD5_HASHSIZE / sizeof(uint32_t)];
-    size_t len;
-} md5_ctx;
+typedef struct pal_md5_ctx pal_md5_ctx;
 
 /**
- * Initialize a MD5 context.
+ * New a MD5 context.
  *
+ * @return MD5 context.
+ */
+pal_md5_ctx *pal_md5_new(void);
+
+/**
+ * Free a MD5 context.
+ * 
  * @param ctx MD5 context.
  */
-void md5_init(md5_ctx *ctx);
+void pal_md5_free(pal_md5_ctx *ctx);
 
 /**
  * Update MD5 context with data.
@@ -37,22 +41,25 @@ void md5_init(md5_ctx *ctx);
  * @param data The data to update.
  * @param len The length of the data.
  *
- * @return true if update completed, means len is not the multiples of 64.
-*          false if you can continue update.
+ * @return true on success.
+ * @return false on failure.
  */
-bool md5_update(md5_ctx *ctx, const void *data, size_t len);
+bool pal_md5_update(pal_md5_ctx *ctx, const void *data, size_t len);
 
 /**
  * Return the digest of the data passed to the update() method so far.
  *
  * @param ctx MD5 context.
  * @param output The buffer to receive the hash value. Its size must be
- *  (at least) MD5_HASHSIZE.
+ *  (at least) PAL_MD5_HASHSIZE.
+ *
+ * @return true on success.
+ * @return false on failure.
  */
-void md5_digest(md5_ctx *ctx, uint8_t output[MD5_HASHSIZE]);
+bool pal_md5_digest(pal_md5_ctx *ctx, uint8_t output[PAL_MD5_HASHSIZE]);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // BRIDGE_SRC_MD5_H_
+#endif  // PLATFORM_INCLUDE_PAL_MD5_H_

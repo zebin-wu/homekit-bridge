@@ -15,7 +15,6 @@ set(BRIDGE_SRCS
     ${BRIDGE_SRC_DIR}/ltimerlib.c
     ${BRIDGE_SRC_DIR}/lc.c
     ${BRIDGE_SRC_DIR}/lhashlib.c
-    ${BRIDGE_SRC_DIR}/md5.c
     ${BRIDGE_SRC_DIR}/lcipherlib.c
 )
 
@@ -31,6 +30,5 @@ set(BRIDGE_HEADERS
     ${BRIDGE_SRC_DIR}/lboardlib.h
     ${BRIDGE_SRC_DIR}/ltimerlib.h
     ${BRIDGE_SRC_DIR}/lhashlib.h
-    ${BRIDGE_SRC_DIR}/md5.h
     ${BRIDGE_SRC_DIR}/lcipherlib.h
 )
