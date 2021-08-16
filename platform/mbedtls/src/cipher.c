@@ -7,7 +7,6 @@
 #include <mbedtls/cipher.h>
 #include <pal/cipher.h>
 #include <pal/memory.h>
-#include <HAPBase.h>
 
 struct pal_cipher_ctx {
     mbedtls_cipher_context_t ctx;
