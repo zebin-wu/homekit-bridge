@@ -44,11 +44,11 @@ local logger = log.getLogger("miio.protocol")
 ---      except in the "Hello" packet, when it's 0xFFFFFFFF
 ---
 ---  Stamp: 32 bit unsigned int
----      continously increasing counter
+---      Unix style epoch time
 ---
 ---  MD5 checksum:
 ---      calculated for the whole packet including the MD5 field itself,
----      which must be initialized with 0.
+---      which must be initialized with device token.
 ---
 ---      In the special case of the response to the "Hello" packet,
 ---      this field contains the 128-bit device token instead.
@@ -62,7 +62,6 @@ local logger = log.getLogger("miio.protocol")
 ---@field unknown integer
 ---@field did integer
 ---@field stamp integer
----@field checksum string
 ---@field data string
 
 ---
@@ -72,7 +71,7 @@ local logger = log.getLogger("miio.protocol")
 ---
 --- A 128-bit key and Initialization Vector are both derived from the Token as follows:
 ---   Key = MD5(Token)
----   IV  = MD5(MD5(Key) + Token)
+---   IV  = MD5(Key + Token)
 --- PKCS#7 padding is used prior to encryption.
 ---
 --- The mode of operation is Cipher Block Chaining (CBC).
@@ -88,7 +87,7 @@ local logger = log.getLogger("miio.protocol")
 local function newEncryption(token)
     local function md5(data)
         local m = hash.md5()
-        m:update(token)
+        m:update(data)
         return m:digest()
     end
 
@@ -126,38 +125,44 @@ end
 ---@param unknown integer Unknown: 32-bit.
 ---@param did integer Device ID: 32-bit.
 ---@param stamp integer Stamp: 32 bit unsigned int.
----@param checksum string|nil MD5 checksnum: 128-bit.
+---@param token? string Device token: 128-bit.
 ---@param data? string Optional variable-sized data.
 ---@return string package
-local function pack(unknown, did, stamp, checksum, data)
+local function pack(unknown, did, stamp, token, data)
     local len = 32
     if data then
         len = len + #data
     end
 
-    local header = string.pack(">I2>I2>I4>I4>I4", 0x2131, len, unknown, did, stamp)
-    if checksum == nil then
+    local header = string.pack(">I2>I2>I4>I4>I4",
+        0x2131, len, unknown, did, stamp)
+    local checksum = nil
+    if token then
         local md5 = hash.md5()
-        md5:update(header)
-        md5:update(string.pack(">I4>I4>I4>I4", 0, 0, 0, 0))
+        md5:update(header .. token)
         if data then
             md5:update(data)
         end
         checksum = md5:digest()
+    else
+        checksum = string.pack(">I4>I4>I4>I4",
+            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff)
     end
     assert(#checksum == 16)
-    local fmt = "c" .. #header .. "c" .. #checksum
+
+    local msg = header .. checksum
     if data then
-        fmt = fmt .. "c" .. #data
+        msg = msg .. data
     end
 
-    return string.pack(fmt, header, checksum, data)
+    return msg
 end
 
 ---Unpack a message from a binary package.
 ---@param package string A binary package.
+---@param token? string Device token: 128-bit.
 ---@return MiioMessage|nil message
-local function unpack(package)
+local function unpack(package, token)
     if string.unpack(">I2", package, 1) ~= 0x2131 then
         return nil
     end
@@ -172,11 +177,22 @@ local function unpack(package)
         data = string.unpack("c" .. len - 32, package, 33)
     end
 
+    if token then
+        local md5 = hash.md5()
+        md5:update(string.unpack(">I2>I2>I4>I4>I4", package, 1) .. token)
+        if data then
+            md5:update(data)
+        end
+        if md5:digest() ~= string.unpack("c16", package, 17) then
+            logger:error("Got checksum error which indicates use of an invalid token.")
+            return nil
+        end
+    end
+
     return {
         unknown = string.unpack(">I4", package, 5),
         did = string.unpack(">I4", package, 9),
         stamp = string.unpack(">I4", package, 13),
-        checksum = string.unpack("c16", package, 17),
         data = data
     }
 end
@@ -187,8 +203,7 @@ local function packHello()
     return pack(
         0xffffffff,
         0xffffffff,
-        0xffffffff,
-        string.pack(">I4>I4>I4>I4", 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff)
+        0xffffffff
     )
 end
 
@@ -199,14 +214,17 @@ end
 ---@return boolean status true on success, false on failure.
 function protocol.scan(cb, timeout, addr)
     assert(type(cb) == "function")
+    assert(math.type(timeout) == "integer")
     assert(timeout > 0, "the parameter 'timeout' must be greater then 0")
 
     local context = {}
+
     local handle = udp.open("inet")
     if not handle then
         logger:error("Failed to open a UDP handle.")
         return false
     end
+
     if not addr then
         if handle:enableBroadcast() == false then
             logger:error("Failed to enable UDP broadcast.")
@@ -214,6 +232,7 @@ function protocol.scan(cb, timeout, addr)
             return false
         end
     end
+
     local t = timer.create(timeout * 1000, function(context)
         logger:debug("Scan done.")
         context.handle:close()
@@ -223,35 +242,55 @@ function protocol.scan(cb, timeout, addr)
         handle:close()
         return false
     end
+
     if not handle:sendto(packHello(), addr or "255.255.255.255", 54321) then
         logger:error("Failed to send hello message.")
         handle:close()
         t:cancel()
         return false
     end
-    handle:setRecvCb(function (data, from_addr, from_port, cb)
+
+    handle:setRecvCb(function (data, from_addr, from_port, context)
         local m = unpack(data)
         if m and m.unknown == 0 and m.data == nil then
-            cb(from_addr, from_port, m.did, m.stamp)
+            context.cb(from_addr, from_port, m.did, m.stamp)
+            if context.addr and context.addr == from_addr then
+                logger:debug("Scan done.")
+                context.handle:close()
+                context.timer:cancel()
+            end
         end
-    end, cb)
+    end, context)
+
+    context.cb = cb
     context.handle = handle
     context.timer = t
+    if addr then
+        context.addr = addr
+    end
+
     return true
 end
 
----comment
+---New a PCB(protocol control block).
 ---@param addr string Device address.
 ---@param port integer Device port.
----@param devid integer Device ID.
----@param token string Device token.
+---@param devid integer Device ID: 32-bit.
+---@param token string Device token: 128-bit.
 ---@param stamp integer Device time stamp obtained by scanning.
----@return table
+---@return PCB pcb Protocol control block.
 function protocol.new(addr, port, devid, token, stamp, ...)
-    assert(type(token) == "string" and #token == 16, "invalid token")
+    assert(type(addr) == "string")
+    assert(math.type(port) == "integer")
+    assert(math.type(devid) == "integer")
+    assert(type(token) == "string")
+    assert(#token == 16)
+    assert(math.type(stamp) == "integer")
 
-    local o = {
+    ---@class PCB:table protocol control block.
+    local pcb = {
         stampDiff = os.time() - stamp,
+        token = token,
         devid = devid,
         reqid = 0,
         respCb = nil,
@@ -259,26 +298,27 @@ function protocol.new(addr, port, devid, token, stamp, ...)
         args = { ... }
     }
 
-    o.handle = udp.open("inet")
-    if not o.handle then
+    pcb.handle = udp.open("inet")
+    if not pcb.handle then
         logger:error("Failed to open a UDP handle.")
         return nil
     end
-    if not o.handle:connect(addr, port) then
+    if not pcb.handle:connect(addr, port) then
         logger:error(("Failed to connect to %s:%d"):format(addr, port))
-        o.handle:close()
+        pcb.handle:close()
         return nil
     end
 
-    o.encryption = newEncryption(token)
-    if not o.encryption then
+    pcb.encryption = newEncryption(token)
+    if not pcb.encryption then
         logger:error("Failed to new a encryption.")
-        o.handle:close()
+        pcb.handle:close()
         return nil
     end
 
-    o.handle:setRecvCb(function (data, from_addr, from_port, self)
+    pcb.handle:setRecvCb(function (data, from_addr, from_port, self)
         if not self.respCb then
+            logger:debug("No pending request, skip the received message.")
             return
         end
 
@@ -295,16 +335,16 @@ function protocol.new(addr, port, devid, token, stamp, ...)
                 return nil
             end
             if not msg.data then
-                reportErr(0xffff, "Not a response message")
+                reportErr(0xffff, "Not a response message.")
                 return nil
             end
             if msg.did ~= self.devid then
-                reportErr(0xffff, "Not a match Device ID")
+                reportErr(0xffff, "Not a match Device ID.")
                 return nil
             end
             local payload =  json.decode(self.encryption:decrypt(msg.data))
             if not payload then
-                reportErr(0xffff, "Invalid payload")
+                reportErr(0xffff, "Failed to parse the JSON string.")
                 return nil
             end
             if payload.error then
@@ -328,48 +368,59 @@ function protocol.new(addr, port, devid, token, stamp, ...)
         self.respCb = nil
 
         cb(result, table.unpack(self.args))
-    end, o)
+    end, pcb)
 
     ---Start a request and ``respCb`` will be called when a response is received.
-    ---@param respCb fun(result: any, ...): boolean
-    ---@param method string
-    ---@param params? any
+    ---@param respCb fun(result: any, ...): boolean Response callback.
+    ---@param method string The request method.
+    ---@param params? table Array of parameters.
     ---@return boolean status true on success, false on failure.
-    function o:request(respCb, method, params)
+    function pcb:request(respCb, method, params)
         assert(type(respCb) == "function")
+        assert(type(method) == "string")
+
+        if params then
+            assert(type(params) == "table")
+        end
 
         if self.respCb then
-            logger:error("The last request is in progress.")
+            logger:error("The previous request is in progress.")
             return false
         end
 
         self.respCb = respCb
         self.reqid = self.reqid + 1
-        local data = {
+        local data = json.encode({
             id = self.reqid,
             method = method,
             params = params or json.empty_array
-        }
-        local m = pack(0, self.devid, os.time() - self.stampDiff, nil, self.encryption:encrypt(json.encode(data)))
+        })
+
+        local m = pack(0, self.devid, os.time() - self.stampDiff,
+            self.token, self.encryption:encrypt(data))
+
         if not self.handle:send(m) then
-            logger:error("Failed to send message")
+            logger:error("Failed to send message.")
             return false
         end
 
         return true
     end
 
-    function o:abort()
+    ---Abort the previous request.
+    function pcb:abort()
         self.respCb = nil
     end
 
     ---Set error callback.
-    ---@param cb fun(code: integer, message: string, ...)
-    function o:setErrCb(cb)
+    ---@param cb fun(code: integer, message: string, ...) Error callback.
+    function pcb:setErrCb(cb)
+        assert(type(cb) == "function")
+
         self.errCb = cb
     end
 
-    return o
+    return pcb
 end
 
 return protocol
