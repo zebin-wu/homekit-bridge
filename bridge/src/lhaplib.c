@@ -6,7 +6,10 @@
 
 #include <lualib.h>
 #include <lauxlib.h>
+#include <pal/hap.h>
+#include <HAP.h>
 #include <HAPCharacteristic.h>
+#include <HAPAccessorySetup.h>
 
 #include "app_int.h"
 #include "lc.h"
@@ -384,19 +387,29 @@ enum lhap_server_cb_idx {
 };
 
 static struct lhap_desc {
-    bool is_configure:1;
     bool conf_changed:1;
+    bool is_configured:1;
+    bool is_started:1;
+
+    lua_State *L;
     size_t attribute_cnt;
     size_t bridged_aid;
     size_t iid;
     int server_cb_ref_ids[LHAP_SERVER_CB_MAX];
     HAPAccessory *primary_acc;
     HAPAccessory **bridged_accs;
-    HAPAccessoryServerRef *server;
+
+    HAPPlatform *platform;
+    HAPAccessoryServerRef server;
+    HAPAccessoryServerOptions server_options;
+    HAPAccessoryServerCallbacks server_callbacks;
 } gv_lhap_desc = {
     .attribute_cnt = kAttributeCount,
     .bridged_aid = LHAP_BRIDGED_ACCESSORY_IID_DFT,
-    .iid = kAttributeCount + 1
+    .iid = kAttributeCount + 1,
+    .server_options = {
+        .maxPairings = kHAPPairingStorage_MinElements
+    }
 };
 
 static bool lhap_ref_var(lua_State *L, int idx, int *ref_id) {
@@ -1146,7 +1159,7 @@ HAPError lhap_char_Data_handleRead(
         size_t maxValueBytes,
         size_t* numValueBytes,
         void* _Nullable context) {
-    lua_State *L = ((app_context *)context)->L;
+    lua_State *L = ((struct lhap_desc *)context)->L;
     HAPError err = lhap_char_base_handleRead(L, request->transportType,
         request->session, request->accessory, request->service,
         (const HAPBaseCharacteristic *)request->characteristic);
@@ -1182,7 +1195,7 @@ HAPError lhap_char_Bool_handleRead(
         const HAPBoolCharacteristicReadRequest* request,
         bool* value,
         void* _Nullable context) {
-    lua_State *L = ((app_context *)context)->L;
+    lua_State *L = ((struct lhap_desc *)context)->L;
     HAPError err = lhap_char_base_handleRead(L, request->transportType,
         request->session, request->accessory, request->service,
         (const HAPBaseCharacteristic *)request->characteristic);
@@ -1261,7 +1274,7 @@ HAPError lhap_char_ ## format ## _handleRead( \
         const HAP ## format ##CharacteristicReadRequest* request, \
         vtype* value, \
         void* _Nullable context) { \
-    return lhap_char_number_handleRead(((app_context *)context)->L, \
+    return lhap_char_number_handleRead(((struct lhap_desc *)context)->L, \
         request->transportType, request->session, request->accessory, request->service, \
         (const HAPBaseCharacteristic *)request->characteristic, value); \
 }
@@ -1282,7 +1295,7 @@ HAPError lhap_char_String_handleRead(
         char* value,
         size_t maxValueBytes,
         void* _Nullable context) {
-    lua_State *L = ((app_context *)context)->L;
+    lua_State *L = ((struct lhap_desc *)context)->L;
     HAPError err = lhap_char_base_handleRead(L, request->transportType,
         request->session, request->accessory, request->service,
         (const HAPBaseCharacteristic *)request->characteristic);
@@ -1316,7 +1329,7 @@ HAPError lhap_char_TLV8_handleRead(
         const HAPTLV8CharacteristicReadRequest* request,
         HAPTLVWriterRef* responseWriter,
         void* _Nullable context) {
-    lua_State *L = ((app_context *)context)->L;
+    lua_State *L = ((struct lhap_desc *)context)->L;
     HAPError err = lhap_char_base_handleRead(L, request->transportType,
         request->session, request->accessory, request->service,
         (const HAPBaseCharacteristic *)request->characteristic);
@@ -1396,7 +1409,7 @@ HAPError lhap_char_Data_handleWrite(
         const void* valueBytes,
         size_t numValueBytes,
         void* _Nullable context) {
-    lua_State *L = ((app_context *)context)->L;
+    lua_State *L = ((struct lhap_desc *)context)->L;
     HAPError err = lhap_char_base_handleWrite(L, request->transportType,
         request->session, request->remote, request->accessory,
         request->service, (const HAPBaseCharacteristic *)request->characteristic);
@@ -1422,7 +1435,7 @@ HAPError lhap_char_Bool_handleWrite(
         const HAPBoolCharacteristicWriteRequest* request,
         bool value,
         void* _Nullable context) {
-    lua_State *L = ((app_context *)context)->L;
+    lua_State *L = ((struct lhap_desc *)context)->L;
     HAPError err = lhap_char_base_handleWrite(L, request->transportType,
         request->session, request->remote, request->accessory,
         request->service, (const HAPBaseCharacteristic *)request->characteristic);
@@ -1501,7 +1514,7 @@ HAPError lhap_char_ ## format ## _handleWrite( \
         const HAP ## format ## CharacteristicWriteRequest* request, \
         vtype value, \
         void* _Nullable context) { \
-    return lhap_char_number_handleWrite(((app_context *)context)->L, \
+    return lhap_char_number_handleWrite(((struct lhap_desc *)context)->L, \
         server, request->transportType, request->session, request->remote, \
         request->accessory, request->service, \
         (const HAPBaseCharacteristic *)request->characteristic, &value); \
@@ -1522,7 +1535,7 @@ HAPError lhap_char_String_handleWrite(
         const HAPStringCharacteristicWriteRequest* request,
         const char* value,
         void* _Nullable context) {
-    lua_State *L = ((app_context *)context)->L;
+    lua_State *L = ((struct lhap_desc *)context)->L;
     HAPError err = lhap_char_base_handleWrite(L, request->transportType,
         request->session, request->remote, request->accessory,
         request->service, (const HAPBaseCharacteristic *)request->characteristic);
@@ -1548,7 +1561,7 @@ HAPError lhap_char_TLV8_handleWrite(
         const HAPTLV8CharacteristicWriteRequest* request,
         HAPTLVReaderRef* requestReader,
         void* _Nullable context) {
-    lua_State *L = ((app_context *)context)->L;
+    lua_State *L = ((struct lhap_desc *)context)->L;
     HAPError err = lhap_char_base_handleWrite(L, request->transportType,
         request->session, request->remote, request->accessory,
         request->service, (const HAPBaseCharacteristic *)request->characteristic);
@@ -1853,7 +1866,7 @@ HAPError lhap_accessory_identify_cb(
     HAPPrecondition(context);
 
     HAPError err = kHAPError_Unknown;
-    lua_State *L = ((app_context *)context)->L;
+    lua_State *L = ((struct lhap_desc *)context)->L;
     const HAPAccessory *accessory = request->accessory;
 
     // push the callback
@@ -2010,6 +2023,68 @@ static void lhap_unref_server_cb(lua_State *L) {
     }
 }
 
+static inline bool lhap_push_server_cb(lua_State *L, enum lhap_server_cb_idx idx) {
+    return lc_push_ref(L, gv_lhap_desc.server_cb_ref_ids[idx]);
+}
+
+static void lhap_server_handle_update_state(HAPAccessoryServerRef *server, void *_Nullable context) {
+    HAPPrecondition(context);
+    HAPPrecondition(server);
+
+    lua_State *L = ((struct lhap_desc *)context)->L;
+    HAPPrecondition(L);
+
+    if (!lhap_push_server_cb(L, LHAP_SERVER_CB_UPDATE_STATE)) {
+        return;
+    }
+
+    lua_pushstring(L, lhap_server_state_strs[HAPAccessoryServerGetState(server)]);
+    if (lua_pcall(L, 1, 0, 0)) {
+        HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
+        lua_pop(L, 1);
+    }
+}
+
+static void lhap_server_handle_session_accept(
+        HAPAccessoryServerRef *server,
+        HAPSessionRef *session,
+        void *_Nullable context) {
+    HAPPrecondition(context);
+    HAPPrecondition(server);
+
+    lua_State *L = ((struct lhap_desc *)context)->L;
+    HAPPrecondition(L);
+
+    if (!lhap_push_server_cb(L, LHAP_SERVER_CB_SESSION_ACCEPT)) {
+        return;
+    }
+
+    if (lua_pcall(L, 0, 0, 0)) {
+        HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
+        lua_pop(L, 1);
+    }
+}
+
+static void lhap_server_handle_session_invalidate(
+        HAPAccessoryServerRef *server,
+        HAPSessionRef *session,
+        void *_Nullable context) {
+    HAPPrecondition(context);
+    HAPPrecondition(server);
+
+    lua_State *L = ((struct lhap_desc *)context)->L;
+    HAPPrecondition(L);
+
+    if (!lhap_push_server_cb(L, LHAP_SERVER_CB_SESSION_INVALIDATE)) {
+        return;
+    }
+
+    if (lua_pcall(L, 0, 0, 0)) {
+        HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
+        lua_pop(L, 1);
+    }
+}
+
 /**
  * configure(primaryAccessory: table, bridgedAccessories?: table,
  * serverCallbacks: table, confChanged: boolean) -> boolean
@@ -2021,7 +2096,7 @@ static int lhap_configure(lua_State *L) {
     lua_Unsigned len = 0;
     struct lhap_desc *desc = &gv_lhap_desc;
 
-    if (desc->is_configure) {
+    if (desc->is_configured) {
         HAPLogError(&lhap_log,
             "%s: HAP is already configured.", __func__);
         goto err;
@@ -2097,7 +2172,7 @@ parse_cbs:
             "%" LUA_INTEGER_FRMLEN "u"
             " bridged accessories have been configured.", len);
     }
-    desc->is_configure = true;
+    desc->is_configured = true;
     lua_pushboolean(L, true);
     return 1;
 
@@ -2119,8 +2194,15 @@ err:
     return 1;
 }
 
+/* unconfigure() */
 int lhap_unconfigure(lua_State *L) {
     struct lhap_desc *desc = &gv_lhap_desc;
+
+    if (!desc->is_configured) {
+        HAPLogError(&lhap_log,
+            "%s: HAP is not configured.", __func__);
+        return 0;
+    }
 
     if (desc->bridged_accs) {
         for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
@@ -2138,8 +2220,91 @@ int lhap_unconfigure(lua_State *L) {
     desc->bridged_aid = 1;
     desc->iid = kAttributeCount + 1;
     desc->conf_changed = false;
-    desc->is_configure = false;
-    desc->server = NULL;
+    desc->is_configured = false;
+    desc->L = NULL;
+    return 0;
+}
+
+/* start() */
+static int lhap_start(lua_State *L) {
+    struct lhap_desc *desc = &gv_lhap_desc;
+
+    if (desc->is_started) {
+        HAPLogError(&lhap_log,
+            "%s: HAP is already started.", __func__);
+        goto err;
+    }
+
+#if IP
+    pal_hap_init_ip(&desc->server_options, desc->attribute_cnt);
+#endif
+
+#if BLE
+    pal_hap_init_ble(&desc->server_options, desc->attribute_cnt);
+#endif
+
+    // Set server callback.
+    desc->server_callbacks.handleUpdatedState = lhap_server_handle_update_state;
+    desc->server_callbacks.handleSessionAccept = lhap_server_handle_session_accept;
+    desc->server_callbacks.handleSessionInvalidate = lhap_server_handle_session_invalidate;
+
+    // Display setup code.
+    HAPSetupCode setupCode;
+    HAPPlatformAccessorySetupLoadSetupCode(desc->platform->accessorySetup, &setupCode);
+    HAPLogInfo(&lhap_log, "Setup code: %s", setupCode.stringValue);
+
+    // Initialize accessory server.
+    HAPAccessoryServerCreate(
+            &desc->server,
+            &desc->server_options,
+            desc->platform,
+            &desc->server_callbacks,
+            desc);
+
+    // Start accessory server.
+    if (desc->bridged_accs) {
+        HAPAccessoryServerStartBridge(&desc->server, desc->primary_acc,
+        (const struct HAPAccessory *const *)desc->bridged_accs, desc->conf_changed);
+    } else {
+        HAPAccessoryServerStart(&desc->server, desc->primary_acc);
+    }
+
+    desc->L = L;
+    desc->is_started = true;
+
+    lua_pushboolean(L, true);
+    return 1;
+
+err:
+    lua_pushboolean(L, false);
+    return 1;
+}
+
+/* stop() */
+static int lhap_stop(lua_State *L) {
+    struct lhap_desc *desc = &gv_lhap_desc;
+
+    if (!desc->is_started) {
+        HAPLogError(&lhap_log,
+            "%s: HAP is not started.", __func__);
+        return 0;
+    }
+
+    // Release accessory server.
+    HAPAccessoryServerRelease(&desc->server);
+
+#if IP
+    pal_hap_deinit_ip(&desc->server_options);
+#endif
+
+#if BLE
+    pal_hap_deinit_ble(&desc->server_options);
+#endif
+
+    HAPRawBufferZero(&desc->server, sizeof(desc->server));
+    HAPRawBufferZero(&desc->server_callbacks, sizeof(desc->server_callbacks));
+    desc->is_started = false;
+
     return 0;
 }
 
@@ -2151,14 +2316,9 @@ static int lhap_raise_event(lua_State *L) {
     HAPSessionRef *session = NULL;
     struct lhap_desc *desc = &gv_lhap_desc;
 
-    if (!desc->is_configure) {
+    if (!desc->is_started) {
         HAPLogError(&lhap_log,
-            "%s: Please configure first.", __func__);
-        goto err;
-    }
-    if (!desc->server) {
-        HAPLogError(&lhap_log,
-            "%s: Please set server first.", __func__);
+            "%s: Please start HAP first.", __func__);
         goto err;
     }
 
@@ -2218,9 +2378,9 @@ characteristic:
     }
 
     if (session) {
-        HAPAccessoryServerRaiseEventOnSession(desc->server, c, s, a, session);
+        HAPAccessoryServerRaiseEventOnSession(&desc->server, c, s, a, session);
     } else {
-        HAPAccessoryServerRaiseEvent(desc->server, c, s, a);
+        HAPAccessoryServerRaiseEvent(&desc->server, c, s, a);
     }
 
     lua_pushboolean(L, true);
@@ -2244,6 +2404,8 @@ static int lhap_get_new_iid(lua_State *L) {
 static const luaL_Reg haplib[] = {
     {"configure", lhap_configure},
     {"unconfigure", lhap_unconfigure},
+    {"start", lhap_start},
+    {"stop", lhap_stop},
     {"raiseEvent", lhap_raise_event},
     {"getNewBridgedAccessoryID", lhap_get_new_bridged_aid},
     {"getNewInstanceID", lhap_get_new_iid},
@@ -2276,64 +2438,6 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
     return 1;
 }
 
-lhap_conf lhap_get_conf(void) {
-    HAPAssert(gv_lhap_desc.is_configure);
-    lhap_conf conf = {
-        .primary_acc = gv_lhap_desc.primary_acc,
-        .bridge_accs = (const HAPAccessory *const *)gv_lhap_desc.bridged_accs,
-        .conf_changed = gv_lhap_desc.conf_changed,
-    };
-    return conf;
-}
-
-size_t lhap_get_attribute_count(void) {
-    if (gv_lhap_desc.is_configure) {
-        return gv_lhap_desc.attribute_cnt;
-    }
-    return 0;
-}
-
-void lhap_set_server(HAPAccessoryServerRef *server) {
-    gv_lhap_desc.server = server;
-}
-
-static inline bool lhap_push_server_cb(lua_State *L, enum lhap_server_cb_idx idx) {
-    return lc_push_ref(L, gv_lhap_desc.server_cb_ref_ids[idx]);
-}
-
-void lhap_server_handle_update_state(lua_State *L, HAPAccessoryServerState state) {
-    HAPPrecondition(L);
-    if (!lhap_push_server_cb(L, LHAP_SERVER_CB_UPDATE_STATE)) {
-        return;
-    }
-
-    lua_pushstring(L, lhap_server_state_strs[state]);
-    if (lua_pcall(L, 1, 0, 0)) {
-        HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lua_pop(L, 1);
-    }
-}
-
-void lhap_server_handle_session_accept(lua_State *L) {
-    HAPPrecondition(L);
-    if (!lhap_push_server_cb(L, LHAP_SERVER_CB_SESSION_ACCEPT)) {
-        return;
-    }
-
-    if (lua_pcall(L, 0, 0, 0)) {
-        HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lua_pop(L, 1);
-    }
-}
-
-void lhap_server_handle_session_invalidate(lua_State *L) {
-    HAPPrecondition(L);
-    if (!lhap_push_server_cb(L, LHAP_SERVER_CB_SESSION_INVALIDATE)) {
-        return;
-    }
-
-    if (lua_pcall(L, 0, 0, 0)) {
-        HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lua_pop(L, 1);
-    }
+void lhap_set_platform(HAPPlatform *platform) {
+    gv_lhap_desc.platform = platform;
 }

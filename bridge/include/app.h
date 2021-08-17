@@ -25,9 +25,11 @@ extern "C" {
  *
  * @param dir the path of the scripts directory.
  * @param entry the name of the entry script.
- * @return attribute count.
+ *
+ * @return true on success.
+ * @return false on failure.
  */
-size_t app_lua_run(const char *dir, const char *entry);
+bool app_lua_run(const char *dir, const char *entry);
 
 /**
  * Close the lua state.
@@ -35,49 +37,9 @@ size_t app_lua_run(const char *dir, const char *entry);
 void app_lua_close(void);
 
 /**
- * Initialize the application.
- */
-void app_create(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef kv_store);
-
-/**
- * Deinitialize the application.
- */
-void app_release(void);
-
-/**
- * Start the accessory server for the app.
- */
-void app_accessory_server_start(void);
-
-/**
- * Handle the updated state of the Accessory Server.
- */
-void app_accessory_server_handle_update_state(HAPAccessoryServerRef *server, void *_Nullable context);
-
-/**
- * Handle the session accept of the Accessory Server.
- */
-void app_accessory_server_handle_session_accept(
-        HAPAccessoryServerRef *server,
-        HAPSessionRef *session,
-        void *_Nullable context);
-
-/**
- * Handle the session invalidate of the Accessory Server.
- */
-void app_accessory_server_handle_session_invalidate(
-        HAPAccessoryServerRef *server,
-        HAPSessionRef *session,
-        void *_Nullable context);
-
-/**
  * Initialize App.
  */
-void app_init(
-        HAPAccessoryServerOptions *server_opts,
-        HAPPlatform *platform,
-        HAPAccessoryServerCallbacks *server_cbs,
-        void *_Nonnull *_Nonnull pcontext);
+void app_init(HAPPlatform *platform);
 
 /**
  * De-initialize App.
