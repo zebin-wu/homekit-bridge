@@ -405,7 +405,7 @@ pal_net_err pal_net_udp_connect(pal_net_udp *udp, const char *addr, uint16_t por
         UDP_LOG_ERRNO(udp, "connect");
         return PAL_NET_ERR_UNKNOWN;
     }
-    HAPRawBufferCopyBytes(udp->remote_addr, addr, addr_len);
+    HAPRawBufferCopyBytes(udp->remote_addr, addr, addr_len + 1);
     udp->remote_port = port;
     udp->connected = true;
     UDP_LOG(Debug, udp, "Connected to %s:%u", addr, port);
@@ -476,7 +476,7 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
     }
     HAPRawBufferCopyBytes(mbuf->buf, data, len);
     mbuf->len = len;
-    HAPRawBufferCopyBytes(mbuf->to_addr, addr, addr_len);
+    HAPRawBufferCopyBytes(mbuf->to_addr, addr, addr_len + 1);
     mbuf->to_port = port;
     mbuf->next = NULL;
     pal_net_udp_add_mbuf(udp, mbuf);
