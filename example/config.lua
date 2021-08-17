@@ -2,6 +2,7 @@ return {
     bridge = {
         name = "HomeKit Bridge"
     },
+    plugins = {},
     accessories = {
         {
             plugin = "lightbulb",

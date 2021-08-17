@@ -8,26 +8,57 @@ local logger = log.getLogger("core")
 ---
 ---@field plugin string Plugin name.
 
+---@class PluginConf:table Plugin configuration.
+---
+---@field name string Plugin name.
+
 ---@class Plugin:table Plugin.
 ---
----@field isInited fun():boolean Check plugin is inited.
----@field init fun():boolean Initialize plugin.
+---@field init fun(conf?: PluginConf, report: fun(plugin: string, accessory: Accessory)): boolean Initialize plugin.
 ---@field deinit fun() Deinitialize plugin.
----@field gen fun(conf:AccessoryConf):Accessory|nil Generate accessory via configuration.
+---@field gen fun(conf: AccessoryConf): Accessory|nil Generate accessory via configuration.
+---@field isPending fun(): boolean Whether the accessory is waiting to be generated.
+
+local priv = {
+    plugins = {},
+    accessories = {},
+    done = nil
+}
+
+---Report generated bridged accessory.
+---@param name string Plugin name.
+---@param accessory Accessory Accessory.
+local function report(name, accessory)
+    table.insert(priv.accessories, accessory)
+
+    if priv.plugins[name].isPending() == false then
+        priv.plugins[name] = nil
+        if util.isEmptyTable(priv.plugins) then
+            priv.done(priv.accessories)
+            priv.accessories = {}
+            priv.done = nil
+        end
+    end
+end
 
 ---Load plugin.
----@param name string plugin name.
+---@param name string Plugin name.
+---@param conf? PluginConf Plugin configuration.
 ---@return Plugin|nil
-local function loadPlugin(name)
+local function loadPlugin(name, conf)
+    if priv.plugins[name] then
+        return priv.plugins[name]
+    end
+
     local plugin = require(name .. ".plugin")
     if util.isEmptyTable(plugin) then
         return nil
     end
     local fields = {
-        isInited = "function",
         init = "function",
         deinit = "function",
         gen = "function",
+        isPending = "function",
     }
     for k, t in pairs(fields) do
         if not plugin[k] then
@@ -40,30 +71,49 @@ local function loadPlugin(name)
             return nil
         end
     end
-    if plugin.isInited() == false then
-        if plugin.init() == false then
-            logger:error(("Failed to init plugin '%s'"):format(name))
-            return nil
-        end
+    if plugin.init(conf, report) == false then
+        logger:error(("Failed to init plugin '%s'"):format(name))
+        return nil
     end
+    priv.plugins[name] = plugin
     return plugin
 end
 
----Generate bridged accessories.
----@param confs AccessoryConf Accessory configuration.
----@return Accessory[]
-function core.gen(confs)
-    if util.isEmptyTable(confs) then
-        return {}
-    end
-    local accessories = {}
-    for i, conf in ipairs(confs) do
-        local plugin = loadPlugin(conf.plugin)
-        if plugin ~= nil then
-            table.insert(accessories, plugin.gen(conf))
+---Load plugins and generate bridged accessories.
+---@param pluginConfs PluginConf[] Plugin configurations.
+---@param accessoryConfs AccessoryConf[] Accessory configurations.
+---@param done fun(bridgedAccessories: Accessory[]): boolean
+function core.start(pluginConfs, accessoryConfs, done)
+    if pluginConfs then
+        for i, conf in ipairs(pluginConfs) do
+            loadPlugin(conf.name, conf)
         end
     end
-    return accessories
+
+    if accessoryConfs then
+        for i, conf in ipairs(accessoryConfs) do
+            local plugin = loadPlugin(conf.plugin)
+            if plugin ~= nil then
+                table.insert(priv.accessories, plugin.gen(conf))
+            end
+        end
+    end
+
+    for name, plugin in pairs(priv.plugins) do
+        if plugin.isPending() == false then
+            priv.plugins[name] = nil
+        end
+    end
+
+    if util.isEmptyTable(priv.plugins) then
+        local status = done(priv.accessories)
+        priv.accessories = {}
+        return status
+    else
+        priv.done = done
+    end
+
+    return true
 end
 
 return core
