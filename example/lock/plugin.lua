@@ -1,21 +1,19 @@
 local lock = {}
 
 local logger = log.getLogger("lock")
-local inited = false
-
-function lock.isInited()
-    return inited
-end
+local isPending = false
 
 function lock.init()
-    inited = true
     logger:info("Initialized.")
     return true
 end
 
 function lock.deinit()
-    inited = false
     logger:info("Deinitialized.")
+end
+
+function lock.isPending()
+    return isPending
 end
 
 local function checkAccessoryConf(conf)

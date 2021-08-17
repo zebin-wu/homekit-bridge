@@ -1,21 +1,19 @@
 local lightbulb = {}
 
 local logger = log.getLogger("lightbulb")
-local inited = false
-
-function lightbulb.isInited()
-    return inited
-end
+local isPending = false
 
 function lightbulb.init()
-    inited = true
     logger:info("Initialized.")
     return true
 end
 
 function lightbulb.deinit()
-    inited = false
     logger:info("Deinitialized.")
+end
+
+function lightbulb.isPending()
+    return isPending
 end
 
 local function checkAccessoryConf(conf)
