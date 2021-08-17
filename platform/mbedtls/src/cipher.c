@@ -10,6 +10,7 @@
 
 struct pal_cipher_ctx {
     mbedtls_cipher_context_t ctx;
+    pal_cipher_operation op;
 };
 
 static const mbedtls_cipher_type_t pal_cipher_mbedtls_types[] = {
@@ -107,6 +108,7 @@ pal_cipher_ctx *pal_cipher_new(pal_cipher_type type) {
         return NULL;
     }
 
+    ctx->op = PAL_CIPHER_OP_NONE;
     mbedtls_cipher_init(&ctx->ctx);
     mbedtls_cipher_setup(&ctx->ctx,
         mbedtls_cipher_info_from_type(pal_cipher_mbedtls_types[type]));
@@ -123,6 +125,7 @@ void pal_cipher_free(pal_cipher_ctx *ctx) {
 bool pal_cipher_reset(pal_cipher_ctx *ctx) {
     HAPPrecondition(ctx);
 
+    ctx->op = PAL_CIPHER_OP_NONE;
     return mbedtls_cipher_reset(&ctx->ctx) == 0;
 }
 
@@ -141,7 +144,7 @@ size_t pal_cipher_get_key_len(pal_cipher_ctx *ctx) {
 size_t pal_cipher_get_iv_len(pal_cipher_ctx *ctx) {
     HAPPrecondition(ctx);
 
-    return mbedtls_cipher_get_key_bitlen(&ctx->ctx);
+    return mbedtls_cipher_get_iv_size(&ctx->ctx);
 }
 
 bool pal_cipher_set_padding(pal_cipher_ctx *ctx, pal_cipher_padding padding) {
@@ -154,19 +157,23 @@ bool pal_cipher_set_padding(pal_cipher_ctx *ctx, pal_cipher_padding padding) {
 
 bool pal_cipher_begin(pal_cipher_ctx *ctx, pal_cipher_operation op, const uint8_t *key, const uint8_t *iv) {
     HAPPrecondition(ctx);
-    HAPPrecondition(mbedtls_cipher_get_operation(&ctx->ctx) == MBEDTLS_OPERATION_NONE);
+    HAPPrecondition(ctx->op == PAL_CIPHER_OP_NONE);
     HAPPrecondition(op > PAL_CIPHER_OP_NONE && op < PAL_CIPHER_OP_MAX);
 
     if (mbedtls_cipher_set_iv(&ctx->ctx, iv, mbedtls_cipher_get_iv_size(&ctx->ctx))) {
         return false;
     }
-    return mbedtls_cipher_setkey(&ctx->ctx, key,
-        mbedtls_cipher_get_key_bitlen(&ctx->ctx), pal_cipher_mbedtls_ops[op]) == 0;
+    bool status =  (mbedtls_cipher_setkey(&ctx->ctx, key,
+        mbedtls_cipher_get_key_bitlen(&ctx->ctx), pal_cipher_mbedtls_ops[op]) == 0);
+    if (status) {
+        ctx->op = op;
+    }
+    return status;
 }
 
 bool pal_cipher_update(pal_cipher_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
     HAPPrecondition(ctx);
-    HAPPrecondition(mbedtls_cipher_get_operation(&ctx->ctx) != MBEDTLS_OPERATION_NONE);
+    HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);
     HAPPrecondition(in);
     HAPPrecondition(out);
 
@@ -175,8 +182,12 @@ bool pal_cipher_update(pal_cipher_ctx *ctx, const void *in, size_t ilen, void *o
 
 bool pal_cipher_finsh(pal_cipher_ctx *ctx, void *out, size_t *olen) {
     HAPPrecondition(ctx);
-    HAPPrecondition(mbedtls_cipher_get_operation(&ctx->ctx) != MBEDTLS_OPERATION_NONE);
+    HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);
     HAPPrecondition(out);
 
-    return mbedtls_cipher_finish(&ctx->ctx, out, olen) == 0;
+    bool status = (mbedtls_cipher_finish(&ctx->ctx, out, olen) == 0);
+    if (status) {
+        ctx->op = PAL_CIPHER_OP_NONE;
+    }
+    return status;
 }
