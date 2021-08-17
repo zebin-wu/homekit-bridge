@@ -179,7 +179,7 @@ local function unpack(package, token)
 
     if token then
         local md5 = hash.md5()
-        md5:update(string.unpack(">I2>I2>I4>I4>I4", package, 1) .. token)
+        md5:update(string.unpack("c16", package, 1) .. token)
         if data then
             md5:update(data)
         end
@@ -324,27 +324,25 @@ function protocol.new(addr, port, devid, token, stamp, ...)
 
         local function reportErr(code, msg)
             logger:error(msg)
-            if self.errCb then
-                self.errCb(code, msg, table.unpack(self.args))
-            end
+            self.errCb(code, msg, table.unpack(self.args))
         end
 
         local function parse(msg)
             if not msg then
-                reportErr(0xffff, "Receive a invalid message.")
+                reportErr(0, "Receive a invalid message.")
                 return nil
             end
             if not msg.data then
-                reportErr(0xffff, "Not a response message.")
+                reportErr(0, "Not a response message.")
                 return nil
             end
             if msg.did ~= self.devid then
-                reportErr(0xffff, "Not a match Device ID.")
+                reportErr(0, "Not a match Device ID.")
                 return nil
             end
             local payload =  json.decode(self.encryption:decrypt(msg.data))
             if not payload then
-                reportErr(0xffff, "Failed to parse the JSON string.")
+                reportErr(0, "Failed to parse the JSON string.")
                 return nil
             end
             if payload.error then
@@ -352,31 +350,35 @@ function protocol.new(addr, port, devid, token, stamp, ...)
                 return nil
             end
             if payload.id ~= self.reqid then
-                reportErr(0xffff, "response id ~= request id")
+                reportErr(0, "response id ~= request id")
                 return nil
             end
             return payload.result
         end
 
-        local result = parse(unpack(data))
+        local result = parse(unpack(data, self.token))
         if not result then
             self.respCb = nil
+            self.errCb = nil
             return
         end
 
         local cb = self.respCb
         self.respCb = nil
+        self.errCb = nil
 
         cb(result, table.unpack(self.args))
     end, pcb)
 
     ---Start a request and ``respCb`` will be called when a response is received.
-    ---@param respCb fun(result: any, ...): boolean Response callback.
+    ---@param respCb fun(result: any, ...) Response callback.
+    ---@param errCb fun(code: integer, message: string, ...) Error callback.
     ---@param method string The request method.
     ---@param params? table Array of parameters.
     ---@return boolean status true on success, false on failure.
-    function pcb:request(respCb, method, params)
+    function pcb:request(respCb, errCb, method, params)
         assert(type(respCb) == "function")
+        assert(type(errCb) == "function")
         assert(type(method) == "string")
 
         if params then
@@ -389,6 +391,7 @@ function protocol.new(addr, port, devid, token, stamp, ...)
         end
 
         self.respCb = respCb
+        self.errCb = errCb
         self.reqid = self.reqid + 1
         local data = json.encode({
             id = self.reqid,
@@ -410,14 +413,6 @@ function protocol.new(addr, port, devid, token, stamp, ...)
     ---Abort the previous request.
     function pcb:abort()
         self.respCb = nil
-    end
-
-    ---Set error callback.
-    ---@param cb fun(code: integer, message: string, ...) Error callback.
-    function pcb:setErrCb(cb)
-        assert(type(cb) == "function")
-
-        self.errCb = cb
     end
 
     return pcb
