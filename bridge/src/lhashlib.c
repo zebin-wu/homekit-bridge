@@ -24,37 +24,21 @@ typedef struct {
     bool (*digest)(void *ctx, void *output); /* Get the digest. */
 } lhash_method;
 
-static void *lhash_md5_new() {
-    return pal_md5_new();
-}
-
-static void lhash_md5_free(void *ctx) {
-    pal_md5_free((pal_md5_ctx *)ctx);
-}
-
-bool lhash_md5_update(void *ctx, const void *data, size_t len) {
-    return pal_md5_update((pal_md5_ctx *)ctx, data, len);
-}
-
-bool lhash_md5_digest(void *ctx, void *output) {
-    return pal_md5_digest((pal_md5_ctx *)ctx, output);
-}
-
 static const lhash_method lhash_mths[] = {
     {
         .name = "md5",
         .digest_len = PAL_MD5_HASHSIZE,
-        .new = lhash_md5_new,
-        .free = lhash_md5_free,
-        .update = lhash_md5_update,
-        .digest = lhash_md5_digest,
+        .new = (void *(*)())pal_md5_new,
+        .free = (void (*)(void *))pal_md5_free,
+        .update = (bool (*)(void *, const void *, size_t))pal_md5_update,
+        .digest = (bool (*)(void *, void *))pal_md5_digest,
     },
 };
 
 /**
  * Hash object.
  */
-typedef struct __attribute__((__packed__)) {
+typedef struct {
     const lhash_method *mth;
     void *ctx;
 } lhash_obj;
