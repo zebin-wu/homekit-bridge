@@ -4,6 +4,8 @@
 cmake_minimum_required(VERSION 3.5)
 
 set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+set(PLUGINS_DIR ${TOP_DIR}/plugins)
+
 include(${TOP_DIR}/cmake/project.cmake)
 include(${TOP_DIR}/cmake/bridge.cmake)
 include(${TOP_DIR}/cmake/extension.cmake)
@@ -41,7 +43,7 @@ endif()
 gen_lua_binary_from_dir(bridge_scripts
     ${SCRIPTS_DST_DIR}
     ${LUAC_BINARY}
-    SRC_DIRS ${SCRIPTS_SRC_DIRS}
+    SRC_DIRS ${SCRIPTS_SRC_DIRS} ${PLUGINS_DIR}
 )
 
 # create storage.bin
