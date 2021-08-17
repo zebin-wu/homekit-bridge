@@ -12,51 +12,14 @@ extern "C" {
 #endif
 
 #include <lua.h>
-#include <HAP.h>
 
 #define LUA_HAP_NAME "hap"
 LUAMOD_API int luaopen_hap(lua_State *L);
 
-typedef struct {
-    const HAPAccessory *primary_acc;
-    const HAPAccessory *const *bridge_accs;
-    bool conf_changed;
-} lhap_conf;
-
 /**
- * Set HomeKit accessory server.
+ * Set HomeKit platform.
  */
-void lhap_set_server(HAPAccessoryServerRef *server);
-
-/**
- * Unconfigure all accessires.
- */
-int lhap_unconfigure(lua_State *L);
-
-/**
- * Get configuration.
- */
-lhap_conf lhap_get_conf(void);
-
-/**
- * Get attribute count.
- */
-size_t lhap_get_attribute_count(void);
-
-/**
- * Handle the updated state of the Accessory Server.
- */
-void lhap_server_handle_update_state(lua_State *L, HAPAccessoryServerState state);
-
-/**
- * Handle the session accept of the Accessory Server.
- */
-void lhap_server_handle_session_accept(lua_State *L);
-
-/**
- * Handle the session invalidate of the Accessory Server.
- */
-void lhap_server_handle_session_invalidate(lua_State *L);
+void lhap_set_platform(HAPPlatform *platform);
 
 #ifdef __cplusplus
 }

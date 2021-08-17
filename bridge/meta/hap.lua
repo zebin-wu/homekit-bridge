@@ -411,6 +411,16 @@ hap.PairingService = {}
 ---@return boolean status true on success, false on failure.
 function hap.configure(primaryAccessory, bridgedAccessories, serverCallbacks, confChanged) end
 
+---Unconfigure all accessires then you can configure() again.
+function hap.unconfigure() end
+
+---Start accessory server.
+---@return boolean status true on success, false on failure.
+function hap.start() end
+
+---Stop accessory server.
+function hap.stop() end
+
 ---Raises an event notification for a given characteristic in a given service provided by a given accessory.
 ---If has session, it raises event on a given session.
 ---@overload fun(accessoryIID: integer, serviceIID: integer, characteristicIID: integer)
@@ -419,9 +429,6 @@ function hap.configure(primaryAccessory, bridgedAccessories, serverCallbacks, co
 ---@param characteristicIID integer characteristic intstance ID.
 ---@param session? Session The session on which to raise the event.
 function hap.raiseEvent(accessoryIID, serviceIID, characteristicIID, session) end
-
----Unconfigure all accessires then you can configure() again.
-function hap.unconfigure() end
 
 ---Get a new Instance ID for bridged accessory.
 ---@return integer iid Instance ID.

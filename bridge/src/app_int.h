@@ -11,19 +11,10 @@
 extern "C" {
 #endif
 
-#include <lua.h>
-
 /**
  * Log subsystem used by the HAP Bridge implementation.
  */
 #define APP_BRIDGE_LOG_SUBSYSTEM "com.apple.mfi.HomeKit.Bridge"
-
-/**
- * Application context. Will be passed to callbacks.
- */
-typedef struct {
-    lua_State *L;
-} app_context;
 
 #ifdef __cplusplus
 }

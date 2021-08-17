@@ -15,7 +15,6 @@
 #include <app.h>
 #include <pal/hap.h>
 
-#include <HAP.h>
 #include <HAPPlatform+Init.h>
 #include <HAPPlatformAccessorySetup+Init.h>
 #include <HAPPlatformBLEPeripheralManager+Init.h>
@@ -31,10 +30,6 @@
 #include <HAPPlatformMFiHWAuth+Init.h>
 #endif
 
-#include <signal.h>
-static bool requested_factory_reset = false;
-static bool clear_pairings = false;
-
 #ifndef BRIDGE_WORK_DIR
 #error Please set the macro "BRIDGE_WORK_DIR"
 #endif
@@ -45,12 +40,7 @@ static bool clear_pairings = false;
  */
 static struct {
     HAPPlatformKeyValueStore keyValueStore;
-    HAPAccessoryServerOptions hapAccessoryServerOptions;
     HAPPlatform hapPlatform;
-    HAPAccessoryServerCallbacks hapAccessoryServerCallbacks;
-
-    /* Client context pointer. Will be passed to callbacks. */
-    void* _Nullable context;
 
 #if HAVE_NFC
     HAPPlatformAccessorySetupNFC setupNFC;
@@ -65,13 +55,6 @@ static struct {
 #endif
     HAPPlatformMFiTokenAuth mfiTokenAuth;
 } platform;
-
-/**
- * HomeKit accessory server that hosts the accessory.
- */
-static HAPAccessoryServerRef accessoryServer;
-
-static void handle_update_state(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context);
 
 /**
  * Initialize global platform objects.
@@ -134,14 +117,8 @@ static void init_platform() {
     // Run loop.
     HAPPlatformRunLoopCreate(&(const HAPPlatformRunLoopOptions) { .keyValueStore = &platform.keyValueStore });
 
-    platform.hapAccessoryServerOptions.maxPairings = kHAPPairingStorage_MinElements;
-
     platform.hapPlatform.authentication.mfiTokenAuth =
             HAPPlatformMFiTokenAuthIsProvisioned(&platform.mfiTokenAuth) ? &platform.mfiTokenAuth : NULL;
-
-    platform.hapAccessoryServerCallbacks.handleUpdatedState = handle_update_state;
-    platform.hapAccessoryServerCallbacks.handleSessionAccept = app_accessory_server_handle_session_accept;
-    platform.hapAccessoryServerCallbacks.handleSessionInvalidate = app_accessory_server_handle_session_invalidate;
 }
 
 /**
@@ -160,64 +137,6 @@ static void deinit_platform() {
 
     // Run loop.
     HAPPlatformRunLoopRelease();
-}
-
-/**
- * Restore platform specific factory settings.
- */
-void restore_platform_factory_settings(void) {
-}
-
-/**
- * Either simply passes State handling to app, or processes Factory Reset
- */
-void handle_update_state(HAPAccessoryServerRef* _Nonnull server, void* _Nullable context) {
-    if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && requested_factory_reset) {
-        HAPPrecondition(server);
-
-        HAPError err;
-
-        HAPLogInfo(&kHAPLog_Default, "A factory reset has been requested.");
-
-        // Purge app state.
-        err = HAPPlatformKeyValueStorePurgeDomain(&platform.keyValueStore, ((HAPPlatformKeyValueStoreDomain) 0x00));
-        if (err) {
-            HAPAssert(err == kHAPError_Unknown);
-            HAPFatalError();
-        }
-
-        // Reset HomeKit state.
-        err = HAPRestoreFactorySettings(&platform.keyValueStore);
-        if (err) {
-            HAPAssert(err == kHAPError_Unknown);
-            HAPFatalError();
-        }
-
-        // Restore platform specific factory settings.
-        restore_platform_factory_settings();
-
-        // De-initialize App.
-        app_release();
-
-        requested_factory_reset = false;
-
-        // Re-initialize App.
-        app_create(server, &platform.keyValueStore);
-
-        // Restart accessory server.
-        app_accessory_server_start();
-        return;
-    } else if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && clear_pairings) {
-        HAPError err;
-        err = HAPRemoveAllPairings(&platform.keyValueStore);
-        if (err) {
-            HAPAssert(err == kHAPError_Unknown);
-            HAPFatalError();
-        }
-        app_accessory_server_start();
-    } else {
-        app_accessory_server_handle_update_state(server, context);
-    }
 }
 
 static const char *help = \
@@ -278,58 +197,19 @@ int main(int argc, char *argv[]) {
     // Initialize global platform objects.
     init_platform();
 
+    app_init(&platform.hapPlatform);
+
     // Run lua entry.
-    size_t attribute_cnt = app_lua_run(scripts_dir, entry);
-    HAPAssert(attribute_cnt);
-
-#if IP
-    pal_hap_init_ip(&platform.hapAccessoryServerOptions, attribute_cnt);
-#endif
-
-#if BLE
-    pal_hap_init_ble(&platform.hapAccessoryServerOptions, attribute_cnt);
-#endif
-
-    // Perform Application-specific initalizations such as setting up callbacks
-    // and configure any additional unique platform dependencies
-    app_init(&platform.hapAccessoryServerOptions, &platform.hapPlatform,
-        &platform.hapAccessoryServerCallbacks, &platform.context);
-
-    // Initialize accessory server.
-    HAPAccessoryServerCreate(
-            &accessoryServer,
-            &platform.hapAccessoryServerOptions,
-            &platform.hapPlatform,
-            &platform.hapAccessoryServerCallbacks,
-            platform.context);
-
-    // Create app object.
-    app_create(&accessoryServer, &platform.keyValueStore);
-
-    // Start accessory server for App.
-    app_accessory_server_start();
+    HAPAssert(app_lua_run(scripts_dir, entry));
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
     // Run loop stopped explicitly by calling function HAPPlatformRunLoopStop.
 
-    // Cleanup.
-    app_release();
-
-    HAPAccessoryServerRelease(&accessoryServer);
-
-    app_deinit();
-
-#if IP
-    pal_hap_deinit_ip(&platform.hapAccessoryServerOptions);
-#endif
-
-#if BLE
-    pal_hap_deinit_ble(&platform.hapAccessoryServerOptions);
-#endif
-
     // Close lua state.
     app_lua_close();
+
+    app_deinit();
 
     deinit_platform();
 
