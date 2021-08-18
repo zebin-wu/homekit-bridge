@@ -148,14 +148,6 @@ void pal_cipher_free(pal_cipher_ctx *ctx) {
     pal_mem_free(ctx);
 }
 
-bool pal_cipher_reset(pal_cipher_ctx *ctx) {
-    HAPPrecondition(ctx);
-
-    ctx->op = PAL_CIPHER_OP_NONE;
-    pal_cipher_set_padding(ctx, PAL_CIPHER_PADDING_NONE);
-    return EVP_CIPHER_CTX_reset(ctx->ctx);
-}
-
 size_t pal_cipher_get_block_size(pal_cipher_ctx *ctx) {
     HAPPrecondition(ctx);
 
