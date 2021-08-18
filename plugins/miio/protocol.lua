@@ -86,7 +86,7 @@ local logger = log.getLogger("miio.protocol")
 ---@return MiioEncryption encryption A new encryption.
 local function newEncryption(token)
     local function md5(data)
-        local m = hash.md5()
+        local m <close> = hash.md5()
         m:update(data)
         return m:digest()
     end
@@ -94,6 +94,11 @@ local function newEncryption(token)
     local cipher = require("cipher").create("AES-128-CBC")
     if not cipher then
         logger:error("Failed to create a AES-128-CBC cipher.")
+        return nil
+    end
+
+    if not cipher:setPadding("PKCS7") then
+        logger:error("Failed to set padding to the cipher.")
         return nil
     end
 
@@ -105,8 +110,6 @@ local function newEncryption(token)
         key = key,
         iv = iv,
     }
-
-    o.cipher:setPadding("PKCS7")
 
     function o:encrypt(input)
         self.cipher:begin("encrypt", self.key, self.iv)
@@ -138,7 +141,7 @@ local function pack(unknown, did, stamp, token, data)
         0x2131, len, unknown, did, stamp)
     local checksum = nil
     if token then
-        local md5 = hash.md5()
+        local md5 <close> = hash.md5()
         md5:update(header .. token)
         if data then
             md5:update(data)
@@ -178,7 +181,7 @@ local function unpack(package, token)
     end
 
     if token then
-        local md5 = hash.md5()
+        local md5 <close> = hash.md5()
         md5:update(string.unpack("c16", package, 1) .. token)
         if data then
             md5:update(data)
