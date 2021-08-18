@@ -158,6 +158,9 @@ err:
 
 static int lcipher_ctx_gc(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
+    if (!ctx->ctx) {
+        return 0;
+    }
     pal_cipher_free(ctx->ctx);
     ctx->ctx = NULL;
     ctx->in_progress = false;
