@@ -207,12 +207,16 @@ local function packHello()
     )
 end
 
----Scan for devices in the network.
+---Scan for devices in the local network.
+---
+---This method is used to discover supported devices by sending
+---a handshake message to the broadcast address on port 54321.
+---If the target IP address is given, the handshake will be send as an unicast packet.
 ---@param cb fun(addr: string, port: integer, devid: integer, stamp: integer) Function call when the device is scaned.
 ---@param timeout integer Timeout period (in seconds).
 ---@param addr? string Target Address.
 ---@return boolean status true on success, false on failure.
-function protocol.scan(cb, timeout, addr)
+function protocol.scan(cb, timeout, addr, ...)
     assert(type(cb) == "function")
     assert(math.type(timeout) == "integer")
     assert(timeout > 0, "the parameter 'timeout' must be greater then 0")
@@ -253,7 +257,7 @@ function protocol.scan(cb, timeout, addr)
     handle:setRecvCb(function (data, from_addr, from_port, context)
         local m = unpack(data)
         if m and m.unknown == 0 and m.data == nil then
-            context.cb(from_addr, from_port, m.did, m.stamp)
+            context.cb(from_addr, from_port, m.did, m.stamp, table.unpack(context.args))
             if context.addr and context.addr == from_addr then
                 logger:debug("Scan done.")
                 context.handle:close()
@@ -268,6 +272,7 @@ function protocol.scan(cb, timeout, addr)
     if addr then
         context.addr = addr
     end
+    context.args = { ... }
 
     return true
 end
