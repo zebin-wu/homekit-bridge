@@ -138,16 +138,6 @@ pal_cipher_ctx *pal_cipher_new(pal_cipher_type type);
 void pal_cipher_free(pal_cipher_ctx *ctx);
 
 /**
- * @brief Reset the cipher context.
- *
- * @param ctx The cipher context.
- *
- * @return true on success.
- * @return false on failure.
- */
-bool pal_cipher_reset(pal_cipher_ctx *ctx);
-
-/**
  * @brief Return the block size of the given cipher in bytes.
  *
  * @param ctx The cipher context.

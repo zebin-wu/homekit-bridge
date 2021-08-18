@@ -5,12 +5,27 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <mbedtls/cipher.h>
+#include <mbedtls/error.h>
 #include <pal/cipher.h>
 #include <pal/memory.h>
+#include <HAPPlatform.h>
+
+#define MBEDTLS_PRINT_ERROR(func, err) \
+do { \
+    char buf[128]; \
+    mbedtls_strerror(err, buf, sizeof(buf)); \
+    HAPLogError(&cipher_log_obj, \
+        "%s: %s() returned -%04X: %s", __func__, #func, -err, buf); \
+} while (0)
 
 struct pal_cipher_ctx {
     mbedtls_cipher_context_t ctx;
     pal_cipher_operation op;
+};
+
+static const HAPLogObject cipher_log_obj = {
+    .subsystem = kHAPPlatform_LogSubsystem,
+    .category = "cipher",
 };
 
 static const mbedtls_cipher_type_t pal_cipher_mbedtls_types[] = {
@@ -110,8 +125,14 @@ pal_cipher_ctx *pal_cipher_new(pal_cipher_type type) {
 
     ctx->op = PAL_CIPHER_OP_NONE;
     mbedtls_cipher_init(&ctx->ctx);
-    mbedtls_cipher_setup(&ctx->ctx,
+    int ret = mbedtls_cipher_setup(&ctx->ctx,
         mbedtls_cipher_info_from_type(pal_cipher_mbedtls_types[type]));
+    if (ret) {
+        MBEDTLS_PRINT_ERROR(mbedtls_cipher_setup, ret);
+        mbedtls_cipher_free(&ctx->ctx);
+        pal_mem_free(ctx);
+        return NULL;
+    }
     return ctx;
 }
 
@@ -120,13 +141,7 @@ void pal_cipher_free(pal_cipher_ctx *ctx) {
         return;
     }
     mbedtls_cipher_free(&ctx->ctx);
-}
-
-bool pal_cipher_reset(pal_cipher_ctx *ctx) {
-    HAPPrecondition(ctx);
-
-    ctx->op = PAL_CIPHER_OP_NONE;
-    return mbedtls_cipher_reset(&ctx->ctx) == 0;
+    pal_mem_free(ctx);
 }
 
 size_t pal_cipher_get_block_size(pal_cipher_ctx *ctx) {
@@ -152,7 +167,12 @@ bool pal_cipher_set_padding(pal_cipher_ctx *ctx, pal_cipher_padding padding) {
     HAPPrecondition(padding >= PAL_CIPHER_PADDING_NONE &&
         padding < PAL_CIPHER_PADDING_MAX);
 
-    return mbedtls_cipher_set_padding_mode(&ctx->ctx, pal_cipher_mbedtls_paddings[padding]);
+    int ret = mbedtls_cipher_set_padding_mode(&ctx->ctx, pal_cipher_mbedtls_paddings[padding]);
+    if (ret) {
+        MBEDTLS_PRINT_ERROR(mbedtls_cipher_set_padding_mode, ret);
+        return false;
+    }
+    return true;
 }
 
 bool pal_cipher_begin(pal_cipher_ctx *ctx, pal_cipher_operation op, const uint8_t *key, const uint8_t *iv) {
@@ -163,12 +183,15 @@ bool pal_cipher_begin(pal_cipher_ctx *ctx, pal_cipher_operation op, const uint8_
     if (mbedtls_cipher_set_iv(&ctx->ctx, iv, mbedtls_cipher_get_iv_size(&ctx->ctx))) {
         return false;
     }
-    bool status =  (mbedtls_cipher_setkey(&ctx->ctx, key,
-        mbedtls_cipher_get_key_bitlen(&ctx->ctx), pal_cipher_mbedtls_ops[op]) == 0);
-    if (status) {
-        ctx->op = op;
+    int ret = mbedtls_cipher_setkey(&ctx->ctx, key,
+        mbedtls_cipher_get_key_bitlen(&ctx->ctx), pal_cipher_mbedtls_ops[op]);
+    if (ret) {
+        MBEDTLS_PRINT_ERROR(mbedtls_cipher_setkey, ret);
+        return false;
     }
-    return status;
+    mbedtls_cipher_reset(&ctx->ctx);
+    ctx->op = op;
+    return true;
 }
 
 bool pal_cipher_update(pal_cipher_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
@@ -177,7 +200,12 @@ bool pal_cipher_update(pal_cipher_ctx *ctx, const void *in, size_t ilen, void *o
     HAPPrecondition(in);
     HAPPrecondition(out);
 
-    return mbedtls_cipher_update(&ctx->ctx, in, ilen, out, olen) == 0;
+    int ret = mbedtls_cipher_update(&ctx->ctx, in, ilen, out, olen);
+    if (ret) {
+        MBEDTLS_PRINT_ERROR(mbedtls_cipher_update, ret);
+        return false;
+    }
+    return true;
 }
 
 bool pal_cipher_finsh(pal_cipher_ctx *ctx, void *out, size_t *olen) {
@@ -185,9 +213,11 @@ bool pal_cipher_finsh(pal_cipher_ctx *ctx, void *out, size_t *olen) {
     HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);
     HAPPrecondition(out);
 
-    bool status = (mbedtls_cipher_finish(&ctx->ctx, out, olen) == 0);
-    if (status) {
-        ctx->op = PAL_CIPHER_OP_NONE;
+    int ret = mbedtls_cipher_finish(&ctx->ctx, out, olen);
+    if (ret) {
+        MBEDTLS_PRINT_ERROR(mbedtls_cipher_finish, ret);
+        return false;
     }
-    return status;
+    ctx->op = PAL_CIPHER_OP_NONE;
+    return true;
 }
