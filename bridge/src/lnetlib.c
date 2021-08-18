@@ -255,10 +255,11 @@ static int lnet_udp_handle_set_err_cb(lua_State *L) {
 }
 
 static void lhap_net_udp_handle_reset(lnet_udp_handle *handle) {
-    if (handle->udp) {
-        pal_net_udp_free(handle->udp);
-        handle->udp = NULL;
+    if (!handle->udp) {
+        return;
     }
+    pal_net_udp_free(handle->udp);
+    handle->udp = NULL;
     lc_unref(handle->L, handle->ref_ids.recv_cb);
     handle->ref_ids.recv_cb = LUA_REFNIL;
     lc_unref(handle->L, handle->ref_ids.recv_arg);

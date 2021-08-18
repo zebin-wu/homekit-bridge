@@ -59,10 +59,11 @@ static int lhash_new(lua_State *L, const char *name) {
     }
     lhash_obj *obj = lua_newuserdata(L, sizeof(lhash_obj));
     luaL_setmetatable(L, LUA_HASH_OBJ_NAME);
-    obj->mth = mth;
     obj->ctx = mth->new();
     if (!obj->ctx) {
         luaL_pushfail(L);
+    } else {
+        obj->mth = mth;
     }
     return 1;
 }
@@ -103,6 +104,9 @@ static int lhash_obj_digest(lua_State *L) {
 
 static int lhash_obj_gc(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
+    if (!obj->mth) {
+        return 0;
+    }
     obj->mth->free(obj->ctx);
     obj->ctx = NULL;
     obj->mth = NULL;
