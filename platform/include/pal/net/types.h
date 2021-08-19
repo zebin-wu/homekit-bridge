@@ -11,21 +11,21 @@
  * Network error numbers.
  */
 typedef enum {
-    PAL_NET_ERR_OK,  // No error.
-    PAL_NET_ERR_UNKNOWN,  // Unknown.
-    PAL_NET_ERR_ALLOC,  // Failed to alloc.
-    PAL_NET_ERR_INVALID_ARG,  // Invalid argument.
-    PAL_NET_ERR_NOT_CONN,  // Not connected.
+    PAL_NET_ERR_OK,             /**< No error. */
+    PAL_NET_ERR_UNKNOWN,        /**< Unknown. */
+    PAL_NET_ERR_ALLOC,          /**< Failed to alloc. */
+    PAL_NET_ERR_INVALID_ARG,    /**< Invalid argument. */
+    PAL_NET_ERR_NOT_CONN,       /**< Not connected. */
 } pal_net_err;
 
 /**
  * Communication domain.
  */
 typedef enum {
-    PAL_NET_DOMAIN_INET,  // IPv4 Internet protocols.
-    PAL_NET_DOMAIN_INET6,  // IPv6 Internet protocols.
+    PAL_NET_DOMAIN_INET,        /**< IPv4 Internet protocols. */
+    PAL_NET_DOMAIN_INET6,       /**< IPv6 Internet protocols. */
 
-    PAL_NET_DOMAIN_COUNT,  // Count of enums.
+    PAL_NET_DOMAIN_COUNT,       /**< Count of enums. */
 } pal_net_domain;
 
 #define PAL_NET_DOMAIN_STRS { \
