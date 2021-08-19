@@ -127,8 +127,11 @@ static void pal_net_udp_raw_recv(pal_net_udp *udp) {
     uint16_t from_port;
     ssize_t rc;
     if (udp->connected) {
-        rc = recv(udp->fd, buf, sizeof(buf), 0);
-        if (rc <= 0) {
+        do {
+            rc = recv(udp->fd, buf, sizeof(buf), 0);
+        } while (rc == -1 && errno == EINTR);
+        // UDP protocol allows to send/receive a 0 byte packet.
+        if (rc == -1) {
             UDP_LOG_ERRNO(udp, "recv");
             err = PAL_NET_ERR_UNKNOWN;
             goto err;
@@ -140,9 +143,11 @@ static void pal_net_udp_raw_recv(pal_net_udp *udp) {
         case PAL_NET_DOMAIN_INET: {
             struct sockaddr_in sa;
             socklen_t addr_len = sizeof(sa);
-            rc = recvfrom(udp->fd, buf, sizeof(buf),
-                0, (struct sockaddr *)&sa, &addr_len);
-            if (rc <= 0) {
+            do {
+                rc = recvfrom(udp->fd, buf, sizeof(buf),
+                    0, (struct sockaddr *)&sa, &addr_len);
+            } while (rc == -1 && errno == EINTR);
+            if (rc == - 1) {
                 UDP_LOG_ERRNO(udp, "recvfrom");
                 err = PAL_NET_ERR_UNKNOWN;
                 goto err;
@@ -155,9 +160,11 @@ static void pal_net_udp_raw_recv(pal_net_udp *udp) {
         case PAL_NET_DOMAIN_INET6: {
             struct sockaddr_in6 sa;
             socklen_t addr_len = sizeof(sa);
-            rc = recvfrom(udp->fd, buf, sizeof(buf),
-                0, (struct sockaddr *)&sa, &addr_len);
-            if (rc <= 0) {
+            do {
+                rc = recvfrom(udp->fd, buf, sizeof(buf),
+                    0, (struct sockaddr *)&sa, &addr_len);
+            } while (rc == -1 && errno == EINTR);
+            if (rc == -1) {
                 UDP_LOG_ERRNO(udp, "recvfrom");
                 err = PAL_NET_ERR_UNKNOWN;
                 goto err;
@@ -208,8 +215,10 @@ static void pal_net_udp_raw_send(pal_net_udp *udp) {
                 err = PAL_NET_ERR_UNKNOWN;
                 goto err;
             }
-            rc = sendto(udp->fd, mbuf->buf, mbuf->len, 0,
-                (struct sockaddr *)&sa, sizeof(sa));
+            do {
+                rc = sendto(udp->fd, mbuf->buf, mbuf->len, 0,
+                    (struct sockaddr *)&sa, sizeof(sa));
+            } while (rc == -1 && errno == EINTR);
             break;
         }
         case PAL_NET_DOMAIN_INET6: {
@@ -220,19 +229,23 @@ static void pal_net_udp_raw_send(pal_net_udp *udp) {
                 err = PAL_NET_ERR_UNKNOWN;
                 goto err;
             }
-            rc = sendto(udp->fd, mbuf->buf, mbuf->len, 0,
-                (struct sockaddr *)&sa, sizeof(sa));
+            do {
+                rc = sendto(udp->fd, mbuf->buf, mbuf->len, 0,
+                    (struct sockaddr *)&sa, sizeof(sa));
+            } while (rc == -1 && errno == EINTR);
             break;
         }
         default:
             HAPAssertionFailure();
         }
     } else {
-        rc = send(udp->fd, mbuf->buf, mbuf->len, 0);
+        do {
+            rc = send(udp->fd, mbuf->buf, mbuf->len, 0);
+        } while (rc == -1 && errno == EINTR);
     }
     if (rc != mbuf->len) {
-        if (rc <= 0) {
-            UDP_LOG_ERRNO(udp, "send");
+        if (rc == -1) {
+            UDP_LOG_ERRNO(udp, mbuf->to_addr[0] ? "sendto" : "send");
         } else {
             UDP_LOG(Error, udp, "%s: Only sent %zd byte.", __func__, rc);
         }
@@ -414,8 +427,9 @@ pal_net_err pal_net_udp_connect(pal_net_udp *udp, const char *addr, uint16_t por
 
 pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len) {
     HAPPrecondition(udp);
-    HAPPrecondition(data);
-    HAPPrecondition(len > 0);
+    if (len > 0) {
+        HAPPrecondition(data);
+    }
 
     if (!udp->connected) {
         UDP_LOG(Error, udp, "%s: Unknown remote address and port, connect first.", __func__);
@@ -444,10 +458,11 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
     size_t addr_len = HAPStringGetNumBytes(addr);
 
     HAPPrecondition(udp);
-    HAPPrecondition(data);
-    HAPPrecondition(len > 0);
     HAPPrecondition(addr);
     HAPPrecondition(addr_len < PAL_NET_ADDR_MAX_LEN);
+    if (len > 0) {
+        HAPPrecondition(data);
+    }
 
     switch (udp->domain) {
     case PAL_NET_DOMAIN_INET: {
