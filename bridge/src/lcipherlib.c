@@ -105,7 +105,6 @@ static const char *lcipher_op_strs[] = {
 
 typedef struct {
     pal_cipher_ctx *ctx;
-    bool in_progress;
 } lcipher_ctx;
 
 static pal_cipher_type lcipher_lookup_type(const char *s) {
@@ -148,7 +147,6 @@ static int lcipher_create(lua_State *L) {
     if (!ctx->ctx)  {
         goto err;
     }
-    ctx->in_progress = false;
     return 1;
 
 err:
@@ -163,7 +161,6 @@ static int lcipher_ctx_gc(lua_State *L) {
     }
     pal_cipher_free(ctx->ctx);
     ctx->ctx = NULL;
-    ctx->in_progress = false;
     return 0;
 }
 
@@ -210,13 +207,9 @@ static int lcipher_ctx_set_padding(lua_State *L) {
 }
 
 static int lcipher_ctx_begin(lua_State *L) {
-    bool status;
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
     if (!ctx->ctx) {
         luaL_error(L, "attempt to use a destoryed cipher context");
-    }
-    if (ctx->in_progress) {
-        luaL_error(L, "encryption or decryption process has already begun");
     }
     const char *s = luaL_checkstring(L, 2);
     pal_cipher_operation op = lcipher_lookup_op(s);
@@ -239,11 +232,8 @@ static int lcipher_ctx_begin(lua_State *L) {
     }
 
 begin:
-    status = pal_cipher_begin(ctx->ctx, op, (const uint8_t *)key, (const uint8_t *)iv);
-    if (status) {
-        ctx->in_progress = true;
-    }
-    lua_pushboolean(L, status);
+    lua_pushboolean(L, pal_cipher_begin(ctx->ctx, op,
+        (const uint8_t *)key, (const uint8_t *)iv));
     return 1;
 }
 
@@ -251,9 +241,6 @@ static int lcipher_ctx_update(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
     if (!ctx->ctx) {
         luaL_error(L, "attempt to use a destoryed cipher context");
-    }
-    if (!ctx->in_progress) {
-        luaL_error(L, "attempt to update without beginning");
     }
     size_t inlen;
     const char *in = luaL_checklstring(L, 2, &inlen);
@@ -275,15 +262,11 @@ static int lcipher_ctx_finsh(lua_State *L) {
     if (!ctx->ctx) {
         luaL_error(L, "attempt to use a destoryed cipher context");
     }
-    if (!ctx->in_progress) {
-        luaL_error(L, "attempt to finsh without beginning");
-    }
     size_t outlen = pal_cipher_get_block_size(ctx->ctx);
     char out[outlen];
     if (!pal_cipher_finsh(ctx->ctx, out, &outlen)) {
         goto err;
     }
-    ctx->in_progress = false;
     lua_pushlstring(L, out, outlen);
     return 1;
 
