@@ -332,7 +332,9 @@ function protocol.new(addr, port, devid, token, stamp, ...)
 
         local function reportErr(code, msg)
             logger:error(msg)
-            self.errCb(code, msg, table.unpack(self.args))
+            if self.errCb then
+                self.errCb(code, msg, table.unpack(self.args))
+            end
         end
 
         local function parse(msg)
@@ -367,26 +369,22 @@ function protocol.new(addr, port, devid, token, stamp, ...)
         local result = parse(unpack(data, self.token))
         if not result then
             self.respCb = nil
-            self.errCb = nil
             return
         end
 
         local cb = self.respCb
         self.respCb = nil
-        self.errCb = nil
 
         cb(result, table.unpack(self.args))
     end, pcb)
 
     ---Start a request and ``respCb`` will be called when a response is received.
     ---@param respCb fun(result: any, ...) Response callback.
-    ---@param errCb fun(code: integer, message: string, ...) Error callback.
     ---@param method string The request method.
     ---@param params? table Array of parameters.
     ---@return boolean status true on success, false on failure.
-    function pcb:request(respCb, errCb, method, params)
+    function pcb:request(respCb, method, params)
         assert(type(respCb) == "function")
-        assert(type(errCb) == "function")
         assert(type(method) == "string")
 
         if params then
@@ -399,7 +397,6 @@ function protocol.new(addr, port, devid, token, stamp, ...)
         end
 
         self.respCb = respCb
-        self.errCb = errCb
         self.reqid = self.reqid + 1
         local data = json.encode({
             id = self.reqid,
@@ -421,6 +418,12 @@ function protocol.new(addr, port, devid, token, stamp, ...)
     ---Abort the previous request.
     function pcb:abort()
         self.respCb = nil
+    end
+
+    ---Set error callback.
+    ---@param cb fun(code: integer, message: string, ...) Error callback.
+    function pcb:setErrCb(cb, ...)
+        self.errCb = cb
     end
 
     return pcb
