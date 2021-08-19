@@ -13,7 +13,6 @@
 
 #include "app_int.h"
 #include "lc.h"
-#include "lhaplib.h"
 #include "db.h"
 
 #define LHAP_BRIDGED_ACCESSORY_IID_DFT 2

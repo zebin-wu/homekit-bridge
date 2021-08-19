@@ -11,8 +11,6 @@
 #include "app_int.h"
 #include "lc.h"
 
-#include "ltimerlib.h"
-
 #define LUA_TIMER_HANDLE_NAME "TimerHandle"
 
 static const HAPLogObject ltimer_log = {

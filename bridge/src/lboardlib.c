@@ -8,7 +8,6 @@
 #include <pal/board.h>
 
 #include "app_int.h"
-#include "lboardlib.h"
 
 static int lboard_getManufacturer(lua_State *L) {
     lua_pushstring(L, pal_board_get_manufacturer());

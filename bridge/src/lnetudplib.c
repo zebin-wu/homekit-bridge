@@ -11,7 +11,6 @@
 
 #include "lc.h"
 #include "app_int.h"
-#include "lnetlib.h"
 
 static const HAPLogObject lnet_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
