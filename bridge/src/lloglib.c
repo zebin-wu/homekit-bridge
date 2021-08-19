@@ -8,7 +8,6 @@
 #include <lauxlib.h>
 
 #include "app_int.h"
-#include "lloglib.h"
 
 #define LUA_LOGGER_NAME "logger"
 

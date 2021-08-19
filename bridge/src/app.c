@@ -11,13 +11,6 @@
 
 #include "app_int.h"
 #include "lc.h"
-#include "lhaplib.h"
-#include "lboardlib.h"
-#include "lnetlib.h"
-#include "lloglib.h"
-#include "ltimerlib.h"
-#include "lhashlib.h"
-#include "lcipherlib.h"
 
 // Declare the function of lua-cjson.
 #define LUA_CJSON_NAME "cjson"

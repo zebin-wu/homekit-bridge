@@ -8,8 +8,6 @@
 #include <HAPBase.h>
 #include <pal/md5.h>
 
-#include "lhashlib.h"
-
 #define LUA_HASH_OBJ_NAME "HashObject"
 
 #define LHASH_GET_OBJ(L, idx) \

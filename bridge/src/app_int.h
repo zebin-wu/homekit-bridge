@@ -11,10 +11,39 @@
 extern "C" {
 #endif
 
+#include <lua.h>
+#include <HAP.h>
+
 /**
  * Log subsystem used by the HAP Bridge implementation.
  */
 #define APP_BRIDGE_LOG_SUBSYSTEM "com.apple.mfi.HomeKit.Bridge"
+
+#define LUA_BOARD_NAME "board"
+LUAMOD_API int luaopen_board(lua_State *L);
+
+#define LUA_CIPHER_NAME "cipher"
+LUAMOD_API int luaopen_cipher(lua_State *L);
+
+#define LUA_HAP_NAME "hap"
+LUAMOD_API int luaopen_hap(lua_State *L);
+
+#define LUA_HASH_NAME "hash"
+LUAMOD_API int luaopen_hash(lua_State *L);
+
+#define LUA_LOG_NAME "log"
+LUAMOD_API int luaopen_log(lua_State *L);
+
+#define LUA_NET_UDP_NAME "net.udp"
+LUAMOD_API int luaopen_net_udp(lua_State *L);
+
+#define LUA_TIMER_NAME "timer"
+LUAMOD_API int luaopen_timer(lua_State *L);
+
+/**
+ * Set HomeKit platform.
+ */
+void lhap_set_platform(HAPPlatform *platform);
 
 #ifdef __cplusplus
 }

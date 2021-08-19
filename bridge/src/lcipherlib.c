@@ -8,8 +8,6 @@
 #include <pal/cipher.h>
 #include <HAPBase.h>
 
-#include "lcipherlib.h"
-
 #define LCIPHER_CTX_NAME "CipherContext"
 
 #define LCIPHER_GET_CTX(L, idx) \
