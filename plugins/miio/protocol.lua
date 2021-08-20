@@ -240,20 +240,9 @@ function protocol.scan(cb, timeout, addr, ...)
         end
     end
 
-    local t = timer.create(timeout * 1000, function(context)
-        logger:debug("Scan done.")
-        context.handle:close()
-    end, context)
-    if not t then
-        logger:error("Failed to create a timer.")
-        handle:close()
-        return false
-    end
-
     if not handle:sendto(packHello(), addr or "255.255.255.255", 54321) then
         logger:error("Failed to send hello message.")
         handle:close()
-        t:cancel()
         return false
     end
 
@@ -271,7 +260,19 @@ function protocol.scan(cb, timeout, addr, ...)
 
     context.cb = cb
     context.handle = handle
-    context.timer = t
+    if addr then
+        context.addr = addr
+    end
+    context.args = { ... }
+
+    context.timer = timer.create(function(context)
+        logger:debug("Scan done.")
+        context.handle:close()
+    end, context)
+    context.timer:start(timeout * 1000)
+
+    context.cb = cb
+    context.handle = handle
     if addr then
         context.addr = addr
     end

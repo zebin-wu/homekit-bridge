@@ -24,88 +24,76 @@ static const HAPLogObject ltimer_log = {
 typedef struct {
     lua_State *L;
     HAPPlatformTimerRef timer;  /* Timer ID. Start from 1. */
-    int argc;
-    int ref_ids[1]; /* ref_ids[0] is cb ref id */
+    struct {
+        int cb;
+        int arg;
+    } ref_ids;
 } ltimer_obj;
 
 #define LPAL_TIMER_GET_HANDLE(L, idx) \
     luaL_checkudata(L, idx, LUA_TIMER_HANDLE_NAME)
 
 static void ltimer_obj_reset(ltimer_obj *obj) {
-    lc_unref(obj->L, obj->ref_ids[0]);
-    obj->ref_ids[0] = LUA_REFNIL;
-
-    for (int i = 1; i <= obj->argc; i++) {
-        lc_unref(obj->L, obj->ref_ids[i]);
-        obj->ref_ids[i] = LUA_REFNIL;
-    }
-    obj->argc = 0;
-    obj->L = NULL;
+    lc_unref(obj->L, obj->ref_ids.cb);
+    obj->ref_ids.cb = LUA_REFNIL;
+    lc_unref(obj->L, obj->ref_ids.arg);
+    obj->ref_ids.arg = LUA_REFNIL;
 }
 
-static void ltimer_cb(HAPPlatformTimerRef timer, void* _Nullable context) {
+static int ltimer_create(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+
+    ltimer_obj *obj = lua_newuserdata(L, sizeof(ltimer_obj));
+    luaL_setmetatable(L, LUA_TIMER_HANDLE_NAME);
+    obj->L = L;
+    obj->ref_ids.cb = lc_ref(L, 1);
+    if (lua_isnil(L, 2)) {
+        obj->ref_ids.arg = LUA_REFNIL;
+    } else {
+        obj->ref_ids.arg = lc_ref(L, 2);
+    }
+    return 1;
+}
+
+static void ltimer_obj_cb(HAPPlatformTimerRef timer, void* _Nullable context) {
     ltimer_obj *obj = context;
     lua_State *L = obj->L;
 
     obj->timer = 0;
 
-    if (!lc_push_ref(L, obj->ref_ids[0])) {
+    if (!lc_push_ref(L, obj->ref_ids.cb)) {
         HAPLogError(&ltimer_log, "%s: Can't get lua function.", __func__);
-        goto end;
-    }
-    for (int i = 1; i <= obj->argc; i++) {
-        if (!lc_push_ref(L, obj->ref_ids[i])) {
-            HAPLogError(&ltimer_log, "%s: Can't get #arg %d set in timer.create().",
-                __func__, i + 2);
-            goto end;
-        }
+        return;
     }
 
-    if (lua_pcall(L, obj->argc, 0, 0)) {
+    bool has_arg = lc_push_ref(L, obj->ref_ids.arg);
+    if (lua_pcall(L, has_arg ? 1 : 0, 0, 0)) {
         HAPLogError(&ltimer_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
-end:
-    ltimer_obj_reset(obj);
     lua_settop(L, 0);
     lc_collectgarbage(L);
 }
 
-static int ltimer_create(lua_State *L) {
-    int argc = lua_gettop(L) - 2;
-    lua_Integer ms = luaL_checkinteger(L, 1);
-    if (ms < 0) {
-        goto err;
+static int ltimer_obj_start(lua_State *L) {
+    ltimer_obj *obj = LPAL_TIMER_GET_HANDLE(L, 1);
+    lua_Integer ms = luaL_checkinteger(L, 2);
+    if (ms <= 0) {
+        luaL_error(L, "attemp to trigger before the current time");
     }
-    luaL_checktype(L, 2, LUA_TFUNCTION);
-
-    ltimer_obj *obj = lua_newuserdata(L, sizeof(ltimer_obj) + sizeof(int) * argc);
-    luaL_setmetatable(L, LUA_TIMER_HANDLE_NAME);
     HAPError err = HAPPlatformTimerRegister(&obj->timer,
-        (HAPTime)ms + HAPPlatformClockGetCurrent(), ltimer_cb, obj);
+        (HAPTime)ms + HAPPlatformClockGetCurrent(), ltimer_obj_cb, obj);
     if (err != kHAPError_None) {
-        goto err;
+        luaL_error(L, "failed to start the timer");
     }
-    obj->L = L;
-    obj->argc = argc;
-    obj->ref_ids[0] = lc_ref(L, 2);
-    for (int i = 1; i <= argc; i++) {
-        obj->ref_ids[i] = lc_ref(L, i + 2);
-    }
-    return 1;
-
-err:
-    luaL_pushfail(L);
-    return 1;
+    return 0;
 }
 
 static int ltimer_obj_cancel(lua_State *L) {
     ltimer_obj *obj = LPAL_TIMER_GET_HANDLE(L, 1);
-    if (!obj->timer) {
-        luaL_error(L, "attempt to use a timer that has expired");
+    if (obj->timer) {
+        HAPPlatformTimerDeregister(obj->timer);
+        obj->timer = 0;
     }
-    ltimer_obj_reset(obj);
-    HAPPlatformTimerDeregister(obj->timer);
-    obj->timer = 0;
     return 0;
 }
 
@@ -149,6 +137,7 @@ static const luaL_Reg ltimer_obj_metameth[] = {
  * methods for TimerHandle
  */
 static const luaL_Reg ltimer_obj_meth[] = {
+    {"start", ltimer_obj_start},
     {"cancel", ltimer_obj_cancel},
     {NULL, NULL},
 };
