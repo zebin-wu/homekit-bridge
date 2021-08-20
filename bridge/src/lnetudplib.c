@@ -237,7 +237,6 @@ static int lnet_udp_handle_set_err_cb(lua_State *L) {
         handle->ref_ids.err_cb = lc_ref(L, 2);
     }
 
-    handle->ref_ids.err_arg = lc_ref(L, 2);
     lc_unref(L, handle->ref_ids.err_arg);
     if (lua_isnil(L, 3)) {
         handle->ref_ids.err_arg = LUA_REFNIL;
