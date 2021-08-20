@@ -38,13 +38,13 @@ function handle:send(data) end
 function handle:sendto(data, addr, port) end
 
 ---Set the receive callback.
----@param cb fun(data: string, from_addr: string, from_port: integer, arg?: any)
----@param arg? any
+---@param cb fun(data: string, from_addr: string, from_port: integer, arg?: any) Receive callback.
+---@param arg? any Argument passed to the callback.
 function handle:setRecvCb(cb, arg) end
 
 ---Set the error callback.
----@param cb fun(arg?: any)
----@param arg? any
+---@param cb fun(arg?: any) Error callback.
+---@param arg? any Argument passed to the callback.
 function handle:setErrCb(cb, arg) end
 
 ---Close the UDP handle.
