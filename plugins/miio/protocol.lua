@@ -215,7 +215,7 @@ end
 ---This method is used to discover supported devices by sending
 ---a handshake message to the broadcast address on port 54321.
 ---If the target IP address is given, the handshake will be send as an unicast packet.
----@param cb fun(addr: string, port: integer, devid: integer, stamp: integer) Function call when the device is scaned.
+---@param cb fun(addr: string, devid: integer, stamp: integer) Function call when the device is scaned.
 ---@param timeout integer Timeout period (in seconds).
 ---@param addr? string Target Address.
 ---@return boolean status true on success, false on failure.
@@ -247,9 +247,12 @@ function protocol.scan(cb, timeout, addr, ...)
     end
 
     handle:setRecvCb(function (data, from_addr, from_port, context)
+        if from_port ~= 54321 then
+            return
+        end
         local m = unpack(data)
         if m and m.unknown == 0 and m.data == nil then
-            context.cb(from_addr, from_port, m.did, m.stamp, table.unpack(context.args))
+            context.cb(from_addr, m.did, m.stamp, table.unpack(context.args))
             if context.addr and context.addr == from_addr then
                 logger:debug("Scan done.")
                 context.handle:close()
@@ -281,16 +284,14 @@ function protocol.scan(cb, timeout, addr, ...)
     return true
 end
 
----New a PCB(protocol control block).
+---Create a PCB(protocol control block).
 ---@param addr string Device address.
----@param port integer Device port.
 ---@param devid integer Device ID: 32-bit.
 ---@param token string Device token: 128-bit.
 ---@param stamp integer Device time stamp obtained by scanning.
 ---@return PCB pcb Protocol control block.
-function protocol.new(addr, port, devid, token, stamp, ...)
+function protocol.create(addr, devid, token, stamp)
     assert(type(addr) == "string")
-    assert(math.type(port) == "integer")
     assert(math.type(devid) == "integer")
     assert(type(token) == "string")
     assert(#token == 16)
@@ -301,10 +302,7 @@ function protocol.new(addr, port, devid, token, stamp, ...)
         stampDiff = os.time() - stamp,
         token = token,
         devid = devid,
-        reqid = 0,
-        respCb = nil,
-        errCb = nil,
-        args = { ... }
+        reqid = 0
     }
 
     pcb.handle = udp.open("inet")
@@ -312,8 +310,8 @@ function protocol.new(addr, port, devid, token, stamp, ...)
         logger:error("Failed to open a UDP handle.")
         return nil
     end
-    if not pcb.handle:connect(addr, port) then
-        logger:error(("Failed to connect to %s:%d"):format(addr, port))
+    if not pcb.handle:connect(addr, 54321) then
+        logger:error(("Failed to connect to %s:%d"):format(addr, 54321))
         pcb.handle:close()
         return nil
     end
@@ -331,37 +329,37 @@ function protocol.new(addr, port, devid, token, stamp, ...)
             return
         end
 
-        local function reportErr(code, msg)
-            logger:error(msg)
+        local function handleError(code, msg)
+            logger:error(("%d: %s"):format(code, msg))
             if self.errCb then
-                self.errCb(code, msg, table.unpack(self.args))
+                self.errCb(code, msg, table.unpack(self.errArgs))
             end
         end
 
         local function parse(msg)
             if not msg then
-                reportErr(0, "Receive a invalid message.")
+                handleError(0, "Receive a invalid message.")
                 return nil
             end
             if not msg.data then
-                reportErr(0, "Not a response message.")
+                handleError(0, "Not a response message.")
                 return nil
             end
             if msg.did ~= self.devid then
-                reportErr(0, "Not a match Device ID.")
+                handleError(0, "Not a match Device ID.")
                 return nil
             end
             local payload =  json.decode(self.encryption:decrypt(msg.data))
             if not payload then
-                reportErr(0, "Failed to parse the JSON string.")
+                handleError(0, "Failed to parse the JSON string.")
                 return nil
             end
             if payload.error then
-                reportErr(payload.error.code, payload.error.message)
+                handleError(payload.error.code, payload.error.message)
                 return nil
             end
             if payload.id ~= self.reqid then
-                reportErr(0, "response id ~= request id")
+                handleError(0, "response id ~= request id")
                 return nil
             end
             return payload.result
@@ -376,15 +374,14 @@ function protocol.new(addr, port, devid, token, stamp, ...)
         local cb = self.respCb
         self.respCb = nil
 
-        cb(result, table.unpack(self.args))
+        cb(result, table.unpack(self.respArgs))
     end, pcb)
 
     ---Start a request and ``respCb`` will be called when a response is received.
     ---@param respCb fun(result: any, ...) Response callback.
     ---@param method string The request method.
     ---@param params? table Array of parameters.
-    ---@return boolean status true on success, false on failure.
-    function pcb:request(respCb, method, params)
+    function pcb:request(respCb, method, params, ...)
         assert(type(respCb) == "function")
         assert(type(method) == "string")
 
@@ -398,6 +395,7 @@ function protocol.new(addr, port, devid, token, stamp, ...)
         end
 
         self.respCb = respCb
+        self.respArgs = {...}
         self.reqid = self.reqid + 1
         local data = json.encode({
             id = self.reqid,
@@ -405,15 +403,8 @@ function protocol.new(addr, port, devid, token, stamp, ...)
             params = params or json.empty_array
         })
 
-        local m = pack(0, self.devid, os.time() - self.stampDiff,
-            self.token, self.encryption:encrypt(data))
-
-        if not self.handle:send(m) then
-            logger:error("Failed to send message.")
-            return false
-        end
-
-        return true
+        assert(self.handle:send(pack(0, self.devid, os.time() - self.stampDiff,
+            self.token, self.encryption:encrypt(data))))
     end
 
     ---Abort the previous request.
@@ -425,6 +416,12 @@ function protocol.new(addr, port, devid, token, stamp, ...)
     ---@param cb fun(code: integer, message: string, ...) Error callback.
     function pcb:setErrCb(cb, ...)
         self.errCb = cb
+        self.errArgs = {...}
+    end
+
+    ---Destroy the PCB.
+    function pcb:destroy()
+        self.handle:close()
     end
 
     return pcb
