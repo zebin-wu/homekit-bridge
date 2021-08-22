@@ -304,6 +304,7 @@ function protocol.create(addr, devid, token, stamp)
 
     ---@class PCB:table protocol control block.
     local pcb = {
+        addr = addr,
         stampDiff = os.time() - stamp,
         token = token,
         devid = devid,
@@ -328,36 +329,46 @@ function protocol.create(addr, devid, token, stamp)
         return nil
     end
 
+    ---Parse a message.
+    ---@param self PCB
+    ---@param msg MiioMessage
+    ---@return MiioError|string|nil error
+    ---@return any result
+    local function parse(self, msg)
+        if not msg then
+            return "Receive a invalid message."
+        end
+        if msg.did ~= self.devid then
+            return "Not a match Device ID."
+        end
+        if not msg.data then
+            return "Not a response message."
+        end
+        local s = self.encryption:decrypt(msg.data)
+        if not s then
+            return "Failed to decrypt the message."
+        end
+        logger:debug(("%s <= %s:%d"):format(s, self.addr, 54321))
+        local payload =  json.decode(s)
+        if not payload then
+            return "Failed to parse the JSON string."
+        end
+        if payload.id ~= self.reqid then
+            return "response id ~= request id"
+        end
+        if payload.error then
+            return payload.error
+        end
+        return nil, payload.result
+    end
+
     pcb.handle:setRecvCb(function (data, from_addr, from_port, self)
         if not self.respCb then
             logger:debug("No pending request, skip the received message.")
             return
         end
 
-        local function parse(msg)
-            if not msg then
-                return "Receive a invalid message."
-            end
-            if not msg.data then
-                return "Not a response message."
-            end
-            if msg.did ~= self.devid then
-                return "Not a match Device ID."
-            end
-            local payload =  json.decode(self.encryption:decrypt(msg.data))
-            if not payload then
-                return "Failed to parse the JSON string."
-            end
-            if payload.id ~= self.reqid then
-                return "response id ~= request id"
-            end
-            if payload.error then
-                return payload.error
-            end
-            return nil, payload.result
-        end
-
-        local err, result = parse(unpack(data, self.token))
+        local err, result = parse(self, unpack(data, self.token))
         local cb = self.respCb
         self.respCb = nil
         cb(err, result, table.unpack(self.args))
@@ -391,6 +402,7 @@ function protocol.create(addr, devid, token, stamp)
 
         assert(self.handle:send(pack(0, self.devid, os.time() - self.stampDiff,
             self.token, self.encryption:encrypt(data))))
+        logger:debug(("%s => %s:%d"):format(data, self.addr, 54321))
     end
 
     ---Abort the previous request.
