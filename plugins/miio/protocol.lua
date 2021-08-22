@@ -370,8 +370,10 @@ function protocol.create(addr, devid, token, stamp)
 
         local err, result = parse(self, unpack(data, self.token))
         local cb = self.respCb
+        local args = self.args
         self.respCb = nil
-        cb(err, result, table.unpack(self.args))
+        self.args = nil
+        cb(err, result, table.unpack(args))
     end, pcb)
 
     ---Start a request and ``respCb`` will be called when a response is received.
