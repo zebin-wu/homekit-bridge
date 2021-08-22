@@ -284,6 +284,11 @@ function protocol.scan(cb, timeout, addr, ...)
     return true
 end
 
+---@class MiioError:table Error delivered by the target device.
+---
+---@field code integer Error code.
+---@field message string Error message.
+
 ---Create a PCB(protocol control block).
 ---@param addr string Device address.
 ---@param devid integer Device ID: 32-bit.
@@ -329,56 +334,37 @@ function protocol.create(addr, devid, token, stamp)
             return
         end
 
-        local function handleError(code, msg)
-            logger:error(("%d: %s"):format(code, msg))
-            if self.errCb then
-                self.errCb(code, msg, table.unpack(self.errArgs))
-            end
-        end
-
         local function parse(msg)
             if not msg then
-                handleError(0, "Receive a invalid message.")
-                return nil
+                return "Receive a invalid message."
             end
             if not msg.data then
-                handleError(0, "Not a response message.")
-                return nil
+                return "Not a response message."
             end
             if msg.did ~= self.devid then
-                handleError(0, "Not a match Device ID.")
-                return nil
+                return "Not a match Device ID."
             end
             local payload =  json.decode(self.encryption:decrypt(msg.data))
             if not payload then
-                handleError(0, "Failed to parse the JSON string.")
-                return nil
-            end
-            if payload.error then
-                handleError(payload.error.code, payload.error.message)
-                return nil
+                return "Failed to parse the JSON string."
             end
             if payload.id ~= self.reqid then
-                handleError(0, "response id ~= request id")
-                return nil
+                return "response id ~= request id"
             end
-            return payload.result
+            if payload.error then
+                return payload.error
+            end
+            return nil, payload.result
         end
 
-        local result = parse(unpack(data, self.token))
-        if not result then
-            self.respCb = nil
-            return
-        end
-
+        local err, result = parse(unpack(data, self.token))
         local cb = self.respCb
         self.respCb = nil
-
-        cb(result, table.unpack(self.respArgs))
+        cb(err, result, table.unpack(self.args))
     end, pcb)
 
     ---Start a request and ``respCb`` will be called when a response is received.
-    ---@param respCb fun(result: any, ...) Response callback.
+    ---@param respCb fun(err: MiioError|string|nil, result: any, ...) Response callback.
     ---@param method string The request method.
     ---@param params? table Array of parameters.
     function pcb:request(respCb, method, params, ...)
@@ -395,7 +381,7 @@ function protocol.create(addr, devid, token, stamp)
         end
 
         self.respCb = respCb
-        self.respArgs = {...}
+        self.args = {...}
         self.reqid = self.reqid + 1
         local data = json.encode({
             id = self.reqid,
@@ -410,13 +396,6 @@ function protocol.create(addr, devid, token, stamp)
     ---Abort the previous request.
     function pcb:abort()
         self.respCb = nil
-    end
-
-    ---Set error callback.
-    ---@param cb fun(code: integer, message: string, ...) Error callback.
-    function pcb:setErrCb(cb, ...)
-        self.errCb = cb
-        self.errArgs = {...}
     end
 
     ---Destroy the PCB.

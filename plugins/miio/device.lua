@@ -42,8 +42,8 @@ function device.create(addr, token)
         end
         local que = self.cmdQue
         if que.first ~= que.last then
-            self.protocol:request(function (result, self, respCb, ...)
-                respCb(result, ...)
+            self.protocol:request(function (err, result, self, respCb, ...)
+                respCb(err, result, ...)
                 self.state = "IDLE"
                 dispatch(self)
             end, deque(que))
@@ -59,7 +59,7 @@ function device.create(addr, token)
     end, 5, addr, dev)
 
     ---Start a request and ``respCb`` will be called when a response is received.
-    ---@param respCb fun(result: any, ...) Response callback.
+    ---@param respCb fun(err: MiioError|string|nil, result: any, ...) Response callback.
     ---@param method string The request method.
     ---@param params? table Array of parameters.
     function dev:request(respCb, method, params, ...)
