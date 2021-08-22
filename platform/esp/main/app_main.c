@@ -121,7 +121,7 @@ static void init_platform() {
     // Service discovery.
     static HAPPlatformServiceDiscovery serviceDiscovery;
     HAPPlatformServiceDiscoveryCreate(&serviceDiscovery, &(const HAPPlatformServiceDiscoveryOptions) {
-        0, /* Register services on all available network interfaces. */
+        NULL, /* Default host name is "homekit-bridge". */
     });
     platform.hapPlatform.ip.serviceDiscovery = &serviceDiscovery;
 #endif

@@ -18,16 +18,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <unistd.h>
-
 #include <string.h>
 #include <mdns.h>
 #include "HAPPlatform+Init.h"
 #include "HAPPlatformServiceDiscovery+Init.h"
 
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "ServiceDiscovery" };
-
-static HAPPlatformServiceDiscoveryRef hapService;
 
 void HAPPlatformServiceDiscoveryRegister(
         HAPPlatformServiceDiscoveryRef serviceDiscovery,
@@ -47,30 +43,25 @@ void HAPPlatformServiceDiscoveryRegister(
     char *proto = strtok(NULL, ".");
     strcpy(serviceDiscovery->serv_type, serv_type);
     strcpy(serviceDiscovery->proto, proto);
-    
+
     HAPLogDebug(&logObject, "name: \"%s\"", name);
     HAPLogDebug(&logObject, "protocol: \"%s\"", protocol);
     HAPLogDebug(&logObject, "port: %u", port);
-    
-    mdns_txt_item_t *txtRecords_copy = malloc(sizeof(mdns_txt_item_t) * numTXTRecords);
-    if (txtRecords_copy) {
-        for (size_t i = 0; i < numTXTRecords; i++) {
-            HAPPrecondition(!txtRecords[i].value.numBytes || txtRecords[i].value.bytes);
-            HAPPrecondition(txtRecords[i].value.numBytes <= UINT8_MAX);
-            if (txtRecords[i].value.bytes) {
-                HAPLogBufferDebug(&logObject, txtRecords[i].value.bytes, txtRecords[i].value.numBytes,
-                        "txtRecord[%lu]: \"%s\"", (unsigned long) i, txtRecords[i].key);
-            } else {
-                HAPLogDebug(&logObject, "txtRecord[%lu]: \"%s\"", (unsigned long) i, txtRecords[i].key);
-            }
-            txtRecords_copy[i].key = (char *)txtRecords[i].key;
-            txtRecords_copy[i].value = (char *)txtRecords[i].value.bytes;
+
+    mdns_txt_item_t items[numTXTRecords];
+    for (size_t i = 0; i < numTXTRecords; i++) {
+        HAPPrecondition(!txtRecords[i].value.numBytes || txtRecords[i].value.bytes);
+        HAPPrecondition(txtRecords[i].value.numBytes <= UINT8_MAX);
+        if (txtRecords[i].value.bytes) {
+            HAPLogBufferDebug(&logObject, txtRecords[i].value.bytes, txtRecords[i].value.numBytes,
+                    "txtRecord[%lu]: \"%s\"", (unsigned long) i, txtRecords[i].key);
+        } else {
+            HAPLogDebug(&logObject, "txtRecord[%lu]: \"%s\"", (unsigned long) i, txtRecords[i].key);
         }
-        esp_err_t err = mdns_service_add(name, serv_type, proto, port, txtRecords_copy, numTXTRecords);
-         HAPLogDebug(&logObject, "Error: \"%d\"", err);
-        free(txtRecords_copy);
+        items[i].key = (char *)txtRecords[i].key;
+        items[i].value = (char *)txtRecords[i].value.bytes;
     }
-    hapService = serviceDiscovery;
+    ESP_ERROR_CHECK(mdns_service_add(name, serv_type, proto, port, items, numTXTRecords));
 }
 
 void HAPPlatformServiceDiscoveryUpdateTXTRecords(
@@ -80,23 +71,20 @@ void HAPPlatformServiceDiscoveryUpdateTXTRecords(
     HAPPrecondition(serviceDiscovery);
     HAPPrecondition(txtRecords);
 
-    mdns_txt_item_t *txtRecords_copy = malloc(sizeof(mdns_txt_item_t) * numTXTRecords);
-    if (txtRecords_copy) {
-        for (size_t i = 0; i < numTXTRecords; i++) {
-            HAPPrecondition(!txtRecords[i].value.numBytes || txtRecords[i].value.bytes);
-            HAPPrecondition(txtRecords[i].value.numBytes <= UINT8_MAX);
-            if (txtRecords[i].value.bytes) {
-                HAPLogBufferDebug(&logObject, txtRecords[i].value.bytes, txtRecords[i].value.numBytes,
-                        "txtRecord[%lu]: \"%s\"", (unsigned long) i, txtRecords[i].key);
-            } else {
-                HAPLogDebug(&logObject, "txtRecord[%lu]: \"%s\"", (unsigned long) i, txtRecords[i].key);
-            }
-            txtRecords_copy[i].key = (char *) txtRecords[i].key;
-            txtRecords_copy[i].value = (char *) txtRecords[i].value.bytes;
+    mdns_txt_item_t items[numTXTRecords];
+    for (size_t i = 0; i < numTXTRecords; i++) {
+        HAPPrecondition(!txtRecords[i].value.numBytes || txtRecords[i].value.bytes);
+        HAPPrecondition(txtRecords[i].value.numBytes <= UINT8_MAX);
+        if (txtRecords[i].value.bytes) {
+            HAPLogBufferDebug(&logObject, txtRecords[i].value.bytes, txtRecords[i].value.numBytes,
+                    "txtRecord[%lu]: \"%s\"", (unsigned long) i, txtRecords[i].key);
+        } else {
+            HAPLogDebug(&logObject, "txtRecord[%lu]: \"%s\"", (unsigned long) i, txtRecords[i].key);
         }
-        mdns_service_txt_set(serviceDiscovery->serv_type, serviceDiscovery->proto, txtRecords_copy, numTXTRecords);
-        free(txtRecords_copy);
+        items[i].key = (char *) txtRecords[i].key;
+        items[i].value = (char *) txtRecords[i].value.bytes;
     }
+    mdns_service_txt_set(serviceDiscovery->serv_type, serviceDiscovery->proto, items, numTXTRecords);
 }
 
 void HAPPlatformServiceDiscoveryStop(HAPPlatformServiceDiscoveryRef serviceDiscovery) {
@@ -115,6 +103,6 @@ void HAPPlatformServiceDiscoveryCreate(
     if (options->hostName) {
         mdns_hostname_set(options->hostName);
     } else {
-        mdns_hostname_set("MyHost");
+        mdns_hostname_set("homekit-bridge");
     }
 }
