@@ -8,16 +8,19 @@ local device = {}
 ---| '"BUSY"'
 
 ---Create a device object.
+---@param done fun(...) Callback will be called after the device is created.
 ---@param addr string Device address.
 ---@param token string Device token.
----@return Device obj Device object.
-function device.create(addr, token)
+---@return DeviceObject obj Device object.
+function device.create(done, addr, token, ...)
+    assert(type(done) == "function")
+    assert(type(addr) == "string")
+    assert(type(token) == "string")
+    assert(#token == 16)
 
-    ---@class Device:table Device
-    local dev = {
+    ---@class DeviceObject:table Device object.
+    local o = {
         devid = nil,
-        addr = addr,
-        token = token,
         state = "NOINIT",
         cmdQue = {first = 0, last = 0}
     }
@@ -51,23 +54,29 @@ function device.create(addr, token)
         end
     end
 
-    protocol.scan(function (addr, devid, stamp, self)
-        self.devid = devid
-        self.protocol = protocol.create(addr, devid, self.token, stamp)
+    protocol.scan(function (addr, devid, stamp, self, token)
+        self.protocol = protocol.create(addr, devid, token, stamp)
         self.state = "IDLE"
         dispatch(self)
-    end, 5, addr, dev)
+    end, 5, addr, o, token)
 
     ---Start a request and ``respCb`` will be called when a response is received.
     ---@param respCb fun(err: MiioError|string|nil, result: any, ...) Response callback.
     ---@param method string The request method.
     ---@param params? table Array of parameters.
-    function dev:request(respCb, method, params, ...)
+    function o:request(respCb, method, params, ...)
+        assert(type(respCb) == "function")
+
         enque(self.cmdQue, method, params, self, respCb, ...)
         dispatch(self)
     end
 
-    return dev
+    o:request(function (err, result, self, done, ...)
+        self.info = result
+        done(...)
+    end, "miIO.info", nil, o, done, ...)
+
+    return o
 end
 
 return device
