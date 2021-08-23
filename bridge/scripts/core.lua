@@ -14,7 +14,7 @@ local logger = log.getLogger("core")
 
 ---@class Plugin:table Plugin.
 ---
----@field init fun(conf?: PluginConf, report: fun(plugin: string, accessory: Accessory)): boolean Initialize plugin.
+---@field init fun(conf: PluginConf|nil, report: fun(plugin: string, accessory: Accessory)): boolean Initialize plugin.
 ---@field deinit fun() Deinitialize plugin.
 ---@field gen fun(conf: AccessoryConf): Accessory|nil Generate accessory via configuration.
 ---@field isPending fun(): boolean Whether the accessory is waiting to be generated.
@@ -28,7 +28,7 @@ local priv = {
 ---Report generated bridged accessory.
 ---@param name string Plugin name.
 ---@param accessory Accessory Accessory.
-local function report(name, accessory)
+local function _report(name, accessory)
     table.insert(priv.accessories, accessory)
 
     if priv.plugins[name].isPending() == false then
@@ -71,7 +71,7 @@ local function loadPlugin(name, conf)
             return nil
         end
     end
-    if plugin.init(conf, report) == false then
+    if plugin.init(conf, _report) == false then
         logger:error(("Failed to init plugin '%s'"):format(name))
         return nil
     end
