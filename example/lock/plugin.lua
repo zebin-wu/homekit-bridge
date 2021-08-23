@@ -1,18 +1,18 @@
-local lock = {}
+local plugin = {}
 
-local logger = log.getLogger("lock")
+local logger = log.getLogger("lock.plugin")
 local isPending = false
 
-function lock.init()
+function plugin.init()
     logger:info("Initialized.")
     return true
 end
 
-function lock.deinit()
+function plugin.deinit()
     logger:info("Deinitialized.")
 end
 
-function lock.isPending()
+function plugin.isPending()
     return isPending
 end
 
@@ -20,7 +20,7 @@ local function checkAccessoryConf(conf)
     return true
 end
 
-function lock.gen(conf)
+function plugin.gen(conf)
     if checkAccessoryConf(conf) == false then
         return nil
     end
@@ -127,4 +127,4 @@ function lock.gen(conf)
     }
 end
 
-return lock
+return plugin

@@ -1,18 +1,18 @@
-local lightbulb = {}
+local plugin = {}
 
-local logger = log.getLogger("lightbulb")
+local logger = log.getLogger("lightbulb.plugin")
 local isPending = false
 
-function lightbulb.init()
+function plugin.init()
     logger:info("Initialized.")
     return true
 end
 
-function lightbulb.deinit()
+function plugin.deinit()
     logger:info("Deinitialized.")
 end
 
-function lightbulb.isPending()
+function plugin.isPending()
     return isPending
 end
 
@@ -20,7 +20,7 @@ local function checkAccessoryConf(conf)
     return true
 end
 
-function lightbulb.gen(conf)
+function plugin.gen(conf)
     if checkAccessoryConf(conf) == false then
         return nil
     end
@@ -86,4 +86,4 @@ function lightbulb.gen(conf)
     }
 end
 
-return lightbulb
+return plugin
