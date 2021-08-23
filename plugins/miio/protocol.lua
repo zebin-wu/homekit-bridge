@@ -218,13 +218,14 @@ end
 ---@param cb fun(addr: string, devid: integer, stamp: integer) Function call when the device is scaned.
 ---@param timeout integer Timeout period (in seconds).
 ---@param addr? string Target Address.
----@return boolean status true on success, false on failure.
+---@return MiioScanContext|nil ctx Scan context.
 function protocol.scan(cb, timeout, addr, ...)
     assert(type(cb) == "function")
     assert(math.type(timeout) == "integer")
-    assert(timeout > 0, "the parameter 'timeout' must be greater then 0")
+    assert(timeout > 0, "timeout must be greater then 0")
 
-    local context = {}
+    ---@class MiioScanContext
+    local ctx = {}
 
     local handle = udp.open("inet")
     if not handle then
@@ -246,42 +247,53 @@ function protocol.scan(cb, timeout, addr, ...)
         return false
     end
 
-    handle:setRecvCb(function (data, from_addr, from_port, context)
+    handle:setRecvCb(function (data, from_addr, from_port, self)
         if from_port ~= 54321 then
             return
         end
         local m = unpack(data)
         if m and m.unknown == 0 and m.data == nil then
-            context.cb(from_addr, m.did, m.stamp, table.unpack(context.args))
-            if context.addr and context.addr == from_addr then
+            self.cb(from_addr, m.did, m.stamp, table.unpack(self.args))
+            if self.addr and self.addr == from_addr then
                 logger:debug("Scan done.")
-                context.handle:close()
-                context.timer:cancel()
+                self:cancel()
             end
         end
-    end, context)
+    end, ctx)
 
-    context.cb = cb
-    context.handle = handle
+    ctx.cb = cb
+    ctx.handle = handle
     if addr then
-        context.addr = addr
+        ctx.addr = addr
     end
-    context.args = { ... }
+    ctx.args = { ... }
 
-    context.timer = timer.create(function(context)
+    ctx.timer = timer.create(function(context)
         logger:debug("Scan done.")
         context.handle:close()
-    end, context)
-    context.timer:start(timeout * 1000)
+    end, ctx)
+    ctx.timer:start(timeout * 1000)
 
-    context.cb = cb
-    context.handle = handle
+    ctx.cb = cb
+    ctx.handle = handle
     if addr then
-        context.addr = addr
+        ctx.addr = addr
     end
-    context.args = { ... }
+    ctx.args = { ... }
 
-    return true
+    ---Cancel the scan procress.
+    function ctx:cancel()
+        self.handle:close()
+        self.handle = nil
+        self.timer:cancel()
+        self.timer = nil
+    end
+
+    setmetatable(ctx, {
+        __close = function (self) self:cancel() end
+    })
+
+    return ctx
 end
 
 ---@class MiioError:table Error delivered by the target device.
@@ -294,7 +306,7 @@ end
 ---@param devid integer Device ID: 32-bit.
 ---@param token string Device token: 128-bit.
 ---@param stamp integer Device time stamp obtained by scanning.
----@return PCB pcb Protocol control block.
+---@return MiioPcb pcb Protocol control block.
 function protocol.create(addr, devid, token, stamp)
     assert(type(addr) == "string")
     assert(math.type(devid) == "integer")
@@ -302,7 +314,7 @@ function protocol.create(addr, devid, token, stamp)
     assert(#token == 16)
     assert(math.type(stamp) == "integer")
 
-    ---@class PCB:table protocol control block.
+    ---@class MiioPcb:table miio protocol control block.
     local pcb = {
         addr = addr,
         stampDiff = os.time() - stamp,
@@ -329,8 +341,25 @@ function protocol.create(addr, devid, token, stamp)
         return nil
     end
 
+    local function handleRespCb(self, err, result)
+        local cb = self.respCb
+        local args = self.args
+        self.respCb = nil
+        self.args = nil
+        cb(err, result, table.unpack(args))
+    end
+
+    pcb.timer = timer.create(function (self)
+        handleRespCb(self, "Request timeout.", nil)
+    end, pcb)
+    if not pcb.timer then
+        logger:error("Failed to create a timer.")
+        pcb.handle:close()
+        return nil
+    end
+
     ---Parse a message.
-    ---@param self PCB
+    ---@param self MiioPcb Protocol control block.
     ---@param msg MiioMessage
     ---@return MiioError|string|nil error
     ---@return any result
@@ -368,20 +397,18 @@ function protocol.create(addr, devid, token, stamp)
             return
         end
 
-        local err, result = parse(self, unpack(data, self.token))
-        local cb = self.respCb
-        local args = self.args
-        self.respCb = nil
-        self.args = nil
-        cb(err, result, table.unpack(args))
+        self.timer:cancel()
+        handleRespCb(self, parse(self, unpack(data, self.token)))
     end, pcb)
 
     ---Start a request and ``respCb`` will be called when a response is received.
     ---@param respCb fun(err: MiioError|string|nil, result: any, ...) Response callback.
+    ---@param timeout integer Timeout period (in seconds).
     ---@param method string The request method.
     ---@param params? table Array of parameters.
-    function pcb:request(respCb, method, params, ...)
+    function pcb:request(respCb, timeout, method, params, ...)
         assert(type(respCb) == "function")
+        assert(timeout > 0, "timeout must be greater then 0")
         assert(type(method) == "string")
 
         if params then
@@ -404,6 +431,7 @@ function protocol.create(addr, devid, token, stamp)
 
         assert(self.handle:send(pack(0, self.devid, os.time() - self.stampDiff,
             self.token, self.encryption:encrypt(data))))
+        self.timer:start(timeout * 1000)
         logger:debug(("%s => %s:%d"):format(data, self.addr, 54321))
     end
 
@@ -415,7 +443,12 @@ function protocol.create(addr, devid, token, stamp)
     ---Destroy the PCB.
     function pcb:destroy()
         self.handle:close()
+        self.handle = nil
     end
+
+    setmetatable(pcb, {
+        __close = function (self) self:destroy() end
+    })
 
     return pcb
 end
