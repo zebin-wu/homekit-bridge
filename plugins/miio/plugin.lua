@@ -22,9 +22,6 @@ end
 function plugin.deinit()
     priv.report = nil
     priv.pending = {}
-    for i, o in ipairs(priv.devices) do
-        o:destroy()
-    end
     priv.devices = {}
     logger:info("Deinitialized.")
 end
@@ -38,20 +35,20 @@ end
 ---Report bridged accessory.
 ---@param obj MiioDevice Device object.
 ---@param accessory? Accessory Bridged accessory.
-local function _report(obj, accessory)
-    priv.pending[obj.info.netif.localIp] = nil
+local function _report(obj, addr, accessory)
+    priv.pending[addr] = nil
     if not accessory then
-        obj:destroy()
+        priv.devices[addr] = nil
     end
     priv.report("miio", accessory)
 end
 
 ---Generate accessory via configuration.
 function plugin.gen(conf)
-    assert(device.create(function (self)
+    local obj = device.create(function (self, addr)
         if not self.info then
             logger:error("Failed to create device.")
-            _report(self)
+            _report(self, addr)
             return
         end
         -- Get product module, using pcall to catch exception.
@@ -60,25 +57,27 @@ function plugin.gen(conf)
         end, self)
         if success == false then
             logger:error("Cannot found the product.")
-            _report(self)
+            _report(self, addr)
             return
         end
         local obj = prod.create(self)
         if not obj then
             logger:error("Failed to create the device object.")
-            _report(self)
+            _report(self, addr)
             return
         end
         local accessory = prod.gen(obj)
         if not accessory then
             logger:error("Failed to generate accessory.")
-            _report(self)
+            _report(self, addr)
             return
         end
-        table.insert(priv.devices, obj)
-        _report(self, accessory)
-    end, 5, conf.addr, conf.token))
-    priv.pending[conf.addr] = true
+        _report(self, addr, accessory)
+    end, 5000, conf.addr, conf.token, conf.addr)
+    if obj then
+        priv.pending[conf.addr] = true
+        priv.devices[conf.addr] = obj
+    end
     return nil
 end
 

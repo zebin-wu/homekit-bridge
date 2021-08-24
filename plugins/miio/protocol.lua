@@ -216,36 +216,37 @@ end
 ---a handshake message to the broadcast address on port 54321.
 ---If the target IP address is given, the handshake will be send as an unicast packet.
 ---@param cb fun(addr: string, devid: integer, stamp: integer) Function call when the device is scaned.
----@param timeout integer Timeout period (in seconds).
 ---@param addr? string Target Address.
 ---@return MiioScanContext|nil ctx Scan context.
-function protocol.scan(cb, timeout, addr, ...)
+function protocol.scan(cb, addr, ...)
     assert(type(cb) == "function")
-    assert(math.type(timeout) == "integer")
-    assert(timeout > 0, "timeout must be greater then 0")
-
-    ---@class MiioScanContext
-    local ctx = {}
 
     local handle = udp.open("inet")
     if not handle then
         logger:error("Failed to open a UDP handle.")
-        return false
+        return nil
     end
 
     if not addr then
         if handle:enableBroadcast() == false then
             logger:error("Failed to enable UDP broadcast.")
             handle:close()
-            return false
+            return nil
         end
     end
-
     if not handle:sendto(packHello(), addr or "255.255.255.255", 54321) then
         logger:error("Failed to send hello message.")
         handle:close()
-        return false
+        return nil
     end
+
+    ---@class MiioScanContext
+    local ctx = {
+        cb = cb,
+        handle = handle,
+        addr = addr,
+        args = {...}
+    }
 
     handle:setRecvCb(function (data, from_addr, from_port, self)
         if from_port ~= 54321 then
@@ -256,42 +257,15 @@ function protocol.scan(cb, timeout, addr, ...)
             self.cb(from_addr, m.did, m.stamp, table.unpack(self.args))
             if self.addr and self.addr == from_addr then
                 logger:debug("Scan done.")
-                self:cancel()
+                self.handle = nil
             end
         end
     end, ctx)
 
-    ctx.cb = cb
-    ctx.handle = handle
-    if addr then
-        ctx.addr = addr
-    end
-    ctx.args = { ... }
-
-    ctx.timer = timer.create(function(context)
-        logger:debug("Scan done.")
-        context.handle:close()
-    end, ctx)
-    ctx.timer:start(timeout * 1000)
-
-    ctx.cb = cb
-    ctx.handle = handle
-    if addr then
-        ctx.addr = addr
-    end
-    ctx.args = { ... }
-
-    ---Cancel the scan procress.
-    function ctx:cancel()
+    ---Stop scanning.
+    function ctx:stop()
         self.handle:close()
-        self.handle = nil
-        self.timer:cancel()
-        self.timer = nil
     end
-
-    setmetatable(ctx, {
-        __close = function (self) self:cancel() end
-    })
 
     return ctx
 end
@@ -316,28 +290,28 @@ function protocol.create(addr, devid, token, stamp)
 
     ---@class MiioPcb:table miio protocol control block.
     local pcb = {
-        addr = addr,
+        logger = log.getLogger("miio.protocol:" .. addr),
         stampDiff = os.time() - stamp,
         token = token,
         devid = devid,
         reqid = 0
     }
 
-    pcb.handle = udp.open("inet")
-    if not pcb.handle then
-        logger:error("Failed to open a UDP handle.")
+    local handle = udp.open("inet")
+    if not handle then
+        pcb.logger:error("Failed to open a UDP handle.")
+        handle:close()
         return nil
     end
-    if not pcb.handle:connect(addr, 54321) then
-        logger:error(("Failed to connect to %s:%d"):format(addr, 54321))
-        pcb.handle:close()
+    if not handle:connect(addr, 54321) then
+        pcb.logger:error(("Failed to connect to '%s'."):format(addr))
+        handle:close()
         return nil
     end
 
     pcb.encryption = newEncryption(token)
     if not pcb.encryption then
-        logger:error("Failed to new a encryption.")
-        pcb.handle:close()
+        pcb.logger:error("Failed to new a encryption.")
         return nil
     end
 
@@ -346,17 +320,18 @@ function protocol.create(addr, devid, token, stamp)
         local args = self.args
         self.respCb = nil
         self.args = nil
+        if err then
+            if type(err) == "string" then
+                self.logger:error(err)
+            else
+                self.logger:error(("Got error %d: %s"):format(err.code, err.message))
+            end
+        end
         cb(err, result, table.unpack(args))
     end
 
-    pcb.timer = timer.create(function (self)
-        handleRespCb(self, "Request timeout.", nil)
-    end, pcb)
-    if not pcb.timer then
-        logger:error("Failed to create a timer.")
-        pcb.handle:close()
-        return nil
-    end
+    pcb.handle = handle
+    pcb.timer = timer.create()
 
     ---Parse a message.
     ---@param self MiioPcb Protocol control block.
@@ -377,7 +352,7 @@ function protocol.create(addr, devid, token, stamp)
         if not s then
             return "Failed to decrypt the message."
         end
-        logger:debug(("%s <= %s:%d"):format(s, self.addr, 54321))
+        self.logger:debug("=> " .. s)
         local payload =  json.decode(s)
         if not payload then
             return "Failed to parse the JSON string."
@@ -391,33 +366,19 @@ function protocol.create(addr, devid, token, stamp)
         return nil, payload.result
     end
 
-    pcb.handle:setRecvCb(function (data, from_addr, from_port, self)
-        if not self.respCb then
-            logger:debug("No pending request, skip the received message.")
-            return
-        end
-
-        self.timer:cancel()
-        handleRespCb(self, parse(self, unpack(data, self.token)))
-    end, pcb)
-
     ---Start a request and ``respCb`` will be called when a response is received.
     ---@param respCb fun(err: MiioError|string|nil, result: any, ...) Response callback.
-    ---@param timeout integer Timeout period (in seconds).
+    ---@param timeout integer Timeout period (in milliseconds).
     ---@param method string The request method.
     ---@param params? table Array of parameters.
     function pcb:request(respCb, timeout, method, params, ...)
+        assert(self.respCb == nil, "previous request is in progress")
         assert(type(respCb) == "function")
         assert(timeout > 0, "timeout must be greater then 0")
         assert(type(method) == "string")
 
         if params then
             assert(type(params) == "table")
-        end
-
-        if self.respCb then
-            logger:error("The previous request is in progress.")
-            return false
         end
 
         self.respCb = respCb
@@ -431,24 +392,34 @@ function protocol.create(addr, devid, token, stamp)
 
         assert(self.handle:send(pack(0, self.devid, os.time() - self.stampDiff,
             self.token, self.encryption:encrypt(data))))
-        self.timer:start(timeout * 1000)
-        logger:debug(("%s => %s:%d"):format(data, self.addr, 54321))
+
+        self.handle:setRecvCb(function (data, from_addr, from_port, self)
+            if not self.respCb then
+                self.logger:debug("No pending request, skip the received message.")
+                return
+            end
+
+            self.timer:cancel()
+            self.handle:setRecvCb(nil)
+            handleRespCb(self, parse(self, unpack(data, self.token)))
+        end, self)
+
+        self.timer:start(timeout, function (self)
+            self.handle:setRecvCb(nil)
+            handleRespCb(self, "Request timeout.", nil)
+        end, self)
+        self.logger:debug("<= " .. data)
     end
 
     ---Abort the previous request.
     function pcb:abort()
-        self.respCb = nil
+        if self.respCb then
+            self.respCb = nil
+            self.args = nil
+            self.timer.cancel()
+            self.handle:setRecvCb(nil)
+        end
     end
-
-    ---Destroy the PCB.
-    function pcb:destroy()
-        self.handle:close()
-        self.handle = nil
-    end
-
-    setmetatable(pcb, {
-        __close = function (self) self:destroy() end
-    })
 
     return pcb
 end
