@@ -78,9 +78,6 @@ static const luaL_Reg hashlib[] = {
 static int lhash_obj_update(lua_State *L) {
     size_t len;
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    if (!obj->mth) {
-        luaL_error(L, "attempt to use a destroyed hash object");
-    }
     const char *s = luaL_checklstring(L, 2, &len);
     lua_pushboolean(L, obj->mth->update(obj->ctx, s, len));
     return 1;
@@ -88,9 +85,6 @@ static int lhash_obj_update(lua_State *L) {
 
 static int lhash_obj_digest(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    if (!obj->mth) {
-        luaL_error(L, "attempt to use a destroyed hash object");
-    }
     char out[obj->mth->digest_len];
     if (!obj->mth->digest(obj->ctx, out)) {
         luaL_pushfail(L);
@@ -102,22 +96,13 @@ static int lhash_obj_digest(lua_State *L) {
 
 static int lhash_obj_gc(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    if (!obj->mth) {
-        return 0;
-    }
     obj->mth->free(obj->ctx);
-    obj->ctx = NULL;
-    obj->mth = NULL;
     return 0;
 }
 
 static int lhash_obj_tostring(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    if (obj->mth) {
-        lua_pushfstring(L, "hash object (%p)", obj);
-    } else {
-        lua_pushliteral(L, "hash object (destroyed)");
-    }
+    lua_pushfstring(L, "hash object (%p)", obj);
     return 1;
 }
 
@@ -127,7 +112,6 @@ static int lhash_obj_tostring(lua_State *L) {
 static const luaL_Reg lhash_obj_metameth[] = {
     {"__index", NULL},  /* place holder */
     {"__gc", lhash_obj_gc},
-    {"__close", lhash_obj_gc},
     {"__tostring", lhash_obj_tostring},
     {NULL, NULL}
 };

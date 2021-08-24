@@ -86,7 +86,7 @@ local logger = log.getLogger("miio.protocol")
 ---@return MiioEncryption encryption A new encryption.
 local function newEncryption(token)
     local function md5(data)
-        local m <close> = hash.md5()
+        local m = hash.md5()
         m:update(data)
         return m:digest()
     end
@@ -141,7 +141,7 @@ local function pack(unknown, did, stamp, token, data)
         0x2131, len, unknown, did, stamp)
     local checksum = nil
     if token then
-        local md5 <close> = hash.md5()
+        local md5 = hash.md5()
         md5:update(header .. token)
         if data then
             md5:update(data)
@@ -181,7 +181,7 @@ local function unpack(package, token)
     end
 
     if token then
-        local md5 <close> = hash.md5()
+        local md5 = hash.md5()
         md5:update(string.unpack("c16", package, 1) .. token)
         if data then
             md5:update(data)
