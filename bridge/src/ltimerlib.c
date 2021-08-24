@@ -41,17 +41,9 @@ static void ltimer_obj_reset(ltimer_obj *obj) {
 }
 
 static int ltimer_create(lua_State *L) {
-    luaL_checktype(L, 1, LUA_TFUNCTION);
-
     ltimer_obj *obj = lua_newuserdata(L, sizeof(ltimer_obj));
     luaL_setmetatable(L, LUA_TIMER_HANDLE_NAME);
     obj->L = L;
-    obj->ref_ids.cb = lc_ref(L, 1);
-    if (lua_isnil(L, 2)) {
-        obj->ref_ids.arg = LUA_REFNIL;
-    } else {
-        obj->ref_ids.arg = lc_ref(L, 2);
-    }
     return 1;
 }
 
@@ -63,10 +55,12 @@ static void ltimer_obj_cb(HAPPlatformTimerRef timer, void* _Nullable context) {
 
     if (!lc_push_ref(L, obj->ref_ids.cb)) {
         HAPLogError(&ltimer_log, "%s: Can't get lua function.", __func__);
+        ltimer_obj_reset(obj);
         return;
     }
 
     bool has_arg = lc_push_ref(L, obj->ref_ids.arg);
+    ltimer_obj_reset(obj);
     if (lua_pcall(L, has_arg ? 1 : 0, 0, 0)) {
         HAPLogError(&ltimer_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
@@ -80,6 +74,18 @@ static int ltimer_obj_start(lua_State *L) {
     if (ms <= 0) {
         luaL_error(L, "attemp to trigger before the current time");
     }
+    luaL_checktype(L, 3, LUA_TFUNCTION);
+
+    lc_unref(L, obj->ref_ids.cb);
+    obj->ref_ids.cb = lc_ref(L, 3);
+
+    lc_unref(L, obj->ref_ids.arg);
+    if (lua_isnil(L, 4)) {
+        obj->ref_ids.arg = LUA_REFNIL;
+    } else {
+        obj->ref_ids.arg = lc_ref(L, 4);
+    }
+
     HAPError err = HAPPlatformTimerRegister(&obj->timer,
         (HAPTime)ms + HAPPlatformClockGetCurrent(), ltimer_obj_cb, obj);
     if (err != kHAPError_None) {
@@ -90,6 +96,7 @@ static int ltimer_obj_start(lua_State *L) {
 
 static int ltimer_obj_cancel(lua_State *L) {
     ltimer_obj *obj = LPAL_TIMER_GET_HANDLE(L, 1);
+    ltimer_obj_reset(obj);
     if (obj->timer) {
         HAPPlatformTimerDeregister(obj->timer);
         obj->timer = 0;
