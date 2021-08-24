@@ -52,21 +52,22 @@ function plugin.gen(conf)
             return
         end
         -- Get product module, using pcall to catch exception.
-        local success, prod = pcall(function (self)
+        local success, result = pcall(function (self)
             return require("miio." .. self.info.model)
         end, self)
         if success == false then
             logger:error("Cannot found the product.")
+            logger:error(result)
             _report(self, addr)
             return
         end
-        local obj = prod.create(self)
+        local obj = result.create(self)
         if not obj then
             logger:error("Failed to create the device object.")
             _report(self, addr)
             return
         end
-        local accessory = prod.gen(obj)
+        local accessory = result.gen(obj)
         if not accessory then
             logger:error("Failed to generate accessory.")
             _report(self, addr)
