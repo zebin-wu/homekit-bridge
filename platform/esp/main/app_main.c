@@ -49,7 +49,7 @@
 #include "app_console.h"
 #include "app_spiffs.h"
 
-#define APP_MAIN_TASK_STACKSIZE 8 * 1024
+#define APP_MAIN_TASK_STACKSIZE 10 * 1024
 #define APP_MAIN_TASK_PRIORITY 6
 
 /**
