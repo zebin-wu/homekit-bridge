@@ -192,7 +192,6 @@ static int lnet_udp_handle_set_recv_cb(lua_State *L) {
         handle->ref_ids.recv_cb = lc_ref(L, 2);
     }
 
-    handle->ref_ids.recv_cb = lc_ref(L, 2);
     lc_unref(L, handle->ref_ids.recv_arg);
     if (lua_isnil(L, 3)) {
         handle->ref_ids.recv_arg = LUA_REFNIL;
