@@ -65,10 +65,6 @@ static int llog_logger_fault(lua_State *L) {
     return llog_log_with_type(L, kHAPLogType_Fault);
 }
 
-static int llog_logger_gc(lua_State *L) {
-    return 0;
-}
-
 static int llog_logger_tostring(lua_State *L) {
     HAPLogObject *logger = luaL_checkudata(L, 1, LUA_LOGGER_NAME);
     lua_pushfstring(L, "logger (%p)", logger);
@@ -97,8 +93,6 @@ static const luaL_Reg meth[] = {
  */
 static const luaL_Reg metameth[] = {
     {"__index", NULL},  /* place holder */
-    {"__gc", llog_logger_gc},
-    {"__close", llog_logger_gc},
     {"__tostring", llog_logger_tostring},
     {NULL, NULL}
 };

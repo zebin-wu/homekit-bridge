@@ -135,7 +135,6 @@ static const luaL_Reg ltimer_funcs[] = {
 static const luaL_Reg ltimer_obj_metameth[] = {
     {"__index", NULL},  /* place holder */
     {"__gc", ltimer_obj_gc},
-    {"__close", ltimer_obj_gc},
     {"__tostring", ltimer_obj_tostring},
     {NULL, NULL}
 };

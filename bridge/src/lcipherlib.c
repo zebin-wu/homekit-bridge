@@ -154,47 +154,30 @@ err:
 
 static int lcipher_ctx_gc(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
-    if (!ctx->ctx) {
-        return 0;
-    }
     pal_cipher_free(ctx->ctx);
-    ctx->ctx = NULL;
     return 0;
 }
 
 static int lcipher_ctx_tostring(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
-    if (ctx->ctx) {
-        lua_pushfstring(L, "cipher context (%p)", ctx->ctx);
-    } else {
-        lua_pushliteral(L, "cipher context (destoryed)");
-    }
+    lua_pushfstring(L, "cipher context (%p)", ctx->ctx);
     return 1;
 }
 
 static int lcipher_ctx_get_key_len(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
-    if (!ctx->ctx) {
-        luaL_error(L, "attempt to use a destoryed cipher context");
-    }
     lua_pushinteger(L, pal_cipher_get_key_len(ctx->ctx));
     return 1;
 }
 
 static int lcipher_ctx_get_iv_len(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
-    if (!ctx->ctx) {
-        luaL_error(L, "attempt to use a destoryed cipher context");
-    }
     lua_pushinteger(L, pal_cipher_get_iv_len(ctx->ctx));
     return 1;
 }
 
 static int lcipher_ctx_set_padding(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
-    if (!ctx->ctx) {
-        luaL_error(L, "attempt to use a destoryed cipher context");
-    }
     const char *s = luaL_checkstring(L, 2);
     pal_cipher_padding padding = lcipher_lookup_padding(s);
     if (padding == PAL_CIPHER_PADDING_MAX) {
@@ -206,9 +189,6 @@ static int lcipher_ctx_set_padding(lua_State *L) {
 
 static int lcipher_ctx_begin(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
-    if (!ctx->ctx) {
-        luaL_error(L, "attempt to use a destoryed cipher context");
-    }
     const char *s = luaL_checkstring(L, 2);
     pal_cipher_operation op = lcipher_lookup_op(s);
     if (op == PAL_CIPHER_OP_NONE) {
@@ -237,9 +217,6 @@ begin:
 
 static int lcipher_ctx_update(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
-    if (!ctx->ctx) {
-        luaL_error(L, "attempt to use a destoryed cipher context");
-    }
     size_t inlen;
     const char *in = luaL_checklstring(L, 2, &inlen);
     size_t outlen = inlen + pal_cipher_get_block_size(ctx->ctx);
@@ -257,9 +234,6 @@ err:
 
 static int lcipher_ctx_finsh(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
-    if (!ctx->ctx) {
-        luaL_error(L, "attempt to use a destoryed cipher context");
-    }
     size_t outlen = pal_cipher_get_block_size(ctx->ctx);
     char out[outlen];
     if (!pal_cipher_finsh(ctx->ctx, out, &outlen)) {
@@ -279,7 +253,6 @@ err:
 static const luaL_Reg lcipher_ctx_metameth[] = {
     {"__index", NULL},  /* place holder */
     {"__gc", lcipher_ctx_gc},
-    {"__close", lcipher_ctx_gc},
     {"__tostring", lcipher_ctx_tostring},
     {NULL, NULL}
 };
