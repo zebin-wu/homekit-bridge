@@ -254,11 +254,11 @@ function protocol.scan(cb, addr, ...)
         end
         local m = unpack(data)
         if m and m.unknown == 0 and m.data == nil then
-            self.cb(from_addr, m.did, m.stamp, table.unpack(self.args))
             if self.addr and self.addr == from_addr then
                 logger:debug("Scan done.")
-                self.handle = nil
+                self.handle:close()
             end
+            self.cb(from_addr, m.did, m.stamp, table.unpack(self.args))
         end
     end, ctx)
 
