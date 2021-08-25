@@ -163,15 +163,15 @@ static void lnet_udp_recv_cb(pal_net_udp *udp, void *data, size_t len,
     const char *from_addr, uint16_t from_port, void *arg) {
     lnet_udp_handle *handle = arg;
     lua_State *L = handle->L;
-    if (!lc_push_ref(L, handle->ref_ids.recv_cb)) {
-        HAPLogError(&lnet_log, "%s: Can't get lua function.", __func__);
-        return;
-    }
+
+    lc_push_traceback(L);
+    HAPAssert(lc_push_ref(L, handle->ref_ids.recv_cb));
+
     lua_pushlstring(L, (const char *)data, len);
     lua_pushstring(L, from_addr);
     lua_pushinteger(L, from_port);
     bool has_arg = lc_push_ref(L, handle->ref_ids.recv_arg);
-    if (lua_pcall(L, has_arg ? 4 : 3, 0, 0)) {
+    if (lua_pcall(L, has_arg ? 4 : 3, 0, 1)) {
         HAPLogError(&lnet_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
     lua_settop(L, 0);
@@ -210,12 +210,14 @@ static int lnet_udp_handle_set_recv_cb(lua_State *L) {
 static void lnet_udp_err_cb(pal_net_udp *udp, pal_net_err err, void *arg) {
     lnet_udp_handle *handle = arg;
     lua_State *L = handle->L;
+
+    lc_push_traceback(L);
     if (!lc_push_ref(L, handle->ref_ids.err_cb)) {
         HAPLogError(&lnet_log, "%s: Can't get lua function.", __func__);
         return;
     }
     bool has_arg = lc_push_ref(L, handle->ref_ids.err_arg);
-    if (lua_pcall(L, has_arg ? 1 : 0, 0, 0)) {
+    if (lua_pcall(L, has_arg ? 1 : 0, 0, 1)) {
         HAPLogError(&lnet_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
     lua_settop(L, 0);
