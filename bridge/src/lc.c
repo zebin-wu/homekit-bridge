@@ -165,3 +165,17 @@ bool lc_push_ref(lua_State *L, int ref_id) {
     }
     return false;
 }
+
+static int traceback(lua_State *L) {
+    const char *msg = lua_tostring(L, 1);
+    if (msg) {
+        luaL_traceback(L, L, msg, 1);
+    } else {
+        lua_pushliteral(L, "(no error message)");
+    }
+    return 1;
+}
+
+void lc_push_traceback(lua_State *L) {
+    lua_pushcfunction(L, traceback);
+}

@@ -53,15 +53,12 @@ static void ltimer_obj_cb(HAPPlatformTimerRef timer, void* _Nullable context) {
 
     obj->timer = 0;
 
-    if (!lc_push_ref(L, obj->ref_ids.cb)) {
-        HAPLogError(&ltimer_log, "%s: Can't get lua function.", __func__);
-        ltimer_obj_reset(obj);
-        return;
-    }
+    lc_push_traceback(L);
+    HAPAssert(lc_push_ref(L, obj->ref_ids.cb));
 
     bool has_arg = lc_push_ref(L, obj->ref_ids.arg);
     ltimer_obj_reset(obj);
-    if (lua_pcall(L, has_arg ? 1 : 0, 0, 0)) {
+    if (lua_pcall(L, has_arg ? 1 : 0, 0, 1)) {
         HAPLogError(&ltimer_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
     lua_settop(L, 0);

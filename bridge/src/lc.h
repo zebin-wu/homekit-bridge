@@ -110,6 +110,11 @@ void lc_unref(lua_State *L, int ref_id);
  */
 bool lc_push_ref(lua_State *L, int ref_id);
 
+/**
+ * Push traceback function to lua stack.
+ */
+void lc_push_traceback(lua_State *L);
+
 #ifdef __cplusplus
 }
 #endif

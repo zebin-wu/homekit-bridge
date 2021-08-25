@@ -401,7 +401,6 @@ static struct lhap_desc {
     HAPPlatform *platform;
     HAPAccessoryServerRef server;
     HAPAccessoryServerOptions server_options;
-    HAPAccessoryServerCallbacks server_callbacks;
 } gv_lhap_desc = {
     .attribute_cnt = kAttributeCount,
     .bridged_aid = LHAP_BRIDGED_ACCESSORY_IID_DFT,
@@ -1127,10 +1126,8 @@ HAPError lhap_char_base_handleRead(
         const HAPAccessory *accessory,
         const HAPService *service,
         const HAPBaseCharacteristic *characteristic) {
-    if (!lc_push_ref(L, LHAP_CHAR_REF(characteristic, characteristic->format)->handleRead)) {
-        HAPLogError(&lhap_log, "%s: Failed to push callback.", __func__);
-        return kHAPError_Unknown;
-    }
+    lc_push_traceback(L);
+    HAPAssert(lc_push_ref(L, LHAP_CHAR_REF(characteristic, characteristic->format)->handleRead));
     // set the table request
     lhap_create_request_table(L, transportType, session, NULL,
         accessory, service, characteristic);
@@ -1139,7 +1136,7 @@ HAPError lhap_char_base_handleRead(
     bool hasContext = lc_push_ref(L,
         LHAP_ACCESSORY_REF(accessory)->context);
 
-    if (lua_pcall(L, hasContext ? 2 : 1, 2, 0)) {
+    if (lua_pcall(L, hasContext ? 2 : 1, 2, 1)) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
         return kHAPError_Unknown;
     }
@@ -1355,10 +1352,8 @@ HAPError lhap_char_base_handleWrite(
         const HAPAccessory *accessory,
         const HAPService *service,
         const HAPBaseCharacteristic *characteristic) {
-    if (!lc_push_ref(L, LHAP_CHAR_REF(characteristic, characteristic->format)->handleWrite)) {
-        HAPLogError(&lhap_log, "%s: Failed to push callback.", __func__);
-        return kHAPError_Unknown;
-    }
+    lc_push_traceback(L);
+    HAPAssert(lc_push_ref(L, LHAP_CHAR_REF(characteristic, characteristic->format)->handleWrite));
     lhap_create_request_table(L, transportType, session, &remote,
         accessory, service, characteristic);
     return kHAPError_None;
@@ -1375,7 +1370,7 @@ HAPError lhap_char_last_handleWrite(lua_State *L,
     bool hasContext = lc_push_ref(L,
         LHAP_ACCESSORY_REF(accessory)->context);
 
-    if (lua_pcall(L, hasContext ? 3 : 2, 2, 0)) {
+    if (lua_pcall(L, hasContext ? 3 : 2, 2, 1)) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
         goto end;
     }
@@ -1868,11 +1863,8 @@ HAPError lhap_accessory_identify_cb(
     lua_State *L = ((struct lhap_desc *)context)->L;
     const HAPAccessory *accessory = request->accessory;
 
-    // push the callback
-    if (!lc_push_ref(L, LHAP_ACCESSORY_REF(accessory)->identify)) {
-        HAPLogError(&lhap_log, "%s: Can't get lua function.", __func__);
-        return err;
-    }
+    lc_push_traceback(L);
+    HAPAssert(lc_push_ref(L, LHAP_ACCESSORY_REF(accessory)->identify));
 
     // set the table request
     lua_createtable(L, 0, 2);
@@ -1888,7 +1880,7 @@ HAPError lhap_accessory_identify_cb(
     bool hasContext = lc_push_ref(L,
         LHAP_ACCESSORY_REF(accessory)->context);
 
-    if (lua_pcall(L, hasContext ? 2 : 1, 1, 0)) {
+    if (lua_pcall(L, hasContext ? 2 : 1, 1, 1)) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
         goto end;
     }
@@ -2033,12 +2025,11 @@ static void lhap_server_handle_update_state(HAPAccessoryServerRef *server, void 
     lua_State *L = ((struct lhap_desc *)context)->L;
     HAPPrecondition(L);
 
-    if (!lhap_push_server_cb(L, LHAP_SERVER_CB_UPDATE_STATE)) {
-        return;
-    }
+    lc_push_traceback(L);
+    HAPAssert(lhap_push_server_cb(L, LHAP_SERVER_CB_UPDATE_STATE));
 
     lua_pushstring(L, lhap_server_state_strs[HAPAccessoryServerGetState(server)]);
-    if (lua_pcall(L, 1, 0, 0)) {
+    if (lua_pcall(L, 1, 0, 1)) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
         lua_pop(L, 1);
     }
@@ -2054,11 +2045,10 @@ static void lhap_server_handle_session_accept(
     lua_State *L = ((struct lhap_desc *)context)->L;
     HAPPrecondition(L);
 
-    if (!lhap_push_server_cb(L, LHAP_SERVER_CB_SESSION_ACCEPT)) {
-        return;
-    }
+    lc_push_traceback(L);
+    HAPAssert(lhap_push_server_cb(L, LHAP_SERVER_CB_SESSION_ACCEPT));
 
-    if (lua_pcall(L, 0, 0, 0)) {
+    if (lua_pcall(L, 0, 0, 1)) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
         lua_pop(L, 1);
     }
@@ -2074,11 +2064,10 @@ static void lhap_server_handle_session_invalidate(
     lua_State *L = ((struct lhap_desc *)context)->L;
     HAPPrecondition(L);
 
-    if (!lhap_push_server_cb(L, LHAP_SERVER_CB_SESSION_INVALIDATE)) {
-        return;
-    }
+    lc_push_traceback(L);
+    HAPAssert(lhap_push_server_cb(L, LHAP_SERVER_CB_SESSION_INVALIDATE));
 
-    if (lua_pcall(L, 0, 0, 0)) {
+    if (lua_pcall(L, 0, 0, 1)) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
         lua_pop(L, 1);
     }
@@ -2156,6 +2145,9 @@ static int lhap_configure(lua_State *L) {
     desc->conf_changed = lua_toboolean(L, 4);
 
 parse_cbs:
+    for (size_t i = 0; i < HAPArrayCount(gv_lhap_desc.server_cb_ref_ids); i++) {
+        gv_lhap_desc.server_cb_ref_ids[i] = LUA_REFNIL;
+    }
     if (!lc_traverse_table(L, 3, lhap_server_callbacks_kvs, NULL)) {
         HAPLogError(&lhap_log,
             "%s: Failed to parse the server callbacks from table serverCallbacks.",
@@ -2243,9 +2235,16 @@ static int lhap_start(lua_State *L) {
 #endif
 
     // Set server callback.
-    desc->server_callbacks.handleUpdatedState = lhap_server_handle_update_state;
-    desc->server_callbacks.handleSessionAccept = lhap_server_handle_session_accept;
-    desc->server_callbacks.handleSessionInvalidate = lhap_server_handle_session_invalidate;
+    HAPAccessoryServerCallbacks server_callbacks;
+    if (desc->server_cb_ref_ids[LHAP_SERVER_CB_UPDATE_STATE] != LUA_REFNIL) {
+        server_callbacks.handleUpdatedState = lhap_server_handle_update_state;
+    }
+    if (desc->server_cb_ref_ids[LHAP_SERVER_CB_SESSION_ACCEPT] != LUA_REFNIL) {
+        server_callbacks.handleSessionAccept = lhap_server_handle_session_accept;
+    }
+    if (desc->server_cb_ref_ids[LHAP_SERVER_CB_SESSION_INVALIDATE] != LUA_REFNIL) {
+        server_callbacks.handleSessionInvalidate = lhap_server_handle_session_invalidate;
+    }
 
     // Display setup code.
     HAPSetupCode setupCode;
@@ -2257,7 +2256,7 @@ static int lhap_start(lua_State *L) {
             &desc->server,
             &desc->server_options,
             desc->platform,
-            &desc->server_callbacks,
+            &server_callbacks,
             desc);
 
     // Start accessory server.
@@ -2301,7 +2300,6 @@ static int lhap_stop(lua_State *L) {
 #endif
 
     HAPRawBufferZero(&desc->server, sizeof(desc->server));
-    HAPRawBufferZero(&desc->server_callbacks, sizeof(desc->server_callbacks));
     desc->is_started = false;
 
     return 0;
@@ -2431,9 +2429,6 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
         lua_setfield(L, -2, ud->name);
     }
 
-    for (size_t i = 0; i < HAPArrayCount(gv_lhap_desc.server_cb_ref_ids); i++) {
-        gv_lhap_desc.server_cb_ref_ids[i] = LUA_REFNIL;
-    }
     return 1;
 }
 
