@@ -6,4 +6,4 @@
 	url = https://github.com/KNpTrue/lua
 [submodule "ext/lua-cjson"]
 	path = ext/lua-cjson
-	url = https://github.com/openresty/lua-cjson.git
+	url = https://github.com/mpx/lua-cjson

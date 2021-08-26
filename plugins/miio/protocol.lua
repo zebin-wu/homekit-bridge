@@ -387,7 +387,7 @@ function protocol.create(addr, devid, token, stamp)
         local data = json.encode({
             id = self.reqid,
             method = method,
-            params = params or json.empty_array
+            params = params or nil
         })
 
         assert(self.handle:send(pack(0, self.devid, os.time() - self.stampDiff,
