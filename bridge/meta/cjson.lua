@@ -1,9 +1,6 @@
 ---@class cjsonlib
 ---
 ---@field null lightuserdata A Lua lightuserdata ``NULL`` pointer.
----@field empty_array lightuserdata A lightuserdata, similar to ``cjson.null``, which will be encoded as an empty JSON Array by ``cjson.encode()``.
----@field array_mt lightuserdata When lua-cjson encodes a table with this metatable, it will systematically encode it as a JSON Array.
----@field empty_array_mt lightuserdata A metatable which can "tag" a table as a JSON Array in case it is empty.
 local cjson = {}
 
 ---Deserialise any UTF-8 JSON string into a Lua value or table.
