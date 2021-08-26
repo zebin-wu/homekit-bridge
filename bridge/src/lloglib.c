@@ -9,16 +9,16 @@
 
 #include "app_int.h"
 
-#define LUA_LOGGER_NAME "logger"
+#define LUA_LOGGER_NAME "logger*"
 
 static const HAPLogObject llog_default_logger = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
     .category = NULL,
 };
 
-typedef struct __attribute__((__packed__)) {
+typedef struct {
     HAPLogObject obj;
-    char category[1];
+    char category[0];
 } llog_logger;
 
 static int llog_get_logger(lua_State *L) {
@@ -31,8 +31,9 @@ static int llog_get_logger(lua_State *L) {
     luaL_checktype(L, 1, LUA_TSTRING);
     size_t len;
     const char *str = lua_tolstring(L, 1, &len);
-    llog_logger *logger = lua_newuserdata(L, sizeof(llog_logger) + len);
-    HAPRawBufferCopyBytes(logger->category, str, len + 1);
+    llog_logger *logger = lua_newuserdata(L, sizeof(llog_logger) + len + 1);
+    HAPRawBufferCopyBytes(logger->category, str, len);
+    logger->category[len] = '\0';
     logger->obj.category = logger->category;
     logger->obj.subsystem = APP_BRIDGE_LOG_SUBSYSTEM;
     luaL_setmetatable(L, LUA_LOGGER_NAME);
