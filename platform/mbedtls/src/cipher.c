@@ -199,6 +199,9 @@ bool pal_cipher_update(pal_cipher_ctx *ctx, const void *in, size_t ilen, void *o
     HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);
     HAPPrecondition(in);
     HAPPrecondition(out);
+    HAPPrecondition(ilen > 0);
+    HAPPrecondition(olen);
+    HAPPrecondition(*olen >= ilen + pal_cipher_get_block_size(ctx));
 
     int ret = mbedtls_cipher_update(&ctx->ctx, in, ilen, out, olen);
     if (ret) {
@@ -212,6 +215,8 @@ bool pal_cipher_finsh(pal_cipher_ctx *ctx, void *out, size_t *olen) {
     HAPPrecondition(ctx);
     HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);
     HAPPrecondition(out);
+    HAPPrecondition(olen);
+    HAPPrecondition(*olen >= pal_cipher_get_block_size(ctx));
 
     int ret = mbedtls_cipher_finish(&ctx->ctx, out, olen);
     if (ret) {
