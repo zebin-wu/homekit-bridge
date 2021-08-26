@@ -190,7 +190,10 @@ bool pal_cipher_update(pal_cipher_ctx *ctx, const void *in, size_t ilen, void *o
     HAPPrecondition(ctx);
     HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);
     HAPPrecondition(in);
+    HAPPrecondition(ilen > 0);
     HAPPrecondition(out);
+    HAPPrecondition(olen);
+    HAPPrecondition(*olen >= ilen + pal_cipher_get_block_size(ctx));
 
     return pal_cipher_crypt_funcs[ctx->op].update(ctx->ctx, out, (int *)olen, in, ilen);
 }
@@ -199,6 +202,8 @@ bool pal_cipher_finsh(pal_cipher_ctx *ctx, void *out, size_t *olen) {
     HAPPrecondition(ctx);
     HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);
     HAPPrecondition(out);
+    HAPPrecondition(olen);
+    HAPPrecondition(*olen >= pal_cipher_get_block_size(ctx));
 
     bool status = pal_cipher_crypt_funcs[ctx->op].final(ctx->ctx, out, (int *)olen);
     if (status) {
