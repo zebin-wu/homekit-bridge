@@ -406,17 +406,17 @@ hap.PairingService = {}
 ---Configure HAP.
 ---@param primaryAccessory Accessory Primary accessory to serve.
 ---@param bridgedAccessories Accessory[] Array of bridged accessories.
----@param serverCallbacks ServerCallbacks Accessory server callbacks.
----@param confChanged boolean Whether or not the bridge configuration changed since the last start.
 ---@return boolean status true on success, false on failure.
-function hap.configure(primaryAccessory, bridgedAccessories, serverCallbacks, confChanged) end
+function hap.configure(primaryAccessory, bridgedAccessories) end
 
 ---Unconfigure all accessires then you can configure() again.
 function hap.unconfigure() end
 
 ---Start accessory server.
+---@param serverCallbacks ServerCallbacks Accessory server callbacks.
+---@param confChanged boolean Whether or not the bridge configuration changed since the last start.
 ---@return boolean status true on success, false on failure.
-function hap.start() end
+function hap.start(serverCallbacks, confChanged) end
 
 ---Stop accessory server.
 function hap.stop() end

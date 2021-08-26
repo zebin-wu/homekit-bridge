@@ -26,7 +26,7 @@ return core.start(config.plugins, config.accessories, function (bridgedAccessori
                 return hap.Error.None
             end
         }
-    }, bridgedAccessories, {
+    }, bridgedAccessories) and hap.start({
         updatedState = function (state)
             logger:default("Accessory Server State did update: " .. state .. ".")
         end,
@@ -36,5 +36,5 @@ return core.start(config.plugins, config.accessories, function (bridgedAccessori
         sessionInvalidate = function ()
             logger:default("Session is invalidated")
         end
-    }, false) and hap.start()
+    }, false)
 end)

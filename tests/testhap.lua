@@ -130,7 +130,7 @@ local function testAccessory(expect, primary, k, vals, log)
         else
             setField(accs[t], k, v)
         end
-        assert(hap.configure(accs.primary, { accs.bridged }, {}, false) == expect, fmtAssertMsg("configure", expect))
+        assert(hap.configure(accs.primary, { accs.bridged }) == expect, fmtAssertMsg("configure", expect))
         hap.unconfigure()
     end
     testFn(_test, vals)
