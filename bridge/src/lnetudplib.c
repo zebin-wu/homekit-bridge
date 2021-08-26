@@ -17,7 +17,7 @@ static const HAPLogObject lnet_log = {
     .category = "lnet",
 };
 
-#define LUA_UDP_HANDLE_NAME "UdpHandle"
+#define LUA_UDP_HANDLE_NAME "UdpHandle*"
 
 static const char *net_domain_strs[] = PAL_NET_DOMAIN_STRS;
 
