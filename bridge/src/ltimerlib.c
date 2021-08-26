@@ -11,7 +11,7 @@
 #include "app_int.h"
 #include "lc.h"
 
-#define LUA_TIMER_HANDLE_NAME "TimerHandle"
+#define LUA_TIMER_HANDLE_NAME "TimerHandle*"
 
 static const HAPLogObject ltimer_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,

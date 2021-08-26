@@ -8,7 +8,7 @@
 #include <HAPBase.h>
 #include <pal/md5.h>
 
-#define LUA_HASH_OBJ_NAME "HashObject"
+#define LUA_HASH_OBJ_NAME "HashObject*"
 
 #define LHASH_GET_OBJ(L, idx) \
     luaL_checkudata(L, idx, LUA_HASH_OBJ_NAME)
@@ -102,7 +102,7 @@ static int lhash_obj_gc(lua_State *L) {
 
 static int lhash_obj_tostring(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    lua_pushfstring(L, "hash object (%p)", obj);
+    lua_pushfstring(L, "hash object (%p)", obj->ctx);
     return 1;
 }
 
