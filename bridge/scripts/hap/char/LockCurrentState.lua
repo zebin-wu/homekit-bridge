@@ -1,13 +1,4 @@
 local lockCurrentState = {
-    format = "UInt8",
-    permissions = {
-        read = true,
-        write = false,
-        notify= true
-    },
-    minVal = 0,
-    maxVal = 3,
-    stepVal = 1,
     value = {
         Unsecured = 0,
         Secured = 1,
@@ -16,15 +7,15 @@ local lockCurrentState = {
     }
 }
 
-function lockCurrentState:new(iid, read)
+function lockCurrentState.new(iid, read)
     return {
-        format = self.format,
+        format = "UInt8",
         iid = iid,
         type = "LockCurrentState",
         props = {
-            readable = self.permissions.read,
-            writable = self.permissions.write,
-            supportsEventNotification = self.permissions.notify,
+            readable = true,
+            writable = false,
+            supportsEventNotification = true,
             ble = {
                 supportsBroadcastNotification = true,
                 supportsDisconnectedNotification = true
@@ -32,9 +23,9 @@ function lockCurrentState:new(iid, read)
         },
         units = "None",
         constraints = {
-            minVal = self.minVal,
-            maxVal = self.maxVal,
-            stepVal = self.stepVal,
+            minVal = 0,
+            maxVal = 3,
+            stepVal = 1,
         },
         cbs = {
             read = read

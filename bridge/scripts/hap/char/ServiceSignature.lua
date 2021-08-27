@@ -1,22 +1,15 @@
-local serviceSignature = {
-    format = "Data",
-    permissions = {
-        read = true,
-        write = false,
-        notify= false
-    }
-}
+local serviceSignature = {}
 
-function serviceSignature:new(iid)
+function serviceSignature.new(iid)
     local hap = require("hap")
     return {
-        format = self.format,
+        format = "Data",
         iid = iid,
         type = "ServiceSignature",
         props = {
-            readable = self.permissions.read,
-            writable = self.permissions.write,
-            supportsEventNotification = self.permissions.notify,
+            readable = true,
+            writable = false,
+            supportsEventNotification = false,
             ip = { controlPoint = true }
         },
         constraints = { maxLen = 2097152 },
