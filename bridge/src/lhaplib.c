@@ -1252,22 +1252,22 @@ HAPError lhap_char_number_handleRead(
 
     switch (characteristic->format) {
     case kHAPCharacteristicFormat_UInt8:
-        *((uint8_t *)value) = lua_tointeger(L, 1);
+        *((uint8_t *)value) = lua_tointeger(L, -2);
         break;
     case kHAPCharacteristicFormat_UInt16:
-        *((uint16_t *)value) = lua_tointeger(L, 1);
+        *((uint16_t *)value) = lua_tointeger(L, -2);
         break;
     case kHAPCharacteristicFormat_UInt32:
-        *((uint32_t *)value) = lua_tointeger(L, 1);
+        *((uint32_t *)value) = lua_tointeger(L, -2);
         break;
     case kHAPCharacteristicFormat_UInt64:
-        *((uint64_t *)value) = lua_tointeger(L, 1);
+        *((uint64_t *)value) = lua_tointeger(L, -2);
         break;
     case kHAPCharacteristicFormat_Int:
-        *((int32_t *)value) = lua_tointeger(L, 1);
+        *((int32_t *)value) = lua_tointeger(L, -2);
         break;
     case kHAPCharacteristicFormat_Float:
-        *((float *)value) = lua_tonumber(L, 1);
+        *((float *)value) = lua_tonumber(L, -2);
         break;
     default:
         HAPAssertionFailure();
