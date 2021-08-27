@@ -44,7 +44,8 @@ function device.create(done, timeout, addr, token, ...)
         info = nil, ---@type MiioDeviceInfo|nil
         timeout = timeout,
         state = "NOINIT",
-        cmdQue = {first = 0, last = 0}
+        cmdQue = {first = 0, last = 0},
+        props = {}
     }
 
     local function enque(que, ...)
@@ -124,6 +125,34 @@ function device.create(done, timeout, addr, token, ...)
 
         enque(self.cmdQue, method, params, self, respCb, ...)
         dispatch(self)
+    end
+
+    ---Sync properties.
+    ---@param names string[] Property names.
+    function o:syncProps(names)
+        self:request(function (err, result, self, names)
+            assert(#result == #names)
+            for i, v in ipairs(result) do
+                self.props[names[i]] = v
+            end
+        end, "get_prop", names, self, names)
+    end
+
+    ---Get property.
+    ---@param name string Property name.
+    ---@return any value Property value.
+    function o:getProp(name)
+        return self.props[name]
+    end
+
+    ---Set property.
+    ---@param name string Property name.
+    ---@param value any Property value.
+    function o:setProp(name, value)
+        self.props[name] = value
+        self:request(function (err, result, self, name)
+            
+        end, "set_" .. name, {value}, self, name)
     end
 
     return o
