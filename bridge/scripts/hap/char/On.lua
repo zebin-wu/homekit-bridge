@@ -1,21 +1,14 @@
-local on = {
-    format = "Bool",
-    permissions = {
-        read = true,
-        write = true,
-        notify= true
-    }
-}
+local on = {}
 
-function on:new(iid, read, write)
+function on.new(iid, read, write)
     return {
-        format = self.format,
+        format = "Bool",
         iid = iid,
         type = "On",
         props = {
-            readable = self.permissions.read,
-            writable = self.permissions.write,
-            supportsEventNotification = self.permissions.notify,
+            readable = true,
+            writable = true,
+            supportsEventNotification = true,
             ble = {
                 supportsBroadcastNotification = true,
                 supportsDisconnectedNotification = true

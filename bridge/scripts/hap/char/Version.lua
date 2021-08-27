@@ -1,21 +1,14 @@
-local version = {
-    format = "String",
-    permissions = {
-        read = true,
-        write = false,
-        notify= false
-    }
-}
+local version = {}
 
-function version:new(iid, read)
+function version.new(iid, read)
     return {
-        format = self.format,
+        format = "String",
         iid = iid,
         type = "Version",
         props = {
-            readable = self.permissions.read,
-            writable = self.permissions.write,
-            supportsEventNotification = self.permissions.notify,
+            readable = true,
+            writable = false,
+            supportsEventNotification = false,
         },
         constraints = { maxLen = 64 },
         cbs = {
