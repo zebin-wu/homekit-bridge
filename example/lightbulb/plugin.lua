@@ -61,11 +61,11 @@ function plugin.gen(conf)
                     ServiceSignature.new(hap.getNewInstanceID()),
                     Name.new(hap.getNewInstanceID()),
                     On.new(hap.getNewInstanceID(),
-                        function (request)
+                        function (request, context)
                             logger:info(("Read lightBulbOn: %s"):format(context.lightBulbOn))
                             return context.lightBulbOn, hap.Error.None
                         end,
-                        function (request, value)
+                        function (request, value, context)
                             local changed = false
                             logger:info(("Write lightBulbOn: %s"):format(value))
                             if value ~= context.lightBulbOn then
@@ -82,7 +82,8 @@ function plugin.gen(conf)
                 logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        }
+        },
+        context = context
     }
 end
 

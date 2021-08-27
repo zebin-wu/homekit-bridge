@@ -70,18 +70,18 @@ function plugin.gen(conf)
                     ServiceSignature.new(hap.getNewInstanceID()),
                     Name.new(hap.getNewInstanceID()),
                     LockCurrentState.new(context.curStateIID,
-                        function (request)
+                        function (request, context)
                             logger:info(("Read currentState: %s"):format(
                                 util.searchKey(LockCurrentState.value, context.curState)))
                             return context.curState, hap.Error.None
                         end),
                     LockTargetState.new(context.tgtStateIID,
-                        function (request)
+                        function (request, context)
                             logger:info(("Read targetState: %s"):format(
                                 util.searchKey(LockTargetState.value, context.tgtState)))
                             return context.tgtState, hap.Error.None
                         end,
-                        function (request, value)
+                        function (request, value, context)
                             local changed = false
                             logger:info(("Write targetState: %s"):format(
                                 util.searchKey(LockTargetState.value, value)))
@@ -108,11 +108,11 @@ function plugin.gen(conf)
                 chars = {
                     ServiceSignature.new(hap.getNewInstanceID()),
                     LockControlPoint.new(hap.getNewInstanceID(),
-                        function (request, value)
+                        function (request, value, context)
                             return false, hap.Error.None
                         end),
                     Version.new(hap.getNewInstanceID(),
-                        function (request)
+                        function (request, context)
                             return "1.0", hap.Error.None
                         end)
                 }
@@ -123,7 +123,8 @@ function plugin.gen(conf)
                 logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        }
+        },
+        context = context
     }
 end
 
