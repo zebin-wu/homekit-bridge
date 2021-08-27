@@ -45,10 +45,10 @@ end
 
 ---Generate accessory via configuration.
 function plugin.gen(conf)
-    local obj = device.create(function (self, addr)
+    local obj = device.create(function (self, conf)
         if not self.info then
             logger:error("Failed to create device.")
-            _report(self, addr)
+            _report(self, conf.addr)
             return
         end
         -- Get product module, using pcall to catch exception.
@@ -58,23 +58,17 @@ function plugin.gen(conf)
         if success == false then
             logger:error("Cannot found the product.")
             logger:error(result)
-            _report(self, addr)
+            _report(self, conf.addr)
             return
         end
-        local obj = result.create(self)
-        if not obj then
-            logger:error("Failed to create the device object.")
-            _report(self, addr)
-            return
-        end
-        local accessory = result.gen(obj)
+        local accessory = result.gen(self, conf)
         if not accessory then
             logger:error("Failed to generate accessory.")
-            _report(self, addr)
+            _report(self, conf.addr)
             return
         end
-        _report(self, addr, accessory)
-    end, 5000, conf.addr, conf.token, conf.addr)
+        _report(self, conf.addr, accessory)
+    end, 5000, conf.addr, conf.token, conf)
     if obj then
         priv.pending[conf.addr] = true
         priv.devices[conf.addr] = obj
