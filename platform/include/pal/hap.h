@@ -28,7 +28,7 @@ extern "C" {
 /**
  * Generate setup code, setup info and setup ID, and put them in the key-value store.
  */
-void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store, HAPPlatformAccessorySetupRef acc_setup);
+void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store);
 
 #if IP
 /**

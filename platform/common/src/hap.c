@@ -12,7 +12,7 @@
 
 #define PREFERRED_ADVERTISING_INTERVAL (HAPBLEAdvertisingIntervalCreateFromMilliseconds(417.5f))
 
-void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store, HAPPlatformAccessorySetupRef acc_setup) {
+void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store) {
     bool found;
     size_t numBytes;
 
@@ -40,14 +40,6 @@ void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store, HAPPlatformAcce
             &found) == kHAPError_None);
     if (!found) {
         HAPPlatformRandomNumberFill(setupInfo.salt, sizeof setupInfo.salt);
-        const uint8_t srpUserName[] = "Pair-Setup";
-        HAP_srp_verifier(
-                setupInfo.verifier,
-                setupInfo.salt,
-                srpUserName,
-                sizeof srpUserName - 1,
-                (const uint8_t*) setupCode.stringValue,
-                sizeof setupCode.stringValue - 1);
         HAPAssert(HAPPlatformKeyValueStoreSet(kv_store,
             kSDKKeyValueStoreDomain_Provisioning,
             kSDKKeyValueStoreKey_Provisioning_SetupInfo,
@@ -56,9 +48,12 @@ void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store, HAPPlatformAcce
 
     // Setup ID.
     HAPSetupID setupID;
-    bool hasSetupID;
-    HAPPlatformAccessorySetupLoadSetupID(acc_setup, &hasSetupID, &setupID);
-    if (!hasSetupID) {
+    HAPAssert(HAPPlatformKeyValueStoreGet(kv_store,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupID,
+            &setupID, sizeof(setupID), &numBytes,
+            &found) == kHAPError_None);
+    if (!found) {
         HAPAccessorySetupGenerateRandomSetupID(&setupID);
         HAPAssert(HAPPlatformKeyValueStoreSet(kv_store,
             kSDKKeyValueStoreDomain_Provisioning,

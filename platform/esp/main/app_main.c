@@ -98,7 +98,7 @@ static void init_platform() {
     platform.hapPlatform.accessorySetup = &accessorySetup;
 
     // Generate setup code, setup info and setup ID.
-    pal_hap_acc_setup_gen(&platform.keyValueStore, platform.hapPlatform.accessorySetup);
+    pal_hap_acc_setup_gen(&platform.keyValueStore);
 
     app_console_init();
     app_wifi_init();
