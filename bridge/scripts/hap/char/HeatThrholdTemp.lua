@@ -1,6 +1,6 @@
 local heatThrholdTemp = {}
 
-function heatThrholdTemp.new(iid, read, write)
+function heatThrholdTemp.new(iid, read, write, minVal, maxVal, stepVal)
     return {
         format = "Float",
         iid = iid,
@@ -17,9 +17,9 @@ function heatThrholdTemp.new(iid, read, write)
         },
         units = "Celsius",
         constraints = {
-            minVal = 0,
-            maxVal = 25,
-            stepVal = 0.1
+            minVal = minVal or 0,
+            maxVal = maxVal or 25,
+            stepVal = stepVal or 0.1
         },
         cbs = {
             read = read,
