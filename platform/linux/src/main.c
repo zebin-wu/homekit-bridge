@@ -71,7 +71,7 @@ static void init_platform() {
             &accessorySetup, &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = &platform.keyValueStore });
     platform.hapPlatform.accessorySetup = &accessorySetup;
 
-    pal_hap_acc_setup_gen(&platform.keyValueStore, platform.hapPlatform.accessorySetup);
+    pal_hap_acc_setup_gen(&platform.keyValueStore);
 
 #if IP
     // TCP stream manager.
