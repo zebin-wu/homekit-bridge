@@ -3,6 +3,7 @@ local hap = require "hap"
 local util = require "util"
 local Name = require "hap.char.Name"
 local Active = require "hap.char.Active"
+local CurTemp = require "hap.char.CurTemp"
 local CurHeatCoolState = require "hap.char.CurHeatCoolState"
 local TgtHeatCoolState = require "hap.char.TgtHeatCoolState"
 local CoolThrholdTemp = require "hap.char.CoolThrholdTemp"
@@ -70,6 +71,11 @@ function acpartner.gen(obj, conf)
                         end
                         return changed, hap.Error.None
                     end),
+                    CurTemp.new(hap.getNewInstanceID(), function (request, obj)
+                        local value = obj:getProp("tar_temp")
+                        logger:info("Read CurrentTemperature: " .. value)
+                        return tonumber(value), hap.Error.None
+                    end),
                     CurHeatCoolState.new(hap.getNewInstanceID(), function (request, obj)
                         local mode = obj:getProp("mode")
                         local value
@@ -119,14 +125,14 @@ function acpartner.gen(obj, conf)
                         return tonumber(value), hap.Error.None
                     end, function (request, value, obj)
                         local changed = false
-                        value = tostring(value)
+                        value = math.tointeger(value)
                         logger:info("Write CoolingThresholdTemperature: " .. value)
                         if obj:getProp("tar_temp") ~= value then
                             obj:setProp("tar_temp", value)
                             changed = true
                         end
                         return changed, hap.Error.None
-                    end),
+                    end, 16, 30, 1),
                     HeatThrholdTemp.new(hap.getNewInstanceID(), function (request, obj)
                         if obj:getProp("mode") ~= "heat" then
                             return 0, hap.Error.None
@@ -136,14 +142,14 @@ function acpartner.gen(obj, conf)
                         return tonumber(value), hap.Error.None
                     end, function (request, value, obj)
                         local changed = false
-                        value = tostring(value)
+                        value = math.tointeger(value)
                         logger:info("Write HeatingThresholdTemperature: " .. value)
                         if obj:getProp("tar_temp") ~= value then
                             obj:setProp("tar_temp", value)
                             changed = true
                         end
                         return changed, hap.Error.None
-                    end),
+                    end, 16, 30, 1),
                 }
             }
         },
