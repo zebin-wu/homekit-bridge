@@ -36,5 +36,5 @@ return core.start(config.plugins, config.accessories, function (bridgedAccessori
         sessionInvalidate = function ()
             logger:default("Session is invalidated")
         end
-    }, false)
+    }, true)
 end)
