@@ -1,6 +1,7 @@
 local device = require "miio.device"
 local hap = require "hap"
 local util = require "util"
+local ServiceSignature = require "hap.char.ServiceSignature"
 local Name = require "hap.char.Name"
 local Active = require "hap.char.Active"
 local CurTemp = require "hap.char.CurTemp"
@@ -8,6 +9,7 @@ local CurHeatCoolState = require "hap.char.CurHeatCoolState"
 local TgtHeatCoolState = require "hap.char.TgtHeatCoolState"
 local CoolThrholdTemp = require "hap.char.CoolThrholdTemp"
 local HeatThrholdTemp = require "hap.char.HeatThrholdTemp"
+local SwingMode = require "hap.char.SwingMode"
 
 local acpartner = {}
 local model = "lumi.acpartner.mcn02"
@@ -24,7 +26,7 @@ function acpartner.gen(obj, conf)
     return {
         aid = hap.getNewBridgedAccessoryID(),
         category = "BridgedAccessory",
-        name = conf.name or "Acparnter",
+        name = conf.name or "Acpartner",
         mfg = "lumi",
         model = model,
         sn = obj.info.mac,
@@ -83,6 +85,8 @@ function acpartner.gen(obj, conf)
                             value = CurHeatCoolState.value.Cooling
                         elseif mode == "heat" then
                             value = CurHeatCoolState.value.Heating
+                        else
+                            value = CurHeatCoolState.value.Idle
                         end
                         logger:info("Read CurrentHeaterCoolerState: " .. util.searchKey(CurHeatCoolState.value, value))
                         return value, hap.Error.None
@@ -117,9 +121,6 @@ function acpartner.gen(obj, conf)
                         return changed, hap.Error.None
                     end),
                     CoolThrholdTemp.new(hap.getNewInstanceID(), function (request, obj)
-                        if obj:getProp("mode") ~= "cool" then
-                            return 25, hap.Error.None
-                        end
                         local value =  obj:getProp("tar_temp")
                         logger:info("Read CoolingThresholdTemperature: " .. value)
                         return tonumber(value), hap.Error.None
@@ -134,9 +135,6 @@ function acpartner.gen(obj, conf)
                         return changed, hap.Error.None
                     end, 16, 30, 1),
                     HeatThrholdTemp.new(hap.getNewInstanceID(), function (request, obj)
-                        if obj:getProp("mode") ~= "heat" then
-                            return 0, hap.Error.None
-                        end
                         local value = obj:getProp("tar_temp")
                         logger:info("Read HeatingThresholdTemperature: " .. value)
                         return tonumber(value), hap.Error.None
@@ -150,6 +148,30 @@ function acpartner.gen(obj, conf)
                         end
                         return changed, hap.Error.None
                     end, 16, 30, 1),
+                    SwingMode.new(hap.getNewInstanceID(), function (request, obj)
+                        local value
+                        if obj:getProp("ver_swing") == "on" then
+                            value = SwingMode.value.Enabled
+                        else
+                            value = SwingMode.value.Disabled
+                        end
+                        logger:info("Read SwingMode: " .. util.searchKey(SwingMode.value, value))
+                        return value, hap.Error.None
+                    end, function (request, value, obj)
+                        logger:info("Write SwingMode: " .. util.searchKey(SwingMode.value, value))
+                        local mode
+                        local changed = false
+                        if value == SwingMode.value.Enabled then
+                            mode = "on"
+                        else
+                            mode = "off"
+                        end
+                        if obj:getProp("ver_swing") ~= mode then
+                            obj:setProp("ver_swing", mode)
+                            changed = true
+                        end
+                        return changed, hap.Error.None
+                    end)
                 }
             }
         },
