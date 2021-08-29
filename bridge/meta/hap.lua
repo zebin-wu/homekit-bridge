@@ -134,8 +134,8 @@ local hap = {}
 
 ---@class HapCharacteristicCallbacks:table Characteristic Callbacks.
 ---
----@field read fun(request:HapCharacteristicReadRequest, context?:any):any, HapError The callback used to handle read requests, it returns value and error.
----@field write fun(request:HapCharacteristicWriteRequest, val:any, context?:any):boolean, HapError The callback used to handle write requests, it return changed flag and error.
+---@field read fun(request:HapCharacteristicReadRequest, context?:any): any, HapError The callback used to handle read requests, it returns value and error.
+---@field write fun(request:HapCharacteristicWriteRequest, val:any, context?:any): HapError The callback used to handle write requests, it return error.
 ---@field sub fun(request:HapCharacteristicSubscriptionRequest, context?:any) The callback used to handle subscribe requests.
 ---@field unsub fun(request:HapCharacteristicSubscriptionRequest, context?:any) The callback used to handle unsubscribe requests.
 

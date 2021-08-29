@@ -82,16 +82,16 @@ function plugin.gen(conf)
                             return context.tgtState, hap.Error.None
                         end,
                         function (request, value, context)
-                            local changed = false
                             logger:info(("Write targetState: %s"):format(
                                 util.searchKey(LockTargetState.value, value)))
                             if value ~= context.tgtState then
                                 context.tgtState = value
                                 context.curState = value
                                 hap.raiseEvent(context.aid, context.mechanismIID, context.curStateIID)
-                                changed = true
+                                hap.raiseEvent(request.accessory.aid,
+                                    request.service.iid, request.characteristic.iid)
                             end
-                            return changed, hap.Error.None
+                            return hap.Error.None
                         end)
                 }
             },
@@ -109,7 +109,7 @@ function plugin.gen(conf)
                     ServiceSignature.new(hap.getNewInstanceID()),
                     LockControlPoint.new(hap.getNewInstanceID(),
                         function (request, value, context)
-                            return false, hap.Error.None
+                            return hap.Error.None
                         end),
                     Version.new(hap.getNewInstanceID(),
                         function (request, context)

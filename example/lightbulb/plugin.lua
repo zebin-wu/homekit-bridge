@@ -66,13 +66,13 @@ function plugin.gen(conf)
                             return context.lightBulbOn, hap.Error.None
                         end,
                         function (request, value, context)
-                            local changed = false
                             logger:info(("Write lightBulbOn: %s"):format(value))
                             if value ~= context.lightBulbOn then
                                 context.lightBulbOn = value
-                                changed = true
+                                hap.raiseEvent(request.accessory.aid,
+                                    request.service.iid, request.characteristic.iid)
                             end
-                            return changed, hap.Error.None
+                            return hap.Error.None
                         end)
                 }
             }
