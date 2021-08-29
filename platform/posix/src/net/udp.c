@@ -318,7 +318,7 @@ pal_net_udp *pal_net_udp_new(pal_net_domain domain) {
 
     udp->id = ++gudp_pcb_count;
 
-    udp->fd = socket(_domain, SOCK_DGRAM, 0);
+    udp->fd = socket(_domain, SOCK_DGRAM, IPPROTO_UDP);
     if (udp->fd == -1) {
         UDP_LOG_ERRNO(udp, "socket");
         pal_mem_free(udp);
