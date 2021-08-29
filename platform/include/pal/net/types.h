@@ -7,6 +7,10 @@
 #ifndef PLATFORM_INCLUDE_PAL_NET_TYPES_H_
 #define PLATFORM_INCLUDE_PAL_NET_TYPES_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Network error numbers.
  */
@@ -32,5 +36,9 @@ typedef enum {
     [PAL_NET_DOMAIN_INET] = "inet", \
     [PAL_NET_DOMAIN_INET6] = "inet6", \
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // PLATFORM_INCLUDE_PAL_NET_TYPES_H_
