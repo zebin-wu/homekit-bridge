@@ -178,8 +178,8 @@ end
 ---@param expect boolean The expected value returned by configure().
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
----@param format? CharacteristicFormat Characteristic format.
----@param constraints? StringCharacteristiConstraints|NumberCharacteristiConstraints|UInt8CharacteristiConstraints Value constraints.
+---@param format? HapCharacteristicFormat Characteristic format.
+---@param constraints? HapStringCharacteristiConstraints|HapNumberCharacteristiConstraints|HapUInt8CharacteristiConstraints Value constraints.
 local function testCharacteristic(expect, k, vals, format, constraints)
     format = format or "Bool"
     local tab = "char"
