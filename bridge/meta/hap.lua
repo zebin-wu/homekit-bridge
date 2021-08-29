@@ -1,98 +1,98 @@
 ---@class haplib
 local hap = {}
 
----@class Session:lightuserdata HomeKit Session.
+---@class HapSession:lightuserdata HomeKit Session.
 
----@class ServerCallbacks:table Accessory server callbacks.
+---@class HapServerCallbacks:table Accessory server callbacks.
 ---
----@field updatedState fun(state: ServerState) Invoked when the accessory server state changes.
----@field sessionAccept fun(session: Session) The callback used when a HomeKit Session is accepted.
----@field sessionInvalidate fun(session: Session) The callback used when a HomeKit Session is invalidated.
+---@field updatedState fun(state: HapServerState) Invoked when the accessory server state changes.
+---@field sessionAccept fun(session: HapSession) The callback used when a HomeKit Session is accepted.
+---@field sessionInvalidate fun(session: HapSession) The callback used when a HomeKit Session is invalidated.
 
----@class Accessory:table HomeKit accessory.
+---@class HapAccessory:table HomeKit accessory.
 ---
 ---@field aid integer Accessory instance ID.
----@field category AccessoryCategory Category information for the accessory.
+---@field category HapAccessoryCategory Category information for the accessory.
 ---@field name string The display name of the accessory.
 ---@field mfg string The manufacturer of the accessory.
 ---@field model string The model name of the accessory.
 ---@field sn string The serial number of the accessory.
 ---@field fwVer string The firmware version of the accessory.
 ---@field hwVer string The hardware version of the accessory.
----@field services Service[] Array of provided services.
----@field cbs AccessoryCallbacks Callbacks.
+---@field services HapService[] Array of provided services.
+---@field cbs HapAccessoryCallbacks Callbacks.
 ---@field context any Accessory context. Will be passed to callbacks.
 
----@class AccessoryCallbacks:table Accessory Callbacks.
+---@class HapAccessoryCallbacks:table Accessory Callbacks.
 ---
----@field identify fun(request: AccessoryIdentifyRequest, context?: any):Error The callback used to invoke the identify routine.
+---@field identify fun(request: HapAccessoryIdentifyRequest, context?: any):HapError The callback used to invoke the identify routine.
 
----@class AccessoryInformation:table Accessory information.
+---@class HapAccessoryInformation:table Accessory information.
 ---
 ---@field aid integer Accessory instance ID.
----@field category AccessoryCategory Category information for the accessory.
+---@field category HapAccessoryCategory Category information for the accessory.
 ---@field name string The display name of the accessory.
 
----@class AccessoryIdentifyRequest:table Accessory identify request.
+---@class HapAccessoryIdentifyRequest:table Accessory identify request.
 ---
----@field transportType TransportType Transport type over which the request has been received.
+---@field transportType HapTransportType Transport type over which the request has been received.
 ---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
----@field session Session The session over which the request has been received.
----@field accessory AccessoryInformation
+---@field session HapSession The session over which the request has been received.
+---@field accessory HapAccessoryInformation
 
----@class Service:table HomeKit service.
+---@class HapService:table HomeKit service.
 ---
 ---@field iid integer Instance ID.
----@field type ServiceType The type of the service.
+---@field type HapServiceType The type of the service.
 ---@field name string The name of the service.
----@field props ServiceProperties HAP Service properties.
+---@field props HapServiceProperties HAP Service properties.
 ---@field linkedServices integer[] Array containing instance IDs of linked services.
----@field chars Characteristic[] Array of contained characteristics.
+---@field chars HapCharacteristic[] Array of contained characteristics.
 
----@class ServiceProperties:table Properties that HomeKit services can have.
+---@class HapServiceProperties:table Properties that HomeKit services can have.
 ---
 ---@field primaryService boolean The service is the primary service on the accessory.
 ---@field hidden boolean The service should be hidden from the user.
----@field ble ServicePropertiesBLE
+---@field ble HapServicePropertiesBLE
 
----@class ServicePropertiesBLE:table These properties only affect connections over Bluetooth LE.
+---@class HapServicePropertiesBLE:table These properties only affect connections over Bluetooth LE.
 ---
 ---@field supportsConfiguration boolean The service supports configuration. Only the HAP Protocol Information service may support configuration.
 
----@class ServiceInformation
+---@class HapServiceInformation
 ---
 ---@field iid integer Instance ID.
----@field type ServiceType The type of the service.
+---@field type HapServiceType The type of the service.
 ---@field name string The name of the service.
 
----@class Characteristic:table HomeKit characteristic.
+---@class HapCharacteristic:table HomeKit characteristic.
 ---
----@field format CharacteristicFormat Format.
+---@field format HapCharacteristicFormat Format.
 ---@field iid integer Instance ID.
----@field type CharacteristicType The type of the characteristic.
+---@field type HapCharacteristicType The type of the characteristic.
 ---@field mfgDesc string Description of the characteristic provided by the manufacturer of the accessory.
----@field props CharacteristicProperties Characteristic properties.
----@field units CharacteristicUnits The units of the values for the characteristic. Format: UInt8|UInt16|UInt32|UInt64|Int|Float
----@field constraints StringCharacteristiConstraints|NumberCharacteristiConstraints|UInt8CharacteristiConstraints Value constraints.
----@field cbs CharacteristicCallbacks Callbacks.
+---@field props HapCharacteristicProperties Characteristic properties.
+---@field units HapCharacteristicUnits The units of the values for the characteristic. Format: UInt8|UInt16|UInt32|UInt64|Int|Float
+---@field constraints HapStringCharacteristiConstraints|HapNumberCharacteristiConstraints|HapUInt8CharacteristiConstraints Value constraints.
+---@field cbs HapCharacteristicCallbacks Callbacks.
 
----@class CharacteristicInformation
+---@class HapCharacteristicInformation
 ---
 ---@field iid integer Instance ID.
----@field format CharacteristicFormat Format.
----@field type CharacteristicType The type of the characteristic.
+---@field format HapCharacteristicFormat Format.
+---@field type HapCharacteristicType The type of the characteristic.
 
----@class StringCharacteristiConstraints:table Format: String|Data
+---@class HapStringCharacteristiConstraints:table Format: String|Data
 ---
 ---@field maxLen integer Maximum length.
 
----@class NumberCharacteristiConstraints:table Format: UInt16|UInt32|Uint64|Int|Float
+---@class HapNumberCharacteristiConstraints:table Format: UInt16|UInt32|Uint64|Int|Float
 ---
 ---@field minVal number Minimum value.
 ---@field maxVal number Maximum value.
 ---@field stepVal number Step value.
 
----@class UInt8CharacteristiConstraints:table Format: UInt8
+---@class HapUInt8CharacteristiConstraints:table Format: UInt8
 ---
 ---@field minVal integer Minimum value.
 ---@field maxVal integer Maximum value.
@@ -100,46 +100,46 @@ local hap = {}
 ---
 ---Only supported for Apple defined characteristics.
 ---@field validVals integer[] List of valid values in ascending order.
----@field validValsRanges UInt8CharacteristicValidValuesRange[] List of valid values ranges in ascending order.
+---@field validValsRanges HapUInt8CharacteristicValidValuesRange[] List of valid values ranges in ascending order.
 
----@class UInt8CharacteristicValidValuesRange
+---@class HapUInt8CharacteristicValidValuesRange
 ---
 ---@field start integer Starting value.
 ---@field stop integer Ending value.
 
----@class CharacteristicReadRequest:table Characteristic read request.
+---@class HapCharacteristicReadRequest:table Characteristic read request.
 ---
----@field transportType TransportType Transport type over which the request has been received.
----@field session Session The session over which the request has been received.
----@field accessory AccessoryInformation
----@field service ServiceInformation
----@field characteristic CharacteristicInformation
+---@field transportType HapTransportType Transport type over which the request has been received.
+---@field session HapSession The session over which the request has been received.
+---@field accessory HapAccessoryInformation
+---@field service HapServiceInformation
+---@field characteristic HapCharacteristicInformation
 
----@class CharacteristicWriteRequest:table Characteristic write request.
+---@class HapCharacteristicWriteRequest:table Characteristic write request.
 ---
----@field transportType TransportType Transport type over which the request has been received.
----@field session Session The session over which the request has been received.
----@field accessory AccessoryInformation
----@field service ServiceInformation
----@field characteristic CharacteristicInformation
+---@field transportType HapTransportType Transport type over which the request has been received.
+---@field session HapSession The session over which the request has been received.
+---@field accessory HapAccessoryInformation
+---@field service HapServiceInformation
+---@field characteristic HapCharacteristicInformation
 ---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
 
----@class CharacteristicSubscriptionRequest:table Characteristic subscription request.
+---@class HapCharacteristicSubscriptionRequest:table Characteristic subscription request.
 ---
----@field transportType TransportType Transport type over which the request has been received.
----@field session Session The session over which the request has been received.
----@field accessory AccessoryInformation
----@field service ServiceInformation
----@field characteristic CharacteristicInformation
+---@field transportType HapTransportType Transport type over which the request has been received.
+---@field session HapSession The session over which the request has been received.
+---@field accessory HapAccessoryInformation
+---@field service HapServiceInformation
+---@field characteristic HapCharacteristicInformation
 
----@class CharacteristicCallbacks:table Characteristic Callbacks.
+---@class HapCharacteristicCallbacks:table Characteristic Callbacks.
 ---
----@field read fun(request:CharacteristicReadRequest, context?:any):any, Error The callback used to handle read requests, it returns value and error.
----@field write fun(request:CharacteristicWriteRequest, val:any, context?:any):boolean, Error The callback used to handle write requests, it return changed flag and error.
----@field sub fun(request:CharacteristicSubscriptionRequest, context?:any) The callback used to handle subscribe requests.
----@field unsub fun(request:CharacteristicSubscriptionRequest, context?:any) The callback used to handle unsubscribe requests.
+---@field read fun(request:HapCharacteristicReadRequest, context?:any):any, HapError The callback used to handle read requests, it returns value and error.
+---@field write fun(request:HapCharacteristicWriteRequest, val:any, context?:any):boolean, HapError The callback used to handle write requests, it return changed flag and error.
+---@field sub fun(request:HapCharacteristicSubscriptionRequest, context?:any) The callback used to handle subscribe requests.
+---@field unsub fun(request:HapCharacteristicSubscriptionRequest, context?:any) The callback used to handle unsubscribe requests.
 
----@class CharacteristicProperties:table Properties that HomeKit characteristics can have.
+---@class HapCharacteristicProperties:table Properties that HomeKit characteristics can have.
 ---
 ---@field readable boolean The characteristic is readable.
 ---@field writable boolean The characteristic is writable.
@@ -149,31 +149,31 @@ local hap = {}
 ---@field writeRequiresAdminPermissions boolean The characteristic will only be accessible for write operations by admin controllers.
 ---@field requiresTimedWrite boolean The characteristic requires time sensitive actions.
 ---@field supportsAuthorizationData boolean The characteristic requires additional authorization data.
----@field ip CharacteristicPropertiesIP
----@field ble CharacteristicPropertiesBLE
+---@field ip HapCharacteristicPropertiesIP
+---@field ble HapCharacteristicPropertiesBLE
 
----@class CharacteristicPropertiesIP:table These properties only affect connections over IP (Ethernet / Wi-Fi).
+---@class HapCharacteristicPropertiesIP:table These properties only affect connections over IP (Ethernet / Wi-Fi).
 ---
 ---@field controlPoint boolean This flag prevents the characteristic from being read during discovery.
 ---@field supportsWriteResponse boolean Write operations on the characteristic require a read response value.
 
----@class CharacteristicPropertiesBLE:table These properties only affect connections over Bluetooth LE.
+---@class HapCharacteristicPropertiesBLE:table These properties only affect connections over Bluetooth LE.
 ---
 ---@field supportsBroadcastNotification boolean The characteristic supports broadcast notifications.
 ---@field supportsDisconnectedNotification boolean The characteristic supports disconnected notifications.
 ---@field readableWithoutSecurity boolean The characteristic is always readable, even before a secured session is established.
 ---@field writableWithoutSecurity boolean The characteristic is always writable, even before a secured session is established.
 
----@alias ServerState
+---@alias HapServerState
 ---| '"Idle"'
 ---| '"Running"'
 ---| '"Stopping"'
 
----@alias TransportType
+---@alias HapTransportType
 ---| '"IP"'     # HAP over IP (Ethernet / Wi-Fi).
 ---| '"BLE"'    # HAP over Bluetooth LE.
 
----@alias AccessoryCategory
+---@alias HapAccessoryCategory
 ---| '"BridgedAccessory"'
 ---| '"Other"'
 ---| '"Bridges"'
@@ -201,7 +201,7 @@ local hap = {}
 ---| '"Faucets"'
 ---| '"ShowerSystems"'
 
----@alias ServiceType
+---@alias HapServiceType
 ---| '"AccessoryInformation"'
 ---| '"GarageDoorOpener"'
 ---| '"LightBulb"'
@@ -243,7 +243,7 @@ local hap = {}
 ---| '"Microphone"'
 ---| '"Speaker"'
 
----@alias CharacteristicFormat
+---@alias HapCharacteristicFormat
 ---| '"Data"'
 ---| '"Bool"'
 ---| '"UInt8"'
@@ -255,7 +255,7 @@ local hap = {}
 ---| '"String"'
 ---| '"TLV8"'
 
----@alias CharacteristicType
+---@alias HapCharacteristicType
 ---| '"AdministratorOnlyAccess"'
 ---| '"AudioFeedback"'
 ---| '"Brightness"'
@@ -370,7 +370,7 @@ local hap = {}
 ---| '"ActiveIdentifier"'
 ---| '"ADKVersion"'
 
----@alias CharacteristicUnits
+---@alias HapCharacteristicUnits
 ---| '"None"'       # Unitless. Used for example on enumerations.
 ---| '"Celsius"'    # Degrees celsius.
 ---| '"ArcDegrees"' # The degrees of an arc.
@@ -378,7 +378,7 @@ local hap = {}
 ---| '"Lux"'        # Lux (that is, illuminance).
 ---| '"Seconds"'    # Seconds.
 
----@class Error:integer Error type.
+---@class HapError:integer Error type.
 
 ---``ENUM`` Error type.
 hap.Error = {
@@ -404,8 +404,8 @@ hap.HapProtocolInformationService = {}
 hap.PairingService = {}
 
 ---Configure HAP.
----@param primaryAccessory Accessory Primary accessory to serve.
----@param bridgedAccessories Accessory[] Array of bridged accessories.
+---@param primaryAccessory HapAccessory Primary accessory to serve.
+---@param bridgedAccessories HapAccessory[] Array of bridged accessories.
 ---@return boolean status true on success, false on failure.
 function hap.configure(primaryAccessory, bridgedAccessories) end
 
@@ -413,7 +413,7 @@ function hap.configure(primaryAccessory, bridgedAccessories) end
 function hap.unconfigure() end
 
 ---Start accessory server.
----@param serverCallbacks ServerCallbacks Accessory server callbacks.
+---@param serverCallbacks HapServerCallbacks Accessory server callbacks.
 ---@param confChanged boolean Whether or not the bridge configuration changed since the last start.
 ---@return boolean status true on success, false on failure.
 function hap.start(serverCallbacks, confChanged) end
@@ -427,7 +427,7 @@ function hap.stop() end
 ---@param accessoryIID integer Accessory instance ID.
 ---@param serviceIID integer Service instance ID.
 ---@param characteristicIID integer characteristic intstance ID.
----@param session? Session The session on which to raise the event.
+---@param session? HapSession The session on which to raise the event.
 function hap.raiseEvent(accessoryIID, serviceIID, characteristicIID, session) end
 
 ---Get a new Instance ID for bridged accessory.

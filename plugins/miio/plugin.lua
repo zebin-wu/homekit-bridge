@@ -10,7 +10,7 @@ local priv = {
 
 ---Initialize plugin.
 ---@param conf any Plugin configuration.
----@param report fun(plugin: string, accessory: Accessory) Report accessory to **core**.
+---@param report fun(plugin: string, accessory: HapAccessory) Report accessory to **core**.
 ---@return boolean status true on success, false on failure.
 function plugin.init(conf, report)
     priv.report = report
@@ -34,7 +34,7 @@ end
 
 ---Report bridged accessory.
 ---@param obj MiioDevice Device object.
----@param accessory? Accessory Bridged accessory.
+---@param accessory? HapAccessory Bridged accessory.
 local function _report(obj, addr, accessory)
     priv.pending[addr] = nil
     if not accessory then

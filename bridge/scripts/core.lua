@@ -14,9 +14,9 @@ local logger = log.getLogger("core")
 
 ---@class Plugin:table Plugin.
 ---
----@field init fun(conf: PluginConf|nil, report: fun(plugin: string, accessory: Accessory)): boolean Initialize plugin.
+---@field init fun(conf: PluginConf|nil, report: fun(plugin: string, accessory: HapAccessory)): boolean Initialize plugin.
 ---@field deinit fun() Deinitialize plugin.
----@field gen fun(conf: AccessoryConf): Accessory|nil Generate accessory via configuration.
+---@field gen fun(conf: AccessoryConf): HapAccessory|nil Generate accessory via configuration.
 ---@field isPending fun(): boolean Whether the accessory is waiting to be generated.
 
 local priv = {
@@ -27,7 +27,7 @@ local priv = {
 
 ---Report generated bridged accessory.
 ---@param name string Plugin name.
----@param accessory Accessory Accessory.
+---@param accessory HapAccessory Accessory.
 local function _report(name, accessory)
     table.insert(priv.accessories, accessory)
 
@@ -82,7 +82,7 @@ end
 ---Load plugins and generate bridged accessories.
 ---@param pluginConfs PluginConf[] Plugin configurations.
 ---@param accessoryConfs AccessoryConf[] Accessory configurations.
----@param done fun(bridgedAccessories: Accessory[]): boolean
+---@param done fun(bridgedAccessories: HapAccessory[]): boolean
 function core.start(pluginConfs, accessoryConfs, done)
     if pluginConfs then
         for i, conf in ipairs(pluginConfs) do
