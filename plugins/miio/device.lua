@@ -2,7 +2,6 @@ local protocol = require "miio.protocol"
 local timer = require "timer"
 
 local device = {}
-local logger = log.getLogger("miio.device")
 
 ---@alias DeviceState
 ---| '"NOINIT"'
@@ -38,6 +37,7 @@ function device.create(done, timeout, addr, token, ...)
 
     ---@class MiioDevice:table Device object.
     local o = {
+        logger = log.getLogger("miio.device:" .. addr),
         done = done,
         args = {...},
         pcb = nil, ---@type MiioPcb
@@ -91,7 +91,7 @@ function device.create(done, timeout, addr, token, ...)
         self.scanCtx = nil
         local pcb = protocol.create(addr, devid, token, stamp)
         if not pcb then
-            logger:error("Failed to create PCB.")
+            self.logger:error("Failed to create PCB.")
             handleDoneCb(self)
             return
         end
@@ -103,13 +103,13 @@ function device.create(done, timeout, addr, token, ...)
         end, "miIO.info", nil, self)
     end, addr, o, token)
     if not o.scanCtx then
-        logger:error("Failed to start scanning.")
+        o.logger:error("Failed to start scanning.")
         return nil
     end
 
     o.scanTimer = timer.create()
     o.scanTimer:start(timeout, function (self)
-        logger:error("Scan timeout.")
+        self.logger:error("Scan timeout.")
         self.scanCtx:stop()
         self.scanCtx = nil
         self.timer = nil
@@ -127,14 +127,48 @@ function device.create(done, timeout, addr, token, ...)
         dispatch(self)
     end
 
-    ---Sync properties.
-    ---@param names string[] Property names.
-    function o:syncProps(names)
+    local function syncPropsTimerCb(arg)
+        local self, names = table.unpack(arg)
+        self.logger:debug("Syncing properties ...")
         self:request(function (err, result, self, names)
-            assert(#result == #names)
-            for i, v in ipairs(result) do
-                self.props[names[i]] = v
+            if result then
+                assert(#result == #names)
+                local props = self.props
+                for i, v in ipairs(result) do
+                    local name = names[i]
+                    if props[name] ~= v then
+                        props[name] = v
+                        self.update(self, name, table.unpack(self.updateArgs))
+                    end
+                end
             end
+            local ms = math.random(3000, 5000)
+            self.logger:debug(("Sync properties after %dms."):format(ms))
+            self.timer:start(ms, syncPropsTimerCb, {self, names})
+        end, "get_prop", names, self, names)
+    end
+
+    ---Register properties.
+    ---@param names string[] Property names.
+    ---@param update fun(self: MiioDevice, name: string, ...) The callback will be called when the property is updated.
+    function o:registerProps(names, update, ...)
+        assert(type(names) == "table")
+        assert(type(update) == "function")
+
+        self.update = update
+        self.updateArgs = {...}
+        self.timer = timer.create()
+
+        self:request(function (err, result, self, names)
+            if result then
+                assert(#result == #names)
+                for i, v in ipairs(result) do
+                    self.props[names[i]] = v
+                end
+            end
+            local ms = math.random(3000, 5000)
+            self.logger:debug(("Sync properties after %dms ..."):format(ms))
+            self.timer:start(ms, syncPropsTimerCb, {self, names})
         end, "get_prop", names, self, names)
     end
 
@@ -149,9 +183,14 @@ function device.create(done, timeout, addr, token, ...)
     ---@param name string Property name.
     ---@param value any Property value.
     function o:setProp(name, value)
+        if self.props[name] == value then
+            return
+        end
         self.props[name] = value
         self:request(function (err, result, self, name)
-            
+            if result then
+                self.update(self, name, table.unpack(self.updateArgs))
+            end
         end, "set_" .. name, {value}, self, name)
     end
 
