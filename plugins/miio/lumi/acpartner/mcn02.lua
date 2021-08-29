@@ -86,7 +86,7 @@ function acpartner.gen(device, conf)
                             power = "off"
                         end
                         device:setProp("power", power)
-                        return false, hap.Error.None
+                        return hap.Error.None
                     end),
                     CurTemp.new(iids.curTemp, function (request, device)
                         local value = device:getProp("tar_temp")
@@ -129,7 +129,7 @@ function acpartner.gen(device, conf)
                             mode = "auto"
                         end
                         device:setProp("mode", mode)
-                        return false, hap.Error.None
+                        return hap.Error.None
                     end),
                     CoolThrholdTemp.new(iids.coolThrTemp, function (request, device)
                         local value =  device:getProp("tar_temp")
@@ -138,7 +138,7 @@ function acpartner.gen(device, conf)
                     end, function (request, value, device)
                         logger:info("Write CoolingThresholdTemperature: " .. value)
                         device:setProp("tar_temp", math.tointeger(value))
-                        return false, hap.Error.None
+                        return hap.Error.None
                     end, 16, 30, 1),
                     HeatThrholdTemp.new(iids.heatThrTemp, function (request, device)
                         local value = device:getProp("tar_temp")
@@ -147,7 +147,7 @@ function acpartner.gen(device, conf)
                     end, function (request, value, device)
                         logger:info("Write HeatingThresholdTemperature: " .. value)
                         device:setProp("tar_temp", math.tointeger(value))
-                        return false, hap.Error.None
+                        return hap.Error.None
                     end, 16, 30, 1),
                     SwingMode.new(iids.swingMode, function (request, device)
                         local value
@@ -167,7 +167,7 @@ function acpartner.gen(device, conf)
                             mode = "off"
                         end
                         device:setProp("ver_swing", mode)
-                        return false, hap.Error.None
+                        return hap.Error.None
                     end)
                 }
             }

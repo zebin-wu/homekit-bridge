@@ -1385,7 +1385,7 @@ HAPError lhap_char_last_handleWrite(lua_State *L,
     bool hasContext = lc_push_ref(L,
         LHAP_ACCESSORY_REF(accessory)->context);
 
-    if (lua_pcall(L, hasContext ? 3 : 2, 2, 1)) {
+    if (lua_pcall(L, hasContext ? 3 : 2, 1, 1)) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
         goto end;
     }
@@ -1394,18 +1394,6 @@ HAPError lhap_char_last_handleWrite(lua_State *L,
         goto end;
     }
     err = lua_tointeger(L, -1);
-    if (err != kHAPError_None) {
-        goto end;
-    }
-
-    if (!lua_isboolean(L, -2)) {
-        LHAP_LOG_TYPE_ERROR(L, "changed flag", LUA_TBOOLEAN, lua_type(L, -2));
-        goto end;
-    }
-
-    if (lua_toboolean(L, -2)) {
-        HAPAccessoryServerRaiseEvent(server, characteristic, service, accessory);
-    }
 
 end:
     return err;
