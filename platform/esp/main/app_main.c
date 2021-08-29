@@ -74,9 +74,19 @@ static struct {
     HAPPlatformMFiTokenAuth mfiTokenAuth;
 } platform;
 
-static void app_console_start_cb(void* _Nullable context, size_t contextSize)
-{
+static void app_console_start_cb(void* _Nullable context, size_t contextSize) {
     app_console_start();
+}
+
+static void app_lua_run_cb(void* _Nullable context, size_t contextSize) {
+    HAPAssert(app_lua_run(APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY));
+}
+
+static void app_wifi_connected_cb() {
+    app_wifi_set_connected_cb(NULL);
+    // Run lua entry.
+    HAPError err = HAPPlatformRunLoopScheduleCallback(app_lua_run_cb, NULL, 0);
+    HAPAssert(err == kHAPError_None);
 }
 
 /**
@@ -105,6 +115,7 @@ static void init_platform() {
     app_wifi_on();
     app_spiffs_init();
 
+    app_wifi_set_connected_cb(app_wifi_connected_cb);
     app_wifi_register_cmd();
     register_system();
 
@@ -183,9 +194,6 @@ void app_main_task(void *arg) {
     init_platform();
 
     app_init(&platform.hapPlatform);
-
-    // Run lua entry.
-    HAPAssert(app_lua_run(APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY));
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();

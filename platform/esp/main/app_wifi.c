@@ -33,6 +33,7 @@ typedef enum {
 typedef struct {
     ap_wifi_state state;
     wifi_mode_t mode;
+    void (*connected_cb)(void);
 } app_wifi_desc;
 
 static const char *TAG = "app_wifi";
@@ -79,6 +80,9 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             ip_event_got_ip_t *evt = event_data;
             ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&evt->ip_info.ip));
             retry = 0;
+            if (gv_wifi_desc.connected_cb) {
+                gv_wifi_desc.connected_cb();
+            }
             break;
         }
         default:
@@ -181,4 +185,8 @@ void app_wifi_register_cmd(void)
     };
 
     ESP_ERROR_CHECK(esp_console_cmd_register(&join_cmd));
+}
+
+void app_wifi_set_connected_cb(void (*cb)(void)) {
+    gv_wifi_desc.connected_cb = cb;
 }
