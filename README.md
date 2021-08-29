@@ -9,6 +9,13 @@
 
 A HomeKit gateway specially designed for embedded devices, it allows you to connect non-HomeKit devices to HomeKit through simple configuration.
 
+## Supported devices
+
+### Mi Home - [miio](plugins/miio/README.md)
+Product Name | Model
+-|-
+Xiaomi Mi Air Conditioner Companion 2 | `lumi.acpartner.mcn02`
+
 ## Code style
 
 HomeKit bridge supports code style checking, the checker is [cpplint](https://github.com/google/styleguide), a command line tool that checks for style issues in C/C++ files according to the [Google C++ Style Guide](http://google.github.io/styleguide/cppguide.html).
