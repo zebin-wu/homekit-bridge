@@ -7,6 +7,10 @@
 #ifndef PLATFORM_INCLUDE_PAL_NET_UDP_H_
 #define PLATFORM_INCLUDE_PAL_NET_UDP_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <HAPBase.h>
 #include <pal/net/types.h>
 
@@ -133,5 +137,9 @@ void pal_net_udp_set_err_cb(pal_net_udp *udp, pal_net_udp_err_cb cb, void *arg);
  * @param udp UDP PCB.
  */
 void pal_net_udp_free(pal_net_udp *udp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // PLATFORM_INCLUDE_PAL_NET_UDP_H_
