@@ -30,6 +30,11 @@ void app_wifi_off(void);
 void app_wifi_connect(const char *ssid, const char *password);
 
 /**
+ * Set connected callback.
+ */
+void app_wifi_set_connected_cb(void (*cb)(void));
+
+/**
  * Regsiter Wi=Fi command.
  */
 void app_wifi_register_cmd(void);
