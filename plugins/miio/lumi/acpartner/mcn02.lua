@@ -1,4 +1,3 @@
-local device = require "miio.device"
 local hap = require "hap"
 local util = require "util"
 local ServiceSignature = require "hap.char.ServiceSignature"
@@ -16,28 +15,49 @@ local model = "lumi.acpartner.mcn02"
 local logger = log.getLogger(model)
 
 ---Create acpartner.
----@param obj MiioDevice Device object.
----@return Accessory accessory HomeKit Accessory.
-function acpartner.gen(obj, conf)
-    obj:syncProps({
+---@param device MiioDevice Device deviceect.
+---@return HapAccessory accessory HomeKit Accessory.
+function acpartner.gen(device, conf)
+    local iids = {}
+
+    for i, v in ipairs({
+        "acc", "serv", "active", "curTemp", "curState", "tgtState", "coolThrTemp", "heatThrTemp", "swingMode"
+    }) do
+        iids[v] = hap.getNewInstanceID()
+    end
+
+    device:registerProps({
         "power", "mode", "tar_temp", "far_level", "ver_swing"
-    })
+    }, function (self, name, iids)
+        if name == "power" then
+            hap.raiseEvent(iids.acc, iids.serv, iids.active)
+        elseif name == "mode" then
+            hap.raiseEvent(iids.acc, iids.serv, iids.curState)
+            hap.raiseEvent(iids.acc, iids.serv, iids.tgtState)
+        elseif name == "tar_temp" then
+            hap.raiseEvent(iids.acc, iids.serv, iids.coolThrTemp)
+            hap.raiseEvent(iids.acc, iids.serv, iids.heatThrTemp)
+            hap.raiseEvent(iids.acc, iids.serv, iids.curTemp)
+        elseif name == "ver_swing" then
+            hap.raiseEvent(iids.acc, iids.serv, iids.swingMode)
+        end
+    end, iids)
 
     return {
-        aid = hap.getNewBridgedAccessoryID(),
+        aid = iids.acc,
         category = "BridgedAccessory",
         name = conf.name or "Acpartner",
         mfg = "lumi",
         model = model,
-        sn = obj.info.mac,
-        fwVer = obj.info.fw_ver,
-        hwVer = obj.info.hw_ver,
+        sn = device.info.mac,
+        fwVer = device.info.fw_ver,
+        hwVer = device.info.hw_ver,
         services = {
             hap.AccessoryInformationService,
             hap.HapProtocolInformationService,
             hap.PairingService,
             {
-                iid = hap.getNewInstanceID(),
+                iid = iids.serv,
                 type = "HeaterCooler",
                 name = "Heater Cooler",
                 props = {
@@ -48,38 +68,33 @@ function acpartner.gen(obj, conf)
                     }
                 },
                 chars = {
-                    Name.new(hap.getNewInstanceID()),
-                    Active.new(hap.getNewInstanceID(), function (request, obj)
+                    Active.new(iids.active, function (request, device)
                         local value
-                        if obj:getProp("power") == "on" then
+                        if device:getProp("power") == "on" then
                             value = Active.value.Active
                         else
                             value = Active.value.Inactive
                         end
                         logger:info("Read active: " .. util.searchKey(Active.value, value))
                         return value, hap.Error.None
-                    end, function (request, value, obj)
+                    end, function (request, value, device)
                         logger:info("Write active: " .. util.searchKey(Active.value, value))
                         local power
-                        local changed = false
                         if value == Active.value.Active then
                             power = "on"
                         else
                             power = "off"
                         end
-                        if obj:getProp("power") ~= power then
-                            obj:setProp("power", power)
-                            changed = true
-                        end
-                        return changed, hap.Error.None
+                        device:setProp("power", power)
+                        return false, hap.Error.None
                     end),
-                    CurTemp.new(hap.getNewInstanceID(), function (request, obj)
-                        local value = obj:getProp("tar_temp")
+                    CurTemp.new(iids.curTemp, function (request, device)
+                        local value = device:getProp("tar_temp")
                         logger:info("Read CurrentTemperature: " .. value)
-                        return tonumber(value), hap.Error.None
+                        return value, hap.Error.None
                     end),
-                    CurHeatCoolState.new(hap.getNewInstanceID(), function (request, obj)
-                        local mode = obj:getProp("mode")
+                    CurHeatCoolState.new(iids.curState, function (request, device)
+                        local mode = device:getProp("mode")
                         local value
                         if mode == "cool" then
                             value = CurHeatCoolState.value.Cooling
@@ -91,8 +106,8 @@ function acpartner.gen(obj, conf)
                         logger:info("Read CurrentHeaterCoolerState: " .. util.searchKey(CurHeatCoolState.value, value))
                         return value, hap.Error.None
                     end),
-                    TgtHeatCoolState.new(hap.getNewInstanceID(), function (request, obj)
-                        local mode = obj:getProp("mode")
+                    TgtHeatCoolState.new(iids.tgtState, function (request, device)
+                        local mode = device:getProp("mode")
                         local value
                         if mode == "cool" then
                             value = TgtHeatCoolState.value.Cool
@@ -103,10 +118,9 @@ function acpartner.gen(obj, conf)
                         end
                         logger:info("Read TargetHeaterCoolerState: " .. util.searchKey(TgtHeatCoolState.value, value))
                         return value, hap.Error.None
-                    end, function (request, value, obj)
+                    end, function (request, value, device)
                         logger:info("Write TargetHeaterCoolerState: " .. util.searchKey(TgtHeatCoolState.value, value))
                         local mode
-                        local changed = false
                         if value == TgtHeatCoolState.value.Cool then
                             mode = "cool"
                         elseif value == TgtHeatCoolState.value.Heat then
@@ -114,63 +128,46 @@ function acpartner.gen(obj, conf)
                         elseif value == TgtHeatCoolState.value.HeatOrCool then
                             mode = "auto"
                         end
-                        if obj:getProp("mode") ~= mode then
-                            obj:setProp("mode", mode)
-                            changed = true
-                        end
-                        return changed, hap.Error.None
+                        device:setProp("mode", mode)
+                        return false, hap.Error.None
                     end),
-                    CoolThrholdTemp.new(hap.getNewInstanceID(), function (request, obj)
-                        local value =  obj:getProp("tar_temp")
+                    CoolThrholdTemp.new(iids.coolThrTemp, function (request, device)
+                        local value =  device:getProp("tar_temp")
                         logger:info("Read CoolingThresholdTemperature: " .. value)
                         return tonumber(value), hap.Error.None
-                    end, function (request, value, obj)
-                        local changed = false
-                        value = math.tointeger(value)
+                    end, function (request, value, device)
                         logger:info("Write CoolingThresholdTemperature: " .. value)
-                        if obj:getProp("tar_temp") ~= value then
-                            obj:setProp("tar_temp", value)
-                            changed = true
-                        end
-                        return changed, hap.Error.None
+                        device:setProp("tar_temp", math.tointeger(value))
+                        return false, hap.Error.None
                     end, 16, 30, 1),
-                    HeatThrholdTemp.new(hap.getNewInstanceID(), function (request, obj)
-                        local value = obj:getProp("tar_temp")
+                    HeatThrholdTemp.new(iids.heatThrTemp, function (request, device)
+                        local value = device:getProp("tar_temp")
                         logger:info("Read HeatingThresholdTemperature: " .. value)
                         return tonumber(value), hap.Error.None
-                    end, function (request, value, obj)
-                        local changed = false
-                        value = math.tointeger(value)
+                    end, function (request, value, device)
                         logger:info("Write HeatingThresholdTemperature: " .. value)
-                        if obj:getProp("tar_temp") ~= value then
-                            obj:setProp("tar_temp", value)
-                            changed = true
-                        end
-                        return changed, hap.Error.None
+                        device:setProp("tar_temp", math.tointeger(value))
+                        return false, hap.Error.None
                     end, 16, 30, 1),
-                    SwingMode.new(hap.getNewInstanceID(), function (request, obj)
+                    SwingMode.new(iids.swingMode, function (request, device)
                         local value
-                        if obj:getProp("ver_swing") == "on" then
+                        if device:getProp("ver_swing") == "on" then
                             value = SwingMode.value.Enabled
                         else
                             value = SwingMode.value.Disabled
                         end
                         logger:info("Read SwingMode: " .. util.searchKey(SwingMode.value, value))
                         return value, hap.Error.None
-                    end, function (request, value, obj)
+                    end, function (request, value, device)
                         logger:info("Write SwingMode: " .. util.searchKey(SwingMode.value, value))
                         local mode
-                        local changed = false
                         if value == SwingMode.value.Enabled then
                             mode = "on"
                         else
                             mode = "off"
                         end
-                        if obj:getProp("ver_swing") ~= mode then
-                            obj:setProp("ver_swing", mode)
-                            changed = true
-                        end
-                        return changed, hap.Error.None
+                        device:setProp("ver_swing", mode)
+                        return false, hap.Error.None
                     end)
                 }
             }
@@ -181,7 +178,7 @@ function acpartner.gen(obj, conf)
                 return hap.Error.None
             end
         },
-        context = obj
+        context = device
     }
 end
 
