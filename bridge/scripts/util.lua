@@ -32,4 +32,22 @@ function util.split(s, c)
     return rl
 end
 
+---Hex to binary.
+---@param s string Hex string.
+---@return string # Binary string.
+function util.hex2bin(s)
+    return s:gsub('..', function (cc)
+        return string.char(tonumber(cc, 16))
+    end)
+end
+
+---Binary to hex.
+---@param s string Binary string.
+---@return string # Hex string.
+function util.bin2hex(s)
+    return s:gsub('.', function (c)
+        return string.format('%02X', string.byte(c))
+    end)
+end
+
 return util
