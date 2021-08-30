@@ -96,6 +96,12 @@ void lc_add_searcher(lua_State *L, lua_CFunction searcher);
 void lc_set_path(lua_State *L, const char *path);
 
 /**
+ * Set search path for C libraries.
+ * package.cpath = cpath
+ */
+void lc_set_cpath(lua_State *L, const char *cpath);
+
+/**
  * Creates and returns a reference.
  */
 int lc_ref(lua_State *L, int idx);
