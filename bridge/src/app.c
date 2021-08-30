@@ -44,7 +44,6 @@ static const luaL_Reg dynamiclibs[] = {
     {NULL, NULL}
 };
 
-// Method to search module in dynamiclibs.
 static int searcher_dl(lua_State *L) {
     const char *name = luaL_checkstring(L, 1);
     const luaL_Reg *lib = dynamiclibs;
@@ -80,9 +79,12 @@ bool app_lua_run(const char *dir, const char *entry) {
         lua_pop(L, 1);  /* remove lib */
     }
 
-    // set search path
+    // set file path
     HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/?.lua;%s/?.luac", dir, dir) == kHAPError_None);
     lc_set_path(L, path);
+
+    // set C path
+    lc_set_cpath(L, "");
 
     // add searcher_dl to package.searcher
     lc_add_searcher(L, searcher_dl);

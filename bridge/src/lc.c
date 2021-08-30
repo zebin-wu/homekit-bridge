@@ -135,7 +135,7 @@ void lc_add_searcher(lua_State *L, lua_CFunction searcher) {
 
     int len = lua_rawlen(L, -1);
     lua_pushcfunction(L, searcher);
-    lua_rawseti(L, -2, len);
+    lua_rawseti(L, -2, len + 1);
     lua_pop(L, 2);
 }
 
@@ -144,6 +144,14 @@ void lc_set_path(lua_State *L, const char *path) {
 
     lua_pushstring(L, path);
     lua_setfield(L, -2, "path");
+    lua_pop(L, 1);
+}
+
+void lc_set_cpath(lua_State *L, const char *cpath) {
+    lua_getglobal(L, "package");
+
+    lua_pushstring(L, cpath);
+    lua_setfield(L, -2, "cpath");
     lua_pop(L, 1);
 }
 
