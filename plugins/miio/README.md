@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This plugin implement the [miio protocol](https://github.com/OpenMiHome/mihome-binary-protocol/blob/master/doc/PROTOCOL.md), and encapsulate the protocol as class `MiioDevice`, provide features:
+This plugin implement the [miio protocol](https://github.com/OpenMiHome/mihome-binary-protocol/blob/master/doc/PROTOCOL.md), and encapsulate the class `MiioDevice`, provide features:
 - Create a device object.
 - Start a request and receive the response asynchronously.
 - Automatically sync properties.
@@ -24,7 +24,7 @@ Refer to the following link: https://www.home-assistant.io/integrations/xiaomi_m
 
 ### Write configuration
 
-Name | type | description | Required | Example
+Name | Type | Description | Required | Example
 -|-|-|-|-
 `addr` | `string` | Device address | Yes | `"192.168.1.10"`
 `token` | `string` | Device token | Yes | `"d1abcd1230238cf1g123a142962agdd1"`
