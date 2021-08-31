@@ -16,11 +16,13 @@ set(BRIDGE_SRCS
     ${BRIDGE_SRC_DIR}/lc.c
     ${BRIDGE_SRC_DIR}/lhashlib.c
     ${BRIDGE_SRC_DIR}/lcipherlib.c
+    ${BRIDGE_SRC_DIR}/embedfs.c
 )
 
 # collect bridge headers
 set(BRIDGE_HEADERS
     ${BRIDGE_INC_DIR}/app.h
+    ${BRIDGE_INC_DIR}/embedfs.h
     ${BRIDGE_SRC_DIR}/app_int.h
     ${BRIDGE_SRC_DIR}/db.h
     ${BRIDGE_SRC_DIR}/lc.h
