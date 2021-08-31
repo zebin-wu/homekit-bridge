@@ -36,7 +36,7 @@ end
 ---@param s string Hex string.
 ---@return string # Binary string.
 function util.hex2bin(s)
-    return s:gsub('..', function (cc)
+    return s:gsub("..", function (cc)
         return string.char(tonumber(cc, 16))
     end)
 end
@@ -45,7 +45,7 @@ end
 ---@param s string Binary string.
 ---@return string # Hex string.
 function util.bin2hex(s)
-    return s:gsub('.', function (c)
+    return s:gsub(".", function (c)
         return string.format('%02X', string.byte(c))
     end)
 end
