@@ -6,6 +6,7 @@
 
 #include <lauxlib.h>
 #include <lualib.h>
+#include <embedfs.h>
 
 #include <app.h>
 
@@ -15,6 +16,9 @@
 // Declare the function of lua-cjson.
 #define LUA_CJSON_NAME "cjson"
 extern int luaopen_cjson(lua_State *L);
+
+// Lua binary root directory descrption.
+extern const embedfs_dir lua_binary_root;
 
 static lua_State *L;
 
@@ -61,6 +65,32 @@ static int searcher_dl(lua_State *L) {
     return 1;
 }
 
+static void gen_filename(const char *name, char *buf) {
+    for (; *name; name++) {
+        if (*name == '.') {
+            *buf++ = '/';
+        } else {
+            *buf++ = *name;
+        }
+    }
+    HAPRawBufferCopyBytes(buf, ".luac", sizeof(".luac"));
+}
+
+static int searcher_bin(lua_State *L) {
+    size_t len;
+    const char *name = luaL_checklstring(L, 1, &len);
+    char filename[len + sizeof(".luac")];
+
+    gen_filename(name, filename);
+    const embedfs_file *file = embedfs_find_file(&lua_binary_root, filename);
+    if (file) {
+        luaL_loadbuffer(L, file->data, file->len, filename);
+    } else {
+        lua_pushfstring(L, "no file '%s'", filename);
+    }
+    return 1;
+}
+
 bool app_lua_run(const char *dir, const char *entry) {
     HAPPrecondition(dir);
     HAPPrecondition(entry);
@@ -89,9 +119,19 @@ bool app_lua_run(const char *dir, const char *entry) {
     // add searcher_dl to package.searcher
     lc_add_searcher(L, searcher_dl);
 
+    // add searcher_bin to package.searcher
+    lc_add_searcher(L, searcher_bin);
+
     // run entry scripts
-    HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/%s.luac", dir, entry) == kHAPError_None);
-    int status = luaL_dofile(L, path);
+    HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s.luac", entry) == kHAPError_None);
+    const embedfs_file *file = embedfs_find_file(&lua_binary_root, path);
+    int status;
+    if (file) {
+        status = (luaL_loadbuffer(L, file->data, file->len, path) || lua_pcall(L, 0, LUA_MULTRET, 0));
+    } else {
+        HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/%s.luac", dir, entry) == kHAPError_None);
+        status = luaL_dofile(L, path);
+    }
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
         HAPLogError(&kHAPLog_Default, "%s.luac: %s", entry, msg);

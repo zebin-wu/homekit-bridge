@@ -22,6 +22,12 @@ set(BRIDGE_WORK_DIR ${CMAKE_BINARY_DIR}/bridge_scripts)
 set(EXAMPLE_WORK_DIR ${CMAKE_BINARY_DIR}/example_scripts)
 set(TESTS_WORK_DIR ${CMAKE_BINARY_DIR}/tests_scripts)
 
+# set the generated embedfs headers directory
+set(BRIDGE_EMBEDFS_HEADERS_DIR ${CMAKE_BINARY_DIR}/bridge_embedfs)
+
+# set the generated embedfs output file
+set(BRIDGE_EMBEDFS_GEN_OUTPUT ${CMAKE_BINARY_DIR}/embedfs_gen.c)
+
 # compile luac
 set(LUAC_BUILD_DIR ${CMAKE_BINARY_DIR}/luac)
 set(LUAC_BINARY ${LUAC_BUILD_DIR}/luac)
@@ -31,9 +37,9 @@ compile_luac(${LUAC_BINARY}
     DEPENDS ${LUA_SRCS} ${LUAC_SRCS} ${LUA_HEADERS}
 )
 
-# generate lua binaries to work directory
-gen_lua_binary_from_dir(bridge_scripts
-    ${BRIDGE_WORK_DIR}
+gen_lua_binary_embedfs_from_dir(bridge_embedfs
+    ${BRIDGE_EMBEDFS_GEN_OUTPUT}
+    ${BRIDGE_EMBEDFS_HEADERS_DIR}
     ${LUAC_BINARY}
     DEBUG
     SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${PLUGINS_DIR}
@@ -43,14 +49,14 @@ gen_lua_binary_from_dir(example_scripts
     ${EXAMPLE_WORK_DIR}
     ${LUAC_BINARY}
     DEBUG
-    SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/example
+    SRC_DIRS ${TOP_DIR}/example
 )
 
 gen_lua_binary_from_dir(tests_scripts
     ${TESTS_WORK_DIR}
     ${LUAC_BINARY}
     DEBUG
-    SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/tests
+    SRC_DIRS ${TOP_DIR}/tests
 )
 
 # generate default config.lua
@@ -65,6 +71,7 @@ set(SRCS
     ${BRIDGE_SRCS}
     ${LUA_SRCS}
     ${LUA_CJSON_SRCS}
+    ${BRIDGE_EMBEDFS_GEN_OUTPUT}
 )
 add_executable(${PROJECT} ${SRCS})
 
@@ -86,6 +93,7 @@ target_include_directories(${PROJECT}
         ${BRIDGE_INC_DIR}
         ${LUA_INC_DIR}
         ${PLATFORM_INC_DIR}
+        ${BRIDGE_EMBEDFS_HEADERS_DIR}
 )
 
 # add definitions
