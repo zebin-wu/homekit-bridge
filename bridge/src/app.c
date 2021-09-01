@@ -84,7 +84,7 @@ static int searcher_embedfs(lua_State *L) {
     gen_filename(name, filename);
     const embedfs_file *file = embedfs_find_file(&BRIDGE_EMBEDFS_ROOT, filename);
     if (file) {
-        luaL_loadbuffer(L, file->data, file->len, filename);
+        luaL_loadbuffer(L, file->data, file->len, NULL);
     } else {
         lua_pushfstring(L, "no file '%s' in bridge embedfs", filename);
     }
@@ -127,14 +127,14 @@ bool app_lua_run(const char *dir, const char *entry) {
     const embedfs_file *file = embedfs_find_file(&BRIDGE_EMBEDFS_ROOT, path);
     int status;
     if (file) {
-        status = (luaL_loadbuffer(L, file->data, file->len, path) || lua_pcall(L, 0, LUA_MULTRET, 0));
+        status = (luaL_loadbuffer(L, file->data, file->len, NULL) || lua_pcall(L, 0, LUA_MULTRET, 0));
     } else {
         HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/%s.luac", dir, entry) == kHAPError_None);
         status = luaL_dofile(L, path);
     }
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
-        HAPLogError(&kHAPLog_Default, "%s.luac: %s", entry, msg);
+        HAPLogError(&kHAPLog_Default, "%s", msg);
         goto err1;
     }
 

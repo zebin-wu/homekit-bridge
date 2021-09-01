@@ -391,6 +391,9 @@ typedef struct {
 
     lua_State *L;
     size_t attribute_cnt;
+    size_t readCnt;
+    size_t writeCnt;
+    size_t notifyCnt;
     size_t bridged_aid;
     size_t iid;
     int server_cb_ref_ids[LHAP_SERVER_CB_MAX];
@@ -404,6 +407,9 @@ typedef struct {
 
 static lhap_desc gv_lhap_desc = {
     .attribute_cnt = kAttributeCount,
+    .readCnt = kReadCount,
+    .writeCnt = kWriteCount,
+    .notifyCnt = kNotifyCount,
     .bridged_aid = LHAP_BRIDGED_ACCESSORY_IID_DFT,
     .iid = kAttributeCount + 1,
     .server_options = {
@@ -649,18 +655,21 @@ lhap_characteristic_mfg_desc_cb(lua_State *L, const lc_table_kv *kv, void *arg) 
 static bool
 lhap_char_props_readable_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     ((HAPCharacteristicProperties *)arg)->readable = lua_toboolean(L, -1);
+    gv_lhap_desc.readCnt++;
     return true;
 }
 
 static bool
 lhap_char_props_writable_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     ((HAPCharacteristicProperties *)arg)->writable = lua_toboolean(L, -1);
+    gv_lhap_desc.writeCnt++;
     return true;
 }
 
 static bool
 lhap_char_props_support_evt_notify_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     ((HAPCharacteristicProperties *)arg)->supportsEventNotification = lua_toboolean(L, -1);
+    gv_lhap_desc.notifyCnt++;
     return true;
 }
 
@@ -2165,6 +2174,9 @@ int lhap_unconfigure(lua_State *L) {
         lc_safe_free(desc->primary_acc);
     }
     desc->attribute_cnt = kAttributeCount;
+    desc->readCnt = kReadCount;
+    desc->writeCnt = kWriteCount;
+    desc->notifyCnt = kNotifyCount;
     desc->bridged_aid = 1;
     desc->iid = kAttributeCount + 1;
     desc->is_configured = false;
@@ -2204,7 +2216,7 @@ static int lhap_start(lua_State *L) {
     bool conf_changed = lua_toboolean(L, 2);
 
 #if IP
-    pal_hap_init_ip(&desc->server_options, desc->attribute_cnt);
+    pal_hap_init_ip(&desc->server_options, desc->readCnt, desc->writeCnt, desc->notifyCnt);
 #endif
 
 #if BLE
