@@ -52,18 +52,18 @@ endfunction(gen_lua_binary_from_dir)
 
 # Compile luac.
 #
-# compile_luac(BIN MAKE_DIR BUILD_DIR
+# compile_luac(BIN SRC_DIR BUILD_DIR
 #              [DEPENDS depend depend depend ... ])
-function(compile_luac bin make_dir build_dir)
+function(compile_luac bin src_dir build_dir)
     set(multi DEPENDS)
     cmake_parse_arguments(arg "" "" "${multi}" "${ARGN}")
     add_custom_command(OUTPUT ${bin}
         COMMAND ${CMAKE_COMMAND}
-            -H${make_dir}
+            -S${src_dir}
             -B${build_dir}
             -G Ninja
         COMMAND cmake --build ${build_dir} -j10
-        DEPENDS ${make_dir}/CMakeLists.txt ${arg_DEPENDS}
+        DEPENDS ${src_dir}/CMakeLists.txt ${arg_DEPENDS}
         COMMENT "Compiling luac"
     )
     add_custom_target(luac ALL DEPENDS ${bin})
@@ -119,18 +119,58 @@ function(check_style target top_dir)
 endfunction(check_style)
 
 #
-# Generate embedfs tree.
+# Add embedfs to a target.
 #
-function(gen_embedfs_tree_process output dir)
+# target_add_embedfs(TARGET DIR ROOT_NAME)
+function (target_add_embedfs target dir root_name)
+    find_program(XXD NAMES "xxd")
+    if(NOT XXD)
+        message(FATAL_ERROR "Please install xxd via \"sudo apt install xxd\".")
+    endif()
 
-endfunction()
+    set(dest_dir ${CMAKE_BINARY_DIR}/${target}_${root_name})
+    set(output ${dest_dir}/${target}_${root_name}.c)
+
+    file(GLOB_RECURSE files RELATIVE ${dir} ${dir}/*)
+    foreach(file ${files})
+        set(header ${dest_dir}/${file}.h)
+        set(headers ${headers} ${header})
+        add_custom_command(OUTPUT ${header}
+            COMMAND cd ${dir}
+            COMMAND ${XXD}
+                -c 12 -i ${file} |
+                sed "s/unsigned char/static const char/" |
+                sed "/unsigned int/s/[=\;]//g\;s/unsigned int/#define/"
+                > ${header}
+            COMMAND echo "Generated ${header}"
+            DEPENDS ${dir}/${file}
+            COMMENT "Generating ${header}"
+        )
+    endforeach()
+
+    add_custom_command(OUTPUT ${output}
+        COMMAND ${CMAKE_COMMAND}
+            -D OUTPUT=${output}
+            -D ROOT_DIR=${dir}
+            -D DEST_DIR=${dest_dir}
+            -D EMBEDFS_ROOT_NAME=${root_name}
+            -P ${TOP_DIR}/cmake/gen_embedfs.cmake
+        DEPENDS ${headers} ${TOP_DIR}/cmake/gen_embedfs.cmake
+    )
+    target_sources(${target}
+        PRIVATE ${output}
+    )
+    target_include_directories(${target}
+        PRIVATE ${dest_dir}
+    )
+endfunction(target_add_embedfs)
 
 #
-# Generate embedfs from a directory.
+# Add lua binary embedfs to a target.
 #
-# gen_embedfs_from_dir(TARGET OUTPUT DEST_DIR LUAC [DEBUG]
-#                         [SRC_DIRS dir1 [dir2...]])
-function(gen_lua_binary_embedfs_from_dir target output dest_dir luac)
+# target_add_lua_binary_embedfs(TARGET ROOT_NAME LUAC [DEBUG]
+#                               [SRC_DIRS dir1 [dir2...]])
+function(target_add_lua_binary_embedfs target root_name luac)
     find_program(XXD NAMES "xxd")
     if(NOT XXD)
         message(FATAL_ERROR "Please install xxd via \"sudo apt install xxd\".")
@@ -143,8 +183,11 @@ function(gen_lua_binary_embedfs_from_dir target output dest_dir luac)
         set(GEN_LUA_LIBRARY_OPTIONS DEBUG)
     endif()
 
-    set(binary_dir ${dest_dir}_bin)
-    gen_lua_binary_from_dir(${target}_bin
+    set(dest_dir ${CMAKE_BINARY_DIR}/${target}_${root_name})
+    set(output ${dest_dir}/${target}_${root_name}.c)
+    set(binary_dir ${CMAKE_BINARY_DIR}/${target}_${root_name}_bin)
+
+    gen_lua_binary_from_dir(${target}_${root_name}_bin
         ${binary_dir}
         ${luac}
         ${GEN_LUA_LIBRARY_OPTIONS}
@@ -157,12 +200,13 @@ function(gen_lua_binary_embedfs_from_dir target output dest_dir luac)
             set(bin ${bin}c)
             set(header ${dest_dir}/${bin}.h)
             set(headers ${headers} ${header})
+            string(REGEX REPLACE "[/.]" "_" filename ${bin})
             add_custom_command(OUTPUT ${header}
                 COMMAND cd ${binary_dir}
                 COMMAND ${XXD}
                     -c 12 -i ${bin} |
-                    sed 's/unsigned char/const char/' |
-                    sed 's/unsigned int/const unsigned int/'
+                    sed "s/unsigned char/static const char/" |
+                    sed "/unsigned int/s/[=\;]//g\;s/unsigned int/#define/"
                     > ${header}
                 COMMAND echo "Generated ${header}"
                 DEPENDS ${binary_dir}/${bin}
@@ -174,14 +218,13 @@ function(gen_lua_binary_embedfs_from_dir target output dest_dir luac)
     add_custom_command(OUTPUT ${output}
         COMMAND ${CMAKE_COMMAND}
             -D OUTPUT=${output}
-            -D ROOT_DIR=${dest_dir}_bin
-            -D EMBEDFS_ROOT_NAME=lua_binary_root
+            -D ROOT_DIR=${binary_dir}
+            -D DEST_DIR=${dest_dir}
+            -D EMBEDFS_ROOT_NAME=${root_name}
             -P ${TOP_DIR}/cmake/gen_embedfs.cmake
         DEPENDS ${headers} ${TOP_DIR}/cmake/gen_embedfs.cmake
     )
-
-    add_custom_target(${target}
-        ALL
-        DEPENDS ${output} ${headers}
+    target_sources(${target}
+        PRIVATE ${output}
     )
-endfunction(gen_embedfs_from_dir)
+endfunction(target_add_lua_binary_embedfs)

@@ -17,16 +17,15 @@ include(${TOP_DIR}/cmake/extension.cmake)
 
 project(${PROJECT}-${PLATFORM})
 
+add_executable(${PROJECT} "")
+
 # set the work directory
 set(BRIDGE_WORK_DIR ${CMAKE_BINARY_DIR}/bridge_scripts)
 set(EXAMPLE_WORK_DIR ${CMAKE_BINARY_DIR}/example_scripts)
 set(TESTS_WORK_DIR ${CMAKE_BINARY_DIR}/tests_scripts)
 
-# set the generated embedfs headers directory
-set(BRIDGE_EMBEDFS_HEADERS_DIR ${CMAKE_BINARY_DIR}/bridge_embedfs)
-
-# set the generated embedfs output file
-set(BRIDGE_EMBEDFS_GEN_OUTPUT ${CMAKE_BINARY_DIR}/embedfs_gen.c)
+# set the embedfs root
+set(BRIDGE_EMBEDFS_ROOT bridge_embedfs_root)
 
 # compile luac
 set(LUAC_BUILD_DIR ${CMAKE_BINARY_DIR}/luac)
@@ -37,9 +36,8 @@ compile_luac(${LUAC_BINARY}
     DEPENDS ${LUA_SRCS} ${LUAC_SRCS} ${LUA_HEADERS}
 )
 
-gen_lua_binary_embedfs_from_dir(bridge_embedfs
-    ${BRIDGE_EMBEDFS_GEN_OUTPUT}
-    ${BRIDGE_EMBEDFS_HEADERS_DIR}
+target_add_lua_binary_embedfs(${PROJECT}
+    ${BRIDGE_EMBEDFS_ROOT}
     ${LUAC_BINARY}
     DEBUG
     SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${PLUGINS_DIR}
@@ -63,17 +61,16 @@ gen_lua_binary_from_dir(tests_scripts
 configure_file(${TOP_DIR}/config/config.lua.in ${BRIDGE_WORK_DIR}/config.lua)
 
 # collect sources
-set(SRCS
-    ${PLATFORM_LINUX_SRCS}
-    ${ADK_SRCS}
-    ${ADK_PAL_LINUX}
-    ${ADK_PAL_OPENSSL_SRCS}
-    ${BRIDGE_SRCS}
-    ${LUA_SRCS}
-    ${LUA_CJSON_SRCS}
-    ${BRIDGE_EMBEDFS_GEN_OUTPUT}
+target_sources(${PROJECT}
+    PRIVATE
+        ${PLATFORM_LINUX_SRCS}
+        ${ADK_SRCS}
+        ${ADK_PAL_LINUX}
+        ${ADK_PAL_OPENSSL_SRCS}
+        ${BRIDGE_SRCS}
+        ${LUA_SRCS}
+        ${LUA_CJSON_SRCS}
 )
-add_executable(${PROJECT} ${SRCS})
 
 # check code style
 add_dependencies(${PROJECT} cstyle)
@@ -93,7 +90,6 @@ target_include_directories(${PROJECT}
         ${BRIDGE_INC_DIR}
         ${LUA_INC_DIR}
         ${PLATFORM_INC_DIR}
-        ${BRIDGE_EMBEDFS_HEADERS_DIR}
 )
 
 # add definitions
@@ -101,6 +97,7 @@ target_compile_definitions(${PROJECT}
     PRIVATE
         BRIDGE_VER="${PROJECT_VER}"
         BRIDGE_WORK_DIR="${BRIDGE_WORK_DIR}"
+        BRIDGE_EMBEDFS_ROOT=${BRIDGE_EMBEDFS_ROOT}
         IP=1
         HAP_LOG_LEVEL=3
         LUA_USE_LINUX
