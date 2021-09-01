@@ -63,7 +63,7 @@ void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store) {
 }
 
 #if IP
-void pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t attribute_cnt) {
+void pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t readCnt, size_t writeCnt, size_t notifyCnt) {
     // Prepare accessory server storage.
     static HAPIPSession ipSessions[PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS];
     static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE];
@@ -73,13 +73,13 @@ void pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t attribute_cnt) {
         ipSessions[i].inboundBuffer.numBytes = sizeof ipInboundBuffers[i];
         ipSessions[i].outboundBuffer.bytes = ipOutboundBuffers[i];
         ipSessions[i].outboundBuffer.numBytes = sizeof ipOutboundBuffers[i];
-        ipSessions[i].eventNotifications = pal_mem_alloc(sizeof(HAPIPEventNotificationRef) * attribute_cnt);
+        ipSessions[i].eventNotifications = pal_mem_alloc(sizeof(HAPIPEventNotificationRef) * notifyCnt);
         HAPAssert(ipSessions[i].eventNotifications);
-        ipSessions[i].numEventNotifications = attribute_cnt;
+        ipSessions[i].numEventNotifications = notifyCnt;
     }
-    HAPIPReadContextRef *ipReadContexts = pal_mem_alloc(sizeof(HAPIPReadContextRef) * attribute_cnt);
+    HAPIPReadContextRef *ipReadContexts = pal_mem_alloc(sizeof(HAPIPReadContextRef) * readCnt);
     HAPAssert(ipReadContexts);
-    HAPIPWriteContextRef *ipWriteContexts = pal_mem_alloc(sizeof(HAPIPWriteContextRef) * attribute_cnt);
+    HAPIPWriteContextRef *ipWriteContexts = pal_mem_alloc(sizeof(HAPIPWriteContextRef) * writeCnt);
     HAPAssert(ipWriteContexts);
     static uint8_t ipScratchBuffer[PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE];
     static HAPIPAccessoryServerStorage ipAccessoryServerStorage = {
@@ -88,9 +88,9 @@ void pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t attribute_cnt) {
         .scratchBuffer = { .bytes = ipScratchBuffer, .numBytes = sizeof ipScratchBuffer }
     };
     ipAccessoryServerStorage.readContexts = ipReadContexts;
-    ipAccessoryServerStorage.numReadContexts = attribute_cnt;
+    ipAccessoryServerStorage.numReadContexts = readCnt;
     ipAccessoryServerStorage.writeContexts = ipWriteContexts;
-    ipAccessoryServerStorage.numWriteContexts = attribute_cnt;
+    ipAccessoryServerStorage.numWriteContexts = writeCnt;
 
     options->ip.transport = &kHAPAccessoryServerTransport_IP;
     options->ip.accessoryServerStorage = &ipAccessoryServerStorage;
