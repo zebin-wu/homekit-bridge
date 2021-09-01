@@ -170,7 +170,7 @@ void app_console_init(void)
     linenoiseSetHintsCallback((linenoiseHintsCallback*) &esp_console_get_hint);
 
     /* Set command history size */
-    linenoiseHistorySetMaxLen(100);
+    linenoiseHistorySetMaxLen(10);
 
     /* Register commands */
     esp_console_register_help_command();
