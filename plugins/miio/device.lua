@@ -82,7 +82,7 @@ function device.create(done, timeout, addr, token, ...)
     local function handleDoneCb(self)
         self.done(self, table.unpack(self.args))
         self.done = nil
-        self.arg = nil
+        self.args = nil
     end
 
     o.scanCtx = protocol.scan(function (addr, devid, stamp, self, token)
@@ -112,7 +112,7 @@ function device.create(done, timeout, addr, token, ...)
         self.logger:error("Scan timeout.")
         self.scanCtx:stop()
         self.scanCtx = nil
-        self.timer = nil
+        self.scanTimer = nil
         handleDoneCb(self)
     end, o)
 
