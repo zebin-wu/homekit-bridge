@@ -17,8 +17,8 @@
 #define LUA_CJSON_NAME "cjson"
 extern int luaopen_cjson(lua_State *L);
 
-// Lua binary root directory descrption.
-extern const embedfs_dir lua_binary_root;
+// Bridge embedfs root.
+extern const embedfs_dir BRIDGE_EMBEDFS_ROOT;
 
 static lua_State *L;
 
@@ -76,17 +76,17 @@ static void gen_filename(const char *name, char *buf) {
     HAPRawBufferCopyBytes(buf, ".luac", sizeof(".luac"));
 }
 
-static int searcher_bin(lua_State *L) {
+static int searcher_embedfs(lua_State *L) {
     size_t len;
     const char *name = luaL_checklstring(L, 1, &len);
     char filename[len + sizeof(".luac")];
 
     gen_filename(name, filename);
-    const embedfs_file *file = embedfs_find_file(&lua_binary_root, filename);
+    const embedfs_file *file = embedfs_find_file(&BRIDGE_EMBEDFS_ROOT, filename);
     if (file) {
         luaL_loadbuffer(L, file->data, file->len, filename);
     } else {
-        lua_pushfstring(L, "no file '%s'", filename);
+        lua_pushfstring(L, "no file '%s' in bridge embedfs", filename);
     }
     return 1;
 }
@@ -119,12 +119,12 @@ bool app_lua_run(const char *dir, const char *entry) {
     // add searcher_dl to package.searcher
     lc_add_searcher(L, searcher_dl);
 
-    // add searcher_bin to package.searcher
-    lc_add_searcher(L, searcher_bin);
+    // add searcher_embedfs to package.searcher
+    lc_add_searcher(L, searcher_embedfs);
 
     // run entry scripts
     HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s.luac", entry) == kHAPError_None);
-    const embedfs_file *file = embedfs_find_file(&lua_binary_root, path);
+    const embedfs_file *file = embedfs_find_file(&BRIDGE_EMBEDFS_ROOT, path);
     int status;
     if (file) {
         status = (luaL_loadbuffer(L, file->data, file->len, path) || lua_pcall(L, 0, LUA_MULTRET, 0));
