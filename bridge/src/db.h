@@ -22,10 +22,6 @@ extern "C" {
  */
 #define kAttributeCount ((size_t) 17)
 
-#define kReadCount ((size_t)10)
-#define kWriteCount ((size_t)2)
-#define kNotifyCount ((size_t)0)
-
 /**
  * HomeKit Accessory Information service.
  */
