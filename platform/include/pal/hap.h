@@ -34,7 +34,7 @@ void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store);
 /**
  * Initialize IP.
  */
-void pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t readCnt, size_t writeCnt, size_t notifyCnt);
+void pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t attribute_cnt);
 
 /**
  * Deinitialize IP.
