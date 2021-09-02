@@ -17,6 +17,9 @@
 #define LUA_CJSON_NAME "cjson"
 extern int luaopen_cjson(lua_State *L);
 
+#define luaL_dobufferx(L, buff, sz, name, mode) \
+    (luaL_loadbufferx(L, buff, sz, name, mode) || lua_pcall(L, 0, LUA_MULTRET, 0))
+
 // Bridge embedfs root.
 extern const embedfs_dir BRIDGE_EMBEDFS_ROOT;
 
@@ -84,7 +87,7 @@ static int searcher_embedfs(lua_State *L) {
     gen_filename(name, filename);
     const embedfs_file *file = embedfs_find_file(&BRIDGE_EMBEDFS_ROOT, filename);
     if (file) {
-        luaL_loadbuffer(L, file->data, file->len, NULL);
+        luaL_loadbufferx(L, file->data, file->len, NULL, "const");
     } else {
         lua_pushfstring(L, "no file '%s' in bridge embedfs", filename);
     }
@@ -127,7 +130,7 @@ bool app_lua_run(const char *dir, const char *entry) {
     const embedfs_file *file = embedfs_find_file(&BRIDGE_EMBEDFS_ROOT, path);
     int status;
     if (file) {
-        status = (luaL_loadbuffer(L, file->data, file->len, NULL) || lua_pcall(L, 0, LUA_MULTRET, 0));
+        status = luaL_dobufferx(L, file->data, file->len, NULL, "const");
     } else {
         HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/%s.luac", dir, entry) == kHAPError_None);
         status = luaL_dofile(L, path);
