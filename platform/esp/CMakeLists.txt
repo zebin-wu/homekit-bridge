@@ -45,12 +45,10 @@ if(CONFIG_LUA_APP_DEFAULT)
         FLASH_IN_PROJECT
         DEPENDS ${TOP_DIR}/config/config.lua.in
     )
-else()
-    if(CONFIG_LUA_APP_EXAMPLE)
-        set(SCRIPTS_SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/example)
-    elseif()
-        set(SCRIPTS_SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/tests)
-    endif()
+elseif(CONFIG_LUA_APP_EXAMPLE)
+    set(SCRIPTS_SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/example)
+elseif(CONFIG_LUA_APP_TEST)
+    set(SCRIPTS_SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/tests)
 endif()
 
 target_add_lua_binary_embedfs(${PROJECT}.elf
