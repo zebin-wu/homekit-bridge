@@ -14,10 +14,12 @@ local acpartner = {}
 local model = "lumi.acpartner.mcn02"
 local logger = log.getLogger(model)
 
----Create acpartner.
----@param device MiioDevice Device deviceect.
+---Create a acpartner.
+---@param device MiioDevice Device object.
+---@param info MiioDeviceInfo Device inforamtion.
+---@param conf MiioDeviceConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
-function acpartner.gen(device, conf)
+function acpartner.gen(device, info, conf)
     local iids = {}
 
     for i, v in ipairs({
@@ -49,9 +51,9 @@ function acpartner.gen(device, conf)
         name = conf.name or "Acpartner",
         mfg = "lumi",
         model = model,
-        sn = device.info.mac,
-        fwVer = device.info.fw_ver,
-        hwVer = device.info.hw_ver,
+        sn = info.mac,
+        fwVer = info.fw_ver,
+        hwVer = info.hw_ver,
         services = {
             hap.AccessoryInformationService,
             hap.HapProtocolInformationService,

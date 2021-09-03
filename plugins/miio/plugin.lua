@@ -8,6 +8,12 @@ local priv = {
     devices = {}
 }
 
+---@class MiioDeviceConf:table Miio device configuration.
+---
+---@field name string Accessory name.
+---@field addr string Device address.
+---@field token string Device token.
+
 ---Initialize plugin.
 ---@param conf any Plugin configuration.
 ---@param report fun(plugin: string, accessory: HapAccessory) Report accessory to **core**.
@@ -44,16 +50,18 @@ local function _report(obj, addr, accessory)
 end
 
 ---Generate accessory via configuration.
+---@param conf MiioDeviceConf Device configuration.
+---@return nil
 function plugin.gen(conf)
-    local obj = device.create(function (self, conf)
-        if not self.info then
+    local obj = device.create(function (self, info, conf)
+        if not info then
             logger:error("Failed to create device.")
             _report(self, conf.addr)
             return
         end
         -- Get product module, using pcall to catch exception.
         local success, result = pcall(function (self)
-            return require("miio." .. self.info.model)
+            return require("miio." .. info.model)
         end, self)
         if success == false then
             logger:error("Cannot found the product.")
@@ -61,7 +69,7 @@ function plugin.gen(conf)
             _report(self, conf.addr)
             return
         end
-        local accessory = result.gen(self, conf)
+        local accessory = result.gen(self, info, conf)
         if not accessory then
             logger:error("Failed to generate accessory.")
             _report(self, conf.addr)
