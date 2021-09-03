@@ -23,7 +23,7 @@ local device = {}
 ---@field netif MiioDeviceNetIf Network interface.
 
 ---Create a device object.
----@param done fun(self: MiioDevice, ...) Callback will be called after the device is created.
+---@param done fun(self: MiioDevice, info: MiioDeviceInfo, ...) Callback will be called after the device is created.
 ---@param timeout integer Timeout period (in milliseconds).
 ---@param addr string Device address.
 ---@param token string Device token.
@@ -41,7 +41,6 @@ function device.create(done, timeout, addr, token, ...)
         done = done,
         args = {...},
         pcb = nil, ---@type MiioPcb
-        info = nil, ---@type MiioDeviceInfo|nil
         timeout = timeout,
         state = "NOINIT",
         cmdQue = {first = 0, last = 0},
@@ -79,8 +78,8 @@ function device.create(done, timeout, addr, token, ...)
         end
     end
 
-    local function handleDoneCb(self)
-        self.done(self, table.unpack(self.args))
+    local function handleDoneCb(self, info)
+        self.done(self, info, table.unpack(self.args))
         self.done = nil
         self.args = nil
     end
@@ -98,8 +97,7 @@ function device.create(done, timeout, addr, token, ...)
         self.pcb = pcb
         self.state = "IDLE"
         self:request(function (err, result, self)
-            self.info = result
-            handleDoneCb(self)
+            handleDoneCb(self, result)
         end, "miIO.info", nil, self)
     end, addr, o, token)
     if not o.scanCtx then
