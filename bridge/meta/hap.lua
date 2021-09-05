@@ -403,20 +403,19 @@ hap.HapProtocolInformationService = {}
 ---@type lightuserdata
 hap.PairingService = {}
 
----Configure HAP.
+---Initialize HAP.
 ---@param primaryAccessory HapAccessory Primary accessory to serve.
 ---@param bridgedAccessories HapAccessory[] Array of bridged accessories.
----@return boolean status true on success, false on failure.
-function hap.configure(primaryAccessory, bridgedAccessories) end
-
----Unconfigure all accessires then you can configure() again.
-function hap.unconfigure() end
-
----Start accessory server.
 ---@param serverCallbacks HapServerCallbacks Accessory server callbacks.
----@param confChanged boolean Whether or not the bridge configuration changed since the last start.
 ---@return boolean status true on success, false on failure.
-function hap.start(serverCallbacks, confChanged) end
+function hap.init(primaryAccessory, bridgedAccessories, serverCallbacks) end
+
+---De-initialize then you can init() again.
+function hap.deinit() end
+
+---Start accessory server, you must init() first.
+---@param confChanged boolean Whether or not the bridge configuration changed since the last start.
+function hap.start(confChanged) end
 
 ---Stop accessory server.
 function hap.stop() end

@@ -386,7 +386,7 @@ enum lhap_server_cb_idx {
 };
 
 typedef struct {
-    bool is_configured:1;
+    bool inited:1;
     bool is_started:1;
 
     lua_State *L;
@@ -2048,23 +2048,22 @@ static void lhap_server_handle_session_invalidate(
 }
 
 /**
- * configure(primaryAccessory: table, bridgedAccessories?: table) -> boolean
+ * init(primaryAccessory: table, bridgedAccessories?: table, serverCallbacks: table) -> boolean
  *
  * If the category of the accessory is bridge, the parameters
  * bridgedAccessories is valid.
  */
-static int lhap_configure(lua_State *L) {
+static int lhap_init(lua_State *L) {
     lua_Unsigned len = 0;
     lhap_desc *desc = &gv_lhap_desc;
 
-    if (desc->is_configured) {
-        HAPLogError(&lhap_log,
-            "%s: HAP is already configured.", __func__);
-        goto err;
+    if (desc->inited) {
+        luaL_error(L, "HAP is already initialized.");
     }
 
     luaL_checktype(L, 1, LUA_TTABLE);
     luaL_checktype(L, 2, LUA_TTABLE);
+    luaL_checktype(L, 3, LUA_TTABLE);
 
     HAPAccessory *accessory = lc_calloc(sizeof(HAPAccessory) + sizeof(accessory_ref));
     if (!accessory) {
@@ -2086,12 +2085,12 @@ static int lhap_configure(lua_State *L) {
     }
 
     if (accessory->category != kHAPAccessoryCategory_Bridges) {
-        goto done;
+        goto parse_cb;
     }
 
     len = lua_rawlen(L, 2);
     if (len == 0) {
-        goto done;
+        goto parse_cb;
     }
 
     desc->bridged_accs =
@@ -2114,7 +2113,17 @@ static int lhap_configure(lua_State *L) {
         }
     }
 
-done:
+parse_cb:
+    for (size_t i = 0; i < HAPArrayCount(desc->server_cb_ref_ids); i++) {
+        desc->server_cb_ref_ids[i] = LUA_REFNIL;
+    }
+    if (!lc_traverse_table(L, 3, lhap_server_callbacks_kvs, desc)) {
+        HAPLogError(&lhap_log,
+            "%s: Failed to parse the server callbacks from table serverCallbacks.",
+            __func__);
+        goto err3;
+    }
+
     HAPLogInfo(&lhap_log,
         "Accessory \"%s\": %s has been configured.", accessory->name,
         lhap_accessory_category_strs[accessory->category]);
@@ -2123,85 +2132,6 @@ done:
             "%" LUA_INTEGER_FRMLEN "u"
             " bridged accessories have been configured.", len);
     }
-    desc->is_configured = true;
-    lua_pushboolean(L, true);
-    return 1;
-
-err2:
-    if (desc->bridged_accs) {
-        for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
-            lhap_reset_accessory(L, *pa);
-            lc_free(*pa);
-        }
-        lc_safe_free(desc->bridged_accs);
-    }
-err1:
-    lhap_reset_accessory(L, accessory);
-    lc_safe_free(desc->primary_acc);
-err:
-    lua_pushboolean(L, false);
-    return 1;
-}
-
-/* unconfigure() */
-int lhap_unconfigure(lua_State *L) {
-    lhap_desc *desc = &gv_lhap_desc;
-
-    if (!desc->is_configured) {
-        HAPLogError(&lhap_log,
-            "%s: HAP is not configured.", __func__);
-        return 0;
-    }
-
-    if (desc->bridged_accs) {
-        for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
-            lhap_reset_accessory(L, *pa);
-            lc_free(*pa);
-        }
-        lc_safe_free(desc->bridged_accs);
-    }
-    if (desc->primary_acc) {
-        lhap_reset_accessory(L, desc->primary_acc);
-        lc_safe_free(desc->primary_acc);
-    }
-    desc->attribute_cnt = kAttributeCount;
-    desc->bridged_aid = 1;
-    desc->iid = kAttributeCount + 1;
-    desc->is_configured = false;
-    desc->L = NULL;
-    return 0;
-}
-
-/* start(serverCallbacks: table, confChanged: boolean): boolean */
-static int lhap_start(lua_State *L) {
-    lhap_desc *desc = &gv_lhap_desc;
-
-    if (!desc->is_configured) {
-        HAPLogError(&lhap_log,
-            "%s: HAP is not configured.", __func__);
-        goto err;
-    }
-
-    if (desc->is_started) {
-        HAPLogError(&lhap_log,
-            "%s: HAP is already started.", __func__);
-        goto err;
-    }
-
-    luaL_checktype(L, 1, LUA_TTABLE);
-    luaL_checktype(L, 2, LUA_TBOOLEAN);
-
-    for (size_t i = 0; i < HAPArrayCount(desc->server_cb_ref_ids); i++) {
-        desc->server_cb_ref_ids[i] = LUA_REFNIL;
-    }
-    if (!lc_traverse_table(L, 1, lhap_server_callbacks_kvs, desc)) {
-        HAPLogError(&lhap_log,
-            "%s: Failed to parse the server callbacks from table serverCallbacks.",
-            __func__);
-        goto err1;
-    }
-
-    bool conf_changed = lua_toboolean(L, 2);
 
 #if IP
     pal_hap_init_ip(&desc->server_options, desc->attribute_cnt);
@@ -2237,35 +2167,39 @@ static int lhap_start(lua_State *L) {
             &server_callbacks,
             desc);
 
-    // Start accessory server.
-    if (desc->bridged_accs) {
-        HAPAccessoryServerStartBridge(&desc->server, desc->primary_acc,
-        (const struct HAPAccessory *const *)desc->bridged_accs, conf_changed);
-    } else {
-        HAPAccessoryServerStart(&desc->server, desc->primary_acc);
-    }
-
     desc->L = L;
-    desc->is_started = true;
-
+    desc->inited = true;
     lua_pushboolean(L, true);
     return 1;
 
-err1:
+err3:
     lhap_unref_server_cb(desc);
+err2:
+    if (desc->bridged_accs) {
+        for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
+            lhap_reset_accessory(L, *pa);
+            lc_free(*pa);
+        }
+        lc_safe_free(desc->bridged_accs);
+    }
+err1:
+    lhap_reset_accessory(L, accessory);
+    lc_safe_free(desc->primary_acc);
 err:
     lua_pushboolean(L, false);
     return 1;
 }
 
-/* stop() */
-static int lhap_stop(lua_State *L) {
+/* deinit() */
+int lhap_deinit(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
 
-    if (!desc->is_started) {
-        HAPLogError(&lhap_log,
-            "%s: HAP is not started.", __func__);
-        return 0;
+    if (!desc->inited) {
+        luaL_error(L, "HAP is not initialized.");
+    }
+
+    if (desc->is_started) {
+        luaL_error(L, "HAP is started.");
     }
 
     // Release accessory server.
@@ -2282,6 +2216,65 @@ static int lhap_stop(lua_State *L) {
     lhap_unref_server_cb(desc);
 
     HAPRawBufferZero(&desc->server, sizeof(desc->server));
+
+    if (desc->bridged_accs) {
+        for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
+            lhap_reset_accessory(L, *pa);
+            lc_free(*pa);
+        }
+        lc_safe_free(desc->bridged_accs);
+    }
+    if (desc->primary_acc) {
+        lhap_reset_accessory(L, desc->primary_acc);
+        lc_safe_free(desc->primary_acc);
+    }
+    desc->attribute_cnt = kAttributeCount;
+    desc->bridged_aid = 1;
+    desc->iid = kAttributeCount + 1;
+    desc->inited = false;
+    desc->L = NULL;
+    return 0;
+}
+
+/* start(confChanged: boolean) */
+static int lhap_start(lua_State *L) {
+    lhap_desc *desc = &gv_lhap_desc;
+
+    if (!desc->inited) {
+        luaL_error(L, "HAP is already initialized.");
+    }
+
+    if (desc->is_started) {
+        luaL_error(L, "HAP is already started");
+    }
+
+    luaL_checktype(L, 1, LUA_TBOOLEAN);
+
+    bool conf_changed = lua_toboolean(L, 1);
+
+    // Start accessory server.
+    if (desc->bridged_accs) {
+        HAPAccessoryServerStartBridge(&desc->server, desc->primary_acc,
+        (const struct HAPAccessory *const *)desc->bridged_accs, conf_changed);
+    } else {
+        HAPAccessoryServerStart(&desc->server, desc->primary_acc);
+    }
+
+    desc->is_started = true;
+    return 0;
+}
+
+/* stop() */
+static int lhap_stop(lua_State *L) {
+    lhap_desc *desc = &gv_lhap_desc;
+
+    if (!desc->is_started) {
+        luaL_error(L, "HAP is not started.");
+    }
+
+    // Stop accessory server.
+    HAPAccessoryServerStop(&desc->server);
+
     desc->is_started = false;
 
     return 0;
@@ -2296,9 +2289,7 @@ static int lhap_raise_event(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
 
     if (!desc->is_started) {
-        HAPLogError(&lhap_log,
-            "%s: Please start HAP first.", __func__);
-        goto err;
+        luaL_error(L, "HAP is not started.");
     }
 
     luaL_checktype(L, 1, LUA_TNUMBER);
@@ -2381,8 +2372,8 @@ static int lhap_get_new_iid(lua_State *L) {
 }
 
 static const luaL_Reg haplib[] = {
-    {"configure", lhap_configure},
-    {"unconfigure", lhap_unconfigure},
+    {"init", lhap_init},
+    {"deinit", lhap_deinit},
     {"start", lhap_start},
     {"stop", lhap_stop},
     {"raiseEvent", lhap_raise_event},
