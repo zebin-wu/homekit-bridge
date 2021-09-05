@@ -74,10 +74,6 @@ static void app_console_task(void *arg)
         if (line == NULL) { /* Ignore empty lines */
             continue;
         }
-        /* Add the command to the history if not empty*/
-        if (strlen(line) > 0) {
-            linenoiseHistoryAdd(line);
-        }
 
         /* Try to run the command */
         int ret;
@@ -169,8 +165,8 @@ void app_console_init(void)
     linenoiseSetCompletionCallback(&esp_console_get_completion);
     linenoiseSetHintsCallback((linenoiseHintsCallback*) &esp_console_get_hint);
 
-    /* Set command history size */
-    linenoiseHistorySetMaxLen(10);
+    /* Don't return empty lines */
+    linenoiseAllowEmpty(false);
 
     /* Register commands */
     esp_console_register_help_command();
