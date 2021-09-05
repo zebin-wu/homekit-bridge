@@ -99,7 +99,7 @@ void pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t attribute_cnt) {
 void pal_hap_deinit_ip(HAPAccessoryServerOptions *options) {
     HAPIPAccessoryServerStorage *storage = options->ip.accessoryServerStorage;
     for (size_t i = 0; i < storage->numSessions; i++) {
-        pal_mem_free(storage->sessions + i);
+        pal_mem_free(storage->sessions[i].eventNotifications);
     }
     pal_mem_free(storage->readContexts);
     pal_mem_free(storage->writeContexts);

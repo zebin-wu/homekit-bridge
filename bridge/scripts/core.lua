@@ -82,7 +82,7 @@ end
 ---Load plugins and generate bridged accessories.
 ---@param pluginConfs PluginConf[] Plugin configurations.
 ---@param accessoryConfs AccessoryConf[] Accessory configurations.
----@param done fun(bridgedAccessories: HapAccessory[]): boolean
+---@param done fun(bridgedAccessories: HapAccessory[])
 function core.start(pluginConfs, accessoryConfs, done)
     if pluginConfs then
         for i, conf in ipairs(pluginConfs) do
@@ -106,9 +106,8 @@ function core.start(pluginConfs, accessoryConfs, done)
     end
 
     if util.isEmptyTable(priv.plugins) then
-        local status = done(priv.accessories)
+        done(priv.accessories)
         priv.accessories = {}
-        return status
     else
         priv.done = done
     end

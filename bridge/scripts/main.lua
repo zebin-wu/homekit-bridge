@@ -6,7 +6,7 @@ local board = require "board"
 local logger = log.getLogger()
 
 return core.start(config.plugins, config.accessories, function (bridgedAccessories)
-    return hap.configure({
+    assert(hap.init({
         aid = 1, -- Primary accessory must have aid 1.
         category = "Bridges",
         name = config.bridge.name or "HomeKit Bridge",
@@ -26,7 +26,7 @@ return core.start(config.plugins, config.accessories, function (bridgedAccessori
                 return hap.Error.None
             end
         }
-    }, bridgedAccessories) and hap.start({
+    }, bridgedAccessories, {
         updatedState = function (state)
             logger:default("Accessory Server State did update: " .. state .. ".")
         end,
@@ -36,5 +36,6 @@ return core.start(config.plugins, config.accessories, function (bridgedAccessori
         sessionInvalidate = function ()
             logger:default("Session is invalidated")
         end
-    }, true)
+    }))
+    hap.start(true)
 end)
