@@ -1,13 +1,13 @@
 return {
     value = {
-        Inactive = 0,
-        Active = 1
+        Disabled = 0,
+        Enabled = 1
     },
     new = function (iid, read, write)
         return {
             format = "UInt8",
             iid = iid,
-            type = "Active",
+            type = "LockPhysicalControls",
             props = {
                 readable = true,
                 writable = true,

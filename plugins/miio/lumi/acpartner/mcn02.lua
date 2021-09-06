@@ -1,13 +1,11 @@
 local hap = require "hap"
 local util = require "util"
-local ServiceSignature = require "hap.char.ServiceSignature"
-local Name = require "hap.char.Name"
 local Active = require "hap.char.Active"
-local CurTemp = require "hap.char.CurTemp"
-local CurHeatCoolState = require "hap.char.CurHeatCoolState"
-local TgtHeatCoolState = require "hap.char.TgtHeatCoolState"
-local CoolThrholdTemp = require "hap.char.CoolThrholdTemp"
-local HeatThrholdTemp = require "hap.char.HeatThrholdTemp"
+local CurTemp = require "hap.char.CurrentTemperature"
+local CurHeatCoolState = require "hap.char.CurrentHeaterCoolerState"
+local TgtHeatCoolState = require "hap.char.TargetHeaterCoolerState"
+local CoolThrholdTemp = require "hap.char.CoolingThresholdTemperature"
+local HeatThrholdTemp = require "hap.char.HeatingThresholdTemperature"
 local SwingMode = require "hap.char.SwingMode"
 
 local acpartner = {}

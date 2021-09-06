@@ -1,13 +1,13 @@
 return {
     value = {
-        Inactive = 0,
-        Active = 1
+        Celsius = 0,
+        Fahrenheit = 1
     },
     new = function (iid, read, write)
         return {
             format = "UInt8",
             iid = iid,
-            type = "Active",
+            type = "TemperatureDisplayUnits",
             props = {
                 readable = true,
                 writable = true,
@@ -18,7 +18,7 @@ return {
                     supportsDisconnectedNotification = true
                 }
             },
-            units = "None",
+            units = "Celsius",
             constraints = {
                 minVal = 0,
                 maxVal = 1,
@@ -26,7 +26,7 @@ return {
             },
             cbs = {
                 read = read,
-                write = write
+                write = write,
             }
         }
     end
