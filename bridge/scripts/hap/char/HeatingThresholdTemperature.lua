@@ -1,13 +1,9 @@
 return {
-    value = {
-        Inactive = 0,
-        Active = 1
-    },
-    new = function (iid, read, write)
+    new = function (iid, read, write, minVal, maxVal, stepVal)
         return {
-            format = "UInt8",
+            format = "Float",
             iid = iid,
-            type = "Active",
+            type = "HeatingThresholdTemperature",
             props = {
                 readable = true,
                 writable = true,
@@ -18,15 +14,15 @@ return {
                     supportsDisconnectedNotification = true
                 }
             },
-            units = "None",
+            units = "Celsius",
             constraints = {
-                minVal = 0,
-                maxVal = 1,
-                stepVal = 1
+                minVal = minVal or 0,
+                maxVal = maxVal or 25,
+                stepVal = stepVal or 0.1
             },
             cbs = {
                 read = read,
-                write = write
+                write = write,
             }
         }
     end

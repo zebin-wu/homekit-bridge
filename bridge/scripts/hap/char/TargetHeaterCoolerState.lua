@@ -1,13 +1,14 @@
 return {
     value = {
-        Inactive = 0,
-        Active = 1
+        HeatOrCool= 0,
+        Heat = 1,
+        Cool = 2
     },
     new = function (iid, read, write)
         return {
             format = "UInt8",
             iid = iid,
-            type = "Active",
+            type = "TargetHeaterCoolerState",
             props = {
                 readable = true,
                 writable = true,
@@ -21,7 +22,7 @@ return {
             units = "None",
             constraints = {
                 minVal = 0,
-                maxVal = 1,
+                maxVal = 2,
                 stepVal = 1
             },
             cbs = {

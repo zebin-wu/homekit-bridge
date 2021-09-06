@@ -1,32 +1,26 @@
 return {
-    value = {
-        Inactive = 0,
-        Active = 1
-    },
-    new = function (iid, read, write)
+    new = function (iid, read)
         return {
-            format = "UInt8",
+            format = "Float",
             iid = iid,
-            type = "Active",
+            type = "CurrentTemperature",
             props = {
                 readable = true,
-                writable = true,
+                writable = false,
                 supportsEventNotification = true,
-                requiresTimedWrite = true,
                 ble = {
                     supportsBroadcastNotification = true,
                     supportsDisconnectedNotification = true
                 }
             },
-            units = "None",
+            units = "Celsius",
             constraints = {
                 minVal = 0,
-                maxVal = 1,
-                stepVal = 1
+                maxVal = 100,
+                stepVal = 0.1
             },
             cbs = {
-                read = read,
-                write = write
+                read = read
             }
         }
     end

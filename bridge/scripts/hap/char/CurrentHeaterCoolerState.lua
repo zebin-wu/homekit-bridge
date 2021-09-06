@@ -1,18 +1,19 @@
 return {
     value = {
         Inactive = 0,
-        Active = 1
+        Idle = 1,
+        Heating = 2,
+        Cooling = 3
     },
-    new = function (iid, read, write)
+    new = function (iid, read)
         return {
             format = "UInt8",
             iid = iid,
-            type = "Active",
+            type = "CurrentHeaterCoolerState",
             props = {
                 readable = true,
-                writable = true,
+                writable = false,
                 supportsEventNotification = true,
-                requiresTimedWrite = true,
                 ble = {
                     supportsBroadcastNotification = true,
                     supportsDisconnectedNotification = true
@@ -21,12 +22,11 @@ return {
             units = "None",
             constraints = {
                 minVal = 0,
-                maxVal = 1,
+                maxVal = 3,
                 stepVal = 1
             },
             cbs = {
-                read = read,
-                write = write
+                read = read
             }
         }
     end
