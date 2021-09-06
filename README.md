@@ -3,11 +3,20 @@
 ![](https://img.shields.io/badge/language-c|lua-orange.svg)
 ![](https://img.shields.io/badge/platform-linux-lightgrey.svg)
 ![](https://img.shields.io/badge/platform-esp-lightgrey.svg)
-[![license](https://img.shields.io/github/license/KNpTrue/lua-homekit-bridge)](LICENSE)
+[![license](https://img.shields.io/github/license/KNpTrue/homekit-bridge)](LICENSE)
 
 ## Introduction
 
-A HomeKit gateway specially designed for embedded devices, it allows you to connect non-HomeKit devices to HomeKit through simple configuration.
+**homekit-bridge** designed for embedded devices allows you to quickly connect non-HomeKit devices to Apple HomeKit.
+
+**homekit-bridge** is based on [HomeKitADK](https://github.com/apple/HomeKitADK). HomekitADK not only implements HomeKit Accessory Protocol(HAP), but also abstracts platform-related interfaces to Platform Adapter Layer(PAL) to make the same application code behave consistently on different platforms. The application code of homekit-bridge will be in the application layer of ADK, using PAL interface or HAP interface, and not directly using platform-related interfaces.
+
+In order to achieve better scalability and reduce development difficulty, **homekit-bridge** introduced the dynamic language [**Lua**](https://www.lua.org), encapsulated C modules into Lua modules, and used Lua to write upper-level application.
+
+In order to run Lua scripts on devices with compact resources, this project has made the following optimizations:
+- Generate ``text`` code to ``binary`` code via ``luac``.
+- Generate directory trees for multiple Lua scripts and embed them in C code.
+- Make the Lua parser supports reading the code directly from the flash instead of copying the code to the memory.
 
 ## Supported devices
 
