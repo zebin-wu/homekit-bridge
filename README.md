@@ -7,16 +7,17 @@
 
 ## Introduction
 
-**homekit-bridge** designed for embedded devices allows you to quickly connect non-HomeKit devices to Apple HomeKit.
+homekit-bridge designed for embedded devices allows you to quickly connect non-HomeKit devices to Apple HomeKit, it provide the following features:
+- Configure the devices you want to connect to HomeKit.
+- Write plugins to generate HomeKit bridged accessories.
 
-**homekit-bridge** is based on [HomeKitADK](https://github.com/apple/HomeKitADK). HomekitADK not only implements HomeKit Accessory Protocol(HAP), but also abstracts platform-related interfaces to Platform Adapter Layer(PAL) to make the same application code behave consistently on different platforms. The application code of homekit-bridge will be in the application layer of ADK, using PAL interface or HAP interface, and not directly using platform-related interfaces.
+homekit-bridge is based on [HomeKitADK](https://github.com/apple/HomeKitADK), the main C code is be in the application layer of ADK, using PAL interface or HAP interface, and not directly using platform-related interfaces.
+>HomekitADK not only implements HomeKit Accessory Protocol(HAP), but also abstracts platform-related interfaces to Platform Adapter Layer(PAL) to make the same application code behave consistently on different platforms.
 
-In order to achieve better scalability and reduce development difficulty, **homekit-bridge** introduced the dynamic language [**Lua**](https://www.lua.org), encapsulated C modules into Lua modules, and used Lua to write upper-level application.
-
-In order to run Lua scripts on devices with compact resources, this project has made the following optimizations:
-- Generate ``text`` code to ``binary`` code via ``luac``.
+In order to achieve better scalability and reduce development difficulty, homekit-bridge introduced the dynamic language [Lua](https://www.lua.org), encapsulated C modules into Lua modules, and used Lua to write upper-level application. homekit-bridge also made the following optimizations to run Lua scripts on devices with compact resources:
+- Generate text code to byte code via luac.
 - Generate directory trees for multiple Lua scripts and embed them in C code.
-- Make the Lua parser supports reading the code directly from the flash instead of copying the code to the memory.
+- Make the Lua parser supports reading the code directly from ROM instead of copying the code to RAM.
 
 ## Supported devices
 
@@ -25,11 +26,7 @@ Product Name | Model
 -|-
 Xiaomi Mi Air Conditioner Companion 2 | `lumi.acpartner.mcn02`
 
-## Code style
-
-HomeKit bridge supports code style checking, the checker is [cpplint](https://github.com/google/styleguide), a command line tool that checks for style issues in C/C++ files according to the [Google C++ Style Guide](http://google.github.io/styleguide/cppguide.html).
-
-## Build
+## Getting started
 
 ### Clone the repo
 > Add `--recursive` to initialize submodules in the clone.
@@ -38,50 +35,78 @@ HomeKit bridge supports code style checking, the checker is [cpplint](https://gi
 ```
 
 ### Platform Linux (Ubuntu)
-1. Install dependencies:
-    ```bash
-    $ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev python3-pip
-    $ pip3 install cpplint
-    ```
 
-2. Compile and run:
-    ```bash
-    $ mkdir build
-    $ cd build
-    $ cmake -G Ninja .. && ninja
-    $ ./platform/linux/homekit-bridge
-    ```
+#### Install dependencies
 
-3. Run the example
-    ```bash
-    $ ./platform/linux/homekit-bridge -d example_scripts
-    ```
+```bash
+$ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev python3-pip
+$ pip3 install cpplint
+```
+
+#### Compile and install
+
+```bash
+$ mkdir build
+$ cd build
+$ cmake -G Ninja .. && ninja
+$ sudo ninja install
+```
+
+#### Run
+
+Run homekit-bridge by default:
+
+```bash
+$ homekit-bridge
+```
+
+In addition, the following options can be specified:
+
+Option | Description
+-|-
+`-d`, `--dir` | set the scripts directory
+`-e`, `--entry` | set the entry script name
+`-h`, `--help` | display this help and exit
+
+#### Configure
+
+The configuration script `config.lua` is placed in `/usr/local/lib/homekit-bridge` by default, you can edit it before running homekit-bridge. If you specified the scripts directory, homekit-bridge will find `config.lua` in the specified directory.
 
 ### Platform ESP
-1. Set up the host environment and ESP-IDF (**v4.3**) as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
 
-2. ESP-IDF currently uses MbedTLS 2.16.x, whereas HomeKit ADK requires 2.18. A branch mbedtls-2.16.6-adk is being maintained [here](https://github.com/espressif/mbedtls/tree/mbedtls-2.16.6-adk) which has the required patches from 2.18, on top of 2.16.6. To switch to this, follow these steps:
-    ```bash
-    $ cd $IDF_PATH/components/mbedtls/mbedtls
-    $ git pull
-    $ git checkout -b mbedtls-2.16.6-adk origin/mbedtls-2.16.6-adk
-    ```
+#### Prepare
 
-3. You can use homekit-bridge with any ESP32 or ESP32-S2 board. Compile, flash and connect to console as below:
-    ```bash
-    $ cd /path/to/homekit-bridge/platform/esp
-    $ export ESPPORT=/dev/tty.SLAB_USBtoUART  # Set your board's serial port here
-    $ idf.py set-target <esp32/esp32s2>
-    $ idf.py flash
-    $ idf.py monitor
-    ```
+Set up the host environment and ESP-IDF (**v4.3**) as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
 
-4. Use `join` command to configure Wi-Fi:
-    ```bash
-    esp32 > join "<ssid>" "<password>"
-    ```
+ESP-IDF currently uses MbedTLS 2.16.x, whereas HomeKit ADK requires 2.18. A branch mbedtls-2.16.6-adk is being maintained [here](https://github.com/espressif/mbedtls/tree/mbedtls-2.16.6-adk) which has the required patches from 2.18, on top of 2.16.6. To switch to this, follow these steps:
 
-## Usage
+```bash
+$ cd $IDF_PATH/components/mbedtls/mbedtls
+$ git pull
+$ git checkout -b mbedtls-2.16.6-adk origin/mbedtls-2.16.6-adk
+```
+
+#### Compile and flash
+
+You can use homekit-bridge with any ESP32 or ESP32-S2 board. Compile, flash and connect to console as below:
+
+```bash
+$ cd /path/to/homekit-bridge/platform/esp
+$ export ESPPORT=/dev/ttyUSB0  # Set your board's serial port here
+$ idf.py set-target <esp32/esp32s2>
+$ idf.py flash
+$ idf.py monitor
+```
+
+#### Join Wi-Fi
+
+Use `join` command to configure Wi-Fi:
+
+```bash
+esp32 > join "<ssid>" "<password>"
+```
+
+#### Configure
 
 TODO
 
