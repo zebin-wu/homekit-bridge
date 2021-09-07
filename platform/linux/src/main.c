@@ -62,7 +62,7 @@ static struct {
 static void init_platform() {
     // Key-value store.
     HAPPlatformKeyValueStoreCreate(
-            &platform.keyValueStore, &(const HAPPlatformKeyValueStoreOptions) { .rootDirectory = ".HomeKitStore" });
+            &platform.keyValueStore, &(const HAPPlatformKeyValueStoreOptions) { .rootDirectory = "~/.HomeKitStore" });
     platform.hapPlatform.keyValueStore = &platform.keyValueStore;
 
     // Accessory setup manager. Depends on key-value store.
@@ -142,8 +142,8 @@ static void deinit_platform() {
 static const char *help = \
     "usage: %s [options]\n"
     "options:\n"
-    "  -d           set the scripts directory\n"
-    "  -e           set the entry script name\n"
+    "  -d, --dir    set the scripts directory\n"
+    "  -e, --entry  set the entry script name\n"
     "  -h, --help   display this help and exit\n";
 
 static const char *progname = "homekit-bridge";
@@ -169,13 +169,13 @@ static void doargs(int argc, char *argv[]) {
         if (HAPStringAreEqual(argv[i], "-h") || HAPStringAreEqual(argv[i], "--help")) {
             usage(NULL);
             exit(EXIT_SUCCESS);
-        } else if (HAPStringAreEqual(argv[i], "-d")) {
+        } else if (HAPStringAreEqual(argv[i], "-d") || HAPStringAreEqual(argv[i], "--dir")) {
             scripts_dir = argv[++i];
             if (!scripts_dir || *scripts_dir == 0 || (*scripts_dir == '-' && scripts_dir[1] != 0)) {
                 usage("'-d' needs argument");
                 exit(EXIT_FAILURE);
             }
-        } else if (HAPStringAreEqual(argv[i], "-e")) {
+        } else if (HAPStringAreEqual(argv[i], "-e") || HAPStringAreEqual(argv[i], "--entry")) {
             entry = argv[++i];
             if (!entry || *entry == 0 || (*entry == '-' && entry[1] != 0)) {
                 usage("'-e' needs argument");
