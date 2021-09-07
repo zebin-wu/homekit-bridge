@@ -20,9 +20,12 @@ project(${PROJECT}-${PLATFORM})
 add_executable(${PROJECT} "")
 
 # set the work directory
-set(BRIDGE_WORK_DIR ${CMAKE_BINARY_DIR}/bridge_scripts)
-set(EXAMPLE_WORK_DIR ${CMAKE_BINARY_DIR}/example_scripts)
-set(TESTS_WORK_DIR ${CMAKE_BINARY_DIR}/tests_scripts)
+set(BRIDGE_WORK_DIR "/usr/local/lib/${PROJECT}")
+
+# set the generated scripts directory
+set(SCRIPTS_DIR ${CMAKE_BINARY_DIR}/bridge_scripts)
+set(EXAMPLE_SCRIPTS_DIR ${CMAKE_BINARY_DIR}/example_scripts)
+set(TESTS_SCRIPTS_DIR ${CMAKE_BINARY_DIR}/tests_scripts)
 
 # set the embedfs root
 set(BRIDGE_EMBEDFS_ROOT bridge_embedfs_root)
@@ -44,21 +47,21 @@ target_add_lua_binary_embedfs(${PROJECT}
 )
 
 gen_lua_binary_from_dir(example_scripts
-    ${EXAMPLE_WORK_DIR}
+    ${EXAMPLE_SCRIPTS_DIR}
     ${LUAC_BINARY}
     DEBUG
     SRC_DIRS ${TOP_DIR}/example
 )
 
 gen_lua_binary_from_dir(tests_scripts
-    ${TESTS_WORK_DIR}
+    ${TESTS_SCRIPTS_DIR}
     ${LUAC_BINARY}
     DEBUG
     SRC_DIRS ${TOP_DIR}/tests
 )
 
 # generate default config.lua
-configure_file(${TOP_DIR}/config/config.lua.in ${BRIDGE_WORK_DIR}/config.lua)
+configure_file(${TOP_DIR}/config/config.lua.in ${SCRIPTS_DIR}/config.lua)
 
 # collect sources
 target_sources(${PROJECT}
@@ -119,4 +122,14 @@ target_compile_options(${PROJECT}
     PRIVATE
         -Wall
         -Werror
+)
+
+# install binaries
+install(TARGETS ${PROJECT}
+    DESTINATION bin
+)
+
+# install scripts
+install(DIRECTORY ${SCRIPTS_DIR}/
+    DESTINATION ${BRIDGE_WORK_DIR}
 )
