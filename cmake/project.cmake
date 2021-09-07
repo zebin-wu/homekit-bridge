@@ -1,2 +1,8 @@
 set(PROJECT "homekit-bridge")
-set(PROJECT_VER "0.0.1")
+
+# set the project version
+set(PROJECT_VER_MAJOR 0)
+set(PROJECT_VER_MINOR 1)
+set(PROJECT_VER_PATCH 0)
+
+set(PROJECT_VER "${PROJECT_VER_MAJOR}.${PROJECT_VER_MINOR}.${PROJECT_VER_PATCH}")
