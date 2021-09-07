@@ -7,14 +7,16 @@
 
 ## Introduction
 
-homekit-bridge designed for embedded devices allows you to quickly connect non-HomeKit devices to Apple HomeKit, it provide the following features:
+homekit-bridge designed for embedded devices allows you to connect non-HomeKit devices to Apple HomeKit quickly. It provides the following features:
+
 - Configure the devices you want to connect to HomeKit.
 - Write plugins to generate HomeKit bridged accessories.
 
-homekit-bridge is based on [HomeKitADK](https://github.com/apple/HomeKitADK), the main C code is be in the application layer of ADK, using PAL interface or HAP interface, and not directly using platform-related interfaces.
+homekit-bridge is based on [HomeKitADK](https://github.com/apple/HomeKitADK); the main C code is in the application layer of ADK, using PAL interface or HAP interface, and not directly using platform-related interfaces.
 >HomekitADK not only implements HomeKit Accessory Protocol(HAP), but also abstracts platform-related interfaces to Platform Adapter Layer(PAL) to make the same application code behave consistently on different platforms.
 
-In order to achieve better scalability and reduce development difficulty, homekit-bridge introduced the dynamic language [Lua](https://www.lua.org), encapsulated C modules into Lua modules, and used Lua to write upper-level application. homekit-bridge also made the following optimizations to run Lua scripts on devices with compact resources:
+In order to achieve better scalability and reduce development difficulty, homekit-bridge introduced the dynamic language [Lua](https://www.lua.org), encapsulated C modules into Lua modules, and used Lua to write upper-level applications. homekit-bridge also made the following optimizations to run Lua scripts on devices with compact resources:
+
 - Generate text code to byte code via luac.
 - Generate directory trees for multiple Lua scripts and embed them in C code.
 - Make the Lua parser supports reading the code directly from ROM instead of copying the code to RAM.
@@ -28,7 +30,7 @@ Xiaomi Mi Air Conditioner Companion 2 | `lumi.acpartner.mcn02`
 
 ## Getting started
 
-### Clone the repo
+### Clone the repository
 > Add `--recursive` to initialize submodules in the clone.
 ```
     git clone --recursive https://github.com/KNpTrue/homekit-bridge.git
