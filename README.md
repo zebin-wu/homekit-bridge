@@ -27,6 +27,7 @@ In order to achieve better scalability and reduce development difficulty, homeki
 Product Name | Model
 -|-
 Xiaomi Mi Air Conditioner Companion 2 | `lumi.acpartner.mcn02`
+Xiaomi Chuangmi Plug M3 (1 Socket) | `chuangmi.plug.m3`
 
 ## Getting started
 

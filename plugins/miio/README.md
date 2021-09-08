@@ -10,12 +10,6 @@ This plugin implement the [miio protocol](https://github.com/OpenMiHome/mihome-b
 
 After the device is created, the plugin will search for the corresponding product module according to the device model to generate the specific accessory.
 
-## Supported devices
-
-Product Name | Model
--|-
-Xiaomi Mi Air Conditioner Companion 2 | `lumi.acpartner.mcn02`
-
 ## Configure your device
 
 ### Get device token
