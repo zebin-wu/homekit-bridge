@@ -62,7 +62,7 @@ static struct {
 static void init_platform() {
     // Key-value store.
     HAPPlatformKeyValueStoreCreate(
-            &platform.keyValueStore, &(const HAPPlatformKeyValueStoreOptions) { .rootDirectory = "~/.HomeKitStore" });
+            &platform.keyValueStore, &(const HAPPlatformKeyValueStoreOptions) { .rootDirectory = ".HomeKitStore" });
     platform.hapPlatform.keyValueStore = &platform.keyValueStore;
 
     // Accessory setup manager. Depends on key-value store.
