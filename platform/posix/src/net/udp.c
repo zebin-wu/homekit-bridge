@@ -50,6 +50,7 @@ struct pal_net_udp {
     char remote_addr[PAL_NET_ADDR_MAX_LEN];
     uint16_t remote_port;
     pal_net_udp_mbuf *mbuf_list_head;
+    pal_net_udp_mbuf **mbuf_list_ptail;
 
     HAPPlatformFileHandleRef handle;
     HAPPlatformFileHandleEvent interests;
@@ -96,17 +97,17 @@ pal_net_addr_get_ipv6(struct sockaddr_in6 *dst_addr, const char *src_addr, uint1
 }
 
 static void pal_net_udp_add_mbuf(pal_net_udp *udp, pal_net_udp_mbuf *mbuf) {
-    pal_net_udp_mbuf **node = &udp->mbuf_list_head;
-    while (*node) {
-        node = &(*node)->next;
-    }
-    *node = mbuf;
+    *(udp->mbuf_list_ptail) = mbuf;
+    udp->mbuf_list_ptail = &mbuf->next;
 }
 
 static pal_net_udp_mbuf *pal_net_udp_get_mbuf(pal_net_udp *udp) {
     pal_net_udp_mbuf *mbuf = udp->mbuf_list_head;
     if (mbuf) {
-        udp->mbuf_list_head = udp->mbuf_list_head->next;
+        udp->mbuf_list_head = mbuf->next;
+        if (udp->mbuf_list_head == NULL) {
+            udp->mbuf_list_ptail = &udp->mbuf_list_head;
+        }
     }
     return mbuf;
 }
@@ -115,9 +116,10 @@ static void pal_net_udp_del_mbuf_list(pal_net_udp *udp) {
     pal_net_udp_mbuf *cur;
     while (udp->mbuf_list_head) {
         cur = udp->mbuf_list_head;
-        udp->mbuf_list_head = udp->mbuf_list_head->next;
+        udp->mbuf_list_head = cur->next;
         pal_mem_free(cur);
     }
+    udp->mbuf_list_ptail = &udp->mbuf_list_head;
 }
 
 static void pal_net_udp_raw_recv(pal_net_udp *udp) {
@@ -324,6 +326,7 @@ pal_net_udp *pal_net_udp_new(pal_net_domain domain) {
         pal_mem_free(udp);
         return NULL;
     }
+    udp->mbuf_list_ptail = &udp->mbuf_list_head;
     udp->domain = domain;
     udp->interests.isReadyForReading = true;
     udp->interests.hasErrorConditionPending = true;
@@ -491,7 +494,8 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
     }
     HAPRawBufferCopyBytes(mbuf->buf, data, len);
     mbuf->len = len;
-    HAPRawBufferCopyBytes(mbuf->to_addr, addr, addr_len + 1);
+    HAPRawBufferCopyBytes(mbuf->to_addr, addr, addr_len);
+    mbuf->to_addr[addr_len] = '\0';
     mbuf->to_port = port;
     mbuf->next = NULL;
     pal_net_udp_add_mbuf(udp, mbuf);
