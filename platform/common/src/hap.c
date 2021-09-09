@@ -40,6 +40,14 @@ void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store) {
             &found) == kHAPError_None);
     if (!found) {
         HAPPlatformRandomNumberFill(setupInfo.salt, sizeof setupInfo.salt);
+        const uint8_t srpUserName[] = "Pair-Setup";
+        HAP_srp_verifier(
+                setupInfo.verifier,
+                setupInfo.salt,
+                srpUserName,
+                sizeof srpUserName - 1,
+                (const uint8_t*) setupCode.stringValue,
+                sizeof setupCode.stringValue - 1);
         HAPAssert(HAPPlatformKeyValueStoreSet(kv_store,
             kSDKKeyValueStoreDomain_Provisioning,
             kSDKKeyValueStoreKey_Provisioning_SetupInfo,
