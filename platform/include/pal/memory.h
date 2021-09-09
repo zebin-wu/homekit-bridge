@@ -32,6 +32,10 @@ void *pal_mem_calloc(size_t size);
 
 /**
  * Change the size of the memory block pointed to by ptr to size bytes.
+ *
+ * If ptr is NULL, then the call is equivalent to pal_mem_alloc(size), for all values of size.
+ * if size is equal to 0, and ptr is not NULL, then the call is equivalent to pal_mem_free(ptr).
+ * If realloc() fails, the original block is left untouched; it is not freed or moved.
  */
 void *pal_mem_realloc(void *ptr, size_t size);
 
