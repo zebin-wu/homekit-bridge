@@ -3,7 +3,7 @@ return {
         return {
             format = "Bool",
             iid = iid,
-            type = "On",
+            type = "OutletInUse",
             props = {
                 readable = true,
                 writable = false,
