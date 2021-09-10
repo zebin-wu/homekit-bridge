@@ -1,9 +1,9 @@
 [submodule "ext/HomeKitAdk"]
 	path = ext/HomeKitAdk
-	url = https://github.com/KNpTrue/HomeKitADK
+	url = ../HomeKitADK
 [submodule "ext/lua"]
 	path = ext/lua
-	url = https://github.com/KNpTrue/lua
+	url = ../lua
 [submodule "ext/lua-cjson"]
 	path = ext/lua-cjson
 	url = https://github.com/mpx/lua-cjson
