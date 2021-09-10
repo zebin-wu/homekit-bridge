@@ -915,18 +915,10 @@ lhap_char_constraints_valid_vals_arr_cb(lua_State *L, size_t i, void *arg) {
     }
 
     int isnum;
-    lua_Integer num = lhap_tointegerx(L, -1, &isnum, kHAPCharacteristicFormat_UInt8, true);
+    *(vals[i]) = lhap_tointegerx(L, -1, &isnum, kHAPCharacteristicFormat_UInt8, true);
     if (!isnum) {
         return false;
     }
-
-    uint8_t *pval = lc_malloc(sizeof(uint8_t));
-    if (!pval) {
-        HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
-        return false;
-    }
-    *pval = num;
-    vals[i] = pval;
     return true;
 }
 
@@ -941,11 +933,16 @@ lhap_char_constraints_valid_vals_cb(lua_State *L, const lc_table_kv *kv, void *a
             HAPLogError(&lhap_log, "%s: Invalid array.", __func__);
             return false;
         }
-        uint8_t **vals = lc_calloc((len + 1) * sizeof(uint8_t *));
+        size_t vals_len = (len + 1) * sizeof(uint8_t *);
+        uint8_t **vals = lc_malloc(vals_len + sizeof(uint8_t) * len);
         if (!vals) {
             HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
             return false;
         }
+        for (int i = 0; i < len; i++) {
+            vals[i] = (uint8_t *)((char *)vals + vals_len) + i;
+        }
+        vals[len] = NULL;
         if (!lc_traverse_array(L, -1, lhap_char_constraints_valid_vals_arr_cb,
             vals)) {
             HAPLogError(&lhap_log, "%s: Failed to parse validValues.", __func__);
@@ -993,18 +990,10 @@ lhap_char_constraints_valid_vals_ranges_arr_cb(lua_State *L, size_t i, void *arg
             LUA_TTABLE, lua_type(L, -1));
         return false;
     }
-    HAPUInt8CharacteristicValidValuesRange *range =
-        lc_calloc(sizeof(HAPUInt8CharacteristicValidValuesRange));
-    if (!range) {
-        HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
-        return false;
-    }
-    if (!lc_traverse_table(L, -1, lhap_char_constraints_valid_val_range_kvs, range)) {
+    if (!lc_traverse_table(L, -1, lhap_char_constraints_valid_val_range_kvs, ranges[i])) {
         HAPLogError(&lhap_log, "%s: Failed to parse valid value range.", __func__);
-        lc_free(range);
         return false;
     }
-    ranges[i] = range;
     return true;
 }
 
@@ -1021,12 +1010,17 @@ lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, const lc_table_kv *kv, 
             HAPLogError(&lhap_log, "%s: Invalid array.", __func__);
             return false;
         }
+        size_t ranges_len = (len + 1) * sizeof(HAPUInt8CharacteristicValidValuesRange *);
         HAPUInt8CharacteristicValidValuesRange **ranges =
-            lc_calloc((len + 1) * sizeof(HAPUInt8CharacteristicValidValuesRange *));
+            lc_malloc(ranges_len + len * sizeof(HAPUInt8CharacteristicValidValuesRange));
         if (!ranges) {
             HAPLogError(&lhap_log, "%s: Failed to alloc ranges.", __func__);
             return false;
         }
+        for (int i = 0; i < len; i++) {
+            ranges[i] = (HAPUInt8CharacteristicValidValuesRange *)((char *)ranges + ranges_len) + i;
+        }
+        ranges[len] = NULL;
         if (!lc_traverse_array(L, -1, lhap_char_constraints_valid_vals_ranges_arr_cb,
             ranges)) {
             HAPLogError(&lhap_log, "%s: Failed to parse validValues.", __func__);
@@ -1691,19 +1685,9 @@ static void lhap_reset_characteristic(lua_State *L, HAPCharacteristic *character
     switch (format) {
     LHAP_CASE_CHAR_FORMAT_CODE(UInt8, characteristic,
         if (p->constraints.validValues) {
-            for (uint8_t **pval = (uint8_t **)p->constraints.validValues;
-                *pval; pval++) {
-                lc_free(*pval);
-            }
             lc_safe_free(p->constraints.validValues);
         }
         if (p->constraints.validValuesRanges) {
-            for (HAPUInt8CharacteristicValidValuesRange **prange =
-                (HAPUInt8CharacteristicValidValuesRange **)
-                p->constraints.validValuesRanges;
-                *prange; prange++) {
-                lc_free(*prange);
-            }
             lc_safe_free(p->constraints.validValuesRanges);
         }
     )
