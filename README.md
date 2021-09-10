@@ -3,7 +3,6 @@
 ![](https://img.shields.io/badge/language-c|lua-orange.svg)
 ![](https://img.shields.io/badge/platform-linux-lightgrey.svg)
 ![](https://img.shields.io/badge/platform-esp-lightgrey.svg)
-[![license](https://img.shields.io/github/license/KNpTrue/homekit-bridge)](LICENSE)
 
 ## Introduction
 
@@ -13,7 +12,7 @@ homekit-bridge designed for embedded devices allows you to connect non-HomeKit d
 - Write plugins to generate HomeKit bridged accessories.
 
 homekit-bridge is based on [HomeKitADK](https://github.com/apple/HomeKitADK); the main C code is in the application layer of ADK, using PAL interface or HAP interface, and not directly using platform-related interfaces.
->HomekitADK not only implements HomeKit Accessory Protocol(HAP), but also abstracts platform-related interfaces to Platform Adapter Layer(PAL) to make the same application code behave consistently on different platforms.
+> HomekitADK not only implements HomeKit Accessory Protocol(HAP), but also abstracts platform-related interfaces to Platform Adapter Layer(PAL) to make the same application code behave consistently on different platforms.
 
 In order to achieve better scalability and reduce development difficulty, homekit-bridge introduced the dynamic language [Lua](https://www.lua.org), encapsulated C modules into Lua modules, and used Lua to write upper-level applications. homekit-bridge also made the following optimizations to run Lua scripts on devices with compact resources:
 
@@ -31,10 +30,10 @@ Xiaomi Chuangmi Plug M3 (1 Socket) | `chuangmi.plug.m3`
 
 ## Getting started
 
-### Clone the repository
-> Add `--recursive` to initialize submodules in the clone.
+### Attention
+After clone the repository to the local, please initialize submodules by the follow command:
 ```
-    git clone --recursive https://github.com/KNpTrue/homekit-bridge.git
+ $ git submodule update --init
 ```
 
 ### Platform Linux (Ubuntu)
