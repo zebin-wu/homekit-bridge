@@ -672,6 +672,9 @@ testCharacteristic(false, "constraints.validVals", { { format.UInt8.min, format.
 ---Initialize with valid constraints validValsRanges.
 testCharacteristic(true, "constraints.validValsRanges", { { { start = format.UInt8.min, stop = format.UInt8.max } } }, "UInt8")
 
+---Initialize with mutli constraints validValsRanges.
+testCharacteristic(true, "constraints.validValsRanges", { { { start = 1, stop = 2 }, { start = 4, stop = 5 } } }, "UInt8")
+
 ---Initialize with invalid constraints validValsRanges.
 testCharacteristic(false, "constraints.validValsRanges", { false, "test", 1, { false }, { "test" }, { start = false }, { { start = format.UInt8.min, stop = true } } }, "UInt8")
 testCharacteristic(false, "constraints.validValsRanges", { { { start = format.UInt8.min, stop = format.UInt8.max } } }, "Bool")
