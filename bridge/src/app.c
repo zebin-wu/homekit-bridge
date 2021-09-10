@@ -94,13 +94,23 @@ static int searcher_embedfs(lua_State *L) {
     return 1;
 }
 
+static void *app_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
+    (void)ud; (void)osize; /* not used */
+    if (nsize == 0) {
+        pal_mem_free(ptr);
+        return NULL;
+    } else {
+        return pal_mem_realloc(ptr, nsize);
+    }
+}
+
 bool app_lua_run(const char *dir, const char *entry) {
     HAPPrecondition(dir);
     HAPPrecondition(entry);
 
     char path[256];
 
-    L  = luaL_newstate();
+    L = lua_newstate(app_lua_alloc, NULL);
     if (L == NULL) {
         HAPLogError(&kHAPLog_Default, "Cannot create state: not enough memory");
         goto err;
