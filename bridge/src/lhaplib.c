@@ -422,7 +422,7 @@ static bool lhap_ref_var(lua_State *L, int idx, int *ref_id) {
     return true;
 }
 
-// Find the string and return the string index.
+// Find the string and return the string index, if not found, return -1.
 static int lhap_lookup_by_name(const char *name, const char *strs[], int len) {
     for (int i = 0; i < len; i++) {
         if (strs[i] && HAPStringAreEqual(name, strs[i])) {
@@ -1927,15 +1927,15 @@ lhap_accessories_arr_cb(lua_State *L, size_t i, void *arg) {
             "%s: The type of the element is not table.", __func__);
         return false;
     }
-    HAPAccessory *a = lc_calloc(sizeof(HAPAccessory) + sizeof(accessory_ref));
-    if (!a) {
+    HAPAccessory *acc = lc_calloc(sizeof(HAPAccessory) + sizeof(accessory_ref));
+    if (!acc) {
         HAPLogError(&lhap_log,
             "%s: Failed to alloc memory.", __func__);
         return false;
     }
-    LHAP_ACCESSORY_REF_INIT(a);
-    accessories[i] = a;
-    if (!lc_traverse_table(L, -1, lhap_accessory_kvs, a)) {
+    LHAP_ACCESSORY_REF_INIT(acc);
+    accessories[i] = acc;
+    if (!lc_traverse_table(L, -1, lhap_accessory_kvs, acc)) {
         HAPLogError(&lhap_log,
             "%s: Failed to generate accessory structure from table accessory.",
             __func__);
@@ -2049,26 +2049,25 @@ static int lhap_init(lua_State *L) {
     luaL_checktype(L, 2, LUA_TTABLE);
     luaL_checktype(L, 3, LUA_TTABLE);
 
-    HAPAccessory *accessory = lc_calloc(sizeof(HAPAccessory) + sizeof(accessory_ref));
-    if (!accessory) {
+    desc->primary_acc = lc_calloc(sizeof(HAPAccessory) + sizeof(accessory_ref));
+    if (!desc->primary_acc) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         goto err;
     }
-    LHAP_ACCESSORY_REF_INIT(accessory);
-    desc->primary_acc = accessory;
-    if (!lc_traverse_table(L, 1, lhap_accessory_kvs, accessory)) {
+    LHAP_ACCESSORY_REF_INIT(desc->primary_acc);
+    if (!lc_traverse_table(L, 1, lhap_accessory_kvs, desc->primary_acc)) {
         HAPLogError(&lhap_log,
             "%s: Failed to generate accessory structure from table accessory.",
             __func__);
         goto err1;
     }
 
-    if (accessory->aid != 1) {
+    if (desc->primary_acc->aid != 1) {
         HAPLogError(&lhap_log, "Primary accessory must have aid 1.");
         goto err1;
     }
 
-    if (accessory->category != kHAPAccessoryCategory_Bridges) {
+    if (desc->primary_acc->category != kHAPAccessoryCategory_Bridges) {
         goto parse_cb;
     }
 
@@ -2109,8 +2108,8 @@ parse_cb:
     }
 
     HAPLogInfo(&lhap_log,
-        "Accessory \"%s\": %s has been configured.", accessory->name,
-        lhap_accessory_category_strs[accessory->category]);
+        "Accessory \"%s\": %s has been configured.", desc->primary_acc->name,
+        lhap_accessory_category_strs[desc->primary_acc->category]);
     if (len) {
         HAPLogInfo(&lhap_log,
             "%" LUA_INTEGER_FRMLEN "u"
@@ -2138,6 +2137,9 @@ parse_cb:
         server_callbacks.handleSessionInvalidate = lhap_server_handle_session_invalidate;
     }
 
+    // Generate setup code, setup info and setup ID.
+    pal_hap_acc_setup_gen(desc->platform->keyValueStore);
+
     // Display setup code.
     HAPSetupCode setupCode;
     HAPPlatformAccessorySetupLoadSetupCode(desc->platform->accessorySetup, &setupCode);
@@ -2153,6 +2155,7 @@ parse_cb:
 
     desc->L = L;
     desc->inited = true;
+
     lua_pushboolean(L, true);
     return 1;
 
@@ -2167,7 +2170,7 @@ err2:
         lc_safe_free(desc->bridged_accs);
     }
 err1:
-    lhap_reset_accessory(L, accessory);
+    lhap_reset_accessory(L, desc->primary_acc);
     lc_safe_free(desc->primary_acc);
 err:
     lua_pushboolean(L, false);
