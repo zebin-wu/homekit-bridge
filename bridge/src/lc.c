@@ -121,11 +121,16 @@ void lc_collectgarbage(lua_State *L) {
 char *lc_new_str(lua_State *L, int idx) {
     size_t len;
     const char *str = lua_tolstring(L, idx, &len);
+    if (str[len] != '\0') {
+        HAPLogError(&lc_log, "%s: Invalid string.", __func__);
+        return NULL;
+    }
     char *copy = lc_malloc(len + 1);
     if (!copy) {
         return NULL;
     }
-    HAPRawBufferCopyBytes(copy, str, len + 1);
+    HAPRawBufferCopyBytes(copy, str, len);
+    copy[len] = '\0';
     return copy;
 }
 
