@@ -24,12 +24,10 @@ static const char *net_domain_strs[] = PAL_NET_DOMAIN_STRS;
 typedef struct {
     pal_net_udp *udp;
     lua_State *L;
-    struct {
-        int recv_cb;
-        int recv_arg;
-        int err_cb;
-        int err_arg;
-    } ref_ids;
+    bool has_recv_cb;
+    bool has_recv_arg;
+    bool has_err_cb;
+    bool has_err_arg;
 } lnet_udp_handle;
 
 #define LPAL_NET_UDP_GET_HANDLE(L, idx) \
@@ -62,10 +60,10 @@ static int lnet_udp_open(lua_State *L) {
         goto err;
     }
     handle->L = L;
-    handle->ref_ids.recv_cb = LUA_REFNIL;
-    handle->ref_ids.recv_arg = LUA_REFNIL;
-    handle->ref_ids.err_cb = LUA_REFNIL;
-    handle->ref_ids.err_arg = LUA_REFNIL;
+    handle->has_recv_cb = false;
+    handle->has_recv_arg = false;
+    handle->has_err_cb = false;
+    handle->has_err_arg = false;
     return 1;
 
 err:
@@ -165,13 +163,15 @@ static void lnet_udp_recv_cb(pal_net_udp *udp, void *data, size_t len,
     lua_State *L = handle->L;
 
     lc_push_traceback(L);
-    HAPAssert(lc_push_ref(L, handle->ref_ids.recv_cb));
+    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &handle->has_recv_cb) == LUA_TFUNCTION);
 
     lua_pushlstring(L, (const char *)data, len);
     lua_pushstring(L, from_addr);
     lua_pushinteger(L, from_port);
-    bool has_arg = lc_push_ref(L, handle->ref_ids.recv_arg);
-    if (lua_pcall(L, has_arg ? 4 : 3, 0, 1)) {
+    if (handle->has_recv_arg) {
+        lua_rawgetp(L, LUA_REGISTRYINDEX, &handle->has_recv_arg);
+    }
+    if (lua_pcall(L, handle->has_recv_arg ? 4 : 3, 0, 1)) {
         HAPLogError(&lnet_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
     lua_settop(L, 0);
@@ -184,22 +184,15 @@ static int lnet_udp_handle_set_recv_cb(lua_State *L) {
         luaL_error(L, "attempt to use a closed handle");
     }
 
-    lc_unref(L, handle->ref_ids.recv_cb);
-    if (lua_isnil(L, 2)) {
-        handle->ref_ids.recv_cb = LUA_REFNIL;
-    } else {
-        luaL_checktype(L, 2, LUA_TFUNCTION);
-        handle->ref_ids.recv_cb = lc_ref(L, 2);
-    }
+    handle->has_recv_cb = !lua_isnoneornil(L, 2);
+    lua_pushvalue(L, 2);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_recv_cb);
 
-    lc_unref(L, handle->ref_ids.recv_arg);
-    if (lua_isnil(L, 3)) {
-        handle->ref_ids.recv_arg = LUA_REFNIL;
-    } else {
-        handle->ref_ids.recv_arg = lc_ref(L, 3);
-    }
+    handle->has_recv_arg = !lua_isnoneornil(L, 3);
+    lua_pushvalue(L, 3);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_recv_arg);
 
-    if (handle->ref_ids.recv_cb) {
+    if (handle->has_recv_cb) {
         pal_net_udp_set_recv_cb(handle->udp, lnet_udp_recv_cb, handle);
     } else {
         pal_net_udp_set_recv_cb(handle->udp, NULL, NULL);
@@ -212,12 +205,11 @@ static void lnet_udp_err_cb(pal_net_udp *udp, pal_net_err err, void *arg) {
     lua_State *L = handle->L;
 
     lc_push_traceback(L);
-    if (!lc_push_ref(L, handle->ref_ids.err_cb)) {
-        HAPLogError(&lnet_log, "%s: Can't get lua function.", __func__);
-        return;
+    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &handle->has_err_cb) == LUA_TFUNCTION);
+    if (handle->has_err_arg) {
+        lua_rawgetp(L, LUA_REGISTRYINDEX, &handle->has_err_arg);
     }
-    bool has_arg = lc_push_ref(L, handle->ref_ids.err_arg);
-    if (lua_pcall(L, has_arg ? 1 : 0, 0, 1)) {
+    if (lua_pcall(L, handle->has_err_arg ? 1 : 0, 0, 1)) {
         HAPLogError(&lnet_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
     lua_settop(L, 0);
@@ -230,22 +222,15 @@ static int lnet_udp_handle_set_err_cb(lua_State *L) {
         luaL_error(L, "attempt to use a closed handle");
     }
 
-    lc_unref(L, handle->ref_ids.err_cb);
-    if (lua_isnil(L, 2)) {
-        handle->ref_ids.err_cb = LUA_REFNIL;
-    } else {
-        luaL_checktype(L, 2, LUA_TFUNCTION);
-        handle->ref_ids.err_cb = lc_ref(L, 2);
-    }
+    handle->has_err_cb = !lua_isnoneornil(L, 2);
+    lua_pushvalue(L, 2);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_err_cb);
 
-    lc_unref(L, handle->ref_ids.err_arg);
-    if (lua_isnil(L, 3)) {
-        handle->ref_ids.err_arg = LUA_REFNIL;
-    } else {
-        handle->ref_ids.err_arg = lc_ref(L, 3);
-    }
+    handle->has_err_arg = !lua_isnoneornil(L, 3);
+    lua_pushvalue(L, 3);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_err_arg);
 
-    if (handle->ref_ids.err_cb) {
+    if (handle->has_err_cb) {
         pal_net_udp_set_err_cb(handle->udp, lnet_udp_err_cb, handle);
     } else {
         pal_net_udp_set_err_cb(handle->udp, NULL, NULL);
@@ -253,21 +238,20 @@ static int lnet_udp_handle_set_err_cb(lua_State *L) {
     return 0;
 }
 
-static void lhap_net_udp_handle_reset(lnet_udp_handle *handle) {
+static void lhap_net_udp_handle_reset(lua_State *L, lnet_udp_handle *handle) {
     if (!handle->udp) {
         return;
     }
     pal_net_udp_free(handle->udp);
-    handle->udp = NULL;
-    lc_unref(handle->L, handle->ref_ids.recv_cb);
-    handle->ref_ids.recv_cb = LUA_REFNIL;
-    lc_unref(handle->L, handle->ref_ids.recv_arg);
-    handle->ref_ids.recv_arg = LUA_REFNIL;
-    lc_unref(handle->L, handle->ref_ids.err_cb);
-    handle->ref_ids.err_cb = LUA_REFNIL;
-    lc_unref(handle->L, handle->ref_ids.err_arg);
-    handle->ref_ids.err_arg = LUA_REFNIL;
-    handle->L = NULL;
+    lua_pushnil(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_recv_cb);
+    lua_pushnil(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_recv_arg);
+    lua_pushnil(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_err_cb);
+    lua_pushnil(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_err_arg);
+    HAPRawBufferZero(handle, sizeof(*handle));
 }
 
 static int lnet_udp_handle_close(lua_State *L) {
@@ -275,12 +259,12 @@ static int lnet_udp_handle_close(lua_State *L) {
     if (!handle->udp) {
         luaL_error(L, "attempt to use a closed handle");
     }
-    lhap_net_udp_handle_reset(handle);
+    lhap_net_udp_handle_reset(L, handle);
     return 0;
 }
 
 static int lnet_udp_handle_gc(lua_State *L) {
-    lhap_net_udp_handle_reset(LPAL_NET_UDP_GET_HANDLE(L, 1));
+    lhap_net_udp_handle_reset(L, LPAL_NET_UDP_GET_HANDLE(L, 1));
     return 0;
 }
 

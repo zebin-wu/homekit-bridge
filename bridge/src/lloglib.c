@@ -11,32 +11,27 @@
 
 #define LUA_LOGGER_NAME "logger*"
 
-static const HAPLogObject llog_default_logger = {
-    .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
-    .category = NULL,
-};
-
 typedef struct {
     HAPLogObject obj;
     char category[0];
 } llog_logger;
 
 static int llog_get_logger(lua_State *L) {
-    if (lua_isnone(L, 1)) {
-        lua_pushlightuserdata(L, (void *)&llog_default_logger);
-        luaL_setmetatable(L, LUA_LOGGER_NAME);
-        return 1;
+    size_t len = 0;
+    const char *str = NULL;
+    if (!lua_isnoneornil(L, 1)) {
+        str = luaL_checklstring(L, 1, &len);
     }
-
-    luaL_checktype(L, 1, LUA_TSTRING);
-    size_t len;
-    const char *str = lua_tolstring(L, 1, &len);
-    llog_logger *logger = lua_newuserdata(L, sizeof(llog_logger) + len + 1);
-    HAPRawBufferCopyBytes(logger->category, str, len);
-    logger->category[len] = '\0';
-    logger->obj.category = logger->category;
-    logger->obj.subsystem = APP_BRIDGE_LOG_SUBSYSTEM;
+    llog_logger *logger = lua_newuserdata(L, sizeof(llog_logger) + (len ? (len + 1) : 0));
     luaL_setmetatable(L, LUA_LOGGER_NAME);
+    if (len) {
+        HAPRawBufferCopyBytes(logger->category, str, len);
+        logger->category[len] = '\0';
+        logger->obj.category = logger->category;
+    } else {
+        logger->obj.category = NULL;
+    }
+    logger->obj.subsystem = APP_BRIDGE_LOG_SUBSYSTEM;
     return 1;
 }
 

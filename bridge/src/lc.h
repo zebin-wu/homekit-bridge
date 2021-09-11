@@ -102,21 +102,6 @@ void lc_set_path(lua_State *L, const char *path);
 void lc_set_cpath(lua_State *L, const char *cpath);
 
 /**
- * Creates and returns a reference.
- */
-int lc_ref(lua_State *L, int idx);
-
-/**
- * Delete the reference.
- */
-void lc_unref(lua_State *L, int ref_id);
-
-/**
- * Push the reference to lua stack.
- */
-bool lc_push_ref(lua_State *L, int ref_id);
-
-/**
  * Push traceback function to lua stack.
  */
 void lc_push_traceback(lua_State *L);

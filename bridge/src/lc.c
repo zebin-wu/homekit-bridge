@@ -160,25 +160,6 @@ void lc_set_cpath(lua_State *L, const char *cpath) {
     lua_pop(L, 1);
 }
 
-int lc_ref(lua_State *L, int idx) {
-    lua_pushvalue(L, idx);
-    return luaL_ref(L, LUA_REGISTRYINDEX);
-}
-
-void lc_unref(lua_State *L, int ref_id) {
-    if (ref_id != LUA_REFNIL) {
-        luaL_unref(L, LUA_REGISTRYINDEX, ref_id);
-    }
-}
-
-bool lc_push_ref(lua_State *L, int ref_id) {
-    if (ref_id != LUA_REFNIL) {
-        lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id);
-        return true;
-    }
-    return false;
-}
-
 static int traceback(lua_State *L) {
     const char *msg = lua_tostring(L, 1);
     if (msg) {
