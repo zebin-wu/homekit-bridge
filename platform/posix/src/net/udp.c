@@ -508,7 +508,6 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
 
 void pal_net_udp_set_recv_cb(pal_net_udp *udp, pal_net_udp_recv_cb cb, void *arg) {
     HAPPrecondition(udp);
-    HAPPrecondition(cb);
 
     udp->recv_cb = cb;
     udp->recv_arg = arg;
@@ -516,7 +515,6 @@ void pal_net_udp_set_recv_cb(pal_net_udp *udp, pal_net_udp_recv_cb cb, void *arg
 
 void pal_net_udp_set_err_cb(pal_net_udp *udp, pal_net_udp_err_cb cb, void *arg) {
     HAPPrecondition(udp);
-    HAPPrecondition(cb);
 
     udp->err_cb = cb;
     udp->err_arg = arg;
