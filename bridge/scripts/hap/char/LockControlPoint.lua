@@ -1,4 +1,8 @@
 return {
+    ---New a ``LockControlPoint`` characteristic.
+    ---@param iid integer Instance ID.
+    ---@param write fun(request:HapCharacteristicWriteRequest, val:any, context?:any): HapError
+    ---@return HapCharacteristic characteristic
     new = function (iid, write)
         return {
             format = "TLV8",

@@ -3,6 +3,11 @@ return {
         Inactive = 0,
         Active = 1
     },
+    ---New a ``Active`` characteristic.
+    ---@param iid integer Instance ID.
+    ---@param read fun(request:HapCharacteristicReadRequest, context?:any): any, HapError
+    ---@param write fun(request:HapCharacteristicWriteRequest, val:any, context?:any): HapError
+    ---@return HapCharacteristic characteristic
     new = function (iid, read, write)
         return {
             format = "UInt8",

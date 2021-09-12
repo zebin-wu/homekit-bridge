@@ -3,6 +3,11 @@ return {
         Celsius = 0,
         Fahrenheit = 1
     },
+    ---New a ``TemperatureDisplayUnits`` characteristic.
+    ---@param iid integer Instance ID.
+    ---@param read fun(request:HapCharacteristicReadRequest, context?:any): any, HapError
+    ---@param write fun(request:HapCharacteristicWriteRequest, val:any, context?:any): HapError
+    ---@return HapCharacteristic characteristic
     new = function (iid, read, write)
         return {
             format = "UInt8",

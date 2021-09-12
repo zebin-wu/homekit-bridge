@@ -1,4 +1,7 @@
 return {
+    ---New a ``Name`` characteristic.
+    ---@param iid integer Instance ID.
+    ---@return HapCharacteristic characteristic
     new = function (iid)
         local hap = require("hap")
         return {
