@@ -3,6 +3,11 @@ return {
         Disabled = 0,
         Enabled = 1
     },
+    ---New a ``LockPhysicalControls`` characteristic.
+    ---@param iid integer Instance ID.
+    ---@param read fun(request:HapCharacteristicReadRequest, context?:any): any, HapError
+    ---@param write fun(request:HapCharacteristicWriteRequest, val:any, context?:any): HapError
+    ---@return HapCharacteristic characteristic
     new = function (iid, read, write)
         return {
             format = "UInt8",

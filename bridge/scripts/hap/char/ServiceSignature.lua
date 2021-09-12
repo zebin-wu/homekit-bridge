@@ -1,4 +1,7 @@
 return {
+    ---New a ``ServiceSignature`` characteristic.
+    ---@param iid integer Instance ID.
+    ---@return HapCharacteristic characteristic
     new = function (iid)
         local hap = require("hap")
         return {

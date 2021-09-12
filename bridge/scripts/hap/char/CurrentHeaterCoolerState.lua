@@ -5,6 +5,10 @@ return {
         Heating = 2,
         Cooling = 3
     },
+    ---New a ``CurrentHeaterCoolerState`` characteristic.
+    ---@param iid integer Instance ID.
+    ---@param read fun(request:HapCharacteristicReadRequest, context?:any): any, HapError
+    ---@return HapCharacteristic characteristic
     new = function (iid, read)
         return {
             format = "UInt8",

@@ -1,4 +1,9 @@
 return {
+    ---New a ``RotationSpeed`` characteristic.
+    ---@param iid integer Instance ID.
+    ---@param read fun(request:HapCharacteristicReadRequest, context?:any): any, HapError
+    ---@param write fun(request:HapCharacteristicWriteRequest, val:any, context?:any): HapError
+    ---@return HapCharacteristic characteristic
     new = function (iid, read, write)
         return {
             format = "Float",
