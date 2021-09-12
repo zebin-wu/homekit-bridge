@@ -1,8 +1,9 @@
 # homekit-bridge
 
-![](https://img.shields.io/badge/language-c|lua-orange.svg)
 ![](https://img.shields.io/badge/platform-linux-lightgrey.svg)
 ![](https://img.shields.io/badge/platform-esp-lightgrey.svg)
+
+English Version | [中文版](README_CN.md)
 
 ## Introduction
 
@@ -14,7 +15,7 @@ homekit-bridge designed for embedded devices allows you to connect non-HomeKit d
 homekit-bridge is based on [HomeKitADK](https://github.com/apple/HomeKitADK); the main C code is in the application layer of ADK, using PAL interface or HAP interface, and not directly using platform-related interfaces.
 > HomekitADK not only implements HomeKit Accessory Protocol(HAP), but also abstracts platform-related interfaces to Platform Adapter Layer(PAL) to make the same application code behave consistently on different platforms.
 
-In order to achieve better scalability and reduce development difficulty, homekit-bridge introduced the dynamic language [Lua](https://www.lua.org), encapsulated C modules into Lua modules, and used Lua to write upper-level applications. homekit-bridge also made the following optimizations to run Lua scripts on devices with compact resources:
+In order to achieve better scalability and reduce development difficulty, homekit-bridge introduced the dynamic language [Lua](https://www.lua.org), encapsulated C modules into Lua modules, and used Lua to write upper-level applications. homekit-bridge also made the following optimizations to run Lua on devices with compact resources:
 
 - Generate text code to byte code via luac.
 - Generate directory trees for multiple Lua scripts and embed them in C code.
@@ -26,19 +27,19 @@ In order to achieve better scalability and reduce development difficulty, homeki
 Product Name | Model
 -|-
 Xiaomi Mi Air Conditioner Companion 2 | `lumi.acpartner.mcn02`
-Xiaomi Chuangmi Plug M3 (1 Socket) | `chuangmi.plug.m3`
+Xiaomi Plug Base (1 Socket) | `chuangmi.plug.m3`
 
 ## Getting started
 
 ### Attention
 After clone the repository to the local, please initialize submodules by the follow command:
 ```
- $ git submodule update --init
+$ git submodule update --init
 ```
 
 ### Platform Linux (Ubuntu)
 
-#### Install dependencies
+#### Prepare
 
 ```bash
 $ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev python3-pip
@@ -62,7 +63,7 @@ Run homekit-bridge by default:
 $ homekit-bridge
 ```
 
-In addition, the following options can be specified:
+The following options can be specified when running homekit-bridge:
 
 Option | Description
 -|-
