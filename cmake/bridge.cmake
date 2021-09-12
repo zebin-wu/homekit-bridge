@@ -7,7 +7,6 @@ set(BRIDGE_SCRIPTS_DIR ${BRIDGE_DIR}/scripts)
 # collect bridge sources
 set(BRIDGE_SRCS
     ${BRIDGE_SRC_DIR}/app.c
-    ${BRIDGE_SRC_DIR}/db.c
     ${BRIDGE_SRC_DIR}/lloglib.c
     ${BRIDGE_SRC_DIR}/lhaplib.c
     ${BRIDGE_SRC_DIR}/lnetudplib.c
@@ -24,6 +23,5 @@ set(BRIDGE_HEADERS
     ${BRIDGE_INC_DIR}/app.h
     ${BRIDGE_INC_DIR}/embedfs.h
     ${BRIDGE_SRC_DIR}/app_int.h
-    ${BRIDGE_SRC_DIR}/db.h
     ${BRIDGE_SRC_DIR}/lc.h
 )
