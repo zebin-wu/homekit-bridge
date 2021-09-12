@@ -18,13 +18,11 @@ return {
                 readable = true,
                 writable = true,
                 supportsEventNotification = true,
-                requiresTimedWrite = true,
                 ble = {
                     supportsBroadcastNotification = true,
                     supportsDisconnectedNotification = true
                 }
             },
-            units = "None",
             constraints = {
                 minVal = 0,
                 maxVal = 2,
