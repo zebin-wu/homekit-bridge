@@ -21,7 +21,7 @@ function acpartner.gen(device, info, conf)
     }
 
     for i, v in ipairs({
-        "serv", "active", "curTemp", "curState", "tgtState", "coolThrTemp", "heatThrTemp", "swingMode"
+        "heaterCooler", "active", "curTemp", "curState", "tgtState", "coolThrTemp", "heatThrTemp", "swingMode"
     }) do
         iids[v] = hap.getNewInstanceID()
     end
@@ -30,16 +30,16 @@ function acpartner.gen(device, info, conf)
         "power", "mode", "tar_temp", "far_level", "ver_swing"
     }, function (self, name, iids)
         if name == "power" then
-            hap.raiseEvent(iids.acc, iids.serv, iids.active)
+            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.active)
         elseif name == "mode" then
-            hap.raiseEvent(iids.acc, iids.serv, iids.curState)
-            hap.raiseEvent(iids.acc, iids.serv, iids.tgtState)
+            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
+            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.tgtState)
         elseif name == "tar_temp" then
-            hap.raiseEvent(iids.acc, iids.serv, iids.coolThrTemp)
-            hap.raiseEvent(iids.acc, iids.serv, iids.heatThrTemp)
-            hap.raiseEvent(iids.acc, iids.serv, iids.curTemp)
+            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
+            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
+            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
         elseif name == "ver_swing" then
-            hap.raiseEvent(iids.acc, iids.serv, iids.swingMode)
+            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
         end
     end, iids)
 
@@ -57,7 +57,7 @@ function acpartner.gen(device, info, conf)
             hap.HapProtocolInformationService,
             hap.PairingService,
             {
-                iid = iids.serv,
+                iid = iids.heaterCooler,
                 type = "HeaterCooler",
                 name = "Heater Cooler",
                 props = {
