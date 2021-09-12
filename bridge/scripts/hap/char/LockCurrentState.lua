@@ -23,7 +23,6 @@ return {
                     supportsDisconnectedNotification = true
                 }
             },
-            units = "None",
             constraints = {
                 minVal = 0,
                 maxVal = 3,

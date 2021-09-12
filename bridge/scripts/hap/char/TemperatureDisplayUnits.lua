@@ -17,13 +17,11 @@ return {
                 readable = true,
                 writable = true,
                 supportsEventNotification = true,
-                requiresTimedWrite = true,
                 ble = {
                     supportsBroadcastNotification = true,
                     supportsDisconnectedNotification = true
                 }
             },
-            units = "Celsius",
             constraints = {
                 minVal = 0,
                 maxVal = 1,
