@@ -11,8 +11,10 @@
 #include <esp_wifi.h>
 #include <esp_event.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 
-#define APP_ESP_MAXIMUM_RETRY  5
+#define APP_WIFI_RETRY_TIME  5
+#define APP_WIFI_RECONN_INTEVAL_MS (30 * 1000)
 
 /*
  * Wifi state.
@@ -33,6 +35,7 @@ typedef enum {
 typedef struct {
     ap_wifi_state state;
     wifi_mode_t mode;
+    esp_timer_handle_t reconn_timer;
     void (*connected_cb)(void);
 } app_wifi_desc;
 
@@ -41,8 +44,7 @@ static const char *TAG = "app_wifi";
 static app_wifi_desc gv_wifi_desc;
 
 static void event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data)
-{
+                                int32_t event_id, void* event_data) {
     static int retry = 0;
     char ssid[32 + 1];
 
@@ -54,11 +56,15 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         case WIFI_EVENT_STA_DISCONNECTED:
         {
             wifi_event_sta_disconnected_t *evt = event_data;
-            ESP_LOGW(TAG, "disconnected reason: %d", evt->reason);
-            if (retry < APP_ESP_MAXIMUM_RETRY) {
-                esp_wifi_connect();
+            ESP_LOGW(TAG, "Disconnected, reason: %d", evt->reason);
+            if (retry < APP_WIFI_RETRY_TIME) {
                 retry++;
-                ESP_LOGI(TAG, "retry to connect to the AP");
+                ESP_LOGI(TAG, "Trying to reconnect ...");
+                esp_wifi_connect();
+            } else {
+                ESP_LOGI(TAG, "Reconnect after %dms ...", APP_WIFI_RECONN_INTEVAL_MS);
+                esp_timer_start_once(gv_wifi_desc.reconn_timer,
+                    APP_WIFI_RECONN_INTEVAL_MS * 1000);
             }
             break;
         }
@@ -67,7 +73,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             wifi_event_sta_connected_t *evt = event_data;
             memcpy(ssid, evt->ssid, evt->ssid_len);
             ssid[evt->ssid_len] = '\0';
-            ESP_LOGI(TAG, "connected to AP \"%s\", channel: %u", ssid, evt->channel);
+            ESP_LOGI(TAG, "Connected to AP \"%s\", channel: %u", ssid, evt->channel);
             break;
         }
         default:
@@ -78,7 +84,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         case IP_EVENT_STA_GOT_IP:
         {
             ip_event_got_ip_t *evt = event_data;
-            ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&evt->ip_info.ip));
+            ESP_LOGI(TAG, "Got IPv4 address:" IPSTR, IP2STR(&evt->ip_info.ip));
             retry = 0;
             if (gv_wifi_desc.connected_cb) {
                 gv_wifi_desc.connected_cb();
@@ -89,6 +95,11 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             break;
         }
     }
+}
+
+static void app_wifi_reconn_timer_cb(void* arg) {
+    ESP_LOGI(TAG, "Trying to reconnect ...");
+    esp_wifi_connect();
 }
 
 void app_wifi_init(void)
@@ -118,6 +129,14 @@ void app_wifi_init(void)
                                                         &instance_got_ip));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
+
+    esp_timer_create_args_t timer_conf = {
+        .callback = app_wifi_reconn_timer_cb,
+        .arg = NULL,
+        .dispatch_method = ESP_TIMER_TASK,
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&timer_conf, &gv_wifi_desc.reconn_timer));
+
     gv_wifi_desc.state = APP_WIFI_STATE_INITED;
     ESP_LOGI(TAG, "noinit -> inited");
 }
