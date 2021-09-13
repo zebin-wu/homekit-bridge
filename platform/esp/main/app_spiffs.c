@@ -11,12 +11,12 @@
 
 static const char *TAG = "spiffs";
 
-void app_spiffs_init(void)
+void app_spiffs_init(const char *base_path)
 {
     ESP_LOGI(TAG, "Initializing SPIFFS");
 
     esp_vfs_spiffs_conf_t conf = {
-      .base_path = APP_SPIFFS_DIR_PATH,
+      .base_path = base_path,
       .partition_label = NULL,
       .max_files = 8,
       .format_if_mount_failed = false
