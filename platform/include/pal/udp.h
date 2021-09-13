@@ -4,25 +4,25 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_NET_UDP_H_
-#define PLATFORM_INCLUDE_PAL_NET_UDP_H_
+#ifndef PLATFORM_INCLUDE_PAL_UDP_H_
+#define PLATFORM_INCLUDE_PAL_UDP_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <HAPBase.h>
-#include <pal/net/types.h>
+#include <pal/net.h>
 
 /**
- * Network UDP interfaces.
+ * UDP interfaces.
  * Every platform must to implement it.
  */
 
 /**
  * Opaque structure for the UDP protocol control block (PCB).
  */
-typedef struct pal_net_udp pal_net_udp;
+typedef struct pal_udp pal_udp;
 
 /**
  * Allocate a UDP PCB.
@@ -30,7 +30,7 @@ typedef struct pal_net_udp pal_net_udp;
  * @param domain Specified communication domain.
  * @return UDP PCB or NULL if the allocation fails.
  */
-pal_net_udp *pal_net_udp_new(pal_net_domain domain);
+pal_udp *pal_udp_new(pal_net_domain domain);
 
 /**
  * Enable UDP broadcast.
@@ -38,7 +38,7 @@ pal_net_udp *pal_net_udp_new(pal_net_domain domain);
  * @param udp UDP PCB.
  * @return zero on success, error number on error.
  */
-pal_net_err pal_net_udp_enable_broadcast(pal_net_udp *udp);
+pal_net_err pal_udp_enable_broadcast(pal_udp *udp);
 
 /**
  * Bind a local IP address and port.
@@ -48,19 +48,19 @@ pal_net_err pal_net_udp_enable_broadcast(pal_net_udp *udp);
  * @param port Local UDP port number, in host order.
  * @return zero on success, error number on error.
  */
-pal_net_err pal_net_udp_bind(pal_net_udp *udp, const char *addr, uint16_t port);
+pal_net_err pal_udp_bind(pal_udp *udp, const char *addr, uint16_t port);
 
 /**
  * Set the remote address and port.
  *
- * This sets the destination address for subsequent pal_net_udp_send() calls.
+ * This sets the destination address for subsequent pal_udp_send() calls.
  *
  * @param udp UDP PCB.
  * @param addr Remote address to use.
  * @param port Remote UDP port number, in host order.
  * @return zero on success, error number on error.
  */
-pal_net_err pal_net_udp_connect(pal_net_udp *udp, const char *addr, uint16_t port);
+pal_net_err pal_udp_connect(pal_udp *udp, const char *addr, uint16_t port);
 
 /**
  * Send a packet.
@@ -73,7 +73,7 @@ pal_net_err pal_net_udp_connect(pal_net_udp *udp, const char *addr, uint16_t por
  * @param len Length of the data to be sent.
  * @return zero on success, error number on error.
  */
-pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len);
+pal_net_err pal_udp_send(pal_udp *udp, const void *data, size_t len);
 
 /**
  * Send a packet to remote addr and port.
@@ -88,7 +88,7 @@ pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len);
  * @param port Remote UDP port number, in host order.
  * @return zero on success, error number on error.
  */
-pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
+pal_net_err pal_udp_sendto(pal_udp *udp, const void *data, size_t len,
     const char *addr, uint16_t port);
 
 /**
@@ -99,9 +99,9 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
  * @param len Legnth of the received data.
  * @param from_ip Source IP address that the packet comes from.
  * @param from_port Source port, in host order.
- * @param arg The last paramter of pal_net_udp_set_recv_cb().
+ * @param arg The last paramter of pal_udp_set_recv_cb().
  */
-typedef void (*pal_net_udp_recv_cb)(pal_net_udp *udp, void *data, size_t len,
+typedef void (*pal_udp_recv_cb)(pal_udp *udp, void *data, size_t len,
     const char *from_addr, uint16_t from_port, void *arg);
 
 /**
@@ -111,16 +111,16 @@ typedef void (*pal_net_udp_recv_cb)(pal_net_udp *udp, void *data, size_t len,
  * @param cb A callback called when a packet is received on the UDP PCB.
  * @param arg The value to be passed as the last argument to cb.
  */
-void pal_net_udp_set_recv_cb(pal_net_udp *udp, pal_net_udp_recv_cb cb, void *arg);
+void pal_udp_set_recv_cb(pal_udp *udp, pal_udp_recv_cb cb, void *arg);
 
 /**
  * A callback called when an error occurs.
  *
  * @param udp UDB PCB.
  * @param err Error number.
- * @param arg The last paramter of pal_net_udp_set_err_cb().
+ * @param arg The last paramter of pal_udp_set_err_cb().
  */
-typedef void (*pal_net_udp_err_cb)(pal_net_udp *udp, pal_net_err err, void *arg);
+typedef void (*pal_udp_err_cb)(pal_udp *udp, pal_net_err err, void *arg);
 
 /**
  * Set the error callback.
@@ -129,17 +129,17 @@ typedef void (*pal_net_udp_err_cb)(pal_net_udp *udp, pal_net_err err, void *arg)
  * @param cb A callback called when an error occurs.
  * @param arg The value to be passed as the last argument to cb.
  */
-void pal_net_udp_set_err_cb(pal_net_udp *udp, pal_net_udp_err_cb cb, void *arg);
+void pal_udp_set_err_cb(pal_udp *udp, pal_udp_err_cb cb, void *arg);
 
 /**
  * Free a UDP PCB.
  *
  * @param udp UDP PCB.
  */
-void pal_net_udp_free(pal_net_udp *udp);
+void pal_udp_free(pal_udp *udp);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_NET_UDP_H_
+#endif  // PLATFORM_INCLUDE_PAL_UDP_H_

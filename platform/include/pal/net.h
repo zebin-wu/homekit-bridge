@@ -4,12 +4,17 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_NET_TYPES_H_
-#define PLATFORM_INCLUDE_PAL_NET_TYPES_H_
+#ifndef PLATFORM_INCLUDE_PAL_NET_H_
+#define PLATFORM_INCLUDE_PAL_NET_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <HAPBase.h>
+
+// The max length of network address.
+#define PAL_NET_ADDR_MAX_LEN HAPMax(INET6_ADDRSTRLEN, INET_ADDRSTRLEN)
 
 /**
  * Network error numbers.
@@ -41,4 +46,4 @@ typedef enum {
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_NET_TYPES_H_
+#endif  // PLATFORM_INCLUDE_PAL_NET_H_
