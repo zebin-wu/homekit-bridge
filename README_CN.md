@@ -1,8 +1,5 @@
 # homekit-bridge
 
-![](https://img.shields.io/badge/platform-linux-lightgrey.svg)
-![](https://img.shields.io/badge/platform-esp-lightgrey.svg)
-
 [English Version](README.md) | 中文版
 
 ## 介绍
@@ -17,17 +14,25 @@
 
 为了更好的扩展性以及降低开发难度，**homekit-bridge**引入了动态语言[Lua](https://www.lua.org)，将C模块封装成Lua模块，使用Lua来编写上层应用代码。**homekit-bridge**还做了以下的优化，使得Lua能够在资源紧凑的设备上运行：
 
-- 通过luac将文本代码转换成字节码
+- 通过`luac`将文本代码转换成字节码
 - 将多个Lua脚本生成目录树，嵌入到C代码中
 - 使得Lua虚拟机支持直接从ROM中读取代码，而不是拷贝到RAM中读取
 
 ## 支持的设备
 
 ### 米家 - [miio](plugins/miio/README.md)
+
 产品名称 | 型号
 -|-
 小米空调伴侣2代 | `lumi.acpartner.mcn02`
 小米智能插座基础版(1个插座) | `chuangmi.plug.m3`
+
+## 支持的平台
+
+目前针对以下平台做了适配：
+
+- Linux (Ubuntu/Raspberry Pi OS)
+- ESP-IDF (ESP32/ESP32-S2)
 
 ## 入门
 
@@ -43,7 +48,7 @@ $ git submodule update --init
 
 ```bash
 $ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev python3-pip
-$ pip3 install cpplint
+$ sudo pip3 install cpplint
 ```
 
 #### 编译和安装
@@ -85,7 +90,7 @@ $ homekit-bridge
 
 ```bash
 $ git fetch --tag
-$ git checkout <idf version>
+$ git checkout v4.3.1
 $ git submodule update
 ```
 

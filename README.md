@@ -1,8 +1,5 @@
 # homekit-bridge
 
-![](https://img.shields.io/badge/platform-linux-lightgrey.svg)
-![](https://img.shields.io/badge/platform-esp-lightgrey.svg)
-
 English Version | [中文版](README_CN.md)
 
 ## Introduction
@@ -17,17 +14,23 @@ homekit-bridge is based on [HomeKitADK](https://github.com/apple/HomeKitADK); th
 
 In order to achieve better scalability and reduce development difficulty, homekit-bridge introduced the dynamic language [Lua](https://www.lua.org), encapsulated C modules into Lua modules, and used Lua to write upper-level applications. homekit-bridge also made the following optimizations to run Lua on devices with compact resources:
 
-- Generate text code to byte code via luac.
+- Generate text code to byte code via `luac`.
 - Generate directory trees for multiple Lua scripts and embed them in C code.
-- Make the Lua parser supports reading the code directly from ROM instead of copying the code to RAM.
+- Make the Lua VM supports reading the code directly from ROM instead of copying the code to RAM.
 
 ## Supported devices
 
 ### Mi Home - [miio](plugins/miio/README.md)
+
 Product Name | Model
 -|-
 Xiaomi Mi Air Conditioner Companion 2 | `lumi.acpartner.mcn02`
 Xiaomi Plug Base (1 Socket) | `chuangmi.plug.m3`
+
+## Supported platform
+
+- Linux (Ubuntu/Raspberry Pi OS)
+- ESP-IDF (ESP32/ESP32-S2)
 
 ## Getting started
 
@@ -37,13 +40,13 @@ After clone the repository to the local, please initialize submodules by the fol
 $ git submodule update --init
 ```
 
-### Platform Linux (Ubuntu)
+### Linux
 
 #### Prepare
 
 ```bash
 $ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev python3-pip
-$ pip3 install cpplint
+$ sudo pip3 install cpplint
 ```
 
 #### Compile and install
@@ -75,11 +78,19 @@ Option | Description
 
 The configuration script `config.lua` is placed in `/usr/local/lib/homekit-bridge` by default, you can edit it before running homekit-bridge. If you specified the scripts directory, homekit-bridge will find `config.lua` in the specified directory.
 
-### Platform ESP
+### ESP-IDF
 
 #### Prepare
 
-Set up the host environment and ESP-IDF (**v4.3.1**) as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
+Set up the host environment and ESP-IDF as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
+
+The currently tested ESP-IDF version is **v4.3.1**, switch to this version with the following command:
+
+```bash
+$ git fetch --tag
+$ git checkout v4.3.1
+$ git submodule update
+```
 
 ESP-IDF currently uses MbedTLS 2.16.x, whereas HomeKit ADK requires 2.18. A branch mbedtls-2.16.6-adk is being maintained [here](https://github.com/espressif/mbedtls/tree/mbedtls-2.16.6-adk) which has the required patches from 2.18, on top of 2.16.6. To switch to this, follow these steps:
 
