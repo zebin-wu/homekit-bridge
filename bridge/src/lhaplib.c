@@ -2497,8 +2497,7 @@ parse_cb:
     }
 
     HAPLogInfo(&lhap_log,
-        "Accessory \"%s\": %s has been configured.", desc->primary_acc->name,
-        lhap_accessory_category_strs[desc->primary_acc->category]);
+        "Primary accessory \"%s\" has been configured.", desc->primary_acc->name);
     if (len) {
         HAPLogInfo(&lhap_log,
             "%" LUA_INTEGER_FRMLEN "u"

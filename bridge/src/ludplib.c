@@ -14,7 +14,7 @@
 
 static const HAPLogObject lnet_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
-    .category = "lnet",
+    .category = "ludp",
 };
 
 #define LUA_UDP_HANDLE_NAME "UdpHandle*"
