@@ -51,6 +51,7 @@
 
 #define APP_MAIN_TASK_STACKSIZE 10 * 1024
 #define APP_MAIN_TASK_PRIORITY 6
+#define APP_SPIFFS_DIR_PATH "/spiffs"
 
 /**
  * Global platform objects.
@@ -110,7 +111,7 @@ static void init_platform() {
     app_console_init();
     app_wifi_init();
     app_wifi_on();
-    app_spiffs_init();
+    app_spiffs_init(APP_SPIFFS_DIR_PATH);
 
     app_wifi_set_connected_cb(app_wifi_connected_cb);
     app_wifi_register_cmd();

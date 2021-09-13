@@ -7,11 +7,9 @@
 #ifndef APP_SPIFFS_H
 #define APP_SPIFFS_H
 
-#define APP_SPIFFS_DIR_PATH "/spiffs"
-
 /**
  * Initialize spiffs.
  */
-void app_spiffs_init(void);
+void app_spiffs_init(const char *base_path);
 
 #endif /* APP_SPIFFS_H */
