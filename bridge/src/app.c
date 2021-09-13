@@ -43,7 +43,7 @@ static const luaL_Reg globallibs[] = {
 static const luaL_Reg dynamiclibs[] = {
     {LUA_HAP_NAME, luaopen_hap},
     {LUA_BOARD_NAME, luaopen_board},
-    {LUA_NET_UDP_NAME, luaopen_net_udp},
+    {LUA_UDP_NAME, luaopen_udp},
     {LUA_TIMER_NAME, luaopen_timer},
     {LUA_HASH_NAME, luaopen_hash},
     {LUA_CIPHER_NAME, luaopen_cipher},

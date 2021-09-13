@@ -9,7 +9,7 @@ set(BRIDGE_SRCS
     ${BRIDGE_SRC_DIR}/app.c
     ${BRIDGE_SRC_DIR}/lloglib.c
     ${BRIDGE_SRC_DIR}/lhaplib.c
-    ${BRIDGE_SRC_DIR}/lnetudplib.c
+    ${BRIDGE_SRC_DIR}/ludplib.c
     ${BRIDGE_SRC_DIR}/lboardlib.c
     ${BRIDGE_SRC_DIR}/ltimerlib.c
     ${BRIDGE_SRC_DIR}/lc.c

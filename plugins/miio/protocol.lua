@@ -1,4 +1,4 @@
-local udp = require "net.udp"
+local udp = require "udp"
 local timer = require "timer"
 local hash = require "hash"
 local json = require "cjson"

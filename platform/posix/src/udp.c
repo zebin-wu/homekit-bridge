@@ -10,15 +10,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include <pal/net/udp.h>
+#include <pal/udp.h>
 #include <pal/memory.h>
 
 #include <HAPLog.h>
 #include <HAPPlatform.h>
 #include <HAPPlatformFileHandle.h>
-
-#define PAL_NET_UDP_BUF_LEN 2048
-#define PAL_NET_ADDR_MAX_LEN HAPMax(INET6_ADDRSTRLEN, INET_ADDRSTRLEN)
 
 /**
  * Log with type.
@@ -33,15 +30,15 @@
 #define UDP_LOG_ERRNO(udp, func) \
     UDP_LOG(Error, udp, "%s: %s() error: %s.", __func__, func, strerror(errno))
 
-typedef struct pal_net_udp_mbuf {
+typedef struct pal_udp_mbuf {
     char to_addr[PAL_NET_ADDR_MAX_LEN];
     uint16_t to_port;
-    struct pal_net_udp_mbuf *next;
+    struct pal_udp_mbuf *next;
     size_t len;
     char buf[0];
-} pal_net_udp_mbuf;
+} pal_udp_mbuf;
 
-struct pal_net_udp {
+struct pal_udp {
     bool bound:1;
     bool connected:1;
     uint16_t id;
@@ -49,16 +46,16 @@ struct pal_net_udp {
     pal_net_domain domain;
     char remote_addr[PAL_NET_ADDR_MAX_LEN];
     uint16_t remote_port;
-    pal_net_udp_mbuf *mbuf_list_head;
-    pal_net_udp_mbuf **mbuf_list_ptail;
+    pal_udp_mbuf *mbuf_list_head;
+    pal_udp_mbuf **mbuf_list_ptail;
 
     HAPPlatformFileHandleRef handle;
     HAPPlatformFileHandleEvent interests;
 
-    pal_net_udp_recv_cb recv_cb;
+    pal_udp_recv_cb recv_cb;
     void *recv_arg;
 
-    pal_net_udp_err_cb err_cb;
+    pal_udp_err_cb err_cb;
     void *err_arg;
 };
 
@@ -69,7 +66,7 @@ static const HAPLogObject udp_log_obj = {
 
 static size_t gudp_pcb_count;
 
-static void pal_net_udp_file_handle_callback(
+static void pal_udp_file_handle_callback(
         HAPPlatformFileHandleRef fileHandle,
         HAPPlatformFileHandleEvent fileHandleEvents,
         void* context);
@@ -96,13 +93,13 @@ pal_net_addr_get_ipv6(struct sockaddr_in6 *dst_addr, const char *src_addr, uint1
     return true;
 }
 
-static void pal_net_udp_add_mbuf(pal_net_udp *udp, pal_net_udp_mbuf *mbuf) {
+static void pal_udp_add_mbuf(pal_udp *udp, pal_udp_mbuf *mbuf) {
     *(udp->mbuf_list_ptail) = mbuf;
     udp->mbuf_list_ptail = &mbuf->next;
 }
 
-static pal_net_udp_mbuf *pal_net_udp_get_mbuf(pal_net_udp *udp) {
-    pal_net_udp_mbuf *mbuf = udp->mbuf_list_head;
+static pal_udp_mbuf *pal_udp_get_mbuf(pal_udp *udp) {
+    pal_udp_mbuf *mbuf = udp->mbuf_list_head;
     if (mbuf) {
         udp->mbuf_list_head = mbuf->next;
         if (udp->mbuf_list_head == NULL) {
@@ -112,8 +109,8 @@ static pal_net_udp_mbuf *pal_net_udp_get_mbuf(pal_net_udp *udp) {
     return mbuf;
 }
 
-static void pal_net_udp_del_mbuf_list(pal_net_udp *udp) {
-    pal_net_udp_mbuf *cur;
+static void pal_udp_del_mbuf_list(pal_udp *udp) {
+    pal_udp_mbuf *cur;
     while (udp->mbuf_list_head) {
         cur = udp->mbuf_list_head;
         udp->mbuf_list_head = cur->next;
@@ -122,9 +119,9 @@ static void pal_net_udp_del_mbuf_list(pal_net_udp *udp) {
     udp->mbuf_list_ptail = &udp->mbuf_list_head;
 }
 
-static void pal_net_udp_raw_recv(pal_net_udp *udp) {
+static void pal_udp_raw_recv(pal_udp *udp) {
     pal_net_err err = PAL_NET_ERR_OK;
-    char buf[PAL_NET_UDP_BUF_LEN];
+    char buf[1500]; // Same size as MTU
     char from_addr[PAL_NET_ADDR_MAX_LEN] = { 0 };
     uint16_t from_port;
     ssize_t rc;
@@ -193,9 +190,9 @@ err:
     }
 }
 
-static void pal_net_udp_raw_send(pal_net_udp *udp) {
+static void pal_udp_raw_send(pal_udp *udp) {
     pal_net_err err = PAL_NET_ERR_OK;
-    pal_net_udp_mbuf *mbuf = pal_net_udp_get_mbuf(udp);
+    pal_udp_mbuf *mbuf = pal_udp_get_mbuf(udp);
     if (!mbuf) {
         err = PAL_NET_ERR_UNKNOWN;
         goto err;
@@ -203,7 +200,7 @@ static void pal_net_udp_raw_send(pal_net_udp *udp) {
     if (udp->mbuf_list_head == NULL) {
         udp->interests.isReadyForWriting = false;
         HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
-            pal_net_udp_file_handle_callback, udp);
+            pal_udp_file_handle_callback, udp);
     }
 
     ssize_t rc;
@@ -269,38 +266,38 @@ err:
     }
 }
 
-static void pal_net_udp_raw_exception(pal_net_udp *udp) {
+static void pal_udp_raw_exception(pal_udp *udp) {
     UDP_LOG(Error, udp, "%s", __func__);
     if (udp->err_cb) {
         udp->err_cb(udp, PAL_NET_ERR_UNKNOWN, udp->err_arg);
     }
 }
 
-static void pal_net_udp_file_handle_callback(
+static void pal_udp_file_handle_callback(
         HAPPlatformFileHandleRef fileHandle,
         HAPPlatformFileHandleEvent fileHandleEvents,
         void* context) {
     HAPPrecondition(context);
 
-    pal_net_udp *udp = context;
+    pal_udp *udp = context;
     HAPAssert(udp->handle == fileHandle);
 
     if (fileHandleEvents.hasErrorConditionPending) {
-        pal_net_udp_raw_exception(udp);
+        pal_udp_raw_exception(udp);
         return;
     }
 
     if (fileHandleEvents.isReadyForReading) {
-        pal_net_udp_raw_recv(udp);
+        pal_udp_raw_recv(udp);
     }
 
     if (fileHandleEvents.isReadyForWriting) {
-        pal_net_udp_raw_send(udp);
+        pal_udp_raw_send(udp);
     }
 }
 
-pal_net_udp *pal_net_udp_new(pal_net_domain domain) {
-    pal_net_udp *udp = pal_mem_calloc(sizeof(*udp));
+pal_udp *pal_udp_new(pal_net_domain domain) {
+    pal_udp *udp = pal_mem_calloc(sizeof(*udp));
     if (!udp) {
         UDP_LOG(Error, udp, "%s: Failed to calloc memory.", __func__);
         return NULL;
@@ -331,7 +328,7 @@ pal_net_udp *pal_net_udp_new(pal_net_domain domain) {
     udp->interests.isReadyForReading = true;
     udp->interests.hasErrorConditionPending = true;
     HAPError err = HAPPlatformFileHandleRegister(&udp->handle, udp->fd,
-        udp->interests, pal_net_udp_file_handle_callback, udp);
+        udp->interests, pal_udp_file_handle_callback, udp);
     if (err != kHAPError_None) {
         UDP_LOG(Error, udp, "%s: Failed to register handle callback", __func__);
         return NULL;
@@ -340,7 +337,7 @@ pal_net_udp *pal_net_udp_new(pal_net_domain domain) {
     return udp;
 }
 
-pal_net_err pal_net_udp_enable_broadcast(pal_net_udp *udp) {
+pal_net_err pal_udp_enable_broadcast(pal_udp *udp) {
     HAPPrecondition(udp);
 
     int optval = 1;
@@ -351,7 +348,7 @@ pal_net_err pal_net_udp_enable_broadcast(pal_net_udp *udp) {
     return PAL_NET_ERR_OK;
 }
 
-pal_net_err pal_net_udp_bind(pal_net_udp *udp, const char *addr, uint16_t port) {
+pal_net_err pal_udp_bind(pal_udp *udp, const char *addr, uint16_t port) {
     HAPPrecondition(udp);
     HAPPrecondition(addr);
 
@@ -387,7 +384,7 @@ pal_net_err pal_net_udp_bind(pal_net_udp *udp, const char *addr, uint16_t port) 
     return PAL_NET_ERR_OK;
 }
 
-pal_net_err pal_net_udp_connect(pal_net_udp *udp, const char *addr, uint16_t port) {
+pal_net_err pal_udp_connect(pal_udp *udp, const char *addr, uint16_t port) {
     size_t addr_len = HAPStringGetNumBytes(addr);
 
     HAPPrecondition(udp);
@@ -428,7 +425,7 @@ pal_net_err pal_net_udp_connect(pal_net_udp *udp, const char *addr, uint16_t por
     return PAL_NET_ERR_OK;
 }
 
-pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len) {
+pal_net_err pal_udp_send(pal_udp *udp, const void *data, size_t len) {
     HAPPrecondition(udp);
     if (len > 0) {
         HAPPrecondition(data);
@@ -438,7 +435,7 @@ pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len) {
         UDP_LOG(Error, udp, "%s: Unknown remote address and port, connect first.", __func__);
         return PAL_NET_ERR_NOT_CONN;
     }
-    pal_net_udp_mbuf *mbuf = pal_mem_alloc(sizeof(*mbuf) + len);
+    pal_udp_mbuf *mbuf = pal_mem_alloc(sizeof(*mbuf) + len);
     if (!mbuf) {
         UDP_LOG(Error, udp, "%s: Failed to alloc memory.", __func__);
         return PAL_NET_ERR_ALLOC;
@@ -448,15 +445,15 @@ pal_net_err pal_net_udp_send(pal_net_udp *udp, const void *data, size_t len) {
     mbuf->to_addr[0] = '\0';
     mbuf->to_port = 0;
     mbuf->next = NULL;
-    pal_net_udp_add_mbuf(udp, mbuf);
+    pal_udp_add_mbuf(udp, mbuf);
     udp->interests.isReadyForWriting = true;
     HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
-        pal_net_udp_file_handle_callback, udp);
+        pal_udp_file_handle_callback, udp);
     UDP_LOG(Debug, udp, "%s(len = %zu)", __func__, len);
     return PAL_NET_ERR_OK;
 }
 
-pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
+pal_net_err pal_udp_sendto(pal_udp *udp, const void *data, size_t len,
     const char *addr, uint16_t port) {
     size_t addr_len = HAPStringGetNumBytes(addr);
 
@@ -487,7 +484,7 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
     default:
         HAPAssertionFailure();
     }
-    pal_net_udp_mbuf *mbuf = pal_mem_alloc(sizeof(*mbuf) + len);
+    pal_udp_mbuf *mbuf = pal_mem_alloc(sizeof(*mbuf) + len);
     if (!mbuf) {
         UDP_LOG(Error, udp, "%s: Failed to alloc memory.", __func__);
         return PAL_NET_ERR_ALLOC;
@@ -498,35 +495,35 @@ pal_net_err pal_net_udp_sendto(pal_net_udp *udp, const void *data, size_t len,
     mbuf->to_addr[addr_len] = '\0';
     mbuf->to_port = port;
     mbuf->next = NULL;
-    pal_net_udp_add_mbuf(udp, mbuf);
+    pal_udp_add_mbuf(udp, mbuf);
     udp->interests.isReadyForWriting = true;
     HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
-        pal_net_udp_file_handle_callback, udp);
+        pal_udp_file_handle_callback, udp);
     UDP_LOG(Debug, udp, "%s(len = %zu, addr = %s, port = %u)", __func__, len, addr, port);
     return PAL_NET_ERR_OK;
 }
 
-void pal_net_udp_set_recv_cb(pal_net_udp *udp, pal_net_udp_recv_cb cb, void *arg) {
+void pal_udp_set_recv_cb(pal_udp *udp, pal_udp_recv_cb cb, void *arg) {
     HAPPrecondition(udp);
 
     udp->recv_cb = cb;
     udp->recv_arg = arg;
 }
 
-void pal_net_udp_set_err_cb(pal_net_udp *udp, pal_net_udp_err_cb cb, void *arg) {
+void pal_udp_set_err_cb(pal_udp *udp, pal_udp_err_cb cb, void *arg) {
     HAPPrecondition(udp);
 
     udp->err_cb = cb;
     udp->err_arg = arg;
 }
 
-void pal_net_udp_free(pal_net_udp *udp) {
+void pal_udp_free(pal_udp *udp) {
     if (!udp) {
         return;
     }
     UDP_LOG(Debug, udp, "%s(%p)", __func__, udp);
     HAPPlatformFileHandleDeregister(udp->handle);
     close(udp->fd);
-    pal_net_udp_del_mbuf_list(udp);
+    pal_udp_del_mbuf_list(udp);
     pal_mem_free(udp);
 }
