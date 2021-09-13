@@ -121,7 +121,7 @@ static void pal_udp_del_mbuf_list(pal_udp *udp) {
 
 static void pal_udp_raw_recv(pal_udp *udp) {
     pal_net_err err = PAL_NET_ERR_OK;
-    char buf[1500]; // Same size as MTU
+    char buf[1500];  // Same size as MTU
     char from_addr[PAL_NET_ADDR_MAX_LEN] = { 0 };
     uint16_t from_port;
     ssize_t rc;
