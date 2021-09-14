@@ -105,14 +105,14 @@ function device.create(done, timeout, addr, token, ...)
         return nil
     end
 
-    o.scanTimer = timer.create()
-    o.scanTimer:start(timeout, function (self)
+    o.scanTimer = timer.create(function (self)
         self.logger:error("Scan timeout.")
         self.scanCtx:stop()
         self.scanCtx = nil
         self.scanTimer = nil
         handleDoneCb(self)
-    end, o)
+    end)
+    o.scanTimer:start(timeout, o)
 
     ---Start a request and ``respCb`` will be called when a response is received.
     ---@param respCb fun(err: MiioError|string|nil, result: any, ...) Response callback.
@@ -142,7 +142,7 @@ function device.create(done, timeout, addr, token, ...)
             end
             local ms = math.random(3000, 5000)
             self.logger:debug(("Sync properties after %dms."):format(ms))
-            self.timer:start(ms, syncPropsTimerCb, {self, names})
+            self.timer:start(ms, {self, names})
         end, "get_prop", names, self, names)
     end
 
@@ -155,7 +155,7 @@ function device.create(done, timeout, addr, token, ...)
 
         self.update = update
         self.updateArgs = {...}
-        self.timer = timer.create()
+        self.timer = timer.create(syncPropsTimerCb)
 
         self:request(function (err, result, self, names)
             if result then
@@ -166,7 +166,7 @@ function device.create(done, timeout, addr, token, ...)
             end
             local ms = math.random(3000, 5000)
             self.logger:debug(("Sync properties after %dms ..."):format(ms))
-            self.timer:start(ms, syncPropsTimerCb, {self, names})
+            self.timer:start(ms, {self, names})
         end, "get_prop", names, self, names)
     end
 

@@ -331,7 +331,10 @@ function protocol.create(addr, devid, token, stamp)
     end
 
     pcb.handle = handle
-    pcb.timer = timer.create()
+    pcb.timer = timer.create(function (self)
+        self.handle:setRecvCb(nil)
+        handleRespCb(self, "Request timeout.", nil)
+    end)
 
     ---Parse a message.
     ---@param self MiioPcb Protocol control block.
@@ -404,10 +407,7 @@ function protocol.create(addr, devid, token, stamp)
             handleRespCb(self, parse(self, unpack(data, self.token)))
         end, self)
 
-        self.timer:start(timeout, function (self)
-            self.handle:setRecvCb(nil)
-            handleRespCb(self, "Request timeout.", nil)
-        end, self)
+        self.timer:start(timeout, self)
         self.logger:debug("<= " .. data)
     end
 

@@ -30,17 +30,25 @@ typedef struct {
 #define LPAL_TIMER_GET_HANDLE(L, idx) \
     luaL_checkudata(L, idx, LUA_TIMER_HANDLE_NAME)
 
-static void ltimer_obj_reset(lua_State *L, ltimer_obj *obj) {
-    lua_pushnil(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &obj->timer);
+static void ltimer_obj_reset_arg(lua_State *L, ltimer_obj *obj) {
     lua_pushnil(L);
     lua_rawsetp(L, LUA_REGISTRYINDEX, &obj->has_arg);
+    obj->has_arg = false;
 }
 
 static int ltimer_create(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+
     ltimer_obj *obj = lua_newuserdata(L, sizeof(ltimer_obj));
     luaL_setmetatable(L, LUA_TIMER_HANDLE_NAME);
+    lua_insert(L, 1);  // put the obj at index 1
+
+    // the function is at index -1
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &obj->timer);
+
     obj->L = L;
+    obj->timer = 0;
+    obj->has_arg = false;
     return 1;
 }
 
@@ -53,11 +61,12 @@ static void ltimer_obj_cb(HAPPlatformTimerRef timer, void* _Nullable context) {
     lc_push_traceback(L);
     HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &obj->timer) == LUA_TFUNCTION);
 
-    if (obj->has_arg) {
+    bool has_arg = obj->has_arg;
+    if (has_arg) {
         lua_rawgetp(L, LUA_REGISTRYINDEX, &obj->has_arg);
+        ltimer_obj_reset_arg(L, obj);
     }
-    ltimer_obj_reset(L, obj);
-    if (lua_pcall(L, obj->has_arg ? 1 : 0, 0, 1)) {
+    if (lua_pcall(L, has_arg ? 1 : 0, 0, 1)) {
         HAPLogError(&ltimer_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
     lua_settop(L, 0);
@@ -70,14 +79,10 @@ static int ltimer_obj_start(lua_State *L) {
     if (ms <= 0) {
         luaL_error(L, "attemp to trigger before the current time");
     }
-    luaL_checktype(L, 3, LUA_TFUNCTION);
 
-    lua_pushvalue(L, 3);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &obj->timer);
-
-    obj->has_arg = !lua_isnoneornil(L, 4);
+    obj->has_arg = !lua_isnoneornil(L, 3);
     if (obj->has_arg) {
-        lua_pushvalue(L, 4);
+        lua_pushvalue(L, 3);
         lua_rawsetp(L, LUA_REGISTRYINDEX, &obj->has_arg);
     }
 
@@ -91,7 +96,9 @@ static int ltimer_obj_start(lua_State *L) {
 
 static int ltimer_obj_cancel(lua_State *L) {
     ltimer_obj *obj = LPAL_TIMER_GET_HANDLE(L, 1);
-    ltimer_obj_reset(L, obj);
+    if (obj->has_arg) {
+        ltimer_obj_reset_arg(L, obj);
+    }
     if (obj->timer) {
         HAPPlatformTimerDeregister(obj->timer);
         obj->timer = 0;
@@ -101,7 +108,11 @@ static int ltimer_obj_cancel(lua_State *L) {
 
 static int ltimer_obj_gc(lua_State *L) {
     ltimer_obj *obj = LPAL_TIMER_GET_HANDLE(L, 1);
-    ltimer_obj_reset(L, obj);
+    lua_pushnil(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &obj->timer);
+    if (obj->has_arg) {
+        ltimer_obj_reset_arg(L, obj);
+    }
     if (obj->timer) {
         HAPPlatformTimerDeregister(obj->timer);
         obj->timer = 0;
