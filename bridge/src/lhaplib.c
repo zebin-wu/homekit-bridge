@@ -2313,8 +2313,9 @@ static void lhap_server_handle_update_state(HAPAccessoryServerRef *server, void 
     lua_pushstring(L, lhap_server_state_strs[HAPAccessoryServerGetState(server)]);
     if (lua_pcall(L, 1, 0, 1)) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lua_pop(L, 1);
     }
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
 }
 
 static void lhap_server_handle_session_accept(
@@ -2333,8 +2334,9 @@ static void lhap_server_handle_session_accept(
     lua_pushlightuserdata(L, session);
     if (lua_pcall(L, 1, 0, 1)) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lua_pop(L, 1);
     }
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
 }
 
 static void lhap_server_handle_session_invalidate(
@@ -2353,8 +2355,9 @@ static void lhap_server_handle_session_invalidate(
     lua_pushlightuserdata(L, session);
     if (lua_pcall(L, 1, 0, 1)) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lua_pop(L, 1);
     }
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
 }
 
 static bool
