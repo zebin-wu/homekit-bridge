@@ -27,7 +27,7 @@ function acpartner.gen(device, info, conf)
     end
 
     device:registerProps({
-        "power", "mode", "tar_temp", "far_level", "ver_swing"
+        "power", "mode", "tar_temp", "ver_swing"
     }, function (self, name, iids)
         if name == "power" then
             hap.raiseEvent(iids.acc, iids.heaterCooler, iids.active)
