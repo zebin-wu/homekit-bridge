@@ -123,24 +123,24 @@ function device.create(done, timeout, addr, token, ...)
         dispatch(self)
     end
 
-    local function syncPropsTimerCb(self, names)
-        self.logger:debug("Syncing properties ...")
-        self:request(function (err, result, self, names)
-            if result then
-                assert(#result == #names)
-                local props = self.props
-                for i, v in ipairs(result) do
-                    local name = names[i]
-                    if props[name] ~= v then
-                        props[name] = v
-                        self:update(name, table.unpack(self.updateArgs))
-                    end
-                end
-            end
-            local ms = math.random(3000, 6000)
-            self.logger:debug(("Sync properties after %dms."):format(ms))
-            self.timer:start(ms)
-        end, "get_prop", names, self, names)
+    ---Start sync properties.
+    function o:startSync()
+        assert(self.isSyncing == false)
+
+        self.logger:debug("Start sync properties.")
+        local ms = math.random(3000, 6000)
+        self.logger:debug(("Sync properties after %dms."):format(ms))
+        self.timer:start(ms)
+        self.isSyncing = true
+    end
+
+    ---Stop sync properties.
+    function o:stopSync()
+        assert(self.isSyncing == true)
+
+        self.logger:debug("Stop sync properties.")
+        self.timer:stop()
+        self.isSyncing = false
     end
 
     ---Register properties.
@@ -152,7 +152,26 @@ function device.create(done, timeout, addr, token, ...)
 
         self.update = update
         self.updateArgs = {...}
-        self.timer = timer.create(syncPropsTimerCb, self, names)
+        self.timer = timer.create(function (self, names)
+            self.logger:debug("Syncing properties ...")
+            self:request(function (err, result, self, names)
+                if self.isSyncing == false then
+                    return
+                end
+                if result then
+                    assert(#result == #names)
+                    local props = self.props
+                    for i, v in ipairs(result) do
+                        local name = names[i]
+                        if props[name] ~= v then
+                            props[name] = v
+                            self:update(name, table.unpack(self.updateArgs))
+                        end
+                    end
+                end
+                self:startSync()
+            end, "get_prop", names, self, names)
+        end, self, names)
 
         self:request(function (err, result, self, names)
             if result then
@@ -161,9 +180,7 @@ function device.create(done, timeout, addr, token, ...)
                     self.props[names[i]] = v
                 end
             end
-            local ms = math.random(3000, 6000)
-            self.logger:debug(("Sync properties after %dms ..."):format(ms))
-            self.timer:start(ms)
+            self:startSync()
         end, "get_prop", names, self, names)
     end
 
@@ -181,11 +198,13 @@ function device.create(done, timeout, addr, token, ...)
         if self.props[name] == value then
             return
         end
+        self:stopSync()
         self.props[name] = value
         self:request(function (err, result, self, name)
             if result then
                 self:update(name, table.unpack(self.updateArgs))
             end
+            self:startSync()
         end, "set_" .. name, {value}, self, name)
     end
 
