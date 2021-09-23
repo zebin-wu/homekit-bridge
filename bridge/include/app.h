@@ -21,25 +21,13 @@ extern "C" {
 #define BRIDGE_LUA_ENTRY_DEFAULT "main"
 
 /**
- * Run the application lua entry.
- *
- * @param dir the path of the scripts directory.
- * @param entry the name of the entry script.
- *
- * @return true on success.
- * @return false on failure.
- */
-bool app_lua_run(const char *dir, const char *entry);
-
-/**
- * Close the lua state.
- */
-void app_lua_close(void);
-
-/**
  * Initialize App.
+ *
+ * @param platform
+ * @param dir The path of the scripts directory.
+ * @param entry The name of the entry script.
  */
-void app_init(HAPPlatform *platform);
+void app_init(HAPPlatform *platform, const char *dir, const char *entry);
 
 /**
  * De-initialize App.

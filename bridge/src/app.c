@@ -104,17 +104,10 @@ static void *app_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
     }
 }
 
-bool app_lua_run(const char *dir, const char *entry) {
-    HAPPrecondition(dir);
-    HAPPrecondition(entry);
-
-    char path[256];
-
-    L = lua_newstate(app_lua_alloc, NULL);
-    if (L == NULL) {
-        HAPLogError(&kHAPLog_Default, "Cannot create state: not enough memory");
-        goto err;
-    }
+// app_lua_run(dir: string, entry: string): boolean
+static int app_lua_run(lua_State *L) {
+    const char *dir = luaL_checkstring(L, 1);
+    const char *entry = luaL_checkstring(L, 2);
 
     // load global libraries
     for (const luaL_Reg *lib = globallibs; lib->func; lib++) {
@@ -123,6 +116,7 @@ bool app_lua_run(const char *dir, const char *entry) {
     }
 
     // set file path
+    char path[256];
     HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/?.lua;%s/?.luac", dir, dir) == kHAPError_None);
     lc_set_path(L, path);
 
@@ -135,55 +129,67 @@ bool app_lua_run(const char *dir, const char *entry) {
     // add searcher_embedfs to package.searcher
     lc_add_searcher(L, searcher_embedfs);
 
-    // run entry scripts
-    HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s.luac", entry) == kHAPError_None);
-    const embedfs_file *file = embedfs_find_file(&BRIDGE_EMBEDFS_ROOT, path);
-    int status;
-    if (file) {
-        status = luaL_dobufferx(L, file->data, file->len, NULL, "const");
-    } else {
-        HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/%s.luac", dir, entry) == kHAPError_None);
-        status = luaL_dofile(L, path);
-    }
+    // run entry
+    lua_getglobal(L, "require");
+    lua_pushstring(L, entry);
+    int status = lua_pcall(L, 1, 1, 0);
     if (status != LUA_OK) {
         const char *msg = lua_tostring(L, -1);
         HAPLogError(&kHAPLog_Default, "%s", msg);
-        goto err1;
+        goto err;
     }
 
     if (!lua_isboolean(L, -1)) {
         HAPLogError(&kHAPLog_Default,
             "%s.luac returned is not a boolean.", entry);
-        goto err1;
+        goto err;
     }
+    return 1;
 
-    if (!lua_toboolean(L, -1)) {
-        HAPLogError(&kHAPLog_Default, "Failed to configure.");
-        goto err1;
-    }
-
-    lua_settop(L, 0);
-    lc_collectgarbage(L);
-    return true;
-
-err1:
-    lua_settop(L, 0);
-    lc_collectgarbage(L);
 err:
-    return false;
+    lua_pushboolean(L, false);
+    return 1;
 }
 
-void app_lua_close(void) {
+void app_init(HAPPlatform *platform, const char *dir, const char *entry) {
+    HAPPrecondition(platform);
+    HAPPrecondition(dir);
+    HAPPrecondition(entry);
+
+    lhap_set_platform(platform);
+
+    lua_State *L = lua_newstate(app_lua_alloc, NULL);
+    if (L == NULL) {
+        HAPLogError(&kHAPLog_Default, "Cannot create state: not enough memory");
+        HAPAssertionFailure();
+    }
+
+    // call 'app_lua_init' in protected mode
+    lua_pushcfunction(L, &app_lua_run);
+    lua_pushstring(L, dir);
+    lua_pushstring(L, entry);
+
+    // do the call
+    int status = lua_pcall(L, 2, 1, 0);
+    if (status) {
+        const char *msg = lua_tostring(L, -1);
+        HAPLogError(&kHAPLog_Default, "%s", msg);
+        HAPAssertionFailure();
+    }
+
+    // check the result
+    if (!lua_toboolean(L, -1)) {
+        HAPLogError(&kHAPLog_Default, "Failed to run lua.");
+        HAPAssertionFailure();
+    }
+
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
+}
+
+void app_deinit() {
     if (L) {
         lua_close(L);
         L = NULL;
     }
-}
-
-void app_init(HAPPlatform *platform) {
-    lhap_set_platform(platform);
-}
-
-void app_deinit() {
-    /*no-op*/
 }

@@ -13,6 +13,7 @@
 #include <esp_vfs_dev.h>
 #include <driver/uart.h>
 #include <linenoise/linenoise.h>
+#include <cmd_system.h>
 
 #include "app_console.h"
 
@@ -170,6 +171,8 @@ void app_console_init(void)
 
     /* Register commands */
     esp_console_register_help_command();
+    register_system();
+
     gv_state = APP_CONSOLE_STATE_INITED;
 }
 

@@ -26,7 +26,7 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <cmd_system.h>
+#include <nvs_flash.h>
 
 #include <app.h>
 #include <pal/hap.h>
@@ -79,17 +79,6 @@ static void app_console_start_cb(void* _Nullable context, size_t contextSize) {
     app_console_start();
 }
 
-static void app_lua_run_cb(void* _Nullable context, size_t contextSize) {
-    HAPAssert(app_lua_run(APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY));
-}
-
-static void app_wifi_connected_cb() {
-    app_wifi_set_connected_cb(NULL);
-    // Run lua entry.
-    HAPError err = HAPPlatformRunLoopScheduleCallback(app_lua_run_cb, NULL, 0);
-    HAPAssert(err == kHAPError_None);
-}
-
 /**
  * Initialize global platform objects.
  */
@@ -107,15 +96,6 @@ static void init_platform() {
     HAPPlatformAccessorySetupCreate(
             &accessorySetup, &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = &platform.keyValueStore });
     platform.hapPlatform.accessorySetup = &accessorySetup;
-
-    app_console_init();
-    app_wifi_init();
-    app_wifi_on();
-    app_spiffs_init(APP_SPIFFS_DIR_PATH);
-
-    app_wifi_set_connected_cb(app_wifi_connected_cb);
-    app_wifi_register_cmd();
-    register_system();
 
 #if IP
     // TCP stream manager.
@@ -191,21 +171,37 @@ void app_main_task(void *arg) {
     // Initialize global platform objects.
     init_platform();
 
-    app_init(&platform.hapPlatform);
+    app_init(&platform.hapPlatform, APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY);
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
     // Run loop stopped explicitly by calling function HAPPlatformRunLoopStop.
-
-    // Close lua state.
-    app_lua_close();
 
     app_deinit();
 
     deinit_platform();
 }
 
-void app_main() {
+static void app_wifi_connected_cb() {
+    app_wifi_set_connected_cb(NULL);
     xTaskCreate(app_main_task, "app", APP_MAIN_TASK_STACKSIZE,
         NULL, APP_MAIN_TASK_PRIORITY, NULL);
+}
+
+void app_main() {
+    // Initialize default NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    app_console_init();
+    app_wifi_init();
+    app_wifi_on();
+    app_spiffs_init(APP_SPIFFS_DIR_PATH);
+
+    app_wifi_set_connected_cb(app_wifi_connected_cb);
+    app_wifi_register_cmd();
 }
