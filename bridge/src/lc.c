@@ -107,9 +107,8 @@ void lc_create_enum_table(lua_State *L, const char *enum_array[], int len) {
     lua_createtable(L, len, 0);
     for (int i = 0; i < len; i++) {
         if (enum_array[i]) {
-            lua_pushstring(L, enum_array[i]);
             lua_pushinteger(L, i);
-            lua_settable(L, -3);
+            lua_setfield(L, -2, enum_array[i]);
         }
     }
 }
