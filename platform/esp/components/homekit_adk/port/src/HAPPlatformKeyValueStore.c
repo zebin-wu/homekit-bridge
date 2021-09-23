@@ -22,6 +22,7 @@
 #include <string.h>
 #include <nvs.h>
 #include <nvs_flash.h>
+
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "KeyValueStore" };
 
 void HAPPlatformKeyValueStoreCreate(
@@ -32,7 +33,10 @@ void HAPPlatformKeyValueStoreCreate(
     HAPPrecondition(options->part_name);
     HAPPrecondition(options->namespace_prefix);
 
-    // Initialize NVS
+    // default NVS is already init
+    if (strcmp(options->part_name, NVS_DEFAULT_PART_NAME)) {
+        goto end;
+    }
 
     if (options->read_only) {
         nvs_flash_init_partition(options->part_name);
@@ -42,12 +46,13 @@ void HAPPlatformKeyValueStoreCreate(
         if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
             // NVS partition was truncated and needs to be erased
             // Retry nvs_flash_init
-            ESP_ERROR_CHECK(nvs_flash_erase());
+            ESP_ERROR_CHECK(nvs_flash_erase_partition(options->part_name));
             err = nvs_flash_init_partition(options->part_name);
         }
         ESP_ERROR_CHECK(err);
     }
 
+end:
     keyValueStore->part_name = strdup(options->part_name);
     keyValueStore->namespace_prefix = strdup(options->namespace_prefix);
     keyValueStore->read_only = options->read_only;

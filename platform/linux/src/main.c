@@ -195,17 +195,11 @@ int main(int argc, char *argv[]) {
     // Initialize global platform objects.
     init_platform();
 
-    app_init(&platform.hapPlatform);
-
-    // Run lua entry.
-    HAPAssert(app_lua_run(scripts_dir, entry));
+    app_init(&platform.hapPlatform, scripts_dir, entry);
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
     // Run loop stopped explicitly by calling function HAPPlatformRunLoopStop.
-
-    // Close lua state.
-    app_lua_close();
 
     app_deinit();
 
