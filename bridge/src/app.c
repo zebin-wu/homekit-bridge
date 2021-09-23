@@ -115,6 +115,9 @@ static int app_lua_run(lua_State *L) {
         lua_pop(L, 1);  /* remove lib */
     }
 
+    // GC in generational mode
+    lua_gc(L, LUA_GCGEN, 0, 0);
+
     // set file path
     char path[256];
     HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/?.lua;%s/?.luac", dir, dir) == kHAPError_None);
