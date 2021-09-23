@@ -125,8 +125,6 @@ function device.create(done, timeout, addr, token, ...)
 
     ---Start sync properties.
     function o:startSync()
-        assert(self.isSyncing == false)
-
         self.logger:debug("Start sync properties.")
         local ms = math.random(3000, 6000)
         self.logger:debug(("Sync properties after %dms."):format(ms))
@@ -136,8 +134,6 @@ function device.create(done, timeout, addr, token, ...)
 
     ---Stop sync properties.
     function o:stopSync()
-        assert(self.isSyncing == true)
-
         self.logger:debug("Stop sync properties.")
         self.timer:stop()
         self.isSyncing = false
@@ -152,6 +148,7 @@ function device.create(done, timeout, addr, token, ...)
 
         self.update = update
         self.updateArgs = {...}
+        self.isSyncing = false
         self.timer = timer.create(function (self, names)
             self.logger:debug("Syncing properties ...")
             self:request(function (err, result, self, names)
