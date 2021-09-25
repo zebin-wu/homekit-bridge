@@ -82,16 +82,16 @@ end
 ---Load plugins and generate bridged accessories.
 ---@param pluginConfs PluginConf[] Plugin configurations.
 ---@param accessoryConfs AccessoryConf[] Accessory configurations.
----@param done fun(bridgedAccessories: HapAccessory[])
+---@param done fun(bridgedAccessories: HapAccessory[]) Function called after the bridged accessories is generated.
 function core.start(pluginConfs, accessoryConfs, done)
     if pluginConfs then
-        for i, conf in ipairs(pluginConfs) do
+        for _, conf in ipairs(pluginConfs) do
             loadPlugin(conf.name, conf)
         end
     end
 
     if accessoryConfs then
-        for i, conf in ipairs(accessoryConfs) do
+        for _, conf in ipairs(accessoryConfs) do
             local plugin = loadPlugin(conf.plugin)
             if plugin ~= nil then
                 table.insert(priv.accessories, plugin.gen(conf))
