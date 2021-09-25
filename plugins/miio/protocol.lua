@@ -275,6 +275,113 @@ end
 ---@field code integer Error code.
 ---@field message string Error message.
 
+---@class MiioPcb: MiioPcbPriv miio protocol control block.
+local _pcb = {}
+
+---Handle response.
+---@param self MiioPcb
+---@param err MiioError
+---@param result any
+local function handleResp(self, err, result)
+    local cb = self.respCb
+    local args = self.args
+    self.respCb = nil
+    self.args = nil
+    if err then
+        if type(err) == "string" then
+            self.logger:error(err)
+        else
+            self.logger:error(("Got error %d: %s"):format(err.code, err.message))
+        end
+    end
+    cb(err, result, table.unpack(args))
+end
+
+---Parse a message.
+---@param self MiioPcb Protocol control block.
+---@param msg MiioMessage
+---@return MiioError|string|nil error
+---@return any result
+local function parse(self, msg)
+    if not msg then
+        return "Receive a invalid message."
+    end
+    if msg.did ~= self.devid then
+        return "Not a match Device ID."
+    end
+    if not msg.data then
+        return "Not a response message."
+    end
+    local s = self.encryption:decrypt(msg.data)
+    if not s then
+        return "Failed to decrypt the message."
+    end
+    self.logger:debug("=> " .. s)
+    local payload =  json.decode(s)
+    if not payload then
+        return "Failed to parse the JSON string."
+    end
+    if payload.id ~= self.reqid then
+        return "response id ~= request id"
+    end
+    if payload.error then
+        return payload.error
+    end
+    return nil, payload.result
+end
+
+---Start a request and ``respCb`` will be called when a response is received.
+---@param respCb fun(err: MiioError|string|nil, result: any, ...) Response callback.
+---@param timeout integer Timeout period (in milliseconds).
+---@param method string The request method.
+---@param params? table Array of parameters.
+function _pcb:request(respCb, timeout, method, params, ...)
+    assert(self.respCb == nil, "previous request is in progress")
+    assert(type(respCb) == "function")
+    assert(timeout > 0, "timeout must be greater then 0")
+    assert(type(method) == "string")
+
+    if params then
+        assert(type(params) == "table")
+    end
+
+    self.respCb = respCb
+    self.args = {...}
+    self.reqid = self.reqid + 1
+    local data = json.encode({
+        id = self.reqid,
+        method = method,
+        params = params or nil
+    })
+
+    assert(self.handle:send(pack(0, self.devid, os.time() - self.stampDiff,
+        self.token, self.encryption:encrypt(data))))
+
+    self.handle:setRecvCb(function (data, from_addr, from_port, self)
+        if not self.respCb then
+            self.logger:debug("No pending request, skip the received message.")
+            return
+        end
+
+        self.timer:stop()
+        self.handle:setRecvCb(nil)
+        handleResp(self, parse(self, unpack(data, self.token)))
+    end, self)
+
+    self.timer:start(timeout)
+    self.logger:debug("<= " .. data)
+end
+
+---Abort the previous request.
+function _pcb:abort()
+    if self.respCb then
+        self.respCb = nil
+        self.args = nil
+        self.timer:stop()
+        self.handle:setRecvCb(nil)
+    end
+end
+
 ---Create a PCB(protocol control block).
 ---@param addr string Device address.
 ---@param devid integer Device ID: 32-bit.
@@ -288,7 +395,7 @@ function protocol.create(addr, devid, token, stamp)
     assert(#token == 16)
     assert(math.type(stamp) == "integer")
 
-    ---@class MiioPcb:table miio protocol control block.
+    ---@class MiioPcbPriv: table
     local pcb = {
         logger = log.getLogger("miio.protocol:" .. addr),
         stampDiff = os.time() - stamp,
@@ -315,111 +422,15 @@ function protocol.create(addr, devid, token, stamp)
         return nil
     end
 
-    local function handleRespCb(self, err, result)
-        local cb = self.respCb
-        local args = self.args
-        self.respCb = nil
-        self.args = nil
-        if err then
-            if type(err) == "string" then
-                self.logger:error(err)
-            else
-                self.logger:error(("Got error %d: %s"):format(err.code, err.message))
-            end
-        end
-        cb(err, result, table.unpack(args))
-    end
-
     pcb.handle = handle
     pcb.timer = timer.create(function (self)
         self.handle:setRecvCb(nil)
-        handleRespCb(self, "Request timeout.", nil)
+        handleResp(self, "Request timeout.", nil)
     end, pcb)
 
-    ---Parse a message.
-    ---@param self MiioPcb Protocol control block.
-    ---@param msg MiioMessage
-    ---@return MiioError|string|nil error
-    ---@return any result
-    local function parse(self, msg)
-        if not msg then
-            return "Receive a invalid message."
-        end
-        if msg.did ~= self.devid then
-            return "Not a match Device ID."
-        end
-        if not msg.data then
-            return "Not a response message."
-        end
-        local s = self.encryption:decrypt(msg.data)
-        if not s then
-            return "Failed to decrypt the message."
-        end
-        self.logger:debug("=> " .. s)
-        local payload =  json.decode(s)
-        if not payload then
-            return "Failed to parse the JSON string."
-        end
-        if payload.id ~= self.reqid then
-            return "response id ~= request id"
-        end
-        if payload.error then
-            return payload.error
-        end
-        return nil, payload.result
-    end
-
-    ---Start a request and ``respCb`` will be called when a response is received.
-    ---@param respCb fun(err: MiioError|string|nil, result: any, ...) Response callback.
-    ---@param timeout integer Timeout period (in milliseconds).
-    ---@param method string The request method.
-    ---@param params? table Array of parameters.
-    function pcb:request(respCb, timeout, method, params, ...)
-        assert(self.respCb == nil, "previous request is in progress")
-        assert(type(respCb) == "function")
-        assert(timeout > 0, "timeout must be greater then 0")
-        assert(type(method) == "string")
-
-        if params then
-            assert(type(params) == "table")
-        end
-
-        self.respCb = respCb
-        self.args = {...}
-        self.reqid = self.reqid + 1
-        local data = json.encode({
-            id = self.reqid,
-            method = method,
-            params = params or nil
-        })
-
-        assert(self.handle:send(pack(0, self.devid, os.time() - self.stampDiff,
-            self.token, self.encryption:encrypt(data))))
-
-        self.handle:setRecvCb(function (data, from_addr, from_port, self)
-            if not self.respCb then
-                self.logger:debug("No pending request, skip the received message.")
-                return
-            end
-
-            self.timer:stop()
-            self.handle:setRecvCb(nil)
-            handleRespCb(self, parse(self, unpack(data, self.token)))
-        end, self)
-
-        self.timer:start(timeout)
-        self.logger:debug("<= " .. data)
-    end
-
-    ---Abort the previous request.
-    function pcb:abort()
-        if self.respCb then
-            self.respCb = nil
-            self.args = nil
-            self.timer:stop()
-            self.handle:setRecvCb(nil)
-        end
-    end
+    setmetatable(pcb, {
+        __index = _pcb
+    })
 
     return pcb
 end
