@@ -1,6 +1,5 @@
 local hap = require "hap"
 local On = require "hap.char.On"
-local OutletInUse = require "hap.char.OutletInUse"
 
 local plug = {}
 
@@ -16,7 +15,7 @@ function plug.gen(device, info, conf, on)
     }
 
     for i, v in ipairs({
-        "outlet", "on", "inuse"
+        "outlet", "on"
     }) do
         iids[v] = hap.getNewInstanceID()
     end
@@ -24,7 +23,6 @@ function plug.gen(device, info, conf, on)
     device:registerProps({ on }, function (self, name, iids)
         if name == on then
             hap.raiseEvent(iids.acc, iids.outlet, iids.on)
-            hap.raiseEvent(iids.acc, iids.outlet, iids.inuse)
         end
     end, iids)
 
@@ -61,11 +59,6 @@ function plug.gen(device, info, conf, on)
                         self.logger:info(("Write On: %s"):format(value))
                         self:setOn(value)
                         return hap.Error.None
-                    end),
-                    OutletInUse.new(iids.inuse, function (request, self)
-                        local value = self:getOn()
-                        self.logger:info(("Read OutletInUse: %s"):format(value))
-                        return value, hap.Error.None
                     end)
                 }
             }
