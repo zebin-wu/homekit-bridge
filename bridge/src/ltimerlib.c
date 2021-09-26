@@ -96,7 +96,7 @@ static int ltimer_obj_stop(lua_State *L) {
     lua_getfield(L, 1, "ctx");
     ltimer_obj_ctx *ctx = lua_touserdata(L, -1);
     if (!ctx->timer) {
-        luaL_error(L, "attemp to stop a timer that has not been started");
+        return 0;
     }
     HAPPlatformTimerDeregister(ctx->timer);
     ctx->timer = 0;
