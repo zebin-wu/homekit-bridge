@@ -382,13 +382,13 @@ local hap = {}
 
 ---``ENUM`` Error type.
 hap.Error = {
-    None = 0,
-    Unknown = 1,
-    InvalidState = 2,
-    InvalidData = 3,
-    OutOfResources = 4,
-    NotAuthorized = 5,
-    Busy = 6,
+    None = 0,               ---No error occurred.
+    Unknown = 1,            ---Unknown error.
+    InvalidState = 2,       ---Operation is not supported in current state.
+    InvalidData = 3,        ---Data has unexpected format.
+    OutOfResources = 4,     ---Out of resources.
+    NotAuthorized = 5,      ---Insufficient authorization.
+    Busy = 6,               ---Operation failed temporarily, retry later.
 }
 
 ---HomeKit Accessory Information service.
