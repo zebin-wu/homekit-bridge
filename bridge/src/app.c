@@ -144,7 +144,7 @@ static int app_lua_run(lua_State *L) {
 
     if (!lua_isboolean(L, -1)) {
         HAPLogError(&kHAPLog_Default,
-            "%s.luac returned is not a boolean.", entry);
+            "%s: Entry '%s' returned is not a boolean.", __func__, entry);
         goto err;
     }
     return 1;
@@ -163,7 +163,8 @@ void app_init(HAPPlatform *platform, const char *dir, const char *entry) {
 
     lua_State *L = lua_newstate(app_lua_alloc, NULL);
     if (L == NULL) {
-        HAPLogError(&kHAPLog_Default, "Cannot create state: not enough memory");
+        HAPLogError(&kHAPLog_Default,
+            "%s: Cannot create state: not enough memory", __func__);
         HAPAssertionFailure();
     }
 
@@ -195,4 +196,6 @@ void app_deinit() {
         lua_close(L);
         L = NULL;
     }
+
+    lhap_set_platform(NULL);
 }
