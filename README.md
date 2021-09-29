@@ -26,6 +26,7 @@ Product Name | Model
 -|-
 Xiaomi Mi Air Conditioner Companion 2 | `lumi.acpartner.mcn02`
 Xiaomi Plug Base (1 Socket) | `chuangmi.plug.m3`
+Zhimi DC Variable Frequency Fan | `zhimi.fan.za4`
 
 ## Supported platform
 

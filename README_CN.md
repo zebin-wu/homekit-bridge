@@ -7,7 +7,7 @@
 **homekit-bridge**专门为嵌入式设备设计，可以将非HomeKit的设备快速地接入到HomeKit。它提供了以下功能：
 
 - 配置你想要连接到HomeKit的设备
-- 编写插件来生成HomeKit桥接附件(Bridged Accessory)
+- 编写插件来生成HomeKit桥接配件(Bridged Accessory)
 
 **homekit-bridge**在[HomeKitADK](https://github.com/apple/HomeKitADK)的基础上实现，主要的C代码位于ADK的应用层，只调用平台适配层(PAL)接口或者HomeKit协议(HAP)接口，不直接调用适配平台相关的接口。
 > HomeKitADK不仅实现了HomeKit协议(HAP)，还将平台相关的接口抽象到了平台适配层(PAL)，使得应用代码在不同平台上表现一致。
@@ -26,6 +26,7 @@
 -|-
 小米空调伴侣2代 | `lumi.acpartner.mcn02`
 小米智能插座基础版(1个插座) | `chuangmi.plug.m3`
+智米直流变频落地扇 | `zhimi.fan.za4`
 
 ## 支持的平台
 
