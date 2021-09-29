@@ -75,10 +75,6 @@ static struct {
     HAPPlatformMFiTokenAuth mfiTokenAuth;
 } platform;
 
-static void app_console_start_cb(void* _Nullable context, size_t contextSize) {
-    app_console_start();
-}
-
 /**
  * Initialize global platform objects.
  */
@@ -141,10 +137,6 @@ static void init_platform() {
 
     platform.hapPlatform.authentication.mfiTokenAuth =
             HAPPlatformMFiTokenAuthIsProvisioned(&platform.mfiTokenAuth) ? &platform.mfiTokenAuth : NULL;
-
-    // Run console after starting the run loop.
-    HAPError err = HAPPlatformRunLoopScheduleCallback(app_console_start_cb, NULL, 0);
-    HAPAssert(err == kHAPError_None);
 }
 
 /**
@@ -204,4 +196,5 @@ void app_main() {
 
     app_wifi_set_connected_cb(app_wifi_connected_cb);
     app_wifi_register_cmd();
+    app_console_start();
 }
