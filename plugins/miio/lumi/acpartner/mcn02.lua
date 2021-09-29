@@ -75,10 +75,10 @@ function acpartner.gen(device, info, conf)
                         else
                             value = Active.value.Inactive
                         end
-                        self.logger:info("Read active: " .. util.searchKey(Active.value, value))
+                        self.logger:info("Read Active: " .. util.searchKey(Active.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
-                        self.logger:info("Write active: " .. util.searchKey(Active.value, value))
+                        self.logger:info("Write Active: " .. util.searchKey(Active.value, value))
                         local power
                         if value == Active.value.Active then
                             power = "on"
