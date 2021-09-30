@@ -11,10 +11,12 @@ local obj = {}
 function timer.create(cb, ...) end
 
 ---Start the timer.
+---If the timer has already started, it will start again.
 ---@param ms integer Monotonic trigger time in milliseconds.
 function obj:start(ms) end
 
----Cancel the timer before trigger.
+---Stop the timer before trigger.
+---If the timer has not started, nothing will happen.
 function obj:stop() end
 
 return timer
