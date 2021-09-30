@@ -10,6 +10,17 @@ local SwingMode = require "hap.char.SwingMode"
 
 local acpartner = {}
 
+local mapping = {
+    power = {
+        on = Active.value.Active,
+        off = Active.value.Inactive
+    },
+    ver_swing = {
+        on = SwingMode.value.Enabled,
+        off = SwingMode.value.Disabled
+    }
+}
+
 ---Create a acpartner.
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
@@ -69,23 +80,12 @@ function acpartner.gen(device, info, conf)
                 },
                 chars = {
                     Active.new(iids.active, function (request, self)
-                        local value
-                        if self:getProp("power") == "on" then
-                            value = Active.value.Active
-                        else
-                            value = Active.value.Inactive
-                        end
+                        local value = mapping.power[self:getProp("power")]
                         self.logger:info("Read Active: " .. util.searchKey(Active.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         self.logger:info("Write Active: " .. util.searchKey(Active.value, value))
-                        local power
-                        if value == Active.value.Active then
-                            power = "on"
-                        else
-                            power = "off"
-                        end
-                        self:setProp("power", power)
+                        self:setProp("power", util.searchKey(mapping.power, value))
                         return hap.Error.None
                     end),
                     CurTemp.new(iids.curTemp, function (request, self)
@@ -150,23 +150,12 @@ function acpartner.gen(device, info, conf)
                         return hap.Error.None
                     end, 16, 30, 1),
                     SwingMode.new(iids.swingMode, function (request, self)
-                        local value
-                        if self:getProp("ver_swing") == "on" then
-                            value = SwingMode.value.Enabled
-                        else
-                            value = SwingMode.value.Disabled
-                        end
+                        local value = mapping.ver_swing[self:getProp("ver_swing")]
                         self.logger:info("Read SwingMode: " .. util.searchKey(SwingMode.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         self.logger:info("Write SwingMode: " .. util.searchKey(SwingMode.value, value))
-                        local mode
-                        if value == SwingMode.value.Enabled then
-                            mode = "on"
-                        else
-                            mode = "off"
-                        end
-                        self:setProp("ver_swing", mode)
+                        self:setProp("ver_swing", util.searchKey(mapping.ver_swing, value))
                         return hap.Error.None
                     end)
                 }
