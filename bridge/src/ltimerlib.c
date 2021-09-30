@@ -82,6 +82,10 @@ static int ltimer_obj_start(lua_State *L) {
     lua_pop(L, 2);
     lua_rawsetp(L, LUA_REGISTRYINDEX, &ctx->timer);
 
+    if (ctx->timer) {
+        HAPPlatformTimerDeregister(ctx->timer);
+    }
+
     HAPError err = HAPPlatformTimerRegister(&ctx->timer,
         (HAPTime)ms + HAPPlatformClockGetCurrent(), ltimer_obj_cb, ctx);
     if (err != kHAPError_None) {
