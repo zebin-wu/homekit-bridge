@@ -2,8 +2,26 @@ local hap = require "hap"
 local util = require "util"
 local Active = require "hap.char.Active"
 local RotationSpeed = require "hap.char.RotationSpeed"
+local SwingMode = require "hap.char.SwingMode"
+local LockPhyCtrls = require "hap.char.LockPhysicalControls"
 
 local fan = {}
+
+--- Property -> Characteristic.
+local mapping = {
+    power = {
+        on = Active.value.Active,
+        off = Active.value.Inactive,
+    },
+    angle_enable = {
+        on = SwingMode.value.Enabled,
+        off = SwingMode.value.Disabled
+    },
+    child_lock = {
+        on = LockPhyCtrls.value.Enabled,
+        off = LockPhyCtrls.value.Disabled
+    }
+}
 
 ---Create a fan.
 ---@param device MiioDevice Device object.
@@ -16,14 +34,22 @@ function fan.gen(device, info, conf)
     }
 
     for i, v in ipairs({
-        "fan", "active", "rotationSpeed"
+        "fan", "active", "rotationSpeed", "swingMode", "lockPhyCtrls"
     }) do
         iids[v] = hap.getNewInstanceID()
     end
 
-    device:registerProps({ "power", "speed_level" }, function (self, name, iids)
+    device:registerProps({
+        "power", "speed_level", "angle_enable", "child_lock"
+    }, function (self, name, iids)
         if name == "power" then
             hap.raiseEvent(iids.acc, iids.fan, iids.active)
+        elseif name == "speed_level" then
+            hap.raiseEvent(iids.acc, iids.fan, iids.rotationSpeed)
+        elseif name == "angle_enable" then
+            hap.raiseEvent(iids.acc, iids.fan, iids.swingMode)
+        elseif name == "child_lock" then
+            hap.raiseEvent(iids.acc, iids.fan, iids.lockPhyCtrls)
         end
     end, iids)
 
@@ -53,23 +79,12 @@ function fan.gen(device, info, conf)
                 },
                 chars = {
                     Active.new(iids.active, function (request, self)
-                        local value
-                        if self:getProp("power") == "on" then
-                            value = Active.value.Active
-                        else
-                            value = Active.value.Inactive
-                        end
+                        local value = mapping.power[self:getProp("power")]
                         self.logger:info("Read Active: " .. util.searchKey(Active.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         self.logger:info("Write Active: " .. util.searchKey(Active.value, value))
-                        local power
-                        if value == Active.value.Active then
-                            power = "on"
-                        else
-                            power = "off"
-                        end
-                        self:setProp("power", power)
+                        self:setProp("power", util.searchKey(mapping.power, value))
                         return hap.Error.None
                     end),
                     RotationSpeed.new(iids.rotationSpeed, function (request, self)
@@ -81,7 +96,24 @@ function fan.gen(device, info, conf)
                         self:setProp("speed_level", math.tointeger(value))
                         return hap.Error.None
                     end, 1, 100, 1),
-
+                    SwingMode.new(iids.swingMode, function (request, self)
+                        local value = mapping.angle_enable[self:getProp("angle_enable")]
+                        self.logger:info("Read SwingMode: " .. util.searchKey(SwingMode.value, value))
+                        return value, hap.Error.None
+                    end, function (request, value, self)
+                        self.logger:info("Write SwingMode: " .. util.searchKey(SwingMode.value, value))
+                        self:setProp("angle_enable", util.searchKey(mapping.angle_enable, value))
+                        return hap.Error.None
+                    end),
+                    LockPhyCtrls.new(iids.lockPhyCtrls, function (request, self)
+                        local value = mapping.child_lock[self:getProp("child_lock")]
+                        self.logger:info("Read LockPhysicalControls: " .. util.searchKey(LockPhyCtrls.value, value))
+                        return value, hap.Error.None
+                    end, function (request, value, self)
+                        self.logger:info("Write LockPhysicalControls: " .. util.searchKey(LockPhyCtrls.value, value))
+                        self:setProp("child_lock", util.searchKey(mapping.child_lock, value))
+                        return hap.Error.None
+                    end)
                 }
             }
         },
