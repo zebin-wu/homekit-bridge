@@ -180,15 +180,14 @@ function device.create(done, timeout, addr, token, ...)
         self.args = nil
     end
 
-    local scanCtx
-    local scanTimer = timer.create(function (self, scanCtx)
+    local scanTimer = timer.create(function (self)
         self.logger:error("Scan timeout.")
-        scanCtx:stop()
+        self.scanCtx:stop()
         handleDoneCb(self)
-    end, o, scanCtx)
+    end, o)
     scanTimer:start(timeout)
 
-    scanCtx = protocol.scan(function (addr, devid, stamp, self, token, scanTimer)
+    o.scanCtx = protocol.scan(function (addr, devid, stamp, self, token, scanTimer)
         scanTimer:stop()
         local pcb = protocol.create(addr, devid, token, stamp)
         if not pcb then
@@ -202,7 +201,7 @@ function device.create(done, timeout, addr, token, ...)
             handleDoneCb(self, result)
         end, "miIO.info", nil, self)
     end, addr, o, token, scanTimer)
-    if not scanCtx then
+    if not o.scanCtx then
         o.logger:error("Failed to start scanning.")
         scanTimer:stop()
         return nil
