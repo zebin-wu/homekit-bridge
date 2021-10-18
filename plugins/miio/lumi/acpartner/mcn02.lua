@@ -18,6 +18,11 @@ local mapping = {
     ver_swing = {
         on = SwingMode.value.Enabled,
         off = SwingMode.value.Disabled
+    },
+    mode = {
+        cool = TgtHeatCoolState.value.Cool,
+        heat = TgtHeatCoolState.value.Heat,
+        auto = TgtHeatCoolState.value.HeatOrCool
     }
 }
 
@@ -107,28 +112,12 @@ function acpartner.gen(device, info, conf)
                         return value, hap.Error.None
                     end),
                     TgtHeatCoolState.new(iids.tgtState, function (request, self)
-                        local mode = self:getProp("mode")
-                        local value
-                        if mode == "cool" then
-                            value = TgtHeatCoolState.value.Cool
-                        elseif mode == "heat" then
-                            value = TgtHeatCoolState.value.Heat
-                        elseif mode == "auto" then
-                            value = TgtHeatCoolState.value.HeatOrCool
-                        end
+                        local value = mapping.mode[self:getProp("mode")]
                         self.logger:info("Read TargetHeaterCoolerState: " .. util.searchKey(TgtHeatCoolState.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         self.logger:info("Write TargetHeaterCoolerState: " .. util.searchKey(TgtHeatCoolState.value, value))
-                        local mode
-                        if value == TgtHeatCoolState.value.Cool then
-                            mode = "cool"
-                        elseif value == TgtHeatCoolState.value.Heat then
-                            mode = "heat"
-                        elseif value == TgtHeatCoolState.value.HeatOrCool then
-                            mode = "auto"
-                        end
-                        self:setProp("mode", mode)
+                        self:setProp("mode", util.searchKey(mapping.mode, value))
                         return hap.Error.None
                     end),
                     CoolThrholdTemp.new(iids.coolThrTemp, function (request, self)
