@@ -94,6 +94,7 @@ pal_net_addr_get_ipv6(struct sockaddr_in6 *dst_addr, const char *src_addr, uint1
 }
 
 static void pal_udp_add_mbuf(pal_udp *udp, pal_udp_mbuf *mbuf) {
+    mbuf->next = NULL;
     *(udp->mbuf_list_ptail) = mbuf;
     udp->mbuf_list_ptail = &mbuf->next;
 }
@@ -284,14 +285,9 @@ static void pal_udp_file_handle_callback(
 
     if (fileHandleEvents.hasErrorConditionPending) {
         pal_udp_raw_exception(udp);
-        return;
-    }
-
-    if (fileHandleEvents.isReadyForReading) {
+    } else if (fileHandleEvents.isReadyForReading) {
         pal_udp_raw_recv(udp);
-    }
-
-    if (fileHandleEvents.isReadyForWriting) {
+    } else if (fileHandleEvents.isReadyForWriting) {
         pal_udp_raw_send(udp);
     }
 }
@@ -444,11 +440,12 @@ pal_net_err pal_udp_send(pal_udp *udp, const void *data, size_t len) {
     mbuf->len = len;
     mbuf->to_addr[0] = '\0';
     mbuf->to_port = 0;
-    mbuf->next = NULL;
     pal_udp_add_mbuf(udp, mbuf);
-    udp->interests.isReadyForWriting = true;
-    HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
-        pal_udp_file_handle_callback, udp);
+    if (!udp->interests.isReadyForWriting) {
+        udp->interests.isReadyForWriting = true;
+        HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
+            pal_udp_file_handle_callback, udp);
+    }
     UDP_LOG(Debug, udp, "%s(len = %zu)", __func__, len);
     return PAL_NET_ERR_OK;
 }
@@ -494,11 +491,12 @@ pal_net_err pal_udp_sendto(pal_udp *udp, const void *data, size_t len,
     HAPRawBufferCopyBytes(mbuf->to_addr, addr, addr_len);
     mbuf->to_addr[addr_len] = '\0';
     mbuf->to_port = port;
-    mbuf->next = NULL;
     pal_udp_add_mbuf(udp, mbuf);
-    udp->interests.isReadyForWriting = true;
-    HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
-        pal_udp_file_handle_callback, udp);
+    if (!udp->interests.isReadyForWriting) {
+        udp->interests.isReadyForWriting = true;
+        HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
+            pal_udp_file_handle_callback, udp);
+    }
     UDP_LOG(Debug, udp, "%s(len = %zu, addr = %s, port = %u)", __func__, len, addr, port);
     return PAL_NET_ERR_OK;
 }
