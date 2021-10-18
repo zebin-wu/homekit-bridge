@@ -26,8 +26,9 @@ end
 ---@return table results
 function util.split(s, c)
     local rl = {}
+    local tinsert = table.insert
     for w in s:gmatch("[^" .. c .. "]+") do
-        table.insert(rl, w)
+        tinsert(rl, w)
     end
     return rl
 end
@@ -46,7 +47,7 @@ end
 ---@return string # Hex string.
 function util.bin2hex(s)
     return s:gsub(".", function (c)
-        return string.format('%02X', string.byte(c))
+        return ("%02X"):format(string.byte(c))
     end)
 end
 

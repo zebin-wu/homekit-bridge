@@ -3,6 +3,7 @@ local util = require "util"
 local core = {}
 
 local logger = log.getLogger("core")
+local tinsert = table.insert
 
 ---@class AccessoryConf:table Accessory configuration.
 ---
@@ -29,7 +30,7 @@ local priv = {
 ---@param name string Plugin name.
 ---@param accessory HapAccessory Accessory.
 local function _report(name, accessory)
-    table.insert(priv.accessories, accessory)
+    tinsert(priv.accessories, accessory)
 
     if priv.plugins[name].isPending() == false then
         priv.plugins[name] = nil
@@ -94,7 +95,7 @@ function core.start(pluginConfs, accessoryConfs, done)
         for _, conf in ipairs(accessoryConfs) do
             local plugin = loadPlugin(conf.plugin)
             if plugin ~= nil then
-                table.insert(priv.accessories, plugin.gen(conf))
+                tinsert(priv.accessories, plugin.gen(conf))
             end
         end
     end
