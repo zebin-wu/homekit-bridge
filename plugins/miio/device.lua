@@ -165,8 +165,6 @@ function device.create(done, timeout, addr, token, ...)
     ---@class MiioDevicePriv:table
     local o = {
         logger = log.getLogger("miio.device:" .. addr),
-        done = done,
-        args = {...},
         pcb = nil, ---@type MiioPcb
         timeout = timeout,
         state = "NOINIT",
@@ -174,36 +172,40 @@ function device.create(done, timeout, addr, token, ...)
         props = {}
     }
 
-    local function handleDoneCb(self, info)
-        self.done(self, info, table.unpack(self.args))
-        self.done = nil
-        self.args = nil
-    end
+    local scanPriv = {
+        self = o,
+        done = done,
+        args = {...}
+    }
 
-    local scanTimer = timer.create(function (self)
+    scanPriv.timer = timer.create(function (priv)
+        local self = priv.self
         self.logger:error("Scan timeout.")
-        self.scanCtx:stop()
-        handleDoneCb(self)
-    end, o)
-    scanTimer:start(timeout)
+        priv.ctx:stop()
+        priv.ctx = nil
+        priv.done(self, nil, table.unpack(priv.args))
+    end, scanPriv)
+    scanPriv.timer:start(timeout)
 
-    o.scanCtx = protocol.scan(function (addr, devid, stamp, self, token, scanTimer)
-        scanTimer:stop()
+    scanPriv.ctx = protocol.scan(function (addr, devid, stamp, priv, token)
+        local self = priv.self
+        priv.timer:stop()
+        priv.timer = nil
         local pcb = protocol.create(addr, devid, token, stamp)
         if not pcb then
             self.logger:error("Failed to create PCB.")
-            handleDoneCb(self)
+            priv.done(self, nil, table.unpack(priv.args))
             return
         end
         self.pcb = pcb
         self.state = "IDLE"
-        self:request(function (err, result, self)
-            handleDoneCb(self, result)
-        end, "miIO.info", nil, self)
-    end, addr, o, token, scanTimer)
-    if not o.scanCtx then
+        self:request(function (err, result, priv)
+            priv.done(priv.self, result, table.unpack(priv.args))
+        end, "miIO.info", nil, priv)
+    end, addr, scanPriv, token)
+    if not scanPriv.ctx then
         o.logger:error("Failed to start scanning.")
-        scanTimer:stop()
+        scanPriv.timer:stop()
         return nil
     end
 
