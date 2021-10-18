@@ -201,7 +201,7 @@ local function unpack(package, token)
 end
 
 ---Pack a hello package.
----@return string package
+---@return string package A binary package.
 local function packHello()
     return pack(
         0xffffffff,
@@ -215,7 +215,7 @@ end
 ---This method is used to discover supported devices by sending
 ---a handshake message to the broadcast address on port 54321.
 ---If the target IP address is given, the handshake will be send as an unicast packet.
----@param cb fun(addr: string, devid: integer, stamp: integer) Function call when the device is scaned.
+---@param cb fun(addr: string, devid: integer, stamp: integer, ...) Function call when the device is scaned.
 ---@param addr? string Target Address.
 ---@return MiioScanContext|nil ctx Scan context.
 function protocol.scan(cb, addr, ...)
@@ -234,10 +234,14 @@ function protocol.scan(cb, addr, ...)
             return nil
         end
     end
-    if not handle:sendto(packHello(), addr or "255.255.255.255", 54321) then
-        logger:error("Failed to send hello message.")
-        handle:close()
-        return nil
+
+    local hello = packHello()
+    for i = 0, 3, 1 do
+        if not handle:sendto(hello, addr or "255.255.255.255", 54321) then
+            logger:error("Failed to send hello message.")
+            handle:close()
+            return nil
+        end
     end
 
     ---@class MiioScanContext
@@ -245,6 +249,7 @@ function protocol.scan(cb, addr, ...)
         cb = cb,
         handle = handle,
         addr = addr,
+        seen_addr = {},
         args = {...}
     }
 
@@ -252,6 +257,10 @@ function protocol.scan(cb, addr, ...)
         if from_port ~= 54321 then
             return
         end
+        if self.seen_addr[from_addr] then
+            return
+        end
+        self.seen_addr[from_addr] = true
         local m = unpack(data)
         if m and m.unknown == 0 and m.data == nil then
             if self.addr and self.addr == from_addr then
