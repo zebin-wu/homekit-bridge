@@ -33,8 +33,13 @@ local function dispatch(self)
     end
     local que = self.cmdQue
     if que.first ~= que.last then
-        self.pcb:request(function (err, result, self, respCb, ...)
-            respCb(err, result, ...)
+        self.pcb:request(function (result, self, respCb, _, ...)
+            respCb(result, ...)
+            self.state = "IDLE"
+            dispatch(self)
+        end, function (code, message, self, _, errCb, ...)
+            self.logger:error(("Request error, code: %d, message: %s"):format(code, message))
+            errCb(code, message, ...)
             self.state = "IDLE"
             dispatch(self)
         end, self.timeout, deque(que))
@@ -43,13 +48,15 @@ local function dispatch(self)
 end
 
 ---Start a request and ``respCb`` will be called when a response is received.
----@param respCb fun(err: MiioError|string|nil, result: any, ...) Response callback.
+---@param respCb fun(result: any, ...) Response callback.
+---@param errCb fun(code: integer, message: string, ...) Error Callback.
 ---@param method string The request method.
 ---@param params? table Array of parameters.
-function _device:request(respCb, method, params, ...)
+function _device:request(respCb, errCb, method, params, ...)
     assert(type(respCb) == "function")
+    assert(type(errCb) == "function")
 
-    enque(self.cmdQue, method, params, self, respCb, ...)
+    enque(self.cmdQue, method, params, self, respCb, errCb, ...)
     dispatch(self)
 end
 
@@ -81,32 +88,35 @@ function _device:registerProps(names, update, ...)
     self.isSyncing = false
     self.timer = timer.create(function (self, names)
         self.logger:debug("Syncing properties ...")
-        self:request(function (err, result, self, names)
+        self:request(function (result, self, names)
             if self.isSyncing == false then
                 return
             end
-            if result then
-                assert(#result == #names)
-                local props = self.props
-                for i, v in ipairs(result) do
-                    local name = names[i]
-                    if props[name] ~= v then
-                        props[name] = v
-                        self:update(name, table.unpack(self.updateArgs))
-                    end
+            assert(#result == #names)
+            local props = self.props
+            for i, v in ipairs(result) do
+                local name = names[i]
+                if props[name] ~= v then
+                    props[name] = v
+                    self:update(name, table.unpack(self.updateArgs))
                 end
+            end
+            self:startSync()
+        end, function (code, message)
+            if self.isSyncing == false then
+                return
             end
             self:startSync()
         end, "get_prop", names, self, names)
     end, self, names)
 
-    self:request(function (err, result, self, names)
-        if result then
-            assert(#result == #names)
-            for i, v in ipairs(result) do
-                self.props[names[i]] = v
-            end
+    self:request(function (result, self, names)
+        assert(#result == #names)
+        for i, v in ipairs(result) do
+            self.props[names[i]] = v
         end
+        self:startSync()
+    end, function (code, message)
         self:startSync()
     end, "get_prop", names, self, names)
 end
@@ -122,15 +132,17 @@ end
 ---@param name string Property name.
 ---@param value any Property value.
 function _device:setProp(name, value)
-    if self.props[name] == value then
+    local props = self.props
+    if props[name] == value then
         return
     end
     self:stopSync()
-    self.props[name] = value
-    self:request(function (err, result, self, name)
-        if result then
-            self:update(name, table.unpack(self.updateArgs))
-        end
+    props[name] = value
+
+    self:request(function (result, self, name)
+        self:update(name, table.unpack(self.updateArgs))
+        self:startSync()
+    end, function (code, message, self)
         self:startSync()
     end, "set_" .. name, {value}, self, name)
 end
@@ -168,7 +180,7 @@ function device.create(done, timeout, addr, token, ...)
         pcb = nil, ---@type MiioPcb
         timeout = timeout,
         state = "NOINIT",
-        cmdQue = {first = 0, last = 0},
+        cmdQue = { first = 0, last = 0 },
         props = {}
     }
 
@@ -199,8 +211,10 @@ function device.create(done, timeout, addr, token, ...)
         end
         self.pcb = pcb
         self.state = "IDLE"
-        self:request(function (err, result, priv)
+        self:request(function (result, priv)
             priv.done(priv.self, result, table.unpack(priv.args))
+        end, function (code, message)
+            priv.done(priv.self, nil, table.unpack(priv.args))
         end, "miIO.info", nil, priv)
     end, addr, scanPriv, token)
     if not scanPriv.ctx then
