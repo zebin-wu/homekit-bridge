@@ -24,10 +24,8 @@ static const char *net_domain_strs[] = PAL_NET_DOMAIN_STRS;
 typedef struct {
     pal_udp *udp;
     lua_State *L;
-    bool has_recv_cb;
-    bool has_recv_arg;
-    bool has_err_cb;
-    bool has_err_arg;
+    size_t recv_nargs;
+    size_t err_nargs;
 } ludp_handle;
 
 #define LPAL_NET_UDP_GET_HANDLE(L, idx) \
@@ -60,10 +58,6 @@ static int ludp_open(lua_State *L) {
         goto err;
     }
     handle->L = L;
-    handle->has_recv_cb = false;
-    handle->has_recv_arg = false;
-    handle->has_err_cb = false;
-    handle->has_err_arg = false;
     return 1;
 
 err:
@@ -162,16 +156,20 @@ static void ludp_recv_cb(pal_udp *udp, void *data, size_t len,
     ludp_handle *handle = arg;
     lua_State *L = handle->L;
 
+    HAPAssert(lua_gettop(L) == 0);
     lc_push_traceback(L);
-    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &handle->has_recv_cb) == LUA_TFUNCTION);
 
+    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &handle->recv_nargs) == LUA_TTABLE);
+    lua_geti(L, 2, 1);
     lua_pushlstring(L, (const char *)data, len);
     lua_pushstring(L, from_addr);
     lua_pushinteger(L, from_port);
-    if (handle->has_recv_arg) {
-        lua_rawgetp(L, LUA_REGISTRYINDEX, &handle->has_recv_arg);
+    for (int i = 2; i <= handle->recv_nargs + 1; i++) {
+        lua_geti(L, 2, i);
     }
-    if (lua_pcall(L, handle->has_recv_arg ? 4 : 3, 0, 1)) {
+    lua_remove(L, 2);
+
+    if (lua_pcall(L, handle->recv_nargs + 3, 0, 1)) {
         HAPLogError(&lnet_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
     lua_settop(L, 0);
@@ -184,19 +182,24 @@ static int ludp_handle_set_recv_cb(lua_State *L) {
         luaL_error(L, "attempt to use a closed handle");
     }
 
-    handle->has_recv_cb = !lua_isnoneornil(L, 2);
-    lua_pushvalue(L, 2);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_recv_cb);
-
-    handle->has_recv_arg = !lua_isnoneornil(L, 3);
-    lua_pushvalue(L, 3);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_recv_arg);
-
-    if (handle->has_recv_cb) {
-        pal_udp_set_recv_cb(handle->udp, ludp_recv_cb, handle);
-    } else {
+    int n = lua_gettop(L) - 1;
+    if (n == 0) {
+        lua_pushnil(L);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->recv_nargs);
         pal_udp_set_recv_cb(handle->udp, NULL, NULL);
+        return 0;
     }
+
+    luaL_argexpected(L, lua_type(L, 2) == LUA_TFUNCTION, 2, "function");
+
+    lua_createtable(L, n, 0);
+    lua_insert(L, 2);
+    for (int i = n; i >= 1; i--) {
+        lua_seti(L, 2, i);
+    }
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->recv_nargs);
+    handle->recv_nargs = n - 1;
+    pal_udp_set_recv_cb(handle->udp, ludp_recv_cb, handle);
     return 0;
 }
 
@@ -204,12 +207,16 @@ static void ludp_err_cb(pal_udp *udp, pal_net_err err, void *arg) {
     ludp_handle *handle = arg;
     lua_State *L = handle->L;
 
+    HAPAssert(lua_gettop(L) == 0);
     lc_push_traceback(L);
-    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &handle->has_err_cb) == LUA_TFUNCTION);
-    if (handle->has_err_arg) {
-        lua_rawgetp(L, LUA_REGISTRYINDEX, &handle->has_err_arg);
+
+    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &handle->err_nargs) == LUA_TTABLE);
+    for (int i = 1; i <= handle->err_nargs + 1; i++) {
+        lua_geti(L, 2, i);
     }
-    if (lua_pcall(L, handle->has_err_arg ? 1 : 0, 0, 1)) {
+    lua_remove(L, 2);
+
+    if (lua_pcall(L, handle->err_nargs, 0, 1)) {
         HAPLogError(&lnet_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
     lua_settop(L, 0);
@@ -222,19 +229,24 @@ static int ludp_handle_set_err_cb(lua_State *L) {
         luaL_error(L, "attempt to use a closed handle");
     }
 
-    handle->has_err_cb = !lua_isnoneornil(L, 2);
-    lua_pushvalue(L, 2);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_err_cb);
-
-    handle->has_err_arg = !lua_isnoneornil(L, 3);
-    lua_pushvalue(L, 3);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_err_arg);
-
-    if (handle->has_err_cb) {
-        pal_udp_set_err_cb(handle->udp, ludp_err_cb, handle);
-    } else {
+    int n = lua_gettop(L) - 1;
+    if (n == 0) {
+        lua_pushnil(L);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->err_nargs);
         pal_udp_set_err_cb(handle->udp, NULL, NULL);
+        return 0;
     }
+
+    luaL_argexpected(L, lua_type(L, 2) == LUA_TFUNCTION, 2, "function");
+
+    lua_createtable(L, n, 0);
+    lua_insert(L, 2);
+    for (int i = n; i >= 1; i--) {
+        lua_seti(L, 2, i);
+    }
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->err_nargs);
+    handle->err_nargs = n - 1;
+    pal_udp_set_err_cb(handle->udp, ludp_err_cb, handle);
     return 0;
 }
 
@@ -244,13 +256,9 @@ static void lhap_net_udp_handle_reset(lua_State *L, ludp_handle *handle) {
     }
     pal_udp_free(handle->udp);
     lua_pushnil(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_recv_cb);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->recv_nargs);
     lua_pushnil(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_recv_arg);
-    lua_pushnil(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_err_cb);
-    lua_pushnil(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->has_err_arg);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &handle->err_nargs);
     HAPRawBufferZero(handle, sizeof(*handle));
 }
 
