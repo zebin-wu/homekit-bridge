@@ -3,7 +3,17 @@ local timer = require "timer"
 local hash = require "hash"
 local json = require "cjson"
 
-local protocol = {}
+---``ENUM`` Miio Error code.
+local Error = {
+    None = 0,
+    Unknown = 1,
+    Timeout = 2,
+    InvalidData = 3,
+}
+
+local protocol = {
+    Error = Error,
+}
 local logger = log.getLogger("miio.protocol")
 
 ---
@@ -236,7 +246,7 @@ function protocol.scan(cb, addr, ...)
     end
 
     local hello = packHello()
-    for i = 0, 3, 1 do
+    for i = 1, 3, 1 do
         if not handle:sendto(hello, addr or "255.255.255.255", 54321) then
             logger:error("Failed to send hello message.")
             handle:close()
@@ -279,74 +289,19 @@ function protocol.scan(cb, addr, ...)
     return ctx
 end
 
----@class MiioError:table Error delivered by the target device.
----
----@field code integer Error code.
----@field message string Error message.
-
 ---@class MiioPcb: MiioPcbPriv miio protocol control block.
 local _pcb = {}
 
----Handle response.
----@param self MiioPcb
----@param err MiioError
----@param result any
-local function handleResp(self, err, result)
-    local cb = self.respCb
-    local args = self.args
-    self.respCb = nil
-    self.args = nil
-    if err then
-        if type(err) == "string" then
-            self.logger:error(err)
-        else
-            self.logger:error(("Got error %d: %s"):format(err.code, err.message))
-        end
-    end
-    cb(err, result, table.unpack(args))
-end
-
----Parse a message.
----@param self MiioPcb Protocol control block.
----@param msg MiioMessage
----@return MiioError|string|nil error
----@return any result
-local function parse(self, msg)
-    if not msg then
-        return "Receive a invalid message."
-    end
-    if msg.did ~= self.devid then
-        return "Not a match Device ID."
-    end
-    if not msg.data then
-        return "Not a response message."
-    end
-    local s = self.encryption:decrypt(msg.data)
-    if not s then
-        return "Failed to decrypt the message."
-    end
-    self.logger:debug("=> " .. s)
-    local payload =  json.decode(s)
-    if not payload then
-        return "Failed to parse the JSON string."
-    end
-    if payload.id ~= self.reqid then
-        return "response id ~= request id"
-    end
-    if payload.error then
-        return payload.error
-    end
-    return nil, payload.result
-end
-
 ---Start a request and ``respCb`` will be called when a response is received.
----@param respCb fun(err: MiioError|string|nil, result: any, ...) Response callback.
+---@param respCb fun(result: any, ...) Response callback.
+---@param errCb fun(code: integer, message: string, ...) Error Callback.
 ---@param timeout integer Timeout period (in milliseconds).
 ---@param method string The request method.
 ---@param params? table Array of parameters.
-function _pcb:request(respCb, timeout, method, params, ...)
+function _pcb:request(respCb, errCb, timeout, method, params, ...)
     assert(self.respCb == nil, "previous request is in progress")
     assert(type(respCb) == "function")
+    assert(type(errCb) == "function")
     assert(timeout > 0, "timeout must be greater then 0")
     assert(type(method) == "string")
 
@@ -355,10 +310,17 @@ function _pcb:request(respCb, timeout, method, params, ...)
     end
 
     self.respCb = respCb
+    self.errCb = errCb
     self.args = {...}
-    self.reqid = self.reqid + 1
+
+    local reqid = self.reqid + 1
+    if reqid == 9999 then
+        reqid = 1
+    end
+    self.reqid = reqid
+
     local data = json.encode({
-        id = self.reqid,
+        id = reqid,
         method = method,
         params = params or nil
     })
@@ -373,8 +335,51 @@ function _pcb:request(respCb, timeout, method, params, ...)
         end
 
         self.timer:stop()
-        self.handle:setRecvCb(nil)
-        handleResp(self, parse(self, unpack(data, self.token)))
+        self.handle:setRecvCb()
+
+        local respCb = self.respCb
+        local errCb = self.errCb
+        local args = self.args
+        self.respCb = nil
+        self.errCb = nil
+        self.args = nil
+
+        local msg = unpack(data, self.token)
+
+        if not msg then
+            errCb(Error.InvalidData, "Receive a invalid message.", table.unpack(args))
+            return
+        end
+        if msg.did ~= self.devid then
+            errCb(Error.InvalidData, "Not a match Device ID.", table.unpack(args))
+            return
+        end
+        if not msg.data then
+            errCb(Error.InvalidData, "Not a response message.", table.unpack(args))
+            return
+        end
+        local s = self.encryption:decrypt(msg.data)
+        if not s then
+            errCb(Error.InvalidData, "Failed to decrypt the message.", table.unpack(args))
+            return
+        end
+        self.logger:debug("=> " .. s)
+        local payload =  json.decode(s)
+        if not payload then
+            errCb(Error.InvalidData, "Failed to parse the JSON string.", table.unpack(args))
+            return
+        end
+        if payload.id ~= self.reqid then
+            errCb(Error.InvalidData, "response id ~= request id", table.unpack(args))
+            return
+        end
+        local error = payload.error
+        if error then
+            errCb(error.code, error.message, table.unpack(args))
+            return
+        end
+
+        respCb(payload.result, table.unpack(args))
     end, self)
 
     self.timer:start(timeout)
@@ -385,9 +390,10 @@ end
 function _pcb:abort()
     if self.respCb then
         self.respCb = nil
+        self.errCb = nil
         self.args = nil
         self.timer:stop()
-        self.handle:setRecvCb(nil)
+        self.handle:setRecvCb()
     end
 end
 
@@ -433,8 +439,13 @@ function protocol.create(addr, devid, token, stamp)
 
     pcb.handle = handle
     pcb.timer = timer.create(function (self)
-        self.handle:setRecvCb(nil)
-        handleResp(self, "Request timeout.", nil)
+        self.handle:setRecvCb()
+        local errCb = self.errCb
+        local args = self.args
+        self.respCb = nil
+        self.errCb = nil
+        self.args = nil
+        errCb(Error.Timeout, "Request timeout.", table.unpack(args))
     end, pcb)
 
     setmetatable(pcb, {
