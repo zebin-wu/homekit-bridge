@@ -5,8 +5,7 @@ local device = {}
 
 ---@alias DeviceState
 ---| '"NOINIT"'
----| '"IDLE"'
----| '"BUSY"'
+---| '"INITED"'
 
 ---@class MiioDevice:MiioDevicePriv Device object.
 local _device = {}
@@ -28,22 +27,19 @@ end
 ---Dispatch the requests.
 ---@param self MiioDevice
 local function dispatch(self)
-    if self.state ~= "IDLE" then
-        return
-    end
     local que = self.cmdQue
     if que.first ~= que.last then
         self.pcb:request(function (result, self, respCb, _, ...)
-            respCb(result, ...)
-            self.state = "IDLE"
+            self.requestable = true
             dispatch(self)
+            respCb(result, ...)
         end, function (code, message, self, _, errCb, ...)
             self.logger:error(("Request error, code: %d, message: %s"):format(code, message))
-            errCb(code, message, ...)
-            self.state = "IDLE"
+            self.requestable  = true
             dispatch(self)
+            errCb(code, message, ...)
         end, self.timeout, deque(que))
-        self.state = "BUSY"
+        self.requestable  = false
     end
 end
 
@@ -57,7 +53,9 @@ function _device:request(respCb, errCb, method, params, ...)
     assert(type(errCb) == "function")
 
     enque(self.cmdQue, method, params, self, respCb, errCb, ...)
-    dispatch(self)
+    if self.requestable then
+        dispatch(self)
+    end
 end
 
 ---Start sync properties.
@@ -103,10 +101,9 @@ function _device:registerProps(names, update, ...)
             end
             self:startSync()
         end, function (code, message)
-            if self.isSyncing == false then
-                return
+            if self.isSyncing then
+                self:startSync()
             end
-            self:startSync()
         end, "get_prop", names, self, names)
     end, self, names)
 
@@ -179,7 +176,7 @@ function device.create(done, timeout, addr, token, ...)
         logger = log.getLogger("miio.device:" .. addr),
         pcb = nil, ---@type MiioPcb
         timeout = timeout,
-        state = "NOINIT",
+        requestable = true,
         cmdQue = { first = 0, last = 0 },
         props = {}
     }
@@ -197,7 +194,6 @@ function device.create(done, timeout, addr, token, ...)
         priv.ctx = nil
         priv.done(self, nil, table.unpack(priv.args))
     end, scanPriv)
-    scanPriv.timer:start(timeout)
 
     scanPriv.ctx = protocol.scan(function (addr, devid, stamp, priv, token)
         local self = priv.self
@@ -210,7 +206,6 @@ function device.create(done, timeout, addr, token, ...)
             return
         end
         self.pcb = pcb
-        self.state = "IDLE"
         self:request(function (result, priv)
             priv.done(priv.self, result, table.unpack(priv.args))
         end, function (code, message)
@@ -219,9 +214,10 @@ function device.create(done, timeout, addr, token, ...)
     end, addr, scanPriv, token)
     if not scanPriv.ctx then
         o.logger:error("Failed to start scanning.")
-        scanPriv.timer:stop()
         return nil
     end
+
+    scanPriv.timer:start(timeout)
 
     setmetatable(o, {
         __index = _device
