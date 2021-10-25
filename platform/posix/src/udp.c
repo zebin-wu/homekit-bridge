@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <pal/udp.h>
 #include <pal/memory.h>
 
@@ -120,6 +121,17 @@ static void pal_udp_del_mbuf_list(pal_udp *udp) {
     udp->mbuf_list_ptail = &udp->mbuf_list_head;
 }
 
+static bool pal_udp_socket_writable(pal_udp *udp) {
+    fd_set write_fds;
+    struct timeval tv = {
+        .tv_sec = 0,
+        .tv_usec = 0
+    };
+    FD_ZERO(&write_fds);
+    FD_SET(udp->fd, &write_fds);
+    return select(1, NULL, &write_fds, NULL, &tv) == 1 && FD_ISSET(udp->fd, &write_fds);
+}
+
 static void pal_udp_raw_recv(pal_udp *udp) {
     pal_net_err err = PAL_NET_ERR_OK;
     char buf[1500];  // Same size as MTU
@@ -191,46 +203,33 @@ err:
     }
 }
 
-static void pal_udp_raw_send(pal_udp *udp) {
-    pal_net_err err = PAL_NET_ERR_OK;
-    pal_udp_mbuf *mbuf = pal_udp_get_mbuf(udp);
-    if (!mbuf) {
-        err = PAL_NET_ERR_UNKNOWN;
-        goto err;
-    }
-    if (udp->mbuf_list_head == NULL) {
-        udp->interests.isReadyForWriting = false;
-        HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
-            pal_udp_file_handle_callback, udp);
-    }
-
+static pal_net_err pal_udp_send_sync(pal_udp *udp, const char *addr, uint16_t port, const void *data, size_t len) {
     ssize_t rc;
-    if (mbuf->to_addr[0]) {
+
+    if (addr) {
         switch (udp->domain) {
         case PAL_NET_DOMAIN_INET: {
             struct sockaddr_in sa;
-            if (!pal_net_addr_get_ipv4(&sa, mbuf->to_addr, mbuf->to_port)) {
+            if (!pal_net_addr_get_ipv4(&sa, addr, port)) {
                 UDP_LOG(Error, udp, "%s: Invalid address \"%s\".",
-                    __func__, mbuf->to_addr);
-                err = PAL_NET_ERR_UNKNOWN;
-                goto err;
+                    __func__, addr);
+                return PAL_NET_ERR_UNKNOWN;
             }
             do {
-                rc = sendto(udp->fd, mbuf->buf, mbuf->len, 0,
+                rc = sendto(udp->fd, data, len, 0,
                     (struct sockaddr *)&sa, sizeof(sa));
             } while (rc == -1 && errno == EINTR);
             break;
         }
         case PAL_NET_DOMAIN_INET6: {
             struct sockaddr_in6 sa;
-            if (!pal_net_addr_get_ipv6(&sa, mbuf->to_addr, mbuf->to_port)) {
+            if (!pal_net_addr_get_ipv6(&sa, addr, port)) {
                 UDP_LOG(Error, udp, "%s: Invalid address \"%s\".",
-                    __func__, mbuf->to_addr);
-                err = PAL_NET_ERR_UNKNOWN;
-                goto err;
+                    __func__, addr);
+                return PAL_NET_ERR_UNKNOWN;
             }
             do {
-                rc = sendto(udp->fd, mbuf->buf, mbuf->len, 0,
+                rc = sendto(udp->fd, data, len, 0,
                     (struct sockaddr *)&sa, sizeof(sa));
             } while (rc == -1 && errno == EINTR);
             break;
@@ -240,29 +239,42 @@ static void pal_udp_raw_send(pal_udp *udp) {
         }
     } else {
         do {
-            rc = send(udp->fd, mbuf->buf, mbuf->len, 0);
+            rc = send(udp->fd, data, len, 0);
         } while (rc == -1 && errno == EINTR);
     }
-    if (rc != mbuf->len) {
+    if (rc != len) {
         if (rc == -1) {
-            UDP_LOG_ERRNO(udp, mbuf->to_addr[0] ? "sendto" : "send");
+            UDP_LOG_ERRNO(udp, addr ? "sendto" : "send");
         } else {
             UDP_LOG(Error, udp, "%s: Only sent %zd byte.", __func__, rc);
         }
+        return PAL_NET_ERR_UNKNOWN;
+    }
+    HAPLogBufferDebug(&udp_log_obj, data, len,
+        "(id=%u) Sent packet(len=%zd) to %s:%u", udp->id,
+        len, addr ? addr : udp->remote_addr,
+        addr ? port : udp->remote_port);
+    return PAL_NET_ERR_OK;
+}
+
+static void pal_udp_raw_send(pal_udp *udp) {
+    pal_net_err err = PAL_NET_ERR_OK;
+    pal_udp_mbuf *mbuf = pal_udp_get_mbuf(udp);
+    if (!mbuf) {
         err = PAL_NET_ERR_UNKNOWN;
-        goto err;
+        goto end;
+    }
+    if (udp->mbuf_list_head == NULL) {
+        udp->interests.isReadyForWriting = false;
+        HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
+            pal_udp_file_handle_callback, udp);
     }
 
-    HAPLogBufferDebug(&udp_log_obj, mbuf->buf, mbuf->len,
-        "(id=%u) Sent packet(len=%zd) to %s:%u", udp->id,
-        mbuf->len, mbuf->to_addr[0] ? mbuf->to_addr : udp->remote_addr,
-        mbuf->to_addr[0] ? mbuf->to_port : udp->remote_port);
+    err = pal_udp_send_sync(udp, mbuf->to_addr[0] ? mbuf->to_addr : NULL, mbuf->to_port, mbuf->buf, mbuf->len);
     pal_mem_free(mbuf);
-    return;
 
-err:
-    pal_mem_free(mbuf);
-    if (udp->err_cb) {
+end:
+    if (err != PAL_NET_ERR_OK && udp->err_cb) {
         udp->err_cb(udp, err, udp->err_arg);
     }
 }
@@ -431,6 +443,11 @@ pal_net_err pal_udp_send(pal_udp *udp, const void *data, size_t len) {
         UDP_LOG(Error, udp, "%s: Unknown remote address and port, connect first.", __func__);
         return PAL_NET_ERR_NOT_CONN;
     }
+
+    if (pal_udp_socket_writable(udp)) {
+        return pal_udp_send_sync(udp, NULL, 0, data, len);
+    }
+
     pal_udp_mbuf *mbuf = pal_mem_alloc(sizeof(*mbuf) + len);
     if (!mbuf) {
         UDP_LOG(Error, udp, "%s: Failed to alloc memory.", __func__);
@@ -461,6 +478,10 @@ pal_net_err pal_udp_sendto(pal_udp *udp, const void *data, size_t len,
         HAPPrecondition(data);
     }
 
+    if (pal_udp_socket_writable(udp)) {
+        return pal_udp_send_sync(udp, addr, port, data, len);
+    }
+
     switch (udp->domain) {
     case PAL_NET_DOMAIN_INET: {
         struct sockaddr_in sa;
@@ -481,6 +502,7 @@ pal_net_err pal_udp_sendto(pal_udp *udp, const void *data, size_t len,
     default:
         HAPAssertionFailure();
     }
+
     pal_udp_mbuf *mbuf = pal_mem_alloc(sizeof(*mbuf) + len);
     if (!mbuf) {
         UDP_LOG(Error, udp, "%s: Failed to alloc memory.", __func__);
