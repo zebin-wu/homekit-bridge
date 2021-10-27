@@ -1,6 +1,9 @@
 local protocol = require "miio.protocol"
 local timer = require "timer"
 
+local assert = assert
+local tunpack = table.unpack
+
 local device = {}
 
 ---@alias DeviceState
@@ -10,25 +13,16 @@ local device = {}
 ---@class MiioDevice:MiioDevicePriv Device object.
 local _device = {}
 
-local function enque(que, ...)
-    local last = que.last
-    que[last] = {...}
-    que.last = last + 1
-end
-
-local function deque(que)
-    local first = que.first
-    local cmd = que[first]
-    que[first] = nil
-    que.first = first + 1
-    return table.unpack(cmd)
-end
-
 ---Dispatch the requests.
----@param self MiioDevice
+---@param self MiioDevice Device object.
 local function dispatch(self)
     local que = self.cmdQue
     if que.first ~= que.last then
+        local first = que.first
+        local cmd = que[first]
+        que[first] = nil
+        que.first = first + 1
+
         self.pcb:request(function (result, self, respCb, _, ...)
             self.requestable = true
             dispatch(self)
@@ -38,7 +32,7 @@ local function dispatch(self)
             self.requestable  = true
             dispatch(self)
             errCb(code, message, ...)
-        end, self.timeout, deque(que))
+        end, self.timeout, tunpack(cmd))
         self.requestable  = false
     end
 end
@@ -52,7 +46,11 @@ function _device:request(respCb, errCb, method, params, ...)
     assert(type(respCb) == "function")
     assert(type(errCb) == "function")
 
-    enque(self.cmdQue, method, params, self, respCb, errCb, ...)
+    local que = self.cmdQue
+    local last = que.last
+    que[last] = {method, params, self, respCb, errCb, ...}
+    que.last = last + 1
+
     if self.requestable then
         dispatch(self)
     end
@@ -96,7 +94,7 @@ function _device:registerProps(names, update, ...)
                 local name = names[i]
                 if props[name] ~= v then
                     props[name] = v
-                    self:update(name, table.unpack(self.updateArgs))
+                    self:update(name, tunpack(self.updateArgs))
                 end
             end
             self:startSync()
@@ -137,7 +135,7 @@ function _device:setProp(name, value)
     props[name] = value
 
     self:request(function (result, self, name)
-        self:update(name, table.unpack(self.updateArgs))
+        self:update(name, tunpack(self.updateArgs))
         self:startSync()
     end, function (code, message, self)
         self:startSync()
@@ -192,7 +190,7 @@ function device.create(done, timeout, addr, token, ...)
         self.logger:error("Scan timeout.")
         priv.ctx:stop()
         priv.ctx = nil
-        priv.done(self, nil, table.unpack(priv.args))
+        priv.done(self, nil, tunpack(priv.args))
     end, scanPriv)
 
     scanPriv.ctx = protocol.scan(function (addr, devid, stamp, priv, token)
@@ -202,14 +200,14 @@ function device.create(done, timeout, addr, token, ...)
         local pcb = protocol.create(addr, devid, token, stamp)
         if not pcb then
             self.logger:error("Failed to create PCB.")
-            priv.done(self, nil, table.unpack(priv.args))
+            priv.done(self, nil, tunpack(priv.args))
             return
         end
         self.pcb = pcb
         self:request(function (result, priv)
-            priv.done(priv.self, result, table.unpack(priv.args))
+            priv.done(priv.self, result, tunpack(priv.args))
         end, function (code, message)
-            priv.done(priv.self, nil, table.unpack(priv.args))
+            priv.done(priv.self, nil, tunpack(priv.args))
         end, "miIO.info", nil, priv)
     end, addr, scanPriv, token)
     if not scanPriv.ctx then
