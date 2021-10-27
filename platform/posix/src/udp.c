@@ -29,7 +29,7 @@
     "(id=%u) " fmt, (udp) ? (udp)->id : 0, ##arg)
 
 #define UDP_LOG_ERRNO(udp, func) \
-    UDP_LOG(Error, udp, "%s: %s() error: %s.", __func__, func, strerror(errno))
+    UDP_LOG(Error, udp, "%s: %s() failed: %s.", __func__, func, strerror(errno))
 
 typedef struct pal_udp_mbuf {
     char to_addr[PAL_NET_ADDR_MAX_LEN];
@@ -129,7 +129,7 @@ static bool pal_udp_socket_writable(pal_udp *udp) {
     };
     FD_ZERO(&write_fds);
     FD_SET(udp->fd, &write_fds);
-    return select(1, NULL, &write_fds, NULL, &tv) == 1 && FD_ISSET(udp->fd, &write_fds);
+    return select(udp->fd + 1, NULL, &write_fds, NULL, &tv) == 1 && FD_ISSET(udp->fd, &write_fds);
 }
 
 static void pal_udp_raw_recv(pal_udp *udp) {
@@ -444,6 +444,8 @@ pal_net_err pal_udp_send(pal_udp *udp, const void *data, size_t len) {
         return PAL_NET_ERR_NOT_CONN;
     }
 
+    UDP_LOG(Debug, udp, "%s(len = %zu)", __func__, len);
+
     if (pal_udp_socket_writable(udp)) {
         return pal_udp_send_sync(udp, NULL, 0, data, len);
     }
@@ -463,7 +465,6 @@ pal_net_err pal_udp_send(pal_udp *udp, const void *data, size_t len) {
         HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
             pal_udp_file_handle_callback, udp);
     }
-    UDP_LOG(Debug, udp, "%s(len = %zu)", __func__, len);
     return PAL_NET_ERR_OK;
 }
 
@@ -477,6 +478,8 @@ pal_net_err pal_udp_sendto(pal_udp *udp, const void *data, size_t len,
     if (len > 0) {
         HAPPrecondition(data);
     }
+
+    UDP_LOG(Debug, udp, "%s(len = %zu, addr = %s, port = %u)", __func__, len, addr, port);
 
     if (pal_udp_socket_writable(udp)) {
         return pal_udp_send_sync(udp, addr, port, data, len);
@@ -519,7 +522,6 @@ pal_net_err pal_udp_sendto(pal_udp *udp, const void *data, size_t len,
         HAPPlatformFileHandleUpdateInterests(udp->handle, udp->interests,
             pal_udp_file_handle_callback, udp);
     }
-    UDP_LOG(Debug, udp, "%s(len = %zu, addr = %s, port = %u)", __func__, len, addr, port);
     return PAL_NET_ERR_OK;
 }
 
