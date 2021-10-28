@@ -1,7 +1,9 @@
 local protocol = require "miio.protocol"
 local timer = require "timer"
+local ErrorCode = require "miio.error".code
 
 local assert = assert
+local type = type
 local tunpack = table.unpack
 
 local device = {}
@@ -13,9 +15,25 @@ local device = {}
 ---@class MiioDevice:MiioDevicePriv Device object.
 local _device = {}
 
+-- Declare function "dispatch".
+local dispatch
+
+local function _respCb(result, self, respCb, _, ...)
+    self.requestable = true
+    dispatch(self)
+    respCb(self, result, ...)
+end
+
+local function _errCb(code, message, self, _, errCb, ...)
+    self.logger:error(("Request error, code: %d, message: %s"):format(code, message))
+    self.requestable  = true
+    dispatch(self)
+    errCb(self, code, message, ...)
+end
+
 ---Dispatch the requests.
 ---@param self MiioDevice Device object.
-local function dispatch(self)
+dispatch = function (self)
     local que = self.cmdQue
     if que.first ~= que.last then
         local first = que.first
@@ -23,37 +41,30 @@ local function dispatch(self)
         que[first] = nil
         que.first = first + 1
 
-        self.pcb:request(function (result, self, respCb, _, ...)
-            self.requestable = true
-            dispatch(self)
-            respCb(result, ...)
-        end, function (code, message, self, _, errCb, ...)
-            self.logger:error(("Request error, code: %d, message: %s"):format(code, message))
-            self.requestable  = true
-            dispatch(self)
-            errCb(code, message, ...)
-        end, self.timeout, tunpack(cmd))
+        self.pcb:request(_respCb, _errCb, self.timeout, tunpack(cmd))
         self.requestable  = false
     end
 end
 
 ---Start a request and ``respCb`` will be called when a response is received.
----@param respCb fun(result: any, ...) Response callback.
----@param errCb fun(code: integer, message: string, ...) Error Callback.
+---@param respCb fun(self: MiioDevice, result: any, ...) Response callback.
+---@param errCb fun(self: MiioDevice, code: integer, message: string, ...) Error Callback.
 ---@param method string The request method.
 ---@param params? table Array of parameters.
 function _device:request(respCb, errCb, method, params, ...)
     assert(type(respCb) == "function")
     assert(type(errCb) == "function")
 
+    if self.requestable then
+        self.pcb:request(_respCb, _errCb, self.timeout, method, params, self, respCb, errCb, ...)
+        self.requestable  = false
+        return
+    end
+
     local que = self.cmdQue
     local last = que.last
     que[last] = {method, params, self, respCb, errCb, ...}
     que.last = last + 1
-
-    if self.requestable then
-        dispatch(self)
-    end
 end
 
 ---Start sync properties.
@@ -84,7 +95,7 @@ function _device:registerProps(names, update, ...)
     self.isSyncing = false
     self.timer = timer.create(function (self, names)
         self.logger:debug("Syncing properties ...")
-        self:request(function (result, self, names)
+        self:request(function (self, result, names)
             if self.isSyncing == false then
                 return
             end
@@ -98,22 +109,22 @@ function _device:registerProps(names, update, ...)
                 end
             end
             self:startSync()
-        end, function (code, message)
+        end, function (self, code, message)
             if self.isSyncing then
                 self:startSync()
             end
-        end, "get_prop", names, self, names)
+        end, "get_prop", names, names)
     end, self, names)
 
-    self:request(function (result, self, names)
+    self:request(function (self, result, names)
         assert(#result == #names)
         for i, v in ipairs(result) do
             self.props[names[i]] = v
         end
         self:startSync()
-    end, function (code, message)
+    end, function (self, code, message)
         self:startSync()
-    end, "get_prop", names, self, names)
+    end, "get_prop", names, names)
 end
 
 ---Get property.
@@ -134,12 +145,51 @@ function _device:setProp(name, value)
     self:stopSync()
     props[name] = value
 
-    self:request(function (result, self, name)
+    self:request(function (self, result, name)
         self:update(name, tunpack(self.updateArgs))
         self:startSync()
-    end, function (code, message, self)
+    end, function (self, code, message)
         self:startSync()
-    end, "set_" .. name, {value}, self, name)
+    end, "set_" .. name, {value}, name)
+end
+
+---Start Handshake,  and the ``done`` callback will be called when the handshake is done.
+---@param self MiioDevice Device object.
+---@param done fun(self: MiioDevice, err: integer, ...) Done callback.
+---@vararg any Arguments passed to the callback.
+local function handshake(self, done, ...)
+    local scanPriv = {
+        self = self,
+        done = done,
+        args = {...}
+    }
+
+    scanPriv.timer = timer.create(function (priv)
+        local self = priv.self
+        self.logger:error("Scan timeout.")
+        priv.ctx:stop()
+        priv.ctx = nil
+        priv.done(self, ErrorCode.Timeout, tunpack(priv.args))
+    end, scanPriv)
+
+    scanPriv.ctx = protocol.scan(function (addr, devid, stamp, priv)
+        local self = priv.self
+        priv.timer:stop()
+        local pcb = protocol.create(addr, devid, self.token, stamp)
+        if not pcb then
+            self.logger:error("Failed to create PCB.")
+            priv.done(self, ErrorCode.Unknown, tunpack(priv.args))
+            return
+        end
+        self.pcb = pcb
+        priv.done(self, ErrorCode.None, tunpack(priv.args))
+    end, self.addr, scanPriv)
+    if not scanPriv.ctx then
+        self.logger:error("Failed to start scanning.")
+        return nil
+    end
+
+    scanPriv.timer:start(self.timeout)
 end
 
 ---@class MiioDeviceNetIf:table Device network interface.
@@ -173,49 +223,25 @@ function device.create(done, timeout, addr, token, ...)
     local o = {
         logger = log.getLogger("miio.device:" .. addr),
         pcb = nil, ---@type MiioPcb
+        addr = addr,
+        token = token,
         timeout = timeout,
         requestable = true,
         cmdQue = { first = 0, last = 0 },
         props = {}
     }
 
-    local scanPriv = {
-        self = o,
-        done = done,
-        args = {...}
-    }
-
-    scanPriv.timer = timer.create(function (priv)
-        local self = priv.self
-        self.logger:error("Scan timeout.")
-        priv.ctx:stop()
-        priv.ctx = nil
-        priv.done(self, nil, tunpack(priv.args))
-    end, scanPriv)
-
-    scanPriv.ctx = protocol.scan(function (addr, devid, stamp, priv, token)
-        local self = priv.self
-        priv.timer:stop()
-        priv.timer = nil
-        local pcb = protocol.create(addr, devid, token, stamp)
-        if not pcb then
-            self.logger:error("Failed to create PCB.")
-            priv.done(self, nil, tunpack(priv.args))
+    handshake(o, function (self, err, done, ...)
+        if err ~= ErrorCode.None then
+            done(self, nil, ...)
             return
         end
-        self.pcb = pcb
-        self:request(function (result, priv)
-            priv.done(priv.self, result, tunpack(priv.args))
-        end, function (code, message)
-            priv.done(priv.self, nil, tunpack(priv.args))
-        end, "miIO.info", nil, priv)
-    end, addr, scanPriv, token)
-    if not scanPriv.ctx then
-        o.logger:error("Failed to start scanning.")
-        return nil
-    end
-
-    scanPriv.timer:start(timeout)
+        self:request(function (self, result, done, ...)
+            done(self, result, ...)
+        end, function (self, code, message, done, ...)
+            done(self, nil, ...)
+        end, "miIO.info", nil, done, ...)
+    end, done, ...)
 
     setmetatable(o, {
         __index = _device

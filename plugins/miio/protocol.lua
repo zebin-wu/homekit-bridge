@@ -2,18 +2,12 @@ local udp = require "udp"
 local timer = require "timer"
 local hash = require "hash"
 local json = require "cjson"
+local ErrorCode = require "miio.error".code
 
----``ENUM`` Miio Error code.
-local Error = {
-    None = 0,
-    Unknown = 1,
-    Timeout = 2,
-    InvalidData = 3,
-}
+local assert = assert
+local type = type
 
-local protocol = {
-    Error = Error,
-}
+local protocol = {}
 local logger = log.getLogger("miio.protocol")
 
 ---
@@ -347,30 +341,30 @@ function _pcb:request(respCb, errCb, timeout, method, params, ...)
         local msg = unpack(data, self.token)
 
         if not msg then
-            errCb(Error.InvalidData, "Receive a invalid message.", table.unpack(args))
+            errCb(ErrorCode.InvalidData, "Receive a invalid message.", table.unpack(args))
             return
         end
         if msg.did ~= self.devid then
-            errCb(Error.InvalidData, "Not a match Device ID.", table.unpack(args))
+            errCb(ErrorCode.InvalidData, "Not a match Device ID.", table.unpack(args))
             return
         end
         if not msg.data then
-            errCb(Error.InvalidData, "Not a response message.", table.unpack(args))
+            errCb(ErrorCode.InvalidData, "Not a response message.", table.unpack(args))
             return
         end
         local s = self.encryption:decrypt(msg.data)
         if not s then
-            errCb(Error.InvalidData, "Failed to decrypt the message.", table.unpack(args))
+            errCb(ErrorCode.InvalidData, "Failed to decrypt the message.", table.unpack(args))
             return
         end
         self.logger:debug("=> " .. s)
         local payload =  json.decode(s)
         if not payload then
-            errCb(Error.InvalidData, "Failed to parse the JSON string.", table.unpack(args))
+            errCb(ErrorCode.InvalidData, "Failed to parse the JSON string.", table.unpack(args))
             return
         end
         if payload.id ~= self.reqid then
-            errCb(Error.InvalidData, "response id ~= request id", table.unpack(args))
+            errCb(ErrorCode.InvalidData, "response id ~= request id", table.unpack(args))
             return
         end
         local error = payload.error
@@ -445,7 +439,7 @@ function protocol.create(addr, devid, token, stamp)
         self.respCb = nil
         self.errCb = nil
         self.args = nil
-        errCb(Error.Timeout, "Request timeout.", table.unpack(args))
+        errCb(ErrorCode.Timeout, "Request timeout.", table.unpack(args))
     end, pcb)
 
     setmetatable(pcb, {
