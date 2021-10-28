@@ -21,7 +21,7 @@ Refer to the following link: https://www.home-assistant.io/integrations/xiaomi_m
 Name | Type | Description | Required | Example
 -|-|-|-|-
 `addr` | `string` | Device address | Yes | `"192.168.1.10"`
-`token` | `string` | Device token | Yes | `"d1abcd1230238cf1g123a142962agdd1"`
+`token` | `string` | Device token | Yes | `"d1abcd1230238cf1f123a142962afdd1"`
 `name` | `string` | Accessory name | No | `"My device"`
 
 Example: config.lua
@@ -35,7 +35,7 @@ return {
         {
             plugin = "miio",
             addr = "192.168.1.10",
-            token = "d1abcd1230238cf1g123a142962agdd1",
+            token = "d1abcd1230238cf1f123a142962afdd1",
             name = "My device"
         }
     }
