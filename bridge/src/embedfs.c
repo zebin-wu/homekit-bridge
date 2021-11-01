@@ -4,13 +4,23 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
+#include <string.h>
 #include <HAPBase.h>
 #include <embedfs.h>
 
 static const embedfs_dir *embedfs_subdir(const embedfs_dir *dir, const char *name) {
-    for (const embedfs_dir * const *pchild = dir->children; *pchild; pchild++) {
-        if (HAPStringAreEqual((*pchild)->name, name)) {
-            return *pchild;
+    int left = 0;
+    int right = dir->child_count - 1;
+    while (left <= right) {
+        int mid = left + (right - left) / 2;
+        const embedfs_dir *child = dir->children[mid];
+        int cmp = strcmp(child->name, name);
+        if (cmp > 0) {
+            right = mid - 1;
+        } else if (cmp < 0) {
+            left = mid + 1;
+        } else {
+            return child;
         }
     }
     return NULL;
@@ -43,11 +53,19 @@ const embedfs_file *embedfs_find_file(const embedfs_dir *dir, const char *path) 
         return NULL;
     }
 
-    for (const embedfs_file * const *pfile = dir->files; *pfile; pfile++) {
-        if (HAPStringAreEqual((*pfile)->name, start)) {
-            return *pfile;
+    int left = 0;
+    int right = dir->file_count - 1;
+    while (left <= right) {
+        int mid = left + (right - left) / 2;
+        const embedfs_file *file = dir->files[mid];
+        int cmp = strcmp(file->name, start);
+        if (cmp > 0) {
+            right = mid - 1;
+        } else if (cmp < 0) {
+            left = mid + 1;
+        } else {
+            return file;
         }
     }
-
     return NULL;
 }
