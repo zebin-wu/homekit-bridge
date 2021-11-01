@@ -40,11 +40,8 @@ void pal_md5_free(pal_md5_ctx *ctx);
  * @param ctx MD5 context.
  * @param data The data to update.
  * @param len The length of the data.
- *
- * @return true on success.
- * @return false on failure.
  */
-bool pal_md5_update(pal_md5_ctx *ctx, const void *data, size_t len);
+void pal_md5_update(pal_md5_ctx *ctx, const void *data, size_t len);
 
 /**
  * Return the digest of the data passed to the update() method so far.
@@ -52,11 +49,8 @@ bool pal_md5_update(pal_md5_ctx *ctx, const void *data, size_t len);
  * @param ctx MD5 context.
  * @param output The buffer to receive the hash value. Its size must be
  *  (at least) PAL_MD5_HASHSIZE.
- *
- * @return true on success.
- * @return false on failure.
  */
-bool pal_md5_digest(pal_md5_ctx *ctx, uint8_t output[PAL_MD5_HASHSIZE]);
+void pal_md5_digest(pal_md5_ctx *ctx, uint8_t output[PAL_MD5_HASHSIZE]);
 
 #ifdef __cplusplus
 }

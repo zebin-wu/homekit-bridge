@@ -232,11 +232,7 @@ function protocol.scan(cb, addr, ...)
     end
 
     if not addr then
-        if handle:enableBroadcast() == false then
-            logger:error("Failed to enable UDP broadcast.")
-            handle:close()
-            return nil
-        end
+        handle:enableBroadcast()
     end
 
     local hello = packHello()

@@ -10,7 +10,6 @@ local handle = {}
 function udp.open(domain) end
 
 ---Enable broadcast.
----@return boolean status true on success, false on failure.
 function handle:enableBroadcast() end
 
 ---Bind a UDP handle to a local IP address and port.

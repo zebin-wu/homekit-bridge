@@ -18,8 +18,8 @@ typedef struct {
     size_t digest_len; /* The length of the digest. */
     void *(*new)(void); /* New a context. */
     void (*free)(void *); /* Free a context. */
-    bool (*update)(void *ctx, const void *data, size_t len); /* Update data. */
-    bool (*digest)(void *ctx, void *output); /* Get the digest. */
+    void (*update)(void *ctx, const void *data, size_t len); /* Update data. */
+    void (*digest)(void *ctx, void *output); /* Get the digest. */
 } lhash_method;
 
 static const lhash_method lhash_mths[] = {
@@ -28,8 +28,8 @@ static const lhash_method lhash_mths[] = {
         .digest_len = PAL_MD5_HASHSIZE,
         .new = (void *(*)())pal_md5_new,
         .free = (void (*)(void *))pal_md5_free,
-        .update = (bool (*)(void *, const void *, size_t))pal_md5_update,
-        .digest = (bool (*)(void *, void *))pal_md5_digest,
+        .update = (void (*)(void *, const void *, size_t))pal_md5_update,
+        .digest = (void (*)(void *, void *))pal_md5_digest,
     },
 };
 
@@ -79,17 +79,14 @@ static int lhash_obj_update(lua_State *L) {
     size_t len;
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
     const char *s = luaL_checklstring(L, 2, &len);
-    lua_pushboolean(L, obj->mth->update(obj->ctx, s, len));
-    return 1;
+    obj->mth->update(obj->ctx, s, len);
+    return 0;
 }
 
 static int lhash_obj_digest(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
     char out[obj->mth->digest_len];
-    if (!obj->mth->digest(obj->ctx, out)) {
-        luaL_pushfail(L);
-        return 1;
-    }
+    obj->mth->digest(obj->ctx, out);
     lua_pushlstring(L, out, obj->mth->digest_len);
     return 1;
 }
