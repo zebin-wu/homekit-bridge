@@ -32,7 +32,9 @@ struct embedfs_file {
 struct embedfs_dir {
     const char *name;
     const embedfs_file * const *files;
+    const int file_count;
     const struct embedfs_dir * const *children;
+    const int child_count;
 };
 
 const embedfs_file *embedfs_find_file(const embedfs_dir *dir, const char *path);
