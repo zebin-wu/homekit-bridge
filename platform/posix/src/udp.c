@@ -345,15 +345,11 @@ pal_udp *pal_udp_new(pal_net_domain domain) {
     return udp;
 }
 
-pal_net_err pal_udp_enable_broadcast(pal_udp *udp) {
+void pal_udp_enable_broadcast(pal_udp *udp) {
     HAPPrecondition(udp);
 
     int optval = 1;
-    int ret = setsockopt(udp->fd, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
-    if (ret) {
-        return PAL_NET_ERR_UNKNOWN;
-    }
-    return PAL_NET_ERR_OK;
+    HAPAssert(setsockopt(udp->fd, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval)) == 0);
 }
 
 pal_net_err pal_udp_bind(pal_udp *udp, const char *addr, uint16_t port) {

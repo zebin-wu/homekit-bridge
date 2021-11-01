@@ -30,17 +30,17 @@ void pal_md5_free(pal_md5_ctx *ctx) {
     }
 }
 
-bool pal_md5_update(pal_md5_ctx *ctx, const void *data, size_t len) {
+void pal_md5_update(pal_md5_ctx *ctx, const void *data, size_t len) {
     HAPPrecondition(ctx);
     HAPPrecondition(data);
     HAPPrecondition(len > 0);
 
-    return MD5_Update(&ctx->ctx, data, len) == true;
+    HAPAssert(MD5_Update(&ctx->ctx, data, len) == true);
 }
 
-bool pal_md5_digest(pal_md5_ctx *ctx, uint8_t output[PAL_MD5_HASHSIZE]) {
+void pal_md5_digest(pal_md5_ctx *ctx, uint8_t output[PAL_MD5_HASHSIZE]) {
     HAPPrecondition(ctx);
     HAPPrecondition(output);
 
-    return MD5_Final(output, &ctx->ctx) == true;
+    HAPAssert(MD5_Final(output, &ctx->ctx) == true);
 }

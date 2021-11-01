@@ -157,6 +157,7 @@ end
 ---@param self MiioDevice Device object.
 ---@param done fun(self: MiioDevice, err: integer, ...) Done callback.
 ---@vararg any Arguments passed to the callback.
+---@return boolean status true on success, false on failure.
 local function handshake(self, done, ...)
     local scanPriv = {
         self = self,
@@ -185,11 +186,12 @@ local function handshake(self, done, ...)
         priv.done(self, ErrorCode.None, tunpack(priv.args))
     end, self.addr, scanPriv)
     if not scanPriv.ctx then
-        self.logger:error("Failed to start scanning.")
-        return nil
+        return false
     end
 
     scanPriv.timer:start(self.timeout)
+
+    return true
 end
 
 ---@class MiioDeviceNetIf:table Device network interface.
@@ -231,7 +233,7 @@ function device.create(done, timeout, addr, token, ...)
         props = {}
     }
 
-    handshake(o, function (self, err, done, ...)
+    if handshake(o, function (self, err, done, ...)
         if err ~= ErrorCode.None then
             done(self, nil, ...)
             return
@@ -241,7 +243,10 @@ function device.create(done, timeout, addr, token, ...)
         end, function (self, code, message, done, ...)
             done(self, nil, ...)
         end, "miIO.info", nil, done, ...)
-    end, done, ...)
+    end, done, ...) == false then
+        o.logger:error("Failed to start handshake.")
+        return nil
+    end
 
     setmetatable(o, {
         __index = _device

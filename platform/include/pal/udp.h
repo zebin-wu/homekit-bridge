@@ -36,9 +36,8 @@ pal_udp *pal_udp_new(pal_net_domain domain);
  * Enable UDP broadcast.
  *
  * @param udp UDP PCB.
- * @return zero on success, error number on error.
  */
-pal_net_err pal_udp_enable_broadcast(pal_udp *udp);
+void pal_udp_enable_broadcast(pal_udp *udp);
 
 /**
  * Bind a local IP address and port.

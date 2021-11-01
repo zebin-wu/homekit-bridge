@@ -30,17 +30,17 @@ void pal_md5_free(pal_md5_ctx *ctx) {
     }
 }
 
-bool pal_md5_update(pal_md5_ctx *ctx, const void *data, size_t len) {
+void pal_md5_update(pal_md5_ctx *ctx, const void *data, size_t len) {
     HAPPrecondition(ctx);
     HAPPrecondition(data);
     HAPPrecondition(len > 0);
 
-    return mbedtls_md5_update_ret(&ctx->ctx, data, len) == 0;
+    HAPAssert(mbedtls_md5_update_ret(&ctx->ctx, data, len) == 0);
 }
 
-bool pal_md5_digest(pal_md5_ctx *ctx, uint8_t output[PAL_MD5_HASHSIZE]) {
+void pal_md5_digest(pal_md5_ctx *ctx, uint8_t output[PAL_MD5_HASHSIZE]) {
     HAPPrecondition(ctx);
     HAPPrecondition(output);
 
-    return mbedtls_md5_finish_ret(&ctx->ctx, output) == 0;
+    HAPAssert(mbedtls_md5_finish_ret(&ctx->ctx, output) == 0);
 }

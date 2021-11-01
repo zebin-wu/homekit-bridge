@@ -66,13 +66,11 @@ err:
 }
 
 static int ludp_handle_enable_broadcast(lua_State *L) {
-    pal_udp *udp = ludp_to_pcb(L, 1);
-    lua_pushboolean(L,
-        pal_udp_enable_broadcast(udp) == PAL_NET_ERR_OK ? true : false);
-    return 1;
+    pal_udp_enable_broadcast(ludp_to_pcb(L, 1));
+    return 0;
 }
 
-static bool lnet_port_valid(lua_Integer port) {
+static bool ludp_port_valid(lua_Integer port) {
     return ((port >= 0) && (port <= 65535));
 }
 
@@ -80,18 +78,11 @@ static int ludp_handle_bind(lua_State *L) {
     pal_udp *udp = ludp_to_pcb(L, 1);
     const char *addr = luaL_checkstring(L, 2);
     lua_Integer port = luaL_checkinteger(L, 3);
-    if (!lnet_port_valid(port)) {
-        goto err;
+    if (!ludp_port_valid(port)) {
+        luaL_argerror(L, 3, "port out of range");
     }
-    pal_net_err err = pal_udp_bind(udp, addr, (uint16_t)port);
-    if (err != PAL_NET_ERR_OK) {
-        goto err;
-    }
-    lua_pushboolean(L, true);
-    return 1;
-
-err:
-    lua_pushboolean(L, false);
+    lua_pushboolean(L,
+        pal_udp_bind(udp, addr, (uint16_t)port) == PAL_NET_ERR_OK);
     return 1;
 }
 
@@ -99,18 +90,11 @@ static int ludp_handle_connect(lua_State *L) {
     pal_udp *udp = ludp_to_pcb(L, 1);
     const char *addr = luaL_checkstring(L, 2);
     lua_Integer port = luaL_checkinteger(L, 3);
-    if (!lnet_port_valid(port)) {
-        goto err;
+    if (!ludp_port_valid(port)) {
+        luaL_argerror(L, 3, "port out of range");
     }
-    pal_net_err err = pal_udp_connect(udp, addr, (uint16_t)port);
-    if (err != PAL_NET_ERR_OK) {
-        goto err;
-    }
-    lua_pushboolean(L, true);
-    return 1;
-
-err:
-    lua_pushboolean(L, false);
+    lua_pushboolean(L,
+        pal_udp_connect(udp, addr, (uint16_t)port) == PAL_NET_ERR_OK);
     return 1;
 }
 
@@ -118,15 +102,7 @@ static int ludp_handle_send(lua_State *L) {
     pal_udp *udp = ludp_to_pcb(L, 1);
     size_t len;
     const char *data = luaL_checklstring(L, 2, &len);
-    pal_net_err err = pal_udp_send(udp, data, len);
-    if (err != PAL_NET_ERR_OK) {
-        goto err;
-    }
-    lua_pushboolean(L, true);
-    return 1;
-
-err:
-    lua_pushboolean(L, false);
+    lua_pushboolean(L, pal_udp_send(udp, data, len) == PAL_NET_ERR_OK);
     return 1;
 }
 
@@ -136,18 +112,10 @@ static int ludp_handle_sendto(lua_State *L) {
     const char *data = luaL_checklstring(L, 2, &len);
     const char *addr = luaL_checkstring(L, 3);
     lua_Integer port = luaL_checkinteger(L, 4);
-    if (!lnet_port_valid(port)) {
-        goto err;
+    if (!ludp_port_valid(port)) {
+        luaL_argerror(L, 3, "port out of range");
     }
-    pal_net_err err = pal_udp_sendto(udp, data, len, addr, (uint16_t)port);
-    if (err != PAL_NET_ERR_OK) {
-        goto err;
-    }
-    lua_pushboolean(L, true);
-    return 1;
-
-err:
-    lua_pushboolean(L, false);
+    lua_pushboolean(L, pal_udp_sendto(udp, data, len, addr, (uint16_t)port) == PAL_NET_ERR_OK);
     return 1;
 }
 
