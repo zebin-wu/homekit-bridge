@@ -29,19 +29,21 @@ local mapping = {
 ---@param conf MiioDeviceConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function fan.gen(device, info, conf)
+    ---@class FanIIDs:table Fan Instance ID table.
     local iids = {
-        acc = hap.getNewBridgedAccessoryID()
+        acc = hap.getNewBridgedAccessoryID(),
+        fan = hap.getNewInstanceID(),
+        active = hap.getNewInstanceID(),
+        rotationSpeed = hap.getNewInstanceID(),
+        swingMode = hap.getNewInstanceID(),
+        lockPhyCtrls = hap.getNewInstanceID()
     }
 
-    for i, v in ipairs({
-        "fan", "active", "rotationSpeed", "swingMode", "lockPhyCtrls"
-    }) do
-        iids[v] = hap.getNewInstanceID()
-    end
-
-    device:registerProps({
-        "power", "speed_level", "angle_enable", "child_lock"
-    }, function (self, name, iids)
+    ---Update callback called when property is updated.
+    ---@param self MiioDevice Device Object.
+    ---@param name string Property Name.
+    ---@param iids FanIIDs Fan Instance ID table.
+    local function _update(self, name, iids)
         if name == "power" then
             hap.raiseEvent(iids.acc, iids.fan, iids.active)
         elseif name == "speed_level" then
@@ -51,7 +53,11 @@ function fan.gen(device, info, conf)
         elseif name == "child_lock" then
             hap.raiseEvent(iids.acc, iids.fan, iids.lockPhyCtrls)
         end
-    end, iids)
+    end
+
+    device:registerProps({
+        "power", "speed_level", "angle_enable", "child_lock"
+    }, _update, iids)
 
     return {
         aid = iids.acc,

@@ -10,21 +10,22 @@ local plug = {}
 ---@param on string The property name of ``On``.
 ---@return HapAccessory accessory HomeKit Accessory.
 function plug.gen(device, info, conf, on)
+    ---@class PlugIIDs:table Plug Instance ID table.
     local iids = {
-        acc = hap.getNewBridgedAccessoryID()
+        acc = hap.getNewBridgedAccessoryID(),
+        outlet = hap.getNewInstanceID(),
+        on = hap.getNewInstanceID()
     }
 
-    for i, v in ipairs({
-        "outlet", "on"
-    }) do
-        iids[v] = hap.getNewInstanceID()
+    ---Update callback called when property is updated.
+    ---@param self MiioDevice Device Object.
+    ---@param name string Property Name.
+    ---@param iids PlugIIDs Plug Instance ID table.
+    local function _update(self, name, iids)
+        hap.raiseEvent(iids.acc, iids.outlet, iids.on)
     end
 
-    device:registerProps({ on }, function (self, name, iids)
-        if name == on then
-            hap.raiseEvent(iids.acc, iids.outlet, iids.on)
-        end
-    end, iids)
+    device:registerProps({ on }, _update, iids)
 
     return {
         aid = iids.acc,
