@@ -15,25 +15,25 @@ local device = {}
 ---@class MiioDevice:MiioDevicePriv Device object.
 local _device = {}
 
--- Declare function "dispatch".
-local dispatch
+-- Declare function "_dispatch".
+local _dispatch
 
 local function _respCb(result, self, respCb, _, ...)
     self.requestable = true
-    dispatch(self)
+    _dispatch(self)
     respCb(self, result, ...)
 end
 
 local function _errCb(code, message, self, _, errCb, ...)
     self.logger:error(("Request error, code: %d, message: %s"):format(code, message))
     self.requestable  = true
-    dispatch(self)
+    _dispatch(self)
     errCb(self, code, message, ...)
 end
 
 ---Dispatch the requests.
 ---@param self MiioDevice Device object.
-dispatch = function (self)
+_dispatch = function (self)
     local que = self.cmdQue
     if que.first ~= que.last then
         local first = que.first
@@ -46,12 +46,92 @@ dispatch = function (self)
     end
 end
 
+---Start Handshake,  and the ``done`` callback will be called when the handshake is done.
+---@param self MiioDevice Device object.
+---@param done fun(self: MiioDevice, err: integer, ...) Done callback.
+---@vararg any Arguments passed to the callback.
+---@return boolean status true on success, false on failure.
+local function _handshake(self, done, ...)
+    local scanPriv = {
+        self = self,
+        done = done,
+        args = {...}
+    }
+
+    scanPriv.timer = timer.create(function (priv)
+        local self = priv.self
+        self.logger:error("Handshake timeout.")
+        priv.ctx:stop()
+        priv.ctx = nil
+        priv.done(self, ErrorCode.Timeout, tunpack(priv.args))
+    end, scanPriv)
+
+    scanPriv.ctx = protocol.scan(function (addr, devid, stamp, priv)
+        local self = priv.self
+        priv.timer:stop()
+        local pcb = protocol.create(addr, devid, self.token, stamp)
+        if not pcb then
+            self.logger:error("Failed to create PCB.")
+            priv.done(self, ErrorCode.Unknown, tunpack(priv.args))
+            return
+        end
+        self.pcb = pcb
+        self.logger:debug("Handshake done.")
+        priv.done(self, ErrorCode.None, tunpack(priv.args))
+    end, self.addr, scanPriv)
+    if not scanPriv.ctx then
+        return false
+    end
+
+    scanPriv.timer:start(self.timeout)
+    self.logger:debug("Start handshake.")
+
+    return true
+end
+
+---Recover the connection to the device.
+---@param self MiioDevice Device object.
+local function _recover(self)
+    self.logger:debug("Recover connection ...")
+    _handshake(self, function (self, err, ...)
+        if err == ErrorCode.None then
+            self.state = "INITED"
+            self:startSync()
+            return
+        end
+        _recover(self)
+    end)
+end
+
+---Set property.
+---@param self MiioDevice Device object.
+---@param name string Property name.
+---@param value any Property value.
+---@param retry integer Retry count.
+local function _setProp(self, name, value, retry)
+    self:request(function (self, result, name)
+        self:startSync()
+        self:update(name, tunpack(self.updateArgs))
+    end, function (self, code, message, name, value, retry)
+        if code == ErrorCode.Timeout and retry > 0 then
+            _setProp(self, name, value, retry - 1)
+        else
+            self.logger:error("Failed to set property.")
+            if self.state ~= "NOINIT" then
+                self.state = "NOINIT"
+                _recover(self)
+            end
+        end
+    end, "set_" .. name, {value}, name, value, retry)
+end
+
 ---Start a request and ``respCb`` will be called when a response is received.
 ---@param respCb fun(self: MiioDevice, result: any, ...) Response callback.
 ---@param errCb fun(self: MiioDevice, code: integer, message: string, ...) Error Callback.
 ---@param method string The request method.
 ---@param params? table Array of parameters.
 function _device:request(respCb, errCb, method, params, ...)
+    assert(self.state == "INITED")
     assert(type(respCb) == "function")
     assert(type(errCb) == "function")
 
@@ -69,6 +149,8 @@ end
 
 ---Start sync properties.
 function _device:startSync()
+    assert(self.state == "INITED")
+
     self.logger:debug("Start sync properties.")
     local ms = math.random(3000, 6000)
     self.logger:debug(("Sync properties after %dms."):format(ms))
@@ -78,6 +160,8 @@ end
 
 ---Stop sync properties.
 function _device:stopSync()
+    assert(self.state == "INITED")
+
     self.logger:debug("Stop sync properties.")
     self.timer:stop()
     self.isSyncing = false
@@ -87,15 +171,40 @@ end
 ---@param names string[] Property names.
 ---@param update fun(self: MiioDevice, name: string, ...) The callback will be called when the property is updated.
 function _device:registerProps(names, update, ...)
+    assert(self.state == "INITED")
     assert(type(names) == "table")
     assert(type(update) == "function")
 
     self.update = update
     self.updateArgs = {...}
     self.isSyncing = false
+    self.syncRetry = 3
+
+    ---Sync property error callback.
+    ---@param self MiioDevice Device object.
+    ---@param code integer Error code.
+    ---@param message string Error message.
+    local function errCb(self, code, message)
+        local retry = self.syncRetry
+        if code == ErrorCode.Timeout and retry == 0 then
+            self.logger:error("Failed to get properties.")
+            if self.state ~= "NOINIT" then
+                self.state = "NOINIT"
+                _recover(self)
+            end
+            return
+        else
+            self.syncRetry = retry - 1
+            if self.isSyncing then
+                self:startSync()
+            end
+        end
+    end
+
     self.timer = timer.create(function (self, names)
         self.logger:debug("Syncing properties ...")
         self:request(function (self, result, names)
+            self.syncRetry = 3
             if self.isSyncing == false then
                 return
             end
@@ -109,11 +218,7 @@ function _device:registerProps(names, update, ...)
                 end
             end
             self:startSync()
-        end, function (self, code, message)
-            if self.isSyncing then
-                self:startSync()
-            end
-        end, "get_prop", names, names)
+        end, errCb, "get_prop", names, names)
     end, self, names)
 
     self:request(function (self, result, names)
@@ -122,15 +227,15 @@ function _device:registerProps(names, update, ...)
             self.props[names[i]] = v
         end
         self:startSync()
-    end, function (self, code, message)
-        self:startSync()
-    end, "get_prop", names, names)
+    end, errCb, "get_prop", names, names)
 end
 
 ---Get property.
 ---@param name string Property name.
 ---@return any value Property value.
 function _device:getProp(name)
+    assert(self.state == "INITED")
+
     return self.props[name]
 end
 
@@ -138,60 +243,16 @@ end
 ---@param name string Property name.
 ---@param value any Property value.
 function _device:setProp(name, value)
+    assert(self.state == "INITED")
+
     local props = self.props
     if props[name] == value then
         return
     end
-    self:stopSync()
     props[name] = value
+    self:stopSync()
 
-    self:request(function (self, result, name)
-        self:update(name, tunpack(self.updateArgs))
-        self:startSync()
-    end, function (self, code, message)
-        self:startSync()
-    end, "set_" .. name, {value}, name)
-end
-
----Start Handshake,  and the ``done`` callback will be called when the handshake is done.
----@param self MiioDevice Device object.
----@param done fun(self: MiioDevice, err: integer, ...) Done callback.
----@vararg any Arguments passed to the callback.
----@return boolean status true on success, false on failure.
-local function handshake(self, done, ...)
-    local scanPriv = {
-        self = self,
-        done = done,
-        args = {...}
-    }
-
-    scanPriv.timer = timer.create(function (priv)
-        local self = priv.self
-        self.logger:error("Scan timeout.")
-        priv.ctx:stop()
-        priv.ctx = nil
-        priv.done(self, ErrorCode.Timeout, tunpack(priv.args))
-    end, scanPriv)
-
-    scanPriv.ctx = protocol.scan(function (addr, devid, stamp, priv)
-        local self = priv.self
-        priv.timer:stop()
-        local pcb = protocol.create(addr, devid, self.token, stamp)
-        if not pcb then
-            self.logger:error("Failed to create PCB.")
-            priv.done(self, ErrorCode.Unknown, tunpack(priv.args))
-            return
-        end
-        self.pcb = pcb
-        priv.done(self, ErrorCode.None, tunpack(priv.args))
-    end, self.addr, scanPriv)
-    if not scanPriv.ctx then
-        return false
-    end
-
-    scanPriv.timer:start(self.timeout)
-
-    return true
+    _setProp(self, name, value, 3)
 end
 
 ---@class MiioDeviceNetIf:table Device network interface.
@@ -210,13 +271,11 @@ end
 
 ---Create a device object.
 ---@param done fun(self: MiioDevice, info: MiioDeviceInfo, ...) Callback will be called after the device is created.
----@param timeout integer Timeout period (in milliseconds).
 ---@param addr string Device address.
 ---@param token string Device token.
 ---@return MiioDevice obj Device object.
-function device.create(done, timeout, addr, token, ...)
+function device.create(done, addr, token, ...)
     assert(type(done) == "function")
-    assert(timeout > 0, "timeout must be greater then 0")
     assert(type(addr) == "string")
     assert(type(token) == "string")
     assert(#token == 16)
@@ -224,20 +283,22 @@ function device.create(done, timeout, addr, token, ...)
     ---@class MiioDevicePriv:table
     local o = {
         logger = log.getLogger("miio.device:" .. addr),
+        state = "NOINIT", ---@type DeviceState
         pcb = nil, ---@type MiioPcb
         addr = addr,
         token = token,
-        timeout = timeout,
+        timeout = 3000,
         requestable = true,
         cmdQue = { first = 0, last = 0 },
         props = {}
     }
 
-    if handshake(o, function (self, err, done, ...)
+    if _handshake(o, function (self, err, done, ...)
         if err ~= ErrorCode.None then
             done(self, nil, ...)
             return
         end
+        self.state ="INITED"
         self:request(function (self, result, done, ...)
             done(self, result, ...)
         end, function (self, code, message, done, ...)

@@ -76,7 +76,7 @@ function plugin.gen(conf)
             return
         end
         _report(self, conf.addr, accessory)
-    end, 5000, conf.addr, util.hex2bin(conf.token), conf)
+    end, conf.addr, util.hex2bin(conf.token), conf)
     if obj then
         priv.pending[conf.addr] = true
         priv.devices[conf.addr] = obj
