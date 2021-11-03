@@ -110,17 +110,21 @@ end
 ---@param retry integer Retry count.
 local function _setProp(self, name, value, retry)
     self:request(function (self, result, name)
+        if self.state == "NOINIT" then
+            return
+        end
         self:startSync()
         self:update(name, tunpack(self.updateArgs))
     end, function (self, code, message, name, value, retry)
+        if self.state == "NOINIT" then
+            return
+        end
         if code == ErrorCode.Timeout and retry > 0 then
             _setProp(self, name, value, retry - 1)
         else
             self.logger:error("Failed to set property.")
-            if self.state ~= "NOINIT" then
-                self.state = "NOINIT"
-                _recover(self)
-            end
+            self.state = "NOINIT"
+            _recover(self)
         end
     end, "set_" .. name, {value}, name, value, retry)
 end
@@ -185,14 +189,14 @@ function _device:registerProps(names, update, ...)
     ---@param code integer Error code.
     ---@param message string Error message.
     local function errCb(self, code, message)
+        if self.state == "NOINIT" then
+            return
+        end
         local retry = self.syncRetry
         if code == ErrorCode.Timeout and retry == 0 then
             self.logger:error("Failed to get properties.")
-            if self.state ~= "NOINIT" then
-                self.state = "NOINIT"
-                _recover(self)
-            end
-            return
+            self.state = "NOINIT"
+            _recover(self)
         else
             self.syncRetry = retry - 1
             if self.isSyncing then
@@ -204,6 +208,9 @@ function _device:registerProps(names, update, ...)
     self.timer = timer.create(function (self, names)
         self.logger:debug("Syncing properties ...")
         self:request(function (self, result, names)
+            if self.state == "NOINIT" then
+                return
+            end
             self.syncRetry = 3
             if self.isSyncing == false then
                 return
