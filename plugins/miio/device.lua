@@ -89,6 +89,28 @@ local function _handshake(self, done, ...)
     return true
 end
 
+---Start sync properties.
+---@param self MiioDevice Device object.
+local function _startSync(self)
+    assert(self.state == "INITED")
+
+    self.logger:debug("Start sync properties.")
+    local ms = math.random(3000, 6000)
+    self.logger:debug(("Sync properties after %dms."):format(ms))
+    self.timer:start(ms)
+    self.isSyncing = true
+end
+
+---Stop sync properties.
+---@param self MiioDevice Device object.
+local function _stopSync(self)
+    assert(self.state == "INITED")
+
+    self.logger:debug("Stop sync properties.")
+    self.timer:stop()
+    self.isSyncing = false
+end
+
 ---Recover the connection to the device.
 ---@param self MiioDevice Device object.
 local function _recover(self)
@@ -96,7 +118,7 @@ local function _recover(self)
     _handshake(self, function (self, err, ...)
         if err == ErrorCode.None then
             self.state = "INITED"
-            self:startSync()
+            _startSync(self)
             return
         end
         _recover(self)
@@ -113,7 +135,7 @@ local function _setProp(self, name, value, retry)
         if self.state == "NOINIT" then
             return
         end
-        self:startSync()
+        _startSync(self)
         self:update(name, tunpack(self.updateArgs))
     end, function (self, code, message, name, value, retry)
         if self.state == "NOINIT" then
@@ -151,30 +173,10 @@ function _device:request(respCb, errCb, method, params, ...)
     que.last = last + 1
 end
 
----Start sync properties.
-function _device:startSync()
-    assert(self.state == "INITED")
-
-    self.logger:debug("Start sync properties.")
-    local ms = math.random(3000, 6000)
-    self.logger:debug(("Sync properties after %dms."):format(ms))
-    self.timer:start(ms)
-    self.isSyncing = true
-end
-
----Stop sync properties.
-function _device:stopSync()
-    assert(self.state == "INITED")
-
-    self.logger:debug("Stop sync properties.")
-    self.timer:stop()
-    self.isSyncing = false
-end
-
 ---Register properties.
 ---@param names string[] Property names.
 ---@param update fun(self: MiioDevice, name: string, ...) The callback will be called when the property is updated.
-function _device:registerProps(names, update, ...)
+function _device:regProps(names, update, ...)
     assert(self.state == "INITED")
     assert(type(names) == "table")
     assert(type(update) == "function")
@@ -200,7 +202,7 @@ function _device:registerProps(names, update, ...)
         else
             self.syncRetry = retry - 1
             if self.isSyncing then
-                self:startSync()
+                _startSync(self)
             end
         end
     end
@@ -216,6 +218,7 @@ function _device:registerProps(names, update, ...)
                 return
             end
             assert(#result == #names)
+            _startSync(self)
             local props = self.props
             for i, v in ipairs(result) do
                 local name = names[i]
@@ -224,7 +227,6 @@ function _device:registerProps(names, update, ...)
                     self:update(name, tunpack(self.updateArgs))
                 end
             end
-            self:startSync()
         end, errCb, "get_prop", names, names)
     end, self, names)
 
@@ -233,7 +235,7 @@ function _device:registerProps(names, update, ...)
         for i, v in ipairs(result) do
             self.props[names[i]] = v
         end
-        self:startSync()
+        _startSync(self)
     end, errCb, "get_prop", names, names)
 end
 
@@ -257,7 +259,7 @@ function _device:setProp(name, value)
         return
     end
     props[name] = value
-    self:stopSync()
+    _stopSync(self)
 
     _setProp(self, name, value, 3)
 end
