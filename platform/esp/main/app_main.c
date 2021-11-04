@@ -24,9 +24,11 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
+#include <stdio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <nvs_flash.h>
+#include <esp_console.h>
 
 #include <app.h>
 #include <pal/hap.h>
@@ -37,6 +39,7 @@
 #include <HAPPlatformKeyValueStore+Init.h>
 #include <HAPPlatformMFiTokenAuth+Init.h>
 #include <HAPPlatformRunLoop+Init.h>
+#include <HAPPlatformLog+Init.h>
 #if IP
 #include <HAPPlatformServiceDiscovery+Init.h>
 #include <HAPPlatformTCPStreamManager+Init.h>
@@ -174,6 +177,30 @@ void app_main_task(void *arg) {
     deinit_platform();
 }
 
+static int app_log_cmd(int argc, char **argv) {
+    const char *enabled_type_strs[] = {
+        [kHAPPlatformLogEnabledTypes_None] = "none",
+        [kHAPPlatformLogEnabledTypes_Default] = "default",
+        [kHAPPlatformLogEnabledTypes_Info] = "info",
+        [kHAPPlatformLogEnabledTypes_Debug] = "debug"
+    };
+
+    if (argc == 1) {
+        printf("Current enabled log type: %s.\r\n", enabled_type_strs[HAPPlatformLogGetEnabledTypes(NULL)]);
+        return 0;
+    } else if (argc == 2) {
+        for (int i = 0; i < HAPArrayCount(enabled_type_strs); i++) {
+            if (HAPStringAreEqual(argv[1], enabled_type_strs[i])) {
+                HAPPlatformLogSetEnabledTypes(NULL, i);
+                return 0;
+            }
+        }
+    }
+
+    printf("log: invalid command.\r\n");
+    return -1;
+}
+
 static void app_wifi_connected_cb() {
     app_wifi_set_connected_cb(NULL);
     xTaskCreate(app_main_task, "app", APP_MAIN_TASK_STACKSIZE,
@@ -196,5 +223,14 @@ void app_main() {
 
     app_wifi_set_connected_cb(app_wifi_connected_cb);
     app_wifi_register_cmd();
+
+    ESP_ERROR_CHECK(esp_console_cmd_register(& (const esp_console_cmd_t) {
+        .command = "log",
+        .help = "Show or set enabled log type.",
+        .hint = "[none|default|info|debug]",
+        .func = app_log_cmd,
+        .argtable = NULL,
+    }));
+
     app_console_start();
 }
