@@ -32,6 +32,7 @@
 #endif
 
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "Log" };
+static HAPLogType logEnabledType = HAP_LOG_LEVEL;
 
 void HAPPlatformLogPOSIXError(
         HAPLogType type,
@@ -52,9 +53,13 @@ void HAPPlatformLogPOSIXError(
     HAPLogWithType(&logObject, type, "%s:%d:%s - %s @ %s:%d", message, errorNumber, errorString, function, file, line);
 }
 
+void HAPPlatformLogSetEnabledTypes(const HAPLogObject* _Nonnull log HAP_UNUSED, HAPPlatformLogEnabledTypes type) {
+    logEnabledType = type;
+}
+
 HAP_RESULT_USE_CHECK
 HAPPlatformLogEnabledTypes HAPPlatformLogGetEnabledTypes(const HAPLogObject* _Nonnull log HAP_UNUSED) {
-    switch (HAP_LOG_LEVEL) {
+    switch (logEnabledType) {
         case 0: {
             return kHAPPlatformLogEnabledTypes_None;
         }
