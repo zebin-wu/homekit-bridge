@@ -25,7 +25,7 @@ function plug.gen(device, info, conf, on)
         hap.raiseEvent(iids.acc, iids.outlet, iids.on)
     end
 
-    device:registerProps({ on }, _update, iids)
+    device:regProps({ on }, _update, iids)
 
     return {
         aid = iids.acc,

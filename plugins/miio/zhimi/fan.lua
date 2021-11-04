@@ -47,7 +47,7 @@ function fan.gen(device, info, conf)
         end
     end
 
-    device:registerProps({
+    device:regProps({
         "power", "speed_level", "angle_enable"
     }, _update, iids)
 

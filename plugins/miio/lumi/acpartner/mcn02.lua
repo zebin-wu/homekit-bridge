@@ -42,7 +42,7 @@ function acpartner.gen(device, info, conf)
         iids[v] = hap.getNewInstanceID()
     end
 
-    device:registerProps({
+    device:regProps({
         "power", "mode", "tar_temp", "ver_swing"
     }, function (self, name, iids)
         if name == "power" then
