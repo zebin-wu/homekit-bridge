@@ -17,15 +17,13 @@ function plug.gen(device, info, conf, on)
         on = hap.getNewInstanceID()
     }
 
-    ---Update callback called when property is updated.
+    device:regProps({ on },
     ---@param self MiioDevice Device Object.
-    ---@param name string Property Name.
+    ---@param names string[] Property Names.
     ---@param iids PlugIIDs Plug Instance ID table.
-    local function _update(self, name, iids)
+    function (self, names, iids)
         hap.raiseEvent(iids.acc, iids.outlet, iids.on)
-    end
-
-    device:regProps({ on }, _update, iids)
+    end, iids)
 
     return {
         aid = iids.acc,

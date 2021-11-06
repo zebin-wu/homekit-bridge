@@ -33,23 +33,23 @@ function fan.gen(device, info, conf)
         swingMode = hap.getNewInstanceID(),
     }
 
-    ---Update callback called when property is updated.
-    ---@param self MiioDevice Device Object.
-    ---@param name string Property Name.
-    ---@param iids FanIIDs Fan Instance ID table.
-    local function _update(self, name, iids)
-        if name == "power" then
-            hap.raiseEvent(iids.acc, iids.fan, iids.active)
-        elseif name == "speed_level" then
-            hap.raiseEvent(iids.acc, iids.fan, iids.rotationSpeed)
-        elseif name == "angle_enable" then
-            hap.raiseEvent(iids.acc, iids.fan, iids.swingMode)
-        end
-    end
-
     device:regProps({
         "power", "speed_level", "angle_enable"
-    }, _update, iids)
+    },
+    ---@param self MiioDevice Device Object.
+    ---@param names string[] Property names.
+    ---@param iids FanIIDs Fan Instance ID table.
+    function (self, names, iids)
+        for _, name in ipairs(names) do
+            if name == "power" then
+                hap.raiseEvent(iids.acc, iids.fan, iids.active)
+            elseif name == "speed_level" then
+                hap.raiseEvent(iids.acc, iids.fan, iids.rotationSpeed)
+            elseif name == "angle_enable" then
+                hap.raiseEvent(iids.acc, iids.fan, iids.swingMode)
+            end
+        end
+    end, iids)
 
     return {
         aid = iids.acc,

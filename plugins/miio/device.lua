@@ -5,8 +5,28 @@ local ErrorCode = require "miio.error".code
 local assert = assert
 local type = type
 local tunpack = table.unpack
+local tinsert = table.insert
 
 local device = {}
+
+---@class MiotProp: table MIOT Property.
+---
+---@field sid integer Service instance ID.
+---@field pid integer Property instance ID.
+
+---@class MiioDeviceNetIf:table Device network interface.
+---
+---@field gw string gateway IP.
+---@field localIp string local IP.
+---@field mask string mask of the network.
+
+---@class MiioDeviceInfo:table Device information.
+---
+---@field model string Model, format: "{mfg}.{product}.{submodel}".
+---@field mac string MAC address.
+---@field fw_ver string Firmware version.
+---@field hw_ver string Hardware version.
+---@field netif MiioDeviceNetIf Network interface.
 
 ---@alias DeviceState
 ---| '"NOINIT"'
@@ -89,6 +109,24 @@ local function _handshake(self, done, ...)
     return true
 end
 
+---Create a property manager.
+---@param timer TimerObj Timer object.
+---@param onUpdate fun(self: MiioDevice, names: string[], ...) The callback will be called when the property is updated.
+---@return MiioPropMgr # Miio Property manager.
+local function _createPropMgr(timer, onUpdate, ...)
+    ---@class MiioPropMgr
+    local pm = {
+        timer = timer,
+        values = {},
+        onUpdate = onUpdate,
+        args = {...},
+        isSyncing = false,
+        retry = 3
+    }
+
+    return pm
+end
+
 ---Start sync properties.
 ---@param self MiioDevice Device object.
 local function _startSync(self)
@@ -97,8 +135,9 @@ local function _startSync(self)
     self.logger:debug("Start sync properties.")
     local ms = math.random(3000, 6000)
     self.logger:debug(("Sync properties after %dms."):format(ms))
-    self.timer:start(ms)
-    self.isSyncing = true
+    local pm = self.pm
+    pm.timer:start(ms)
+    pm.isSyncing = true
 end
 
 ---Stop sync properties.
@@ -107,8 +146,9 @@ local function _stopSync(self)
     assert(self.state == "INITED")
 
     self.logger:debug("Stop sync properties.")
-    self.timer:stop()
-    self.isSyncing = false
+    local pm = self.pm
+    pm.timer:stop()
+    pm.isSyncing = false
 end
 
 ---Recover the connection to the device.
@@ -135,8 +175,9 @@ local function _setProp(self, name, value, retry)
         if self.state == "NOINIT" then
             return
         end
+        local pm = self.pm
         _startSync(self)
-        self:update(name, tunpack(self.updateArgs))
+        pm.onUpdate(self, {name}, tunpack(pm.args))
     end, function (self, code, message, name, value, retry)
         if self.state == "NOINIT" then
             return
@@ -175,68 +216,75 @@ end
 
 ---Register properties.
 ---@param names string[] Property names.
----@param update fun(self: MiioDevice, name: string, ...) The callback will be called when the property is updated.
-function _device:regProps(names, update, ...)
+---@param onUpdate fun(self: MiioDevice, names: string[], ...) The callback will be called when the property is updated.
+function _device:regProps(names, onUpdate, ...)
     assert(self.state == "INITED")
     assert(type(names) == "table")
-    assert(type(update) == "function")
+    assert(type(onUpdate) == "function")
 
-    self.update = update
-    self.updateArgs = {...}
-    self.isSyncing = false
-    self.syncRetry = 3
-
-    ---Sync property error callback.
-    ---@param self MiioDevice Device object.
-    ---@param code integer Error code.
-    ---@param message string Error message.
-    local function errCb(self, code, message)
-        if self.state == "NOINIT" then
-            return
-        end
-        local retry = self.syncRetry
-        if code == ErrorCode.Timeout and retry == 0 then
-            self.logger:error("Failed to get properties.")
-            self.state = "NOINIT"
-            _recover(self)
-        else
-            self.syncRetry = retry - 1
-            if self.isSyncing then
-                _startSync(self)
-            end
-        end
-    end
-
-    self.timer = timer.create(function (self, names)
-        self.logger:debug("Syncing properties ...")
-        self:request(function (self, result, names)
-            if self.state == "NOINIT" then
-                return
-            end
-            self.syncRetry = 3
-            if self.isSyncing == false then
-                return
-            end
-            assert(#result == #names)
-            _startSync(self)
-            local props = self.props
-            for i, v in ipairs(result) do
-                local name = names[i]
-                if props[name] ~= v then
-                    props[name] = v
-                    self:update(name, tunpack(self.updateArgs))
+    self.pm = _createPropMgr(timer.create(
+        ---@param self MiioDevice Device Object.
+        ---@param names string[] Property names.
+        function (self, names)
+            self.logger:debug("Syncing properties ...")
+            self:request(function (self, result, names)
+                if self.state == "NOINIT" then
+                    return
                 end
-            end
-        end, errCb, "get_prop", names, names)
-    end, self, names)
+                local pm = self.pm
+                pm.retry = 3
+                if pm.isSyncing == false then
+                    return
+                end
+                assert(#result == #names)
+                local values = pm.values
+                local updatedNames = {}
+                for i, v in ipairs(result) do
+                    local name = names[i]
+                    if values[name] ~= v then
+                        values[name] = v
+                        tinsert(updatedNames, name)
+                    end
+                end
+                _startSync(self)
+                if #updatedNames ~= 0 then
+                    pm.onUpdate(self, updatedNames, tunpack(pm.args))
+                end
+            end,
+            ---@param self MiioDevice Device object.
+            ---@param code integer Error code.
+            ---@param message string Error message.
+            function (self, code, message)
+                if self.state == "NOINIT" then
+                    return
+                end
+                local pm = self.pm
+                local retry = pm.retry
+                if code == ErrorCode.Timeout and retry == 0 then
+                    self.logger:error("Failed to get properties.")
+                    self.state = "NOINIT"
+                    _recover(self)
+                else
+                    pm.retry = retry - 1
+                    if pm.isSyncing then
+                        _startSync(self)
+                    end
+                end
+            end, "get_prop", names, names)
+        end, self, names), onUpdate, ...)
 
-    self:request(function (self, result, names)
-        assert(#result == #names)
-        for i, v in ipairs(result) do
-            self.props[names[i]] = v
-        end
-        _startSync(self)
-    end, errCb, "get_prop", names, names)
+    _startSync(self)
+end
+
+---Register properties for MIOT protocol device.
+---@param mapping table<string, MiotProp> MIOT Properties mapping.
+---@param onUpdate fun(self: MiioDevice, names: string[], ...) The callback will be called when the property is updated.
+function _device:regPropsMiot(mapping, onUpdate, ...)
+    assert(self.state == "INITED")
+    assert(type(mapping) == "table")
+    assert(type(onUpdate) == "function")
+
+    self.propMapping = mapping
 end
 
 ---Get property.
@@ -245,7 +293,7 @@ end
 function _device:getProp(name)
     assert(self.state == "INITED")
 
-    return self.props[name]
+    return self.pm.values[name]
 end
 
 ---Set property.
@@ -254,29 +302,15 @@ end
 function _device:setProp(name, value)
     assert(self.state == "INITED")
 
-    local props = self.props
-    if props[name] == value then
+    local values = self.pm.values
+    if values[name] == value then
         return
     end
-    props[name] = value
+    values[name] = value
     _stopSync(self)
 
     _setProp(self, name, value, 3)
 end
-
----@class MiioDeviceNetIf:table Device network interface.
----
----@field gw string gateway IP.
----@field localIp string local IP.
----@field mask string mask of the network.
-
----@class MiioDeviceInfo:table Device information.
----
----@field model string Model, format: "{mfg}.{product}.{submodel}".
----@field mac string MAC address.
----@field fw_ver string Firmware version.
----@field hw_ver string Hardware version.
----@field netif MiioDeviceNetIf Network interface.
 
 ---Create a device object.
 ---@param done fun(self: MiioDevice, info: MiioDeviceInfo, ...) Callback will be called after the device is created.

@@ -16,10 +16,12 @@ local mapping = {
         off = Active.value.Inactive
     },
     ver_swing = {
+        unsupport = SwingMode.value.Disabled,
         on = SwingMode.value.Enabled,
         off = SwingMode.value.Disabled
     },
     mode = {
+        unsupport = TgtHeatCoolState.value.HeatOrCool,
         cool = TgtHeatCoolState.value.Cool,
         heat = TgtHeatCoolState.value.Heat,
         auto = TgtHeatCoolState.value.HeatOrCool
@@ -32,30 +34,39 @@ local mapping = {
 ---@param conf MiioDeviceConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function acpartner.gen(device, info, conf)
+    ---@class AcpartnerIIDS:table Acpartner Instance ID table.
     local iids = {
-        acc = hap.getNewBridgedAccessoryID()
+        acc = hap.getNewBridgedAccessoryID(),
+        heaterCooler = hap.getNewInstanceID(),
+        active = hap.getNewInstanceID(),
+        curTemp = hap.getNewInstanceID(),
+        curState = hap.getNewInstanceID(),
+        tgtState = hap.getNewInstanceID(),
+        coolThrTemp = hap.getNewInstanceID(),
+        heatThrTemp = hap.getNewInstanceID(),
+        swingMode = hap.getNewInstanceID()
     }
-
-    for i, v in ipairs({
-        "heaterCooler", "active", "curTemp", "curState", "tgtState", "coolThrTemp", "heatThrTemp", "swingMode"
-    }) do
-        iids[v] = hap.getNewInstanceID()
-    end
 
     device:regProps({
         "power", "mode", "tar_temp", "ver_swing"
-    }, function (self, name, iids)
-        if name == "power" then
-            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.active)
-        elseif name == "mode" then
-            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
-            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.tgtState)
-        elseif name == "tar_temp" then
-            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
-            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
-            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
-        elseif name == "ver_swing" then
-            hap.raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
+    },
+    ---@param self MiioDevice Device Object.
+    ---@param names string[] Property Names.
+    ---@param iids AcpartnerIIDS Acpartner Instance ID table.
+    function (self, names, iids)
+        for _, name in ipairs(names) do
+            if name == "power" then
+                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.active)
+            elseif name == "mode" then
+                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
+                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.tgtState)
+            elseif name == "tar_temp" then
+                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
+                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
+                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
+            elseif name == "ver_swing" then
+                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
+            end
         end
     end, iids)
 
