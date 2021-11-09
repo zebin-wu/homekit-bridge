@@ -6,8 +6,8 @@ local SwingMode = require "hap.char.SwingMode"
 
 local fan = {}
 
---- Property -> Characteristic.
-local mapping = {
+--- Property value -> Characteristic value.
+local valMapping = {
     power = {
         on = Active.value.Active,
         off = Active.value.Inactive,
@@ -24,7 +24,7 @@ local mapping = {
 ---@param conf MiioDeviceConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function fan.gen(device, info, conf)
-    ---@class FanIIDs:table Fan Instance ID table.
+    ---@class ZhimiFanIIDs:table Zhimi Fan Instance ID table.
     local iids = {
         acc = hap.getNewBridgedAccessoryID(),
         fan = hap.getNewInstanceID(),
@@ -36,10 +36,10 @@ function fan.gen(device, info, conf)
     device:regProps({
         "power", "speed_level", "angle_enable"
     },
-    ---@param self MiioDevice Device Object.
+    ---@param obj MiioDevice Device Object.
     ---@param names string[] Property names.
-    ---@param iids FanIIDs Fan Instance ID table.
-    function (self, names, iids)
+    ---@param iids ZhimiFanIIDs Zhimi Fan Instance ID table.
+    function (obj, names, iids)
         for _, name in ipairs(names) do
             if name == "power" then
                 hap.raiseEvent(iids.acc, iids.fan, iids.active)
@@ -54,7 +54,7 @@ function fan.gen(device, info, conf)
     return {
         aid = iids.acc,
         category = "BridgedAccessory",
-        name = conf.name or "Fan",
+        name = conf.name or "Zhimi Fan",
         mfg = "zhimi",
         model = info.model,
         sn = info.mac,
@@ -77,12 +77,12 @@ function fan.gen(device, info, conf)
                 },
                 chars = {
                     Active.new(iids.active, function (request, self)
-                        local value = mapping.power[self:getProp("power")]
+                        local value = valMapping.power[self:getProp("power")]
                         self.logger:info("Read Active: " .. util.searchKey(Active.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         self.logger:info("Write Active: " .. util.searchKey(Active.value, value))
-                        self:setProp("power", util.searchKey(mapping.power, value))
+                        self:setProp("power", util.searchKey(valMapping.power, value))
                         return hap.Error.None
                     end),
                     RotationSpeed.new(iids.rotationSpeed, function (request, self)
@@ -95,12 +95,12 @@ function fan.gen(device, info, conf)
                         return hap.Error.None
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request, self)
-                        local value = mapping.angle_enable[self:getProp("angle_enable")]
+                        local value = valMapping.angle_enable[self:getProp("angle_enable")]
                         self.logger:info("Read SwingMode: " .. util.searchKey(SwingMode.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         self.logger:info("Write SwingMode: " .. util.searchKey(SwingMode.value, value))
-                        self:setProp("angle_enable", util.searchKey(mapping.angle_enable, value))
+                        self:setProp("angle_enable", util.searchKey(valMapping.angle_enable, value))
                         return hap.Error.None
                     end)
                 }

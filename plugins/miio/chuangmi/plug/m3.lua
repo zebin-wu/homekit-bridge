@@ -20,7 +20,7 @@ function plug.gen(device, info, conf)
         self:setProp("power", power)
     end
 
-    return require "miio.chuangmi.plug".gen(device, info, conf, "power")
+    return require("miio.chuangmi.plug").gen(device, info, conf, "power")
 end
 
 return plug

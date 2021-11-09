@@ -9,10 +9,10 @@ local tinsert = table.insert
 
 local device = {}
 
----@class MiotProp: table MIOT Property.
+---@class MiotIID: table MIOT instance ID.
 ---
----@field sid integer Service instance ID.
----@field pid integer Property instance ID.
+---@field siid integer Service instance ID.
+---@field piid integer Property instance ID.
 
 ---@class MiioDeviceNetIf:table Device network interface.
 ---
@@ -38,163 +38,121 @@ local _device = {}
 -- Declare function "_dispatch".
 local _dispatch
 
-local function _respCb(result, self, respCb, _, ...)
-    self.requestable = true
-    _dispatch(self)
-    respCb(self, result, ...)
+local function _respCb(result, obj, respCb, _, ...)
+    obj.requestable = true
+    _dispatch(obj)
+    respCb(obj, result, ...)
 end
 
-local function _errCb(code, message, self, _, errCb, ...)
-    self.logger:error(("Request error, code: %d, message: %s"):format(code, message))
-    self.requestable  = true
-    _dispatch(self)
-    errCb(self, code, message, ...)
+local function _errCb(code, message, obj, _, errCb, ...)
+    obj.logger:error(("Request error, code: %d, message: %s"):format(code, message))
+    obj.requestable  = true
+    _dispatch(obj)
+    errCb(obj, code, message, ...)
 end
 
 ---Dispatch the requests.
----@param self MiioDevice Device object.
-_dispatch = function (self)
-    local que = self.cmdQue
+---@param obj MiioDevice
+_dispatch = function (obj)
+    local que = obj.cmdQue
     if que.first ~= que.last then
         local first = que.first
         local cmd = que[first]
         que[first] = nil
         que.first = first + 1
 
-        self.pcb:request(_respCb, _errCb, self.timeout, tunpack(cmd))
-        self.requestable  = false
+        obj.pcb:request(_respCb, _errCb, obj.timeout, tunpack(cmd))
+        obj.requestable  = false
     end
 end
 
 ---Start Handshake,  and the ``done`` callback will be called when the handshake is done.
----@param self MiioDevice Device object.
----@param done fun(self: MiioDevice, err: integer, ...) Done callback.
+---@param obj MiioDevice Device object.
+---@param done fun(obj: MiioDevice, err: integer, ...) Done callback.
 ---@vararg any Arguments passed to the callback.
 ---@return boolean status true on success, false on failure.
-local function _handshake(self, done, ...)
-    local scanPriv = {
-        self = self,
+local function handshake(obj, done, ...)
+    ---@class MiioScanPriv
+    local priv = {
         done = done,
         args = {...}
     }
 
-    scanPriv.timer = timer.create(function (priv)
-        local self = priv.self
-        self.logger:error("Handshake timeout.")
+    priv.timer = timer.create(
+    ---@param obj MiioDevice
+    ---@param priv MiioScanPriv
+    function (obj, priv)
+        obj.logger:error("Handshake timeout.")
         priv.ctx:stop()
-        priv.ctx = nil
-        priv.done(self, ErrorCode.Timeout, tunpack(priv.args))
-    end, scanPriv)
+        priv.done(obj, ErrorCode.Timeout, tunpack(priv.args))
+    end, obj, priv)
 
-    scanPriv.ctx = protocol.scan(function (addr, devid, stamp, priv)
-        local self = priv.self
+    priv.ctx = protocol.scan(
+    ---@param obj MiioDevice
+    ---@param priv MiioScanPriv
+    function (addr, devid, stamp, obj, priv)
         priv.timer:stop()
-        local pcb = protocol.create(addr, devid, self.token, stamp)
+        local pcb = protocol.create(addr, devid, obj.token, stamp)
         if not pcb then
-            self.logger:error("Failed to create PCB.")
-            priv.done(self, ErrorCode.Unknown, tunpack(priv.args))
+            obj.logger:error("Failed to create PCB.")
+            priv.done(obj, ErrorCode.Unknown, tunpack(priv.args))
             return
         end
-        self.pcb = pcb
-        self.logger:debug("Handshake done.")
-        priv.done(self, ErrorCode.None, tunpack(priv.args))
-    end, self.addr, scanPriv)
-    if not scanPriv.ctx then
+        obj.pcb = pcb
+        obj.logger:debug("Handshake done.")
+        priv.done(obj, ErrorCode.None, tunpack(priv.args))
+    end, obj.addr, obj, priv)
+    if not priv.ctx then
         return false
     end
 
-    scanPriv.timer:start(self.timeout)
-    self.logger:debug("Start handshake.")
+    priv.timer:start(obj.timeout)
+    obj.logger:debug("Start handshake.")
 
     return true
 end
 
----Create a property manager.
----@param timer TimerObj Timer object.
----@param onUpdate fun(self: MiioDevice, names: string[], ...) The callback will be called when the property is updated.
----@return MiioPropMgr # Miio Property manager.
-local function _createPropMgr(timer, onUpdate, ...)
-    ---@class MiioPropMgr
-    local pm = {
-        timer = timer,
-        values = {},
-        onUpdate = onUpdate,
-        args = {...},
-        isSyncing = false,
-        retry = 3
-    }
+---Start sync properties after ``timeout`` ms.
+---@param obj MiioDevice Device object.
+---@param timeout? integer Timeout period (in milliseconds).
+local function startSync(obj, timeout)
+    assert(obj.state == "INITED")
 
-    return pm
-end
-
----Start sync properties.
----@param self MiioDevice Device object.
-local function _startSync(self)
-    assert(self.state == "INITED")
-
-    self.logger:debug("Start sync properties.")
-    local ms = math.random(3000, 6000)
-    self.logger:debug(("Sync properties after %dms."):format(ms))
-    local pm = self.pm
-    pm.timer:start(ms)
+    timeout = timeout or math.random(3000, 6000)
+    obj.logger:debug(("Sync properties after %dms."):format(timeout))
+    local pm = obj.pm
+    pm.timer:start(timeout)
     pm.isSyncing = true
 end
 
 ---Stop sync properties.
----@param self MiioDevice Device object.
-local function _stopSync(self)
-    assert(self.state == "INITED")
+---@param obj MiioDevice Device object.
+local function stopSync(obj)
+    assert(obj.state == "INITED")
 
-    self.logger:debug("Stop sync properties.")
-    local pm = self.pm
+    obj.logger:debug("Stop sync properties.")
+    local pm = obj.pm
     pm.timer:stop()
     pm.isSyncing = false
 end
 
 ---Recover the connection to the device.
----@param self MiioDevice Device object.
-local function _recover(self)
-    self.logger:debug("Recover connection ...")
-    _handshake(self, function (self, err, ...)
+---@param obj MiioDevice Device object.
+local function recover(obj)
+    obj.logger:debug("Recover connection ...")
+    handshake(obj, function (obj, err, ...)
         if err == ErrorCode.None then
-            self.state = "INITED"
-            _startSync(self)
+            obj.state = "INITED"
+            startSync(obj)
             return
         end
-        _recover(self)
+        recover(obj)
     end)
 end
 
----Set property.
----@param self MiioDevice Device object.
----@param name string Property name.
----@param value any Property value.
----@param retry integer Retry count.
-local function _setProp(self, name, value, retry)
-    self:request(function (self, result, name)
-        if self.state == "NOINIT" then
-            return
-        end
-        local pm = self.pm
-        _startSync(self)
-        pm.onUpdate(self, {name}, tunpack(pm.args))
-    end, function (self, code, message, name, value, retry)
-        if self.state == "NOINIT" then
-            return
-        end
-        if code == ErrorCode.Timeout and retry > 0 then
-            _setProp(self, name, value, retry - 1)
-        else
-            self.logger:error("Failed to set property.")
-            self.state = "NOINIT"
-            _recover(self)
-        end
-    end, "set_" .. name, {value}, name, value, retry)
-end
-
 ---Start a request and ``respCb`` will be called when a response is received.
----@param respCb fun(self: MiioDevice, result: any, ...) Response callback.
----@param errCb fun(self: MiioDevice, code: integer, message: string, ...) Error Callback.
+---@param respCb fun(obj: MiioDevice, result: any, ...) Response callback.
+---@param errCb fun(obj: MiioDevice, code: integer, message: string, ...) Error Callback.
 ---@param method string The request method.
 ---@param params? table Array of parameters.
 function _device:request(respCb, errCb, method, params, ...)
@@ -214,28 +172,69 @@ function _device:request(respCb, errCb, method, params, ...)
     que.last = last + 1
 end
 
+---Create a property manager.
+---@param syncTimer TimerObj Sync timer object.
+---@param onUpdate fun(self: MiioDevice, names: string[], ...) The callback will be called when the property is updated.
+---@vararg any Arguments passed to the callback.
+---@return MiioPropMgr
+local function createPropMgr(syncTimer, onUpdate, ...)
+    ---@class MiioPropMgr
+    local pm = {
+        timer = syncTimer,
+        values = {}, ---@type table<string, string|number|boolean>
+        onUpdate = onUpdate,
+        args = {...},
+        isSyncing = false,
+        retry = 3
+    }
+
+    return pm
+end
+
+---Get properties error callback.
+---@param obj MiioDevice Device object.
+---@param code integer Error code.
+---@param message string Error message.
+local function getPropsErrCb(obj, code, message)
+    if obj.state == "NOINIT" then
+        return
+    end
+    local pm = obj.pm
+    local retry = pm.retry
+    if code == ErrorCode.Timeout and retry == 0 then
+        obj.logger:error("Failed to get properties.")
+        obj.state = "NOINIT"
+        recover(obj)
+    else
+        pm.retry = retry - 1
+        if pm.isSyncing then
+            startSync(obj)
+        end
+    end
+end
+
 ---Register properties.
 ---@param names string[] Property names.
----@param onUpdate fun(self: MiioDevice, names: string[], ...) The callback will be called when the property is updated.
+---@param onUpdate fun(obj: MiioDevice, names: string[], ...) The callback will be called when the property is updated.
 function _device:regProps(names, onUpdate, ...)
     assert(self.state == "INITED")
     assert(type(names) == "table")
     assert(type(onUpdate) == "function")
 
-    self.pm = _createPropMgr(timer.create(
-        ---@param self MiioDevice Device Object.
+    local pm = createPropMgr(timer.create(
+        ---@param obj MiioDevice Device Object.
         ---@param names string[] Property names.
-        function (self, names)
-            self.logger:debug("Syncing properties ...")
-            self:request(function (self, result, names)
-                if self.state == "NOINIT" then
+        function (obj, names)
+            obj.logger:debug("Syncing properties ...")
+            obj:request(function (obj, result, names)
+                if obj.state == "NOINIT" then
                     return
                 end
-                local pm = self.pm
-                pm.retry = 3
+                local pm = obj.pm
                 if pm.isSyncing == false then
                     return
                 end
+                pm.retry = 3
                 assert(#result == #names)
                 local values = pm.values
                 local updatedNames = {}
@@ -246,50 +245,68 @@ function _device:regProps(names, onUpdate, ...)
                         tinsert(updatedNames, name)
                     end
                 end
-                _startSync(self)
+                startSync(obj)
                 if #updatedNames ~= 0 then
-                    pm.onUpdate(self, updatedNames, tunpack(pm.args))
+                    pm.onUpdate(obj, updatedNames, tunpack(pm.args))
                 end
-            end,
-            ---@param self MiioDevice Device object.
-            ---@param code integer Error code.
-            ---@param message string Error message.
-            function (self, code, message)
-                if self.state == "NOINIT" then
-                    return
-                end
-                local pm = self.pm
-                local retry = pm.retry
-                if code == ErrorCode.Timeout and retry == 0 then
-                    self.logger:error("Failed to get properties.")
-                    self.state = "NOINIT"
-                    _recover(self)
-                else
-                    pm.retry = retry - 1
-                    if pm.isSyncing then
-                        _startSync(self)
-                    end
-                end
-            end, "get_prop", names, names)
+            end, getPropsErrCb, "get_prop", names, names)
         end, self, names), onUpdate, ...)
+    self.pm = pm
 
-    _startSync(self)
+    startSync(self)
 end
 
 ---Register properties for MIOT protocol device.
----@param mapping table<string, MiotProp> MIOT Properties mapping.
+---@param mapping table<string, MiotIID> Property name -> MIOT instance ID mapping.
 ---@param onUpdate fun(self: MiioDevice, names: string[], ...) The callback will be called when the property is updated.
 function _device:regPropsMiot(mapping, onUpdate, ...)
     assert(self.state == "INITED")
     assert(type(mapping) == "table")
     assert(type(onUpdate) == "function")
 
-    self.propMapping = mapping
+    local params = {}
+    for n, v in pairs(mapping) do
+        tinsert(params, {
+            did = n,
+            siid = v.siid,
+            piid = v.piid
+        })
+    end
+    local pm = createPropMgr(timer.create(function (obj, params)
+        obj.logger:debug("Syncing properties ...")
+        obj:request(function (obj, result)
+            if obj.state == "NOINIT" then
+                return
+            end
+            local pm = obj.pm
+            if pm.isSyncing == false then
+                return
+            end
+            pm.retry = 3
+            local values = pm.values
+            local updatedNames = {}
+            for _, v in ipairs(result) do
+                local name = v.did
+                if values[name] ~= v.value then
+                    values[name] = v.value
+                    tinsert(updatedNames, name)
+                end
+            end
+            startSync(obj)
+            if #updatedNames ~= 0 then
+                pm.onUpdate(obj, updatedNames, tunpack(pm.args))
+            end
+        end, getPropsErrCb, "get_properties", params)
+    end, self, params), onUpdate, ...)
+    pm.mapping = mapping
+    self.pm = pm
+
+    startSync(self)
 end
 
 ---Get property.
 ---@param name string Property name.
----@return any value Property value.
+---@return string|number|boolean value Property value.
 function _device:getProp(name)
     assert(self.state == "INITED")
 
@@ -297,19 +314,61 @@ function _device:getProp(name)
 end
 
 ---Set property.
+---@param obj MiioDevice Device object.
 ---@param name string Property name.
----@param value any Property value.
+---@param method string The request method.
+---@param params table Array of parameters.
+---@param retry integer Retry count.
+local function _setProp(obj, name, method, params, retry)
+    obj:request(function (obj, result, name)
+        if obj.state == "NOINIT" then
+            return
+        end
+        local pm = obj.pm
+        startSync(obj)
+        pm.onUpdate(obj, {name}, tunpack(pm.args))
+    end, function (obj, code, message, name, method, params, retry)
+        if obj.state == "NOINIT" then
+            return
+        end
+        if code == ErrorCode.Timeout and retry > 0 then
+            _setProp(obj, name, method, params, retry - 1)
+        else
+            obj.logger:error("Failed to set property.")
+            obj.state = "NOINIT"
+            recover(obj)
+        end
+    end, method, params, name, method, params, retry)
+end
+
+---Set property.
+---@param name string Property name.
+---@param value string|number|boolean Property value.
 function _device:setProp(name, value)
     assert(self.state == "INITED")
 
-    local values = self.pm.values
+    local pm = self.pm
+    local values = pm.values
     if values[name] == value then
         return
     end
     values[name] = value
-    _stopSync(self)
-
-    _setProp(self, name, value, 3)
+    stopSync(self)
+    local method
+    local param
+    if pm.mapping then
+        method = "set_properties"
+        param = {
+            did = name,
+            siid = pm.mapping[name].siid,
+            piid = pm.mapping[name].piid,
+            value = value
+        }
+    else
+        method = "set_" .. name
+        param = value
+    end
+    _setProp(self, name, method, { param }, pm.retry)
 end
 
 ---Create a device object.
@@ -323,7 +382,7 @@ function device.create(done, addr, token, ...)
     assert(type(token) == "string")
     assert(#token == 16)
 
-    ---@class MiioDevicePriv:table
+    ---@class MiioDevicePriv
     local o = {
         logger = log.getLogger("miio.device:" .. addr),
         state = "NOINIT", ---@type DeviceState
@@ -332,20 +391,19 @@ function device.create(done, addr, token, ...)
         token = token,
         timeout = 3000,
         requestable = true,
-        cmdQue = { first = 0, last = 0 },
-        props = {}
+        cmdQue = { first = 0, last = 0 }
     }
 
-    if _handshake(o, function (self, err, done, ...)
+    if handshake(o, function (obj, err, done, ...)
         if err ~= ErrorCode.None then
-            done(self, nil, ...)
+            done(obj, nil, ...)
             return
         end
-        self.state ="INITED"
-        self:request(function (self, result, done, ...)
-            done(self, result, ...)
-        end, function (self, code, message, done, ...)
-            done(self, nil, ...)
+        obj.state ="INITED"
+        obj:request(function (obj, result, done, ...)
+            done(obj, result, ...)
+        end, function (obj, code, message, done, ...)
+            done(obj, nil, ...)
         end, "miIO.info", nil, done, ...)
     end, done, ...) == false then
         o.logger:error("Failed to start handshake.")
