@@ -18,17 +18,17 @@ function plug.gen(device, info, conf, on)
     }
 
     device:regProps({ on },
-    ---@param self MiioDevice Device Object.
+    ---@param obj MiioDevice Device Object.
     ---@param names string[] Property Names.
     ---@param iids PlugIIDs Plug Instance ID table.
-    function (self, names, iids)
+    function (obj, names, iids)
         hap.raiseEvent(iids.acc, iids.outlet, iids.on)
     end, iids)
 
     return {
         aid = iids.acc,
         category = "BridgedAccessory",
-        name = conf.name or "Plug",
+        name = conf.name or "Chuangmi Plug",
         mfg = "chuangmi",
         model = info.model,
         sn = info.mac,

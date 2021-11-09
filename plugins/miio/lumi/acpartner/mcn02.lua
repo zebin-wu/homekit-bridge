@@ -10,18 +10,17 @@ local SwingMode = require "hap.char.SwingMode"
 
 local acpartner = {}
 
-local mapping = {
+--- Property value -> Characteristic value.
+local valMapping = {
     power = {
         on = Active.value.Active,
         off = Active.value.Inactive
     },
     ver_swing = {
-        unsupport = SwingMode.value.Disabled,
         on = SwingMode.value.Enabled,
         off = SwingMode.value.Disabled
     },
     mode = {
-        unsupport = TgtHeatCoolState.value.HeatOrCool,
         cool = TgtHeatCoolState.value.Cool,
         heat = TgtHeatCoolState.value.Heat,
         auto = TgtHeatCoolState.value.HeatOrCool
@@ -50,10 +49,10 @@ function acpartner.gen(device, info, conf)
     device:regProps({
         "power", "mode", "tar_temp", "ver_swing"
     },
-    ---@param self MiioDevice Device Object.
+    ---@param obj MiioDevice Device Object.
     ---@param names string[] Property Names.
     ---@param iids AcpartnerIIDS Acpartner Instance ID table.
-    function (self, names, iids)
+    function (obj, names, iids)
         for _, name in ipairs(names) do
             if name == "power" then
                 hap.raiseEvent(iids.acc, iids.heaterCooler, iids.active)
@@ -73,7 +72,7 @@ function acpartner.gen(device, info, conf)
     return {
         aid = iids.acc,
         category = "BridgedAccessory",
-        name = conf.name or "Acpartner",
+        name = conf.name or "Lumi Acpartner",
         mfg = "lumi",
         model = info.model,
         sn = info.mac,
@@ -96,12 +95,12 @@ function acpartner.gen(device, info, conf)
                 },
                 chars = {
                     Active.new(iids.active, function (request, self)
-                        local value = mapping.power[self:getProp("power")]
+                        local value = valMapping.power[self:getProp("power")]
                         self.logger:info("Read Active: " .. util.searchKey(Active.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         self.logger:info("Write Active: " .. util.searchKey(Active.value, value))
-                        self:setProp("power", util.searchKey(mapping.power, value))
+                        self:setProp("power", util.searchKey(valMapping.power, value))
                         return hap.Error.None
                     end),
                     CurTemp.new(iids.curTemp, function (request, self)
@@ -123,12 +122,16 @@ function acpartner.gen(device, info, conf)
                         return value, hap.Error.None
                     end),
                     TgtHeatCoolState.new(iids.tgtState, function (request, self)
-                        local value = mapping.mode[self:getProp("mode")]
+                        local mode = self:getProp("mode")
+                        if mode == "unsupport" then
+                            mode = "auto"
+                        end
+                        local value = valMapping.mode[mode]
                         self.logger:info("Read TargetHeaterCoolerState: " .. util.searchKey(TgtHeatCoolState.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         self.logger:info("Write TargetHeaterCoolerState: " .. util.searchKey(TgtHeatCoolState.value, value))
-                        self:setProp("mode", util.searchKey(mapping.mode, value))
+                        self:setProp("mode", util.searchKey(valMapping.mode, value))
                         return hap.Error.None
                     end),
                     CoolThrholdTemp.new(iids.coolThrTemp, function (request, self)
@@ -150,12 +153,16 @@ function acpartner.gen(device, info, conf)
                         return hap.Error.None
                     end, 16, 30, 1),
                     SwingMode.new(iids.swingMode, function (request, self)
-                        local value = mapping.ver_swing[self:getProp("ver_swing")]
+                        local ver_swing = self:getProp("ver_swing")
+                        if ver_swing == "unsupport" then
+                            ver_swing = "off"
+                        end
+                        local value = valMapping.ver_swing[ver_swing]
                         self.logger:info("Read SwingMode: " .. util.searchKey(SwingMode.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         self.logger:info("Write SwingMode: " .. util.searchKey(SwingMode.value, value))
-                        self:setProp("ver_swing", util.searchKey(mapping.ver_swing, value))
+                        self:setProp("ver_swing", util.searchKey(valMapping.ver_swing, value))
                         return hap.Error.None
                     end)
                 }
