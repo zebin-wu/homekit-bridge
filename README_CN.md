@@ -27,6 +27,7 @@
 小米空调伴侣2代 | `lumi.acpartner.mcn02`
 小米智能插座基础版(1个插座) | `chuangmi.plug.m3`
 智米直流变频落地扇2S | `zhimi.fan.za4`
+小米直流变频塔扇 | `dmaker.fan.p9`
 
 ## 支持的平台
 
