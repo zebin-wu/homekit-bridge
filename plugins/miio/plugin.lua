@@ -1,4 +1,5 @@
 local device = require "miio.device"
+local protocol = require "miio.protocol"
 local util = require "util"
 
 local plugin = {}
@@ -20,6 +21,7 @@ local priv = {
 ---@return boolean status true on success, false on failure.
 function plugin.init(conf, report)
     priv.report = report
+    protocol.init()
     logger:info("Initialized.")
     return true
 end

@@ -10,6 +10,11 @@ local type = type
 local protocol = {}
 local logger = log.getLogger("miio.protocol")
 
+MiioProtocolPriv = {
+    pcbs = {}
+}
+local priv = MiioProtocolPriv
+
 ---
 --- Message format
 ---
@@ -289,7 +294,7 @@ local _pcb = {}
 ---@param method string The request method.
 ---@param params? table Array of parameters.
 function _pcb:request(respCb, errCb, timeout, method, params, ...)
-    assert(self.respCb == nil, "previous request is in progress")
+    assert(priv.pcbs[self.addr] == nil)
     assert(type(respCb) == "function")
     assert(type(errCb) == "function")
     assert(timeout > 0, "timeout must be greater then 0")
@@ -315,62 +320,10 @@ function _pcb:request(respCb, errCb, timeout, method, params, ...)
         params = params or nil
     })
 
-    assert(self.handle:send(pack(0, self.devid, os.time() - self.stampDiff,
-        self.token, self.encryption:encrypt(data))))
+    assert(priv.handle:sendto(pack(0, self.devid, os.time() - self.stampDiff,
+        self.token, self.encryption:encrypt(data)), self.addr, 54321))
 
-    self.handle:setRecvCb(function (data, from_addr, from_port, self)
-        if not self.respCb then
-            self.logger:debug("No pending request, skip the received message.")
-            return
-        end
-
-        self.timer:stop()
-        self.handle:setRecvCb()
-
-        local respCb = self.respCb
-        local errCb = self.errCb
-        local args = self.args
-        self.respCb = nil
-        self.errCb = nil
-        self.args = nil
-
-        local msg = unpack(data, self.token)
-
-        if not msg then
-            errCb(ErrorCode.InvalidData, "Receive a invalid message.", table.unpack(args))
-            return
-        end
-        if msg.did ~= self.devid then
-            errCb(ErrorCode.InvalidData, "Not a match Device ID.", table.unpack(args))
-            return
-        end
-        if not msg.data then
-            errCb(ErrorCode.InvalidData, "Not a response message.", table.unpack(args))
-            return
-        end
-        local s = self.encryption:decrypt(msg.data)
-        if not s then
-            errCb(ErrorCode.InvalidData, "Failed to decrypt the message.", table.unpack(args))
-            return
-        end
-        self.logger:debug("=> " .. s)
-        local payload =  json.decode(s)
-        if not payload then
-            errCb(ErrorCode.InvalidData, "Failed to parse the JSON string.", table.unpack(args))
-            return
-        end
-        if payload.id ~= self.reqid then
-            errCb(ErrorCode.InvalidData, "response id ~= request id", table.unpack(args))
-            return
-        end
-        local error = payload.error
-        if error then
-            errCb(error.code, error.message, table.unpack(args))
-            return
-        end
-
-        respCb(payload.result, table.unpack(args))
-    end, self)
+    priv.pcbs[self.addr] = self
 
     self.timer:start(timeout)
     self.logger:debug("<= " .. data)
@@ -378,12 +331,11 @@ end
 
 ---Abort the previous request.
 function _pcb:abort()
-    if self.respCb then
-        self.respCb = nil
-        self.errCb = nil
+    local pcbs = priv.pcbs
+    if pcbs[self.addr] then
         self.args = nil
         self.timer:stop()
-        self.handle:setRecvCb()
+        pcbs[self.addr] = nil
     end
 end
 
@@ -402,6 +354,7 @@ function protocol.create(addr, devid, token, stamp)
 
     ---@class MiioPcbPriv: table
     local pcb = {
+        addr = addr,
         logger = log.getLogger("miio.protocol:" .. addr),
         stampDiff = os.time() - stamp,
         token = token,
@@ -409,33 +362,17 @@ function protocol.create(addr, devid, token, stamp)
         reqid = 0
     }
 
-    local handle = udp.open("inet")
-    if not handle then
-        pcb.logger:error("Failed to open a UDP handle.")
-        handle:close()
-        return nil
-    end
-    if not handle:connect(addr, 54321) then
-        pcb.logger:error(("Failed to connect to '%s'."):format(addr))
-        handle:close()
-        return nil
-    end
-
     pcb.encryption = newEncryption(token)
     if not pcb.encryption then
         pcb.logger:error("Failed to new a encryption.")
         return nil
     end
 
-    pcb.handle = handle
     pcb.timer = timer.create(function (self)
-        self.handle:setRecvCb()
-        local errCb = self.errCb
         local args = self.args
-        self.respCb = nil
-        self.errCb = nil
         self.args = nil
-        errCb(ErrorCode.Timeout, "Request timeout.", table.unpack(args))
+        self.pcbs[self.addr] = nil
+        self.errCb(ErrorCode.Timeout, "Request timeout.", table.unpack(args))
     end, pcb)
 
     setmetatable(pcb, {
@@ -443,6 +380,64 @@ function protocol.create(addr, devid, token, stamp)
     })
 
     return pcb
+end
+
+---Initialize protocol module.
+function protocol.init()
+    local handle = udp.open("inet")
+    assert(handle)
+    priv.handle = handle
+    handle:setRecvCb(function (data, from_addr, from_port)
+        local pcb = priv.pcbs[from_addr]
+        if not pcb then
+            pcb.logger:debug("No pending request, skip the received message.")
+            return
+        end
+
+        pcb.timer:stop()
+
+        local errCb = pcb.errCb
+        local args = pcb.args
+        pcb.args = nil
+
+        local msg = unpack(data, pcb.token)
+
+        if not msg then
+            errCb(ErrorCode.InvalidData, "Receive a invalid message.", table.unpack(args))
+            return
+        end
+        if msg.did ~= pcb.devid then
+            errCb(ErrorCode.InvalidData, "Not a match Device ID.", table.unpack(args))
+            return
+        end
+        if not msg.data then
+            errCb(ErrorCode.InvalidData, "Not a response message.", table.unpack(args))
+            return
+        end
+        local s = pcb.encryption:decrypt(msg.data)
+        if not s then
+            errCb(ErrorCode.InvalidData, "Failed to decrypt the message.", table.unpack(args))
+            return
+        end
+        pcb.logger:debug("=> " .. s)
+        local payload =  json.decode(s)
+        if not payload then
+            errCb(ErrorCode.InvalidData, "Failed to parse the JSON string.", table.unpack(args))
+            return
+        end
+        if payload.id ~= pcb.reqid then
+            errCb(ErrorCode.InvalidData, "response id ~= request id", table.unpack(args))
+            return
+        end
+        local error = payload.error
+        if error then
+            errCb(error.code, error.message, table.unpack(args))
+            return
+        end
+
+        priv.pcbs[pcb.addr] = nil
+        pcb.respCb(payload.result, table.unpack(args))
+    end)
 end
 
 return protocol
