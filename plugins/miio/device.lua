@@ -118,7 +118,7 @@ end
 local function startSync(obj, timeout)
     assert(obj.state == "INITED")
 
-    timeout = timeout or math.random(3000, 6000)
+    timeout = timeout or math.random(5000, 10000)
     obj.logger:debug(("Sync properties after %dms."):format(timeout))
     local pm = obj.pm
     pm.timer:start(timeout)
@@ -221,39 +221,42 @@ function _device:regProps(names, onUpdate, ...)
     assert(type(names) == "table")
     assert(type(onUpdate) == "function")
 
-    local pm = createPropMgr(timer.create(
-        ---@param obj MiioDevice Device Object.
-        ---@param names string[] Property names.
-        function (obj, names)
-            obj.logger:debug("Syncing properties ...")
-            obj:request(function (obj, result, names)
-                if obj.state == "NOINIT" then
-                    return
+    ---Sync properties.
+    ---@param obj MiioDevice Device Object.
+    ---@param names string[] Property names.
+    local function syncProps(obj, names)
+        obj.logger:debug("Syncing properties ...")
+        obj:request(function (obj, result, names)
+            if obj.state == "NOINIT" then
+                return
+            end
+            local pm = obj.pm
+            if pm.isSyncing == false then
+                return
+            end
+            pm.retry = 3
+            assert(#result == #names)
+            local values = pm.values
+            local updatedNames = {}
+            for i, v in ipairs(result) do
+                local name = names[i]
+                if values[name] ~= v then
+                    values[name] = v
+                    tinsert(updatedNames, name)
                 end
-                local pm = obj.pm
-                if pm.isSyncing == false then
-                    return
-                end
-                pm.retry = 3
-                assert(#result == #names)
-                local values = pm.values
-                local updatedNames = {}
-                for i, v in ipairs(result) do
-                    local name = names[i]
-                    if values[name] ~= v then
-                        values[name] = v
-                        tinsert(updatedNames, name)
-                    end
-                end
-                startSync(obj)
-                if #updatedNames ~= 0 then
-                    pm.onUpdate(obj, updatedNames, tunpack(pm.args))
-                end
-            end, getPropsErrCb, "get_prop", names, names)
-        end, self, names), onUpdate, ...)
+            end
+            startSync(obj)
+            if #updatedNames ~= 0 then
+                pm.onUpdate(obj, updatedNames, tunpack(pm.args))
+            end
+        end, getPropsErrCb, "get_prop", names, names)
+    end
+
+    local pm = createPropMgr(timer.create(syncProps, self, names), onUpdate, ...)
+    pm.isSyncing = true
     self.pm = pm
 
-    startSync(self)
+    syncProps(self, names)
 end
 
 ---Register properties for MIOT protocol device.
@@ -272,7 +275,11 @@ function _device:regPropsMiot(mapping, onUpdate, ...)
             piid = v.piid
         })
     end
-    local pm = createPropMgr(timer.create(function (obj, params)
+
+    ---Sync properties for MIOT protocol device.
+    ---@param obj MiioDevice
+    ---@param params table
+    local function syncPropsMiot(obj, params)
         obj.logger:debug("Syncing properties ...")
         obj:request(function (obj, result)
             if obj.state == "NOINIT" then
@@ -297,11 +304,14 @@ function _device:regPropsMiot(mapping, onUpdate, ...)
                 pm.onUpdate(obj, updatedNames, tunpack(pm.args))
             end
         end, getPropsErrCb, "get_properties", params)
-    end, self, params), onUpdate, ...)
+    end
+
+    local pm = createPropMgr(timer.create(syncPropsMiot, self, params), onUpdate, ...)
     pm.mapping = mapping
+    pm.isSyncing = true
     self.pm = pm
 
-    startSync(self)
+    syncPropsMiot(self, params)
 end
 
 ---Get property.
