@@ -123,10 +123,12 @@ function acpartner.gen(device, info, conf)
                     end),
                     TgtHeatCoolState.new(iids.tgtState, function (request, self)
                         local mode = self:getProp("mode")
+                        local value
                         if mode == "unsupport" then
-                            mode = "auto"
+                            value = TgtHeatCoolState.value.Cool
+                        else
+                            value = valMapping.mode[mode]
                         end
-                        local value = valMapping.mode[mode]
                         self.logger:info("Read TargetHeaterCoolerState: " .. util.searchKey(TgtHeatCoolState.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
@@ -154,10 +156,12 @@ function acpartner.gen(device, info, conf)
                     end, 16, 30, 1),
                     SwingMode.new(iids.swingMode, function (request, self)
                         local ver_swing = self:getProp("ver_swing")
+                        local value
                         if ver_swing == "unsupport" then
-                            ver_swing = "off"
+                            value = SwingMode.value.Disabled
+                        else
+                            value = valMapping.ver_swing[ver_swing]
                         end
-                        local value = valMapping.ver_swing[ver_swing]
                         self.logger:info("Read SwingMode: " .. util.searchKey(SwingMode.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
