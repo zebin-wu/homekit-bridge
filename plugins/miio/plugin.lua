@@ -20,8 +20,8 @@ local priv = {
 ---@param report fun(plugin: string, accessory: HapAccessory) Report accessory to **core**.
 ---@return boolean status true on success, false on failure.
 function plugin.init(conf, report)
-    priv.report = report
     protocol.init()
+    priv.report = report
     logger:info("Initialized.")
     return true
 end
@@ -31,6 +31,7 @@ function plugin.deinit()
     priv.report = nil
     priv.pending = {}
     priv.devices = {}
+    protocol.deinit()
     logger:info("Deinitialized.")
 end
 
