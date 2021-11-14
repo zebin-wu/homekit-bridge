@@ -10,10 +10,9 @@ local type = type
 local protocol = {}
 local logger = log.getLogger("miio.protocol")
 
-MiioProtocolPriv = {
+local priv = {
     pcbs = {}
 }
-local priv = MiioProtocolPriv
 
 ---
 --- Message format
@@ -371,7 +370,7 @@ function protocol.create(addr, devid, token, stamp)
     pcb.timer = timer.create(function (self)
         local args = self.args
         self.args = nil
-        self.pcbs[self.addr] = nil
+        priv.pcbs[self.addr] = nil
         self.errCb(ErrorCode.Timeout, "Request timeout.", table.unpack(args))
     end, pcb)
 
@@ -386,11 +385,10 @@ end
 function protocol.init()
     local handle = udp.open("inet")
     assert(handle)
-    priv.handle = handle
-    handle:setRecvCb(function (data, from_addr, from_port)
+    handle:setRecvCb(function (data, from_addr, from_port, priv)
         local pcb = priv.pcbs[from_addr]
         if not pcb then
-            pcb.logger:debug("No pending request, skip the received message.")
+            logger:debug(("No pending request to %s:%d, skip the received message."):format(from_addr, from_port))
             return
         end
 
@@ -437,7 +435,15 @@ function protocol.init()
 
         priv.pcbs[pcb.addr] = nil
         pcb.respCb(payload.result, table.unpack(args))
-    end)
+    end, priv)
+    priv.handle = handle
+end
+
+---De-initialize protocol module.
+function protocol.deinit()
+    priv.handle:close()
+    priv.handle = nil
+    priv.pcbs = {}
 end
 
 return protocol
