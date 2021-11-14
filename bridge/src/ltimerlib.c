@@ -73,7 +73,7 @@ static int ltimer_obj_start(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     lua_Integer ms = luaL_checkinteger(L, 2);
-    if (ms <= 0) {
+    if (ms < 0) {
         luaL_error(L, "attemp to trigger before the current time");
     }
 
