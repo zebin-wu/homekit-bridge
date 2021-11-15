@@ -325,7 +325,7 @@ function _pcb:request(respCb, errCb, timeout, method, params, ...)
     priv.pcbs[self.addr] = self
 
     self.timer:start(timeout)
-    self.logger:debug("<= " .. data)
+    logger:debug(("%s => %s"):format(data, self.addr))
 end
 
 ---Abort the previous request.
@@ -354,7 +354,6 @@ function protocol.create(addr, devid, token, stamp)
     ---@class MiioPcbPriv: table
     local pcb = {
         addr = addr,
-        logger = log.getLogger("miio.protocol:" .. addr),
         stampDiff = os.time() - stamp,
         token = token,
         devid = devid,
@@ -363,7 +362,6 @@ function protocol.create(addr, devid, token, stamp)
 
     pcb.encryption = newEncryption(token)
     if not pcb.encryption then
-        pcb.logger:error("Failed to new a encryption.")
         return nil
     end
 
@@ -391,8 +389,8 @@ function protocol.init()
             logger:debug(("No pending request to %s:%d, skip the received message."):format(from_addr, from_port))
             return
         end
-
         pcb.timer:stop()
+        priv.pcbs[pcb.addr] = nil
 
         local errCb = pcb.errCb
         local args = pcb.args
@@ -417,7 +415,7 @@ function protocol.init()
             errCb(ErrorCode.InvalidData, "Failed to decrypt the message.", table.unpack(args))
             return
         end
-        pcb.logger:debug("=> " .. s)
+        logger:debug(("%s => %s"):format(from_addr, s))
         local payload =  json.decode(s)
         if not payload then
             errCb(ErrorCode.InvalidData, "Failed to parse the JSON string.", table.unpack(args))
@@ -433,7 +431,6 @@ function protocol.init()
             return
         end
 
-        priv.pcbs[pcb.addr] = nil
         pcb.respCb(payload.result, table.unpack(args))
     end, priv)
     priv.handle = handle
