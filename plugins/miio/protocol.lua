@@ -100,15 +100,8 @@ local function newEncryption(token)
     end
 
     local cipher = require("cipher").create("AES-128-CBC")
-    if not cipher then
-        logger:error("Failed to create a AES-128-CBC cipher.")
-        return nil
-    end
-
-    if not cipher:setPadding("PKCS7") then
-        logger:error("Failed to set padding to the cipher.")
-        return nil
-    end
+    assert(cipher, "Failed to create a AES-128-CBC cipher.")
+    assert(cipher:setPadding("PKCS7"), "Failed to set padding to the cipher.")
 
     local key = md5(token)
     local iv = md5(key .. token)
@@ -225,15 +218,12 @@ end
 ---If the target IP address is given, the handshake will be send as an unicast packet.
 ---@param cb fun(addr: string, devid: integer, stamp: integer, ...) Function call when the device is scaned.
 ---@param addr? string Target Address.
----@return MiioScanContext|nil ctx Scan context.
+---@return MiioScanContext ctx Scan context.
 function protocol.scan(cb, addr, ...)
     assert(type(cb) == "function")
 
     local handle = udp.open("inet")
-    if not handle then
-        logger:error("Failed to open a UDP handle.")
-        return nil
-    end
+    assert(handle, "Failed to open a UDP handle.")
 
     if not addr then
         handle:enableBroadcast()
@@ -241,11 +231,7 @@ function protocol.scan(cb, addr, ...)
 
     local hello = packHello()
     for i = 1, 3, 1 do
-        if not handle:sendto(hello, addr or "255.255.255.255", 54321) then
-            logger:error("Failed to send hello message.")
-            handle:close()
-            return nil
-        end
+        assert(handle:sendto(hello, addr or "255.255.255.255", 54321), "Failed to send hello message.")
     end
 
     ---@class MiioScanContext
@@ -361,10 +347,6 @@ function protocol.create(addr, devid, token, stamp)
     }
 
     pcb.encryption = newEncryption(token)
-    if not pcb.encryption then
-        return nil
-    end
-
     pcb.timer = timer.create(function (self)
         local args = self.args
         self.args = nil

@@ -70,7 +70,6 @@ end
 ---@param obj MiioDevice Device object.
 ---@param done fun(obj: MiioDevice, err: integer, ...) Done callback.
 ---@vararg any Arguments passed to the callback.
----@return boolean status true on success, false on failure.
 local function handshake(obj, done, ...)
     ---@class MiioScanPriv
     local priv = {
@@ -102,9 +101,6 @@ local function handshake(obj, done, ...)
         obj.logger:debug("Handshake done.")
         priv.done(obj, ErrorCode.None, tunpack(priv.args))
     end, obj.addr, obj, priv)
-    if not priv.ctx then
-        return false
-    end
 
     priv.timer:start(obj.timeout)
     obj.logger:debug("Start handshake.")
@@ -140,14 +136,21 @@ end
 ---@param obj MiioDevice Device object.
 local function recover(obj)
     obj.logger:debug("Recover connection ...")
-    handshake(obj, function (obj, err, ...)
-        if err == ErrorCode.None then
-            obj.state = "INITED"
-            startSync(obj)
-            return
-        end
-        recover(obj)
-    end)
+    local success = pcall(function (obj)
+        handshake(obj, function (obj, err)
+            if err == ErrorCode.None then
+                obj.state = "INITED"
+                startSync(obj)
+                return
+            end
+            recover(obj)
+        end)
+    end, obj)
+    if success == false then
+        timer.create(function (obj)
+            recover(obj)
+        end, obj):start(obj.timeout)
+    end
 end
 
 ---Start a request and ``respCb`` will be called when a response is received.
@@ -404,7 +407,7 @@ function device.create(done, addr, token, ...)
         cmdQue = { first = 0, last = 0 }
     }
 
-    if handshake(o, function (obj, err, done, ...)
+    handshake(o, function (obj, err, done, ...)
         if err ~= ErrorCode.None then
             done(obj, nil, ...)
             return
@@ -415,10 +418,7 @@ function device.create(done, addr, token, ...)
         end, function (obj, code, message, done, ...)
             done(obj, nil, ...)
         end, "miIO.info", nil, done, ...)
-    end, done, ...) == false then
-        o.logger:error("Failed to start handshake.")
-        return nil
-    end
+    end, done, ...)
 
     setmetatable(o, {
         __index = _device
