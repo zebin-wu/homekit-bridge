@@ -1,6 +1,5 @@
 local protocol = require "miio.protocol"
 local timer = require "timer"
-local ErrorCode = require "miio.error".code
 
 local assert = assert
 local type = type
@@ -68,7 +67,7 @@ end
 
 ---Start Handshake,  and the ``done`` callback will be called when the handshake is done.
 ---@param obj MiioDevice Device object.
----@param done fun(obj: MiioDevice, err: integer, ...) Done callback.
+---@param done fun(obj: MiioDevice, err: '"None"'|'"Timeout"'|'"Unknown"', ...) Done callback.
 ---@vararg any Arguments passed to the callback.
 local function handshake(obj, done, ...)
     ---@class MiioScanPriv
@@ -83,7 +82,7 @@ local function handshake(obj, done, ...)
     function (obj, priv)
         obj.logger:error("Handshake timeout.")
         priv.ctx:stop()
-        priv.done(obj, ErrorCode.Timeout, tunpack(priv.args))
+        priv.done(obj, "Timeout", tunpack(priv.args))
     end, obj, priv)
 
     priv.ctx = protocol.scan(
@@ -94,18 +93,16 @@ local function handshake(obj, done, ...)
         local pcb = protocol.create(addr, devid, obj.token, stamp)
         if not pcb then
             obj.logger:error("Failed to create PCB.")
-            priv.done(obj, ErrorCode.Unknown, tunpack(priv.args))
+            priv.done(obj, "Unknown", tunpack(priv.args))
             return
         end
         obj.pcb = pcb
         obj.logger:debug("Handshake done.")
-        priv.done(obj, ErrorCode.None, tunpack(priv.args))
+        priv.done(obj, "None", tunpack(priv.args))
     end, obj.addr, obj, priv)
 
     priv.timer:start(obj.timeout)
     obj.logger:debug("Start handshake.")
-
-    return true
 end
 
 ---Start sync properties after ``timeout`` ms.
@@ -138,7 +135,7 @@ local function recover(obj)
     obj.logger:debug("Recover connection ...")
     local success = pcall(function (obj)
         handshake(obj, function (obj, err)
-            if err == ErrorCode.None then
+            if err == "None" then
                 obj.state = "INITED"
                 startSync(obj)
                 return
@@ -155,7 +152,7 @@ end
 
 ---Start a request and ``respCb`` will be called when a response is received.
 ---@param respCb fun(obj: MiioDevice, result: any, ...) Response callback.
----@param errCb fun(obj: MiioDevice, code: integer, message: string, ...) Error Callback.
+---@param errCb fun(obj: MiioDevice, code: integer|'"Timeout"'|'"Unknown"', message: string, ...) Error Callback.
 ---@param method string The request method.
 ---@param params? table Array of parameters.
 function _device:request(respCb, errCb, method, params, ...)
@@ -196,7 +193,7 @@ end
 
 ---Get properties error callback.
 ---@param obj MiioDevice Device object.
----@param code integer Error code.
+---@param code integer|'"Timeout"'|'"Unknown"' Error code.
 ---@param message string Error message.
 local function getPropsErrCb(obj, code, message)
     if obj.state == "NOINIT" then
@@ -204,7 +201,7 @@ local function getPropsErrCb(obj, code, message)
     end
     local pm = obj.pm
     local retry = pm.retry
-    if code == ErrorCode.Timeout and retry == 0 then
+    if code == "Timeout" and retry == 0 then
         obj.logger:error("Failed to get properties.")
         obj.state = "NOINIT"
         recover(obj)
@@ -229,7 +226,11 @@ function _device:regProps(names, onUpdate, ...)
     ---@param names string[] Property names.
     local function syncProps(obj, names)
         obj.logger:debug("Syncing properties ...")
-        obj:request(function (obj, result, names)
+        obj:request(
+        ---@param obj MiioDevice
+        ---@param result any
+        ---@param names string[]
+        function (obj, result, names)
             if obj.state == "NOINIT" then
                 return
             end
@@ -284,7 +285,10 @@ function _device:regPropsMiot(mapping, onUpdate, ...)
     ---@param params table
     local function syncPropsMiot(obj, params)
         obj.logger:debug("Syncing properties ...")
-        obj:request(function (obj, result)
+        obj:request(
+        ---@param obj MiioDevice
+        ---@param result any
+        function (obj, result)
             if obj.state == "NOINIT" then
                 return
             end
@@ -333,18 +337,30 @@ end
 ---@param params table Array of parameters.
 ---@param retry integer Retry count.
 local function _setProp(obj, name, method, params, retry)
-    obj:request(function (obj, result, name)
+    obj:request(
+    ---@param obj MiioDevice
+    ---@param result any
+    ---@param name string
+    function (obj, result, name)
         if obj.state == "NOINIT" then
             return
         end
         local pm = obj.pm
         startSync(obj)
         pm.onUpdate(obj, {name}, tunpack(pm.args))
-    end, function (obj, code, message, name, method, params, retry)
+    end,
+    ---@param obj MiioDevice
+    ---@param code integer|'"Timeout"'|'"Unknown"'
+    ---@param message string
+    ---@param name string
+    ---@param method string
+    ---@param params table
+    ---@param retry integer
+    function (obj, code, message, name, method, params, retry)
         if obj.state == "NOINIT" then
             return
         end
-        if code == ErrorCode.Timeout and retry > 0 then
+        if code == "Timeout" and retry > 0 then
             _setProp(obj, name, method, params, retry - 1)
         else
             obj.logger:error("Failed to set property.")
@@ -407,15 +423,28 @@ function device.create(done, addr, token, ...)
         cmdQue = { first = 0, last = 0 }
     }
 
-    handshake(o, function (obj, err, done, ...)
-        if err ~= ErrorCode.None then
+    handshake(o,
+    ---@param obj MiioDevice
+    ---@param err '"None"'|'"Timeout"'|'"Unknown"'
+    ---@param done fun(self: MiioDevice, info: MiioDeviceInfo, ...)
+    function (obj, err, done, ...)
+        if err ~= "None" then
             done(obj, nil, ...)
             return
         end
         obj.state ="INITED"
-        obj:request(function (obj, result, done, ...)
+        obj:request(
+        ---@param obj MiioDevice
+        ---@param result any
+        ---@param done fun(self: MiioDevice, info: MiioDeviceInfo, ...)
+        function (obj, result, done, ...)
             done(obj, result, ...)
-        end, function (obj, code, message, done, ...)
+        end,
+        ---@param obj MiioDevice
+        ---@param code integer|'"Timeout"'|'"Unknown"'
+        ---@param message string
+        ---@param done fun(self: MiioDevice, info: MiioDeviceInfo, ...)
+        function (obj, code, message, done, ...)
             done(obj, nil, ...)
         end, "miIO.info", nil, done, ...)
     end, done, ...)

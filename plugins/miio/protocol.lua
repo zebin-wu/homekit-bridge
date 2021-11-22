@@ -2,7 +2,6 @@ local udp = require "udp"
 local timer = require "timer"
 local hash = require "hash"
 local json = require "cjson"
-local ErrorCode = require "miio.error".code
 
 local assert = assert
 local type = type
@@ -274,7 +273,7 @@ local _pcb = {}
 
 ---Start a request and ``respCb`` will be called when a response is received.
 ---@param respCb fun(result: any, ...) Response callback.
----@param errCb fun(code: integer, message: string, ...) Error Callback.
+---@param errCb fun(code: integer|'"Timeout"'|'"Unknown"', message: string, ...) Error Callback.
 ---@param timeout integer Timeout period (in milliseconds).
 ---@param method string The request method.
 ---@param params? table Array of parameters.
@@ -351,7 +350,7 @@ function protocol.create(addr, devid, token, stamp)
         local args = self.args
         self.args = nil
         priv.pcbs[self.addr] = nil
-        self.errCb(ErrorCode.Timeout, "Request timeout.", table.unpack(args))
+        self.errCb("Timeout", "Request timeout.", table.unpack(args))
     end, pcb)
 
     setmetatable(pcb, {
@@ -381,30 +380,30 @@ function protocol.init()
         local msg = unpack(data, pcb.token)
 
         if not msg then
-            errCb(ErrorCode.InvalidData, "Receive a invalid message.", table.unpack(args))
+            errCb("Unknown", "Receive a invalid message.", table.unpack(args))
             return
         end
         if msg.did ~= pcb.devid then
-            errCb(ErrorCode.InvalidData, "Not a match Device ID.", table.unpack(args))
+            errCb("Unknown", "Not a match Device ID.", table.unpack(args))
             return
         end
         if not msg.data then
-            errCb(ErrorCode.InvalidData, "Not a response message.", table.unpack(args))
+            errCb("Unknown", "Not a response message.", table.unpack(args))
             return
         end
         local s = pcb.encryption:decrypt(msg.data)
         if not s then
-            errCb(ErrorCode.InvalidData, "Failed to decrypt the message.", table.unpack(args))
+            errCb("Unknown", "Failed to decrypt the message.", table.unpack(args))
             return
         end
         logger:debug(("%s => %s"):format(from_addr, s))
         local payload =  json.decode(s)
         if not payload then
-            errCb(ErrorCode.InvalidData, "Failed to parse the JSON string.", table.unpack(args))
+            errCb("Unknown", "Failed to parse the JSON string.", table.unpack(args))
             return
         end
         if payload.id ~= pcb.reqid then
-            errCb(ErrorCode.InvalidData, "response id ~= request id", table.unpack(args))
+            errCb("Unknown", "response id ~= request id", table.unpack(args))
             return
         end
         local error = payload.error
