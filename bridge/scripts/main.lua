@@ -5,7 +5,7 @@ local board = require "board"
 
 local logger = log.getLogger()
 
-return core.start(config.plugins, config.accessories, function (bridgedAccessories)
+core.start(config.plugins, config.accessories, function (bridgedAccessories)
     assert(hap.init({
         aid = 1, -- Primary accessory must have aid 1.
         category = "Bridges",

@@ -1,5 +1,5 @@
 local protocol = require "miio.protocol"
-local timer = require "timer"
+local time = require "time"
 
 local assert = assert
 local type = type
@@ -44,7 +44,7 @@ local function _respCb(result, obj, respCb, _, ...)
 end
 
 local function _errCb(code, message, obj, _, errCb, ...)
-    obj.logger:error(("Request error, code: %d, message: %s"):format(code, message))
+    obj.logger:error("Request error, code: " .. code .. ", message:  " .. message)
     obj.requestable  = true
     _dispatch(obj)
     errCb(obj, code, message, ...)
@@ -76,7 +76,7 @@ local function handshake(obj, done, ...)
         args = {...}
     }
 
-    priv.timer = timer.create(
+    priv.timer = time.createTimer(
     ---@param obj MiioDevice
     ---@param priv MiioScanPriv
     function (obj, priv)
@@ -144,7 +144,7 @@ local function recover(obj)
         end)
     end, obj)
     if success == false then
-        timer.create(function (obj)
+        time.createTimer(function (obj)
             recover(obj)
         end, obj):start(obj.timeout)
     end
@@ -173,7 +173,7 @@ function _device:request(respCb, errCb, method, params, ...)
 end
 
 ---Create a property manager.
----@param syncTimer TimerObj Sync timer object.
+---@param syncTimer Timer Sync timer.
 ---@param onUpdate fun(self: MiioDevice, names: string[], ...) The callback will be called when the property is updated.
 ---@vararg any Arguments passed to the callback.
 ---@return MiioPropMgr
@@ -256,7 +256,7 @@ function _device:regProps(names, onUpdate, ...)
         end, getPropsErrCb, "get_prop", names, names)
     end
 
-    local pm = createPropMgr(timer.create(syncProps, self, names), onUpdate, ...)
+    local pm = createPropMgr(time.createTimer(syncProps, self, names), onUpdate, ...)
     pm.isSyncing = true
     self.pm = pm
 
@@ -313,7 +313,7 @@ function _device:regPropsMiot(mapping, onUpdate, ...)
         end, getPropsErrCb, "get_properties", params)
     end
 
-    local pm = createPropMgr(timer.create(syncPropsMiot, self, params), onUpdate, ...)
+    local pm = createPropMgr(time.createTimer(syncPropsMiot, self, params), onUpdate, ...)
     pm.mapping = mapping
     pm.isSyncing = true
     self.pm = pm

@@ -37,13 +37,18 @@ LUAMOD_API int luaopen_log(lua_State *L);
 #define LUA_UDP_NAME "udp"
 LUAMOD_API int luaopen_udp(lua_State *L);
 
-#define LUA_TIMER_NAME "timer"
-LUAMOD_API int luaopen_timer(lua_State *L);
+#define LUA_TIME_NAME "time"
+LUAMOD_API int luaopen_time(lua_State *L);
 
 /**
  * Set HomeKit platform.
  */
 void lhap_set_platform(HAPPlatform *platform);
+
+/**
+ * Get Lua main thread.
+ */
+lua_State *app_get_lua_main_thread();
 
 #ifdef __cplusplus
 }

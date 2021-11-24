@@ -1,5 +1,5 @@
 local udp = require "udp"
-local timer = require "timer"
+local time = require "time"
 local hash = require "hash"
 local json = require "cjson"
 
@@ -346,7 +346,7 @@ function protocol.create(addr, devid, token, stamp)
     }
 
     pcb.encryption = newEncryption(token)
-    pcb.timer = timer.create(function (self)
+    pcb.timer = time.createTimer(function (self)
         local args = self.args
         self.args = nil
         priv.pcbs[self.addr] = nil

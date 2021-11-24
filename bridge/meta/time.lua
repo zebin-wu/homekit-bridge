@@ -1,22 +1,22 @@
----@class timerlib
+---@class timelib
+local time = {}
+
+---@class Timer:userdata Timer.
 local timer = {}
 
----@class TimerObj:userdata Timer object.
-local obj = {}
-
----Create a timer object.
+---Create a timer.
 ---@param cb fun(...) Function to call when the timer expires.
 ---@vararg any Arguments passed to the callback.
----@return TimerObj obj
-function timer.create(cb, ...) end
+---@return Timer timer
+function time.createTimer(cb, ...) end
 
 ---Start the timer.
 ---If the timer has already started, it will start again.
 ---@param ms integer Monotonic trigger time in milliseconds.
-function obj:start(ms) end
+function timer:start(ms) end
 
 ---Stop the timer before trigger.
 ---If the timer has not started, nothing will happen.
-function obj:stop() end
+function timer:stop() end
 
-return timer
+return time

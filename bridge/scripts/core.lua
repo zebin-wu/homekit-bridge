@@ -112,8 +112,6 @@ function core.start(pluginConfs, accessoryConfs, done)
     else
         priv.done = done
     end
-
-    return true
 end
 
 return core

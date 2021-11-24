@@ -9,7 +9,6 @@ local function run()
     for i, suite in ipairs(suites) do
         runSuite(suite)
     end
-    return true
 end
 
-return run()
+run()
