@@ -44,7 +44,7 @@ static const luaL_Reg dynamiclibs[] = {
     {LUA_HAP_NAME, luaopen_hap},
     {LUA_BOARD_NAME, luaopen_board},
     {LUA_UDP_NAME, luaopen_udp},
-    {LUA_TIMER_NAME, luaopen_timer},
+    {LUA_TIME_NAME, luaopen_time},
     {LUA_HASH_NAME, luaopen_hash},
     {LUA_CIPHER_NAME, luaopen_cipher},
     {LUA_CJSON_NAME, luaopen_cjson},
@@ -135,23 +135,8 @@ static int app_lua_run(lua_State *L) {
     // run entry
     lua_getglobal(L, "require");
     lua_pushstring(L, entry);
-    int status = lua_pcall(L, 1, 1, 0);
-    if (status != LUA_OK) {
-        const char *msg = lua_tostring(L, -1);
-        HAPLogError(&kHAPLog_Default, "%s", msg);
-        goto err;
-    }
-
-    if (!lua_isboolean(L, -1)) {
-        HAPLogError(&kHAPLog_Default,
-            "%s: Entry '%s' returned is not a boolean.", __func__, entry);
-        goto err;
-    }
-    return 1;
-
-err:
-    lua_pushboolean(L, false);
-    return 1;
+    lua_call(L, 1, 0);
+    return 0;
 }
 
 void app_init(HAPPlatform *platform, const char *dir, const char *entry) {
@@ -161,7 +146,7 @@ void app_init(HAPPlatform *platform, const char *dir, const char *entry) {
 
     lhap_set_platform(platform);
 
-    lua_State *L = lua_newstate(app_lua_alloc, NULL);
+    L = lua_newstate(app_lua_alloc, NULL);
     if (L == NULL) {
         HAPLogError(&kHAPLog_Default,
             "%s: Cannot create state: not enough memory", __func__);
@@ -169,21 +154,16 @@ void app_init(HAPPlatform *platform, const char *dir, const char *entry) {
     }
 
     // call 'app_lua_init' in protected mode
+    lc_push_traceback(L);
     lua_pushcfunction(L, &app_lua_run);
     lua_pushstring(L, dir);
     lua_pushstring(L, entry);
 
     // do the call
-    int status = lua_pcall(L, 2, 1, 0);
+    int status = lua_pcall(L, 2, 0, 1);
     if (status) {
         const char *msg = lua_tostring(L, -1);
         HAPLogError(&kHAPLog_Default, "%s", msg);
-        HAPAssertionFailure();
-    }
-
-    // check the result
-    if (!lua_toboolean(L, -1)) {
-        HAPLogError(&kHAPLog_Default, "Failed to run lua.");
         HAPAssertionFailure();
     }
 
@@ -198,4 +178,8 @@ void app_deinit() {
     }
 
     lhap_set_platform(NULL);
+}
+
+lua_State *app_get_lua_main_thread() {
+    return L;
 }

@@ -23,7 +23,7 @@ extern "C" {
 /**
  * Initialize App.
  *
- * @param platform
+ * @param platform The pointer to the HomeKit platform structure.
  * @param dir The path of the scripts directory.
  * @param entry The name of the entry script.
  */

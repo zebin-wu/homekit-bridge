@@ -23,7 +23,6 @@ static const char *net_domain_strs[] = PAL_NET_DOMAIN_STRS;
 
 typedef struct {
     pal_udp *udp;
-    lua_State *L;
     size_t recv_nargs;
     size_t err_nargs;
 } ludp_handle;
@@ -57,7 +56,6 @@ static int ludp_open(lua_State *L) {
     if (!handle->udp) {
         goto err;
     }
-    handle->L = L;
     return 1;
 
 err:
@@ -122,7 +120,7 @@ static int ludp_handle_sendto(lua_State *L) {
 static void ludp_recv_cb(pal_udp *udp, void *data, size_t len,
     const char *from_addr, uint16_t from_port, void *arg) {
     ludp_handle *handle = arg;
-    lua_State *L = handle->L;
+    lua_State *L = app_get_lua_main_thread();
 
     HAPAssert(lua_gettop(L) == 0);
     lc_push_traceback(L);
@@ -173,7 +171,7 @@ static int ludp_handle_set_recv_cb(lua_State *L) {
 
 static void ludp_err_cb(pal_udp *udp, pal_net_err err, void *arg) {
     ludp_handle *handle = arg;
-    lua_State *L = handle->L;
+    lua_State *L = app_get_lua_main_thread();
 
     HAPAssert(lua_gettop(L) == 0);
     lc_push_traceback(L);
