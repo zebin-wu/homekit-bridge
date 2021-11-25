@@ -106,6 +106,16 @@ void lc_set_cpath(lua_State *L, const char *cpath);
  */
 void lc_push_traceback(lua_State *L);
 
+/**
+ * New a Lua thread.
+ */
+lua_State *lc_newthread(lua_State *L);
+
+/**
+ * Free the Lua thread.
+ */
+int lc_freethread(lua_State *L);
+
 #ifdef __cplusplus
 }
 #endif

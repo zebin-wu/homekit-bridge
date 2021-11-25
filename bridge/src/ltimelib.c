@@ -11,11 +11,11 @@
 #include "app_int.h"
 #include "lc.h"
 
-#define LUA_TIMER_OBJ_NAME "Timer*"
+#define LUA_TIMER_NAME "Timer*"
 
 static const HAPLogObject ltime_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
-    .category = "ltimer",
+    .category = "ltime",
 };
 
 /**
@@ -26,13 +26,45 @@ typedef struct {
     HAPPlatformTimerRef timer;  /* Timer ID. Start from 1. */
 } ltime_timer_ctx;
 
+static void ltime_sleep_cb(HAPPlatformTimerRef timer, void *context) {
+    lua_State *L = app_get_lua_main_thread();
+    lua_State *co = context;
+    int status, nres;
+    status = lua_resume(co, L, 0, &nres);
+    if (status == LUA_OK || status == LUA_YIELD) {
+        if (status == LUA_OK) {
+            lua_resetthread(co);
+            lua_pushnil(L);
+            lua_rawsetp(L, LUA_REGISTRYINDEX, co);
+        }
+    } else {
+        luaL_traceback(L, co, lua_tostring(co, -1), 1);
+        HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
+    }
+
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
+}
+
+static int ltime_sleep(lua_State *L) {
+    lua_Integer ms = luaL_checkinteger(L, 1);
+
+    HAPPlatformTimerRef timer;
+    if (HAPPlatformTimerRegister(&timer, (HAPTime)ms + HAPPlatformClockGetCurrent(),
+        ltime_sleep_cb, L) != kHAPError_None) {
+        luaL_error(L, "failed to sleep");
+    }
+    lua_yield(L, 0);
+    return 0;
+}
+
 static int ltime_createTimer(lua_State *L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
 
     // pack function and args to a table
     int n = lua_gettop(L);
     lua_createtable(L, n, 1);
-    luaL_setmetatable(L, LUA_TIMER_OBJ_NAME);
+    luaL_setmetatable(L, LUA_TIMER_NAME);
     lua_insert(L, 1);  // put the table at index 1
     for (int i = n; i >= 1; i--) {
         lua_seti(L, 1, i);
@@ -44,25 +76,36 @@ static int ltime_createTimer(lua_State *L) {
     return 1;  // return the table
 }
 
-static void ltime_timer_cb(HAPPlatformTimerRef timer, void* _Nullable context) {
+static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
     ltime_timer_ctx *ctx = context;
     lua_State *L = app_get_lua_main_thread();
 
     ctx->timer = 0;
 
     HAPAssert(lua_gettop(L) == 0);
-    lc_push_traceback(L);
-    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &ctx->timer) == LUA_TTABLE);
-    for (int i = 1; i <= ctx->nargs + 1; i++) {
-        lua_geti(L, 2, i);
-    }
-    lua_remove(L, 2);
-    lua_pushnil(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &ctx->timer);
 
-    if (lua_pcall(L, ctx->nargs, 0, 1)) {
+    int nres, status;
+    lua_State *co = lua_newthread(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, co);
+    HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, &ctx->timer) == LUA_TTABLE);
+    for (int i = 1; i <= ctx->nargs + 1; i++) {
+        lua_geti(co, 1, i);
+    }
+    lua_remove(co, 1);
+    lua_pushnil(co);
+    lua_rawsetp(co, LUA_REGISTRYINDEX, &ctx->timer);
+    status = lua_resume(co, L, ctx->nargs, &nres);
+    if (status == LUA_OK || status == LUA_YIELD) {
+        if (status == LUA_OK) {
+            lua_resetthread(co);
+            lua_pushnil(L);
+            lua_rawsetp(L, LUA_REGISTRYINDEX, co);
+        }
+    } else {
+        luaL_traceback(L, co, lua_tostring(co, -1), 1);
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
+
     lua_settop(L, 0);
     lc_collectgarbage(L);
 }
@@ -135,6 +178,7 @@ static int ltime_timer_tostring(lua_State *L) {
 }
 
 static const luaL_Reg ltime_funcs[] = {
+    {"sleep", ltime_sleep},
     {"createTimer", ltime_createTimer},
     {NULL, NULL},
 };
@@ -159,7 +203,7 @@ static const luaL_Reg ltime_timer_meth[] = {
 };
 
 static void ltime_createmeta(lua_State *L) {
-    luaL_newmetatable(L, LUA_TIMER_OBJ_NAME);  /* metatable for timer object */
+    luaL_newmetatable(L, LUA_TIMER_NAME);  /* metatable for timer object */
     luaL_setfuncs(L, ltime_timer_metameth, 0);  /* add metamethods to new metatable */
     luaL_newlibtable(L, ltime_timer_meth);  /* create method table */
     luaL_setfuncs(L, ltime_timer_meth, 0);  /* add timer object methods to method table */

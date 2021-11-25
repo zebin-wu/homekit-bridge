@@ -104,10 +104,9 @@ static void *app_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
     }
 }
 
-// app_lua_run(dir: string, entry: string): boolean
+// app_lua_run(dir: string, entry: string)
 static int app_lua_run(lua_State *L) {
     const char *dir = luaL_checkstring(L, 1);
-    const char *entry = luaL_checkstring(L, 2);
 
     // load global libraries
     for (const luaL_Reg *lib = globallibs; lib->func; lib++) {
@@ -133,9 +132,20 @@ static int app_lua_run(lua_State *L) {
     lc_add_searcher(L, searcher_embedfs);
 
     // run entry
-    lua_getglobal(L, "require");
-    lua_pushstring(L, entry);
-    lua_call(L, 1, 0);
+    int nres, status;
+    lua_State *co = lc_newthread(L);
+    lua_getglobal(co, "require");
+    lua_pushvalue(L, 2);
+    lua_xmove(L, co, 1);
+    status = lua_resume(co, L, 1, &nres);
+    if (status == LUA_OK || status == LUA_YIELD) {
+        if (status == LUA_OK) {
+            lc_freethread(co);
+        }
+    } else {
+        luaL_traceback(L, co, lua_tostring(co, -1), 1);
+        lua_error(L);
+    }
     return 0;
 }
 
@@ -154,13 +164,12 @@ void app_init(HAPPlatform *platform, const char *dir, const char *entry) {
     }
 
     // call 'app_lua_init' in protected mode
-    lc_push_traceback(L);
-    lua_pushcfunction(L, &app_lua_run);
+    lua_pushcfunction(L, app_lua_run);
     lua_pushstring(L, dir);
     lua_pushstring(L, entry);
 
     // do the call
-    int status = lua_pcall(L, 2, 0, 1);
+    int status = lua_pcall(L, 2, 0, 0);
     if (status) {
         const char *msg = lua_tostring(L, -1);
         HAPLogError(&kHAPLog_Default, "%s", msg);

@@ -4,6 +4,10 @@ local time = {}
 ---@class Timer:userdata Timer.
 local timer = {}
 
+---Sleep for a specified number of milliseconds.
+---@param ms integer Milliseconds.
+function time.sleep(ms) end
+
 ---Create a timer.
 ---@param cb fun(...) Function to call when the timer expires.
 ---@vararg any Arguments passed to the callback.
