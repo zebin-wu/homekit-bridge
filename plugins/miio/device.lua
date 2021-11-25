@@ -418,7 +418,7 @@ function device.create(done, addr, token, ...)
         pcb = nil, ---@type MiioPcb
         addr = addr,
         token = token,
-        timeout = 3000,
+        timeout = 5000,
         requestable = true,
         cmdQue = { first = 0, last = 0 }
     }
