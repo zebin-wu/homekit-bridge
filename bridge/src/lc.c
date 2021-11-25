@@ -172,3 +172,15 @@ static int traceback(lua_State *L) {
 void lc_push_traceback(lua_State *L) {
     lua_pushcfunction(L, traceback);
 }
+
+lua_State *lc_newthread(lua_State *L) {
+    lua_State *co = lua_newthread(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, co);
+    return co;
+}
+
+int lc_freethread(lua_State *L) {
+    lua_pushnil(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, L);
+    return lua_resetthread(L);
+}
