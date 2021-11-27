@@ -52,7 +52,7 @@ static int ltime_sleep(lua_State *L) {
     HAPPlatformTimerRef timer;
     if (HAPPlatformTimerRegister(&timer, (HAPTime)ms + HAPPlatformClockGetCurrent(),
         ltime_sleep_cb, L) != kHAPError_None) {
-        luaL_error(L, "failed to sleep");
+        luaL_error(L, "failed to create a timer");
     }
     lua_yield(L, 0);
     return 0;
