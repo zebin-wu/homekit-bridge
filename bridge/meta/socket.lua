@@ -21,6 +21,10 @@ local _socket = {}
 ---@return Socket
 function socket.create(type, domain) end
 
+---Set the timeout.
+---@param ms integer Maximum time blocked in milliseconds.
+function _socket:settimeout(ms) end
+
 ---Set options.
 ---@param name SocketOption Option name.
 ---@param val any Option value.
