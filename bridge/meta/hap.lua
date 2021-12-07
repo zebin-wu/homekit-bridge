@@ -5,9 +5,9 @@ local hap = {}
 
 ---@class HapServerCallbacks:table Accessory server callbacks.
 ---
----@field updatedState fun(state: HapServerState) Invoked when the accessory server state changes.
----@field sessionAccept fun(session: HapSession) The callback used when a HomeKit Session is accepted.
----@field sessionInvalidate fun(session: HapSession) The callback used when a HomeKit Session is invalidated.
+---@field updatedState async fun(state: HapServerState) Invoked when the accessory server state changes.
+---@field sessionAccept async fun(session: HapSession) The callback used when a HomeKit Session is accepted.
+---@field sessionInvalidate async fun(session: HapSession) The callback used when a HomeKit Session is invalidated.
 
 ---@class HapAccessory:table HomeKit accessory.
 ---
@@ -134,10 +134,10 @@ local hap = {}
 
 ---@class HapCharacteristicCallbacks:table Characteristic Callbacks.
 ---
----@field read fun(request:HapCharacteristicReadRequest, context?:any): any, HapError The callback used to handle read requests, it returns value and error.
----@field write fun(request:HapCharacteristicWriteRequest, value:any, context?:any): HapError The callback used to handle write requests, it return error.
----@field sub fun(request:HapCharacteristicSubscriptionRequest, context?:any) The callback used to handle subscribe requests.
----@field unsub fun(request:HapCharacteristicSubscriptionRequest, context?:any) The callback used to handle unsubscribe requests.
+---@field read async fun(request:HapCharacteristicReadRequest, context?:any): any, HapError The callback used to handle read requests, it returns value and error.
+---@field write async fun(request:HapCharacteristicWriteRequest, value:any, context?:any): HapError The callback used to handle write requests, it return error.
+---@field sub async fun(request:HapCharacteristicSubscriptionRequest, context?:any) The callback used to handle subscribe requests.
+---@field unsub async fun(request:HapCharacteristicSubscriptionRequest, context?:any) The callback used to handle unsubscribe requests.
 
 ---@class HapCharacteristicProperties:table Properties that HomeKit characteristics can have.
 ---
