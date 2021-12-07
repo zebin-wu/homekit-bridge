@@ -83,7 +83,7 @@ end
 ---Load plugins and generate bridged accessories.
 ---@param pluginConfs PluginConf[] Plugin configurations.
 ---@param accessoryConfs AccessoryConf[] Accessory configurations.
----@param done fun(bridgedAccessories: HapAccessory[]) Function called after the bridged accessories is generated.
+---@param done async fun(bridgedAccessories: HapAccessory[]) Function called after the bridged accessories is generated.
 function core.start(pluginConfs, accessoryConfs, done)
     if pluginConfs then
         for _, conf in ipairs(pluginConfs) do
