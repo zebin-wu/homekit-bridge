@@ -26,8 +26,8 @@ typedef enum {
  * Communication domain.
  */
 typedef enum {
-    PAL_SOCKET_DOMAIN_IPV4,         /**< IPv4 Internet protocols. */
-    PAL_SOCKET_DOMAIN_IPV6,         /**< IPv6 Internet protocols. */
+    PAL_SOCKET_DOMAIN_INET,         /**< IPv4 Internet protocols. */
+    PAL_SOCKET_DOMAIN_INET6,         /**< IPv6 Internet protocols. */
 } pal_socket_domain;
 
 /**
