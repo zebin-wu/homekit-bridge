@@ -30,12 +30,12 @@ static void ltime_sleep_cb(HAPPlatformTimerRef timer, void *context) {
     lua_State *L = app_get_lua_main_thread();
     lua_State *co = context;
     int status, nres;
+
+    HAPAssert(lua_gettop(L) == 0);
     status = lua_resume(co, L, 0, &nres);
     if (status == LUA_OK || status == LUA_YIELD) {
         if (status == LUA_OK) {
-            lua_resetthread(co);
-            lua_pushnil(L);
-            lua_rawsetp(L, LUA_REGISTRYINDEX, co);
+            lc_freethread(co);
         }
     } else {
         luaL_traceback(L, co, lua_tostring(co, -1), 1);
