@@ -9,8 +9,8 @@ local _socket = {}
 ---|'"UDP"'
 
 ---@alias SocketDomain
----|'"IPV4"'    # IPv4 Internet protocols
----|'"IPV6"'    # IPv6 Internet protocols
+---|'"INET"'    # IPv4 Internet protocols
+---|'"INET6"'   # IPv6 Internet protocols
 
 ---@alias SocketOption
 ---|'"BROADCAST"'

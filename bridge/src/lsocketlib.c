@@ -18,18 +18,23 @@ typedef struct {
     pal_socket_obj *socket;
 } lsocket_obj;
 
+static const HAPLogObject lsocket_log = {
+    .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
+    .category = "lsocket",
+};
+
 static bool lsocket_port_valid(lua_Integer port) {
     return ((port >= 0) && (port <= 65535));
 }
 
 static int lsocket_create(lua_State *L) {
     pal_socket_type type = luaL_checkoption(L, 1, NULL, (const char *[]) {
-        "TCP",
-        "UDP"
+        [PAL_SOCKET_TYPE_TCP] = "TCP",
+        [PAL_SOCKET_TYPE_UDP] = "UDP"
     });
     pal_socket_domain domain = luaL_checkoption(L, 2, NULL, (const char *[]) {
-        "IPV4",
-        "IPV6"
+        [PAL_SOCKET_DOMAIN_INET] = "INET",
+        [PAL_SOCKET_DOMAIN_INET6] = "INET6"
     });
 
     lsocket_obj *obj = lua_newuserdata(L, sizeof(lsocket_obj));
@@ -50,8 +55,61 @@ static int lsocket_obj_bind(lua_State *L) {
     if (!lsocket_port_valid(port)) {
         luaL_argerror(L, 3, "port out of range");
     }
-    pal_socket_bind(obj->socket, addr, port);
-    return 1;
+    pal_socket_err err = pal_socket_bind(obj->socket, addr, port);
+    if (err != PAL_SOCKET_ERR_OK) {
+        luaL_error(L, "failed to bind");
+    }
+    return 0;
+}
+
+static void lsocket_connected_cb(pal_socket_obj *o, pal_socket_err err, void *arg) {
+    lua_State *L = app_get_lua_main_thread();
+    lua_State *co = arg;
+    int status, nres;
+
+    HAPAssert(lua_gettop(L) == 0);
+    lua_pushinteger(co, err);
+    status = lua_resume(co, L, 0, &nres);
+    if (status == LUA_OK || status == LUA_YIELD) {
+        if (status == LUA_OK) {
+            lc_freethread(co);
+        }
+    } else {
+        luaL_traceback(L, co, lua_tostring(co, -1), 1);
+        HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
+    }
+
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
+}
+
+static int finshconnect(lua_State *L, int status, lua_KContext extra) {
+    pal_socket_err err = luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+
+    switch (err) {
+    case PAL_SOCKET_ERR_OK:
+        break;
+    case PAL_SOCKET_ERR_IN_PROGRESS:
+        lua_yieldk(L, 0, 0, finshconnect);
+        break;
+    default:
+        luaL_error(L, "failed to connect");
+        break;
+    }
+    return 0;
+}
+
+static int lsocket_obj_connect(lua_State *L) {
+    lsocket_obj *obj = luaL_checkudata(L, 1, LUA_SOCKET_OBJECT_NAME);
+    const char *addr = luaL_checkstring(L, 2);
+    lua_Integer port = luaL_checkinteger(L, 3);
+    if (!lsocket_port_valid(port)) {
+        luaL_argerror(L, 3, "port out of range");
+    }
+    lua_pushinteger(L, pal_socket_connect(obj->socket, addr,
+        port, lsocket_connected_cb, L));
+    return finshconnect(L, 0, 0);
 }
 
 static int lsocket_obj_gc(lua_State *L) {
@@ -77,6 +135,7 @@ static const luaL_Reg lsocket_funcs[] = {
  */
 static const luaL_Reg lsocket_obj_meth[] = {
     {"bind", lsocket_obj_bind},
+    {"connect", lsocket_obj_connect},
     {NULL, NULL}
 };
 
