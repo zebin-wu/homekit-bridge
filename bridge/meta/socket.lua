@@ -18,7 +18,7 @@ local _socket = {}
 ---Create an endpoint for communication.
 ---@param type SocketType
 ---@param domain SocketDomain
----@return Socket
+---@return Socket object Socket object.
 function socket.create(type, domain) end
 
 ---Set the timeout.
@@ -45,8 +45,7 @@ function _socket:connect(addr, port) end
 function _socket:listen(backlog) end
 
 ---Accept a connection on a socket.
----@return string addr The remote address.
----@return integer port The remote port.
+---@return Socket object Socket object.
 function _socket:accept() end
 
 ---Send a message.
