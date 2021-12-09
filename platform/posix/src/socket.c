@@ -32,10 +32,12 @@
     SOCKET_LOG(Error, socket, "%s: %s() failed: %s.", __func__, func, strerror(errno))
 
 typedef enum {
-    PAL_SOCKET_CONN_ST_DISCONNECTED,
-    PAL_SOCKET_CONN_ST_CONNECTING,
-    PAL_SOCKET_CONN_ST_CONNECTED
-} pal_socket_connection_state;
+    PAL_SOCKET_ST_NONE,
+    PAL_SOCKET_ST_CONNECTING,
+    PAL_SOCKET_ST_CONNECTED,
+    PAL_SOCKET_ST_LISTENED,
+    PAL_SOCKET_ST_ACCEPTING
+} pal_socket_state;
 
 typedef union {
     struct sockaddr_in in;
@@ -43,9 +45,7 @@ typedef union {
 } pal_socket_addr;
 
 struct pal_socket_obj {
-    bool bound:1;
-    bool listened:1;
-    pal_socket_connection_state conn_state;
+    pal_socket_state state;
 
     pal_socket_type type;
     pal_socket_domain domain;
@@ -56,6 +56,9 @@ struct pal_socket_obj {
 
     pal_socket_connected_cb connected_cb;
     void *connected_cb_arg;
+
+    pal_socket_accepted_cb accepted_cb;
+    void *accepted_cb_arg;
 
     HAPPlatformFileHandleRef handle;
 };
@@ -145,6 +148,14 @@ pal_socket_addr_get_str_addr(pal_socket_addr *addr, char *buf, size_t buflen) {
     return NULL;
 }
 
+static bool pal_socket_set_nonblock(pal_socket_obj *o) {
+    if (fcntl(o->fd, F_SETFL, fcntl(o->fd, F_GETFL, 0) | O_NONBLOCK) == -1) {
+        SOCKET_LOG_ERRNO(o, "fcntl");
+        return false;
+    }
+    return true;
+}
+
 pal_socket_obj *pal_socket_create(pal_socket_type type, pal_socket_domain domain) {
     pal_socket_obj *o = pal_mem_calloc(sizeof(*o));
     if (!o) {
@@ -180,14 +191,11 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_socket_domain domain
     o->fd = socket(_domain, _type, _protocol);
     if (o->fd == -1) {
         SOCKET_LOG_ERRNO(o, "socket");
-        pal_mem_free(o);
-        return NULL;
+        goto err;
     }
 
-    if (fcntl(o->fd, F_SETFL, fcntl(o->fd, F_GETFL, 0) | O_NONBLOCK) == -1) {
-        SOCKET_LOG_ERRNO(o, "fcntl");
-        pal_mem_free(o);
-        return NULL;
+    if (!pal_socket_set_nonblock(o)) {
+        goto err;
     }
 
     o->type = type;
@@ -196,6 +204,10 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_socket_domain domain
 
     SOCKET_LOG(Debug, o, "%s(%p)", __func__, o);
     return o;
+
+err:
+    pal_mem_free(o);
+    return NULL;
 }
 
 void pal_socket_destroy(pal_socket_obj *o) {
@@ -228,19 +240,149 @@ pal_socket_err pal_socket_bind(pal_socket_obj *o, const char *addr, uint16_t por
         SOCKET_LOG_ERRNO(o, "bind");
         return PAL_SOCKET_ERR_UNKNOWN;
     }
-    o->bound = true;
     SOCKET_LOG(Debug, o, "Bound to %s:%u", addr, port);
     return PAL_SOCKET_ERR_OK;
 }
 
-static pal_socket_err pal_socket_connect_async(pal_socket_obj *o) {
-    int rc;
+pal_socket_err pal_socket_listen(pal_socket_obj *o, int backlog) {
+    HAPPrecondition(o);
+
+    if (o->state != PAL_SOCKET_ST_NONE) {
+        SOCKET_LOG(Error, o, "%s: Invalid state.", __func__);
+        return PAL_SOCKET_ERR_INVALID_STATE;
+    }
+
+    int ret = listen(o->fd, backlog);
+    if (ret == -1) {
+        SOCKET_LOG_ERRNO(o, "listen");
+        return PAL_SOCKET_ERR_UNKNOWN;
+    }
+    o->state = PAL_SOCKET_ST_LISTENED;
+    return PAL_SOCKET_ERR_OK;
+}
+
+static pal_socket_err pal_socket_accept_async(pal_socket_obj *o, pal_socket_obj **new_o) {
+    int new_fd;
+    pal_socket_addr addr;
+    socklen_t addrlen = sizeof(addr);
 
     do {
-        rc = connect(o->fd, (struct sockaddr *)&o->remote_addr,
+        new_fd = accept(o->fd, (struct sockaddr *)&addr, &addrlen);
+    } while (new_fd == -1 && errno == EINTR);
+    if (new_fd == -1) {
+        if (errno == EAGAIN) {
+            return PAL_SOCKET_ERR_IN_PROGRESS;
+        } else {
+            SOCKET_LOG_ERRNO(o, "accept");
+            return PAL_SOCKET_ERR_UNKNOWN;
+        }
+    }
+
+    pal_socket_obj *_new = pal_mem_calloc(sizeof(pal_socket_obj));
+    if (!_new) {
+        SOCKET_LOG(Error, o, "%s: Failed to calloc memory.", __func__);
+        return PAL_SOCKET_ERR_ALLOC;
+    }
+
+    _new->fd = new_fd;
+    _new->type = o->type;
+    _new->domain = o->domain;
+    _new->id = ++gsocket_count;
+    _new->state = PAL_SOCKET_ST_CONNECTED;
+    _new->remote_addr = addr;
+
+    if (!pal_socket_set_nonblock(_new)) {
+        close(new_fd);
+        pal_mem_free(_new);
+        return PAL_SOCKET_ERR_UNKNOWN;
+    }
+
+    *new_o = _new;
+    return PAL_SOCKET_ERR_OK;
+}
+
+static void pal_socket_handle_accept_cb(
+        HAPPlatformFileHandleRef fileHandle,
+        HAPPlatformFileHandleEvent fileHandleEvents,
+        void *context) {
+    pal_socket_obj *o = context;
+    pal_socket_obj *new_o = NULL;
+    pal_socket_err err = PAL_SOCKET_ERR_OK;
+
+    if (fileHandleEvents.hasErrorConditionPending) {
+        err = PAL_SOCKET_ERR_UNKNOWN;
+        o->state = PAL_SOCKET_ST_LISTENED;
+    } else if (fileHandleEvents.isReadyForWriting) {
+        err = pal_socket_accept_async(o, &new_o);
+        switch (err) {
+        case PAL_SOCKET_ERR_OK: {
+            char buf[64];
+            SOCKET_LOG(Debug, o, "Accept a connection from %s:%d",
+                pal_socket_addr_get_str_addr(&new_o->remote_addr, buf, sizeof(buf)),
+                pal_socket_addr_get_port(&new_o->remote_addr));
+        }
+        default:
+            o->state = PAL_SOCKET_ST_LISTENED;
+            break;
+        }
+    }
+    HAPPlatformFileHandleDeregister(o->handle);
+    o->handle = 0;
+
+    if (o->accepted_cb) {
+        o->accepted_cb(o, err, new_o, o->accepted_cb_arg);
+    }
+}
+
+pal_socket_err
+pal_socket_accept(pal_socket_obj *o, pal_socket_obj **new_o, pal_socket_accepted_cb accepted_cb, void *arg) {
+    HAPPrecondition(o);
+    HAPPrecondition(new_o);
+    HAPPrecondition(accepted_cb);
+
+    if (o->state != PAL_SOCKET_ST_LISTENED) {
+        SOCKET_LOG(Error, o, "%s: Invalid state.", __func__);
+        return PAL_SOCKET_ERR_INVALID_STATE;
+    }
+
+    pal_socket_err err = pal_socket_accept_async(o, new_o);
+    switch (err) {
+    case PAL_SOCKET_ERR_IN_PROGRESS:
+        if (HAPPlatformFileHandleRegister(&o->handle, o->fd, (HAPPlatformFileHandleEvent) {
+            .isReadyForReading = true,
+            .isReadyForWriting = false,
+            .hasErrorConditionPending = true
+        }, pal_socket_handle_accept_cb, o) != kHAPError_None) {
+            SOCKET_LOG(Error, o, "%s: Failed to register handle callback", __func__);
+            return PAL_SOCKET_ERR_UNKNOWN;
+        }
+        o->state = PAL_SOCKET_ST_ACCEPTING;
+        o->accepted_cb = accepted_cb;
+        o->accepted_cb_arg = arg;
+        SOCKET_LOG(Debug, o, "Accepting ...");
+        break;
+    case PAL_SOCKET_ERR_OK: {
+        char buf[64];
+        SOCKET_LOG(Debug, o, "Accept a connection from %s:%d",
+            pal_socket_addr_get_str_addr(&(*new_o)->remote_addr, buf, sizeof(buf)),
+            pal_socket_addr_get_port(&(*new_o)->remote_addr));
+        break;
+    }
+    default:
+        break;
+    }
+
+    return err;
+}
+
+static pal_socket_err pal_socket_connect_async(pal_socket_obj *o) {
+    int ret;
+
+    do {
+        ret = connect(o->fd, (struct sockaddr *)&o->remote_addr,
             pal_socket_addr_get_len(&o->remote_addr));
-    } while (rc == -1 && errno == EINTR);
-    if (rc == -1) {
+    } while (ret == -1 && errno == EINTR);
+    if (ret == -1) {
         if (errno == EINPROGRESS) {
             return PAL_SOCKET_ERR_IN_PROGRESS;
         } else {
@@ -252,27 +394,29 @@ static pal_socket_err pal_socket_connect_async(pal_socket_obj *o) {
     return PAL_SOCKET_ERR_OK;
 }
 
-static void pal_socket_handle_connection_cb(
+static void pal_socket_handle_connect_cb(
         HAPPlatformFileHandleRef fileHandle,
         HAPPlatformFileHandleEvent fileHandleEvents,
         void *context) {
-    char buf[64];
     pal_socket_obj *o = context;
-    pal_socket_err err;
+    pal_socket_err err = PAL_SOCKET_ERR_OK;
 
     if (fileHandleEvents.hasErrorConditionPending) {
         err = PAL_SOCKET_ERR_UNKNOWN;
+        o->state = PAL_SOCKET_ST_NONE;
     } else if (fileHandleEvents.isReadyForWriting) {
         err = pal_socket_connect_async(o);
         switch (err) {
-        case PAL_SOCKET_ERR_OK:
-            o->conn_state = PAL_SOCKET_CONN_ST_CONNECTED;
+        case PAL_SOCKET_ERR_OK: {
+            char buf[64];
+            o->state = PAL_SOCKET_ST_CONNECTED;
             SOCKET_LOG(Debug, o, "Connected to %s:%u",
                 pal_socket_addr_get_str_addr(&o->remote_addr, buf, sizeof(buf)),
                 pal_socket_addr_get_port(&o->remote_addr));
             break;
+        }
         default:
-            o->conn_state = PAL_SOCKET_CONN_ST_DISCONNECTED;
+            o->state = PAL_SOCKET_ST_NONE;
             break;
         }
     }
@@ -288,10 +432,10 @@ pal_socket_err pal_socket_connect(pal_socket_obj *o, const char *addr, uint16_t 
     pal_socket_connected_cb connected_cb, void *arg) {
     HAPPrecondition(o);
     HAPPrecondition(addr);
-    HAPPrecondition(o->listened == false);
+    HAPPrecondition(connected_cb);
 
-    if (o->conn_state != PAL_SOCKET_CONN_ST_DISCONNECTED) {
-        SOCKET_LOG(Error, o, "%s: Invalid connection state.", __func__);
+    if (o->state != PAL_SOCKET_ST_NONE) {
+        SOCKET_LOG(Error, o, "%s: Invalid state.", __func__);
         return PAL_SOCKET_ERR_INVALID_STATE;
     }
 
@@ -307,21 +451,21 @@ pal_socket_err pal_socket_connect(pal_socket_obj *o, const char *addr, uint16_t 
             .isReadyForReading = false,
             .isReadyForWriting = true,
             .hasErrorConditionPending = true
-        }, pal_socket_handle_connection_cb, o) != kHAPError_None) {
+        }, pal_socket_handle_connect_cb, o) != kHAPError_None) {
             SOCKET_LOG(Error, o, "%s: Failed to register handle callback", __func__);
             return PAL_SOCKET_ERR_UNKNOWN;
         }
-        o->conn_state = PAL_SOCKET_CONN_ST_CONNECTING;
+        o->state = PAL_SOCKET_ST_CONNECTING;
         o->connected_cb = connected_cb;
         o->connected_cb_arg = arg;
         SOCKET_LOG(Debug, o, "Connecting to %s:%u ...", addr, port);
         break;
     case PAL_SOCKET_ERR_OK:
-        o->conn_state = PAL_SOCKET_CONN_ST_CONNECTED;
+        o->state = PAL_SOCKET_ST_CONNECTED;
         SOCKET_LOG(Debug, o, "Connected to %s:%u", addr, port);
         break;
     default:
-        return err;
+        break;
     }
 
     return err;
