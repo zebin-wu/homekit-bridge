@@ -46,6 +46,8 @@ function _socket:listen(backlog) end
 
 ---Accept a connection on a socket.
 ---@return Socket object Socket object.
+---@return string addr Remote address.
+---@return integer port Remote port.
 function _socket:accept() end
 
 ---Send a message.
