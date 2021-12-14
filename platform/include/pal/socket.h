@@ -35,13 +35,16 @@ typedef enum {
  */
 typedef enum {
     PAL_SOCKET_ERR_OK,              /**< No error. */
-    PAL_SOCKET_TIMEOUT,             /**< Timeout. */
+    PAL_SOCKET_ERR_TIMEOUT,         /**< Timeout. */
     PAL_SOCKET_ERR_IN_PROGRESS,     /**< In progress. */
     PAL_SOCKET_ERR_UNKNOWN,         /**< Unknown. */
     PAL_SOCKET_ERR_ALLOC,           /**< Failed to alloc. */
     PAL_SOCKET_ERR_INVALID_ARG,     /**< Invalid argument. */
     PAL_SOCKET_ERR_INVALID_STATE,   /**< Invalid state. */
-    PAL_SOCKET_ERR_NOT_CONN,        /**< Not connected. */
+    PAL_SOCKET_ERR_CLOSED,          /**< The peer closed the connection. */
+    PAL_SOCKET_ERR_BUSY,            /**< Busy, try again later. */
+
+    PAL_SOCKET_ERR_COUNT,           /**< Error count, not error number. */
 } pal_socket_err;
 
 /**
@@ -68,7 +71,7 @@ void pal_socket_destroy(pal_socket_obj *o);
 /**
  * Set the timeout.
  */
-void pal_socket_set_timeout(uint32_t ms);
+void pal_socket_set_timeout(pal_socket_obj *o, uint32_t ms);
 
 /**
  * Bind a local IP address and port.
@@ -95,20 +98,25 @@ pal_socket_err pal_socket_listen(pal_socket_obj *o, int backlog);
  * @param o
  * @param err
  * @param new_o The pointer to the new socket object for the incoming connection.
+ * @param addr
+ * @param port
  * @param arg The last paramter of pal_socket_accept().
  */
-typedef void (*pal_socket_accepted_cb)(pal_socket_obj *o, pal_socket_err err, pal_socket_obj *new_o, void *arg);
+typedef void (*pal_socket_accepted_cb)(pal_socket_obj *o, pal_socket_err err,
+    pal_socket_obj *new_o, const char *addr, uint16_t port, void *arg);
 
 /**
  * Accept a connection.
  *
  * @param o The pointer to the socket object.
  * @param new_o
+ * @param addr
+ * @param addrlen
  * @param accepted_cb A callback called when the socket accepted a new connection.
  * @param arg The value to be passed as the last argument to accept_cb.
  * @returns zero on success, error number on error.
  */
-pal_socket_err pal_socket_accept(pal_socket_obj *o, pal_socket_obj **new_o,
+pal_socket_err pal_socket_accept(pal_socket_obj *o, pal_socket_obj **new_o, char *addr, size_t addrlen, uint16_t *port,
     pal_socket_accepted_cb accepted_cb, void *arg);
 
 /**
@@ -183,6 +191,8 @@ pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t len
  * @param err The error of the receive procress.
  * @param addr The remote address.
  * @param port The remote port.
+ * @param data
+ * @param len
  * @param arg The last paramter of pal_socket_recv().
  */
 typedef void (*pal_socket_recved_cb)(pal_socket_obj *o, pal_socket_err err,
@@ -198,6 +208,14 @@ typedef void (*pal_socket_recved_cb)(pal_socket_obj *o, pal_socket_err err,
  * @returns zero on success, error number on error.
  */
 pal_socket_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recved_cb recved_cb, void *arg);
+
+/**
+ * Get the error string.
+ * 
+ * @param err Socket error number.
+ * @returns the error string.
+ */
+const char *pal_socket_get_error_str(pal_socket_err err);
 
 #ifdef __cplusplus
 }
