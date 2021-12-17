@@ -12,9 +12,6 @@ local _socket = {}
 ---|'"INET"'    # IPv4 Internet protocols
 ---|'"INET6"'   # IPv6 Internet protocols
 
----@alias SocketOption
----|'"BROADCAST"'
-
 ---Create an endpoint for communication.
 ---@param type SocketType
 ---@param domain SocketDomain
@@ -25,10 +22,8 @@ function socket.create(type, domain) end
 ---@param ms integer Maximum time blocked in milliseconds.
 function _socket:settimeout(ms) end
 
----Set options.
----@param name SocketOption Option name.
----@param val any Option value.
-function _socket:setopt(name, val) end
+---Enable broadcast.
+function _socket:enablebroadcast() end
 
 ---Bind a socket to a local IP address and port.
 ---@param addr string Local address to use.
@@ -72,7 +67,7 @@ function _socket:recv(maxlen) end
 ---@return integer port The remote port.
 function _socket:recvfrom(maxlen) end
 
----Close the socket.
-function _socket:close() end
+---Destroy the socket object.
+function _socket:destroy() end
 
 return socket
