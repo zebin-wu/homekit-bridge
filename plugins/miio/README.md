@@ -3,6 +3,7 @@
 ## Introduction
 
 This plugin implement the [miio protocol](https://github.com/OpenMiHome/mihome-binary-protocol/blob/master/doc/PROTOCOL.md), and encapsulate the class `MiioDevice`, provide features:
+
 - Create a device object.
 - Start a request and receive the response asynchronously.
 - Automatically sync properties.
@@ -14,7 +15,7 @@ After the device is created, the plugin will search for the corresponding produc
 
 ### Get device token
 
-Refer to the following link: https://www.home-assistant.io/integrations/xiaomi_miio#retrieving-the-access-token
+Refer to the following link: <https://www.home-assistant.io/integrations/xiaomi_miio#retrieving-the-access-token>
 
 ### Write configuration
 
@@ -25,6 +26,7 @@ Name | Type | Description | Required | Example
 `name` | `string` | Accessory name | No | `"My device"`
 
 Example: config.lua
+
 ```lua
 return {
     bridge = {

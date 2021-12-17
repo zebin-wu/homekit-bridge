@@ -37,8 +37,10 @@ Xiaomi DC Variable Frequency Tower Fan | `dmaker.fan.p9`
 ## Getting started
 
 ### Attention
+
 After clone the repository to the local, please initialize submodules by the follow command:
-```
+
+```bash
 $ git submodule update --init
 ```
 
