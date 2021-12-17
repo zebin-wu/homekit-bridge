@@ -5,7 +5,6 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <string.h>
-#include <HAPBase.h>
 #include <embedfs.h>
 
 static const embedfs_dir *embedfs_subdir(const embedfs_dir *dir, const char *name) {
@@ -27,9 +26,9 @@ static const embedfs_dir *embedfs_subdir(const embedfs_dir *dir, const char *nam
 }
 
 const embedfs_file *embedfs_find_file(const embedfs_dir *dir, const char *path) {
-    size_t len = HAPStringGetNumBytes(path);
+    size_t len = strlen(path);
     char tmp[len + 1];
-    HAPRawBufferCopyBytes(tmp, path, len);
+    memcpy(tmp, path, len);
     tmp[len] = '\0';
 
     char *start = tmp;

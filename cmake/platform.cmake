@@ -23,12 +23,14 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/udp.h
     ${PLATFORM_INC_DIR}/pal/cipher.h
     ${PLATFORM_INC_DIR}/pal/md5.h
+    ${PLATFORM_INC_DIR}/pal/socket.h
 )
 
 # collect platform Linux sources
 set(PLATFORM_LINUX_SRCS
     ${PLATFORM_COMMON_SRC_DIR}/hap.c
     ${PLATFORM_COMMON_POSIX_SRC_DIR}/udp.c
+    ${PLATFORM_COMMON_POSIX_SRC_DIR}/socket.c
     ${PLATFORM_OPENSSL_SRC_DIR}/cipher.c
     ${PLATFORM_OPENSSL_SRC_DIR}/md5.c
     ${PLATFORM_LINUX_SRC_DIR}/board.c

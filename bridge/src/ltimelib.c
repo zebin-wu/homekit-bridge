@@ -30,16 +30,15 @@ static void ltime_sleep_cb(HAPPlatformTimerRef timer, void *context) {
     lua_State *L = app_get_lua_main_thread();
     lua_State *co = context;
     int status, nres;
+
+    HAPAssert(lua_gettop(L) == 0);
     status = lua_resume(co, L, 0, &nres);
-    if (status == LUA_OK || status == LUA_YIELD) {
-        if (status == LUA_OK) {
-            lua_resetthread(co);
-            lua_pushnil(L);
-            lua_rawsetp(L, LUA_REGISTRYINDEX, co);
-        }
-    } else {
+    if (status == LUA_OK) {
+        lc_freethread(co);
+    } else if (status != LUA_YIELD) {
         luaL_traceback(L, co, lua_tostring(co, -1), 1);
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
+        lc_freethread(co);
     }
 
     lua_settop(L, 0);
@@ -48,6 +47,7 @@ static void ltime_sleep_cb(HAPPlatformTimerRef timer, void *context) {
 
 static int ltime_sleep(lua_State *L) {
     lua_Integer ms = luaL_checkinteger(L, 1);
+    luaL_argcheck(L, ms >= 0, 1, "ms out of range");
 
     HAPPlatformTimerRef timer;
     if (HAPPlatformTimerRegister(&timer, (HAPTime)ms + HAPPlatformClockGetCurrent(),
@@ -114,9 +114,7 @@ static int ltime_timer_start(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     lua_Integer ms = luaL_checkinteger(L, 2);
-    if (ms < 0) {
-        luaL_error(L, "attemp to trigger before the current time");
-    }
+    luaL_argcheck(L, ms >= 0, 2, "ms out of range");
 
     lua_getfield(L, 1, "ctx");
     ltime_timer_ctx *ctx = lua_touserdata(L, -1);

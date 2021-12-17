@@ -15,6 +15,7 @@ set(BRIDGE_SRCS
     ${BRIDGE_SRC_DIR}/lc.c
     ${BRIDGE_SRC_DIR}/lhashlib.c
     ${BRIDGE_SRC_DIR}/lcipherlib.c
+    ${BRIDGE_SRC_DIR}/lsocketlib.c
     ${BRIDGE_SRC_DIR}/embedfs.c
 )
 
