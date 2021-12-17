@@ -74,6 +74,14 @@ void pal_socket_destroy(pal_socket_obj *o);
 void pal_socket_set_timeout(pal_socket_obj *o, uint32_t ms);
 
 /**
+ * Enable broadcast.
+ *
+ * @param o The pointer to the socket object.
+ * @returns zero on success, error number on error.
+ */
+pal_socket_err pal_socket_enable_broadcast(pal_socket_obj *o);
+
+/**
  * Bind a local IP address and port.
  *
  * @param o The pointer to the socket object.
