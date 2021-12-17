@@ -139,13 +139,12 @@ static int app_lua_run(lua_State *L) {
     lua_pushvalue(L, 2);
     lua_xmove(L, co, 1);
     status = lua_resume(co, L, 1, &nres);
-    if (status == LUA_OK || status == LUA_YIELD) {
-        if (status == LUA_OK) {
-            lc_freethread(co);
-        }
-    } else {
+    if (status == LUA_OK) {
+        lc_freethread(co);
+    } else if (status != LUA_YIELD) {
         luaL_traceback(L, co, lua_tostring(co, -1), 1);
         lua_error(L);
+        lc_freethread(co);
     }
     return 0;
 }
