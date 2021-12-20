@@ -51,4 +51,28 @@ function util.bin2hex(s)
     end)
 end
 
+---Serialize a Lua value.
+---@param v any Lua value
+---@return string
+local function serialize(v)
+    local t = type(v)
+    if t == "string" then
+        return "\"" .. v .. "\""
+    elseif t == "table" then
+        local s = "{"
+        for _k, _v in pairs(v) do
+            if type(_k) == "string" then
+                s = s .. _k .. ": "
+            end
+            s = s .. ("%s, "):format(serialize(_v))
+        end
+        s = s .. "}"
+        return s
+    else
+        return tostring(v)
+    end
+end
+
+util.serialize = serialize
+
 return util

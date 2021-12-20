@@ -3,25 +3,6 @@ local util = require "util"
 
 local logger = log.getLogger("testhap")
 
-local function fmtVal(v)
-    local t = type(v)
-    if t == "string" then
-        return "\"" .. v .. "\""
-    elseif t == "table" then
-        local s = "{"
-        for _k, _v in pairs(v) do
-            if type(_k) == "string" then
-                s = s .. _k .. ": "
-            end
-            s = s .. ("%s, "):format(fmtVal(_v))
-        end
-        s = s .. "}"
-        return s
-    else
-        return v
-    end
-end
-
 local function fillStr(n, fill)
     fill = fill or "0123456789"
     local s = ""
@@ -47,15 +28,7 @@ end
 ---@param v any Value.
 ---@param e any The expected value returned by ``fn``.
 local function logTestInfo(fn, t, k, v, e)
-    logger:info(("Testing %s() with %s.%s: %s = %s, expected: %s"):format(fn, t, k, type(v), fmtVal(v), e))
-end
-
----Format assert message.
----@param fn string Function name.
----@param e boolean The expected value returned by ``fn``.
----@return string message
-local function fmtAssertMsg(fn, e)
-    return ("assertion failed: %s() return %s"):format(fn, not e)
+    logger:info(("Testing %s() with %s.%s: %s = %s, expected: %s"):format(fn, t, k, type(v), util.serialize(v), e))
 end
 
 local function setField(t, k, v)
@@ -133,7 +106,7 @@ local function testAccessory(expect, primary, k, vals, log)
         local status = hap.init(accs.primary, { accs.bridged }, {
             updatedState = function (state) end
         })
-        assert(status == expect, fmtAssertMsg("init", expect))
+        assert(status == expect, ("assertion failed: init() return %s, except %s"):format(status, expect))
         if status then hap.deinit() end
     end
     testFn(_test, vals)
@@ -169,7 +142,7 @@ local function testService(expect, k, vals, log)
         end
         if k == "char" then
             table.insert(service.chars, v)
-        else  
+        else
             setField(service, k, v)
         end
         testAccessory(expect, false, "service", { service }, false)
