@@ -133,16 +133,14 @@ end
 ---@param obj MiioDevice Device object.
 local function recover(obj)
     obj.logger:debug("Recover connection ...")
-    local success = pcall(function (obj)
-        handshake(obj, function (obj, err)
-            if err == "None" then
-                obj.state = "INITED"
-                startSync(obj)
-                return
-            end
-            recover(obj)
-        end)
-    end, obj)
+    local success = pcall(handshake, obj, function (obj, err)
+        if err == "None" then
+            obj.state = "INITED"
+            startSync(obj)
+            return
+        end
+        recover(obj)
+    end)
     if success == false then
         time.createTimer(function (obj)
             recover(obj)

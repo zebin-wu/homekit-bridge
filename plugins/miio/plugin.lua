@@ -63,9 +63,7 @@ function plugin.gen(conf)
             return
         end
         -- Get product module, using pcall to catch exception.
-        local success, result = pcall(function (self)
-            return require("miio." .. info.model)
-        end, self)
+        local success, result = pcall(require, "miio." .. info.model)
         if success == false then
             logger:error("Cannot found the product.")
             logger:error(result)
