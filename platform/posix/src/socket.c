@@ -78,6 +78,7 @@ struct pal_socket_obj {
     pal_socket_recved_cb recved_cb;
     void *cb_arg;
 
+    HAPPlatformFileHandleCallback handle_cb;
     HAPPlatformFileHandleRef handle;
     HAPPlatformFileHandleEvent interests;
 
@@ -96,11 +97,6 @@ static const HAPLogObject socket_log_obj = {
 };
 
 static uint16_t gsocket_count;
-
-static void pal_socket_handle_event_cb(
-        HAPPlatformFileHandleRef fileHandle,
-        HAPPlatformFileHandleEvent fileHandleEvents,
-        void *context);
 
 static bool
 pal_socket_addr_set(pal_socket_addr *addr, pal_socket_domain domain, const char *str_addr, uint16_t port) {
@@ -225,6 +221,11 @@ static bool pal_socket_set_nonblock(pal_socket_obj *o) {
     return true;
 }
 
+static void pal_socket_enable_write(pal_socket_obj *o, bool flag) {
+    o->interests.isReadyForWriting = flag;
+    HAPPlatformFileHandleUpdateInterests(o->handle, o->interests, o->handle_cb, o);
+}
+
 static pal_socket_err pal_socket_accept_async(pal_socket_obj *o, pal_socket_obj **new_o, pal_socket_addr *addr) {
     int new_fd;
     socklen_t addrlen = sizeof(*addr);
@@ -252,6 +253,7 @@ static pal_socket_err pal_socket_accept_async(pal_socket_obj *o, pal_socket_obj 
     _new->id = ++gsocket_count;
     _new->state = PAL_SOCKET_ST_CONNECTED;
     _new->remote_addr = *addr;
+    _new->handle_cb = o->handle_cb;
 
     if (!pal_socket_set_nonblock(_new)) {
         close(new_fd);
@@ -261,7 +263,7 @@ static pal_socket_err pal_socket_accept_async(pal_socket_obj *o, pal_socket_obj 
 
     _new->interests.isReadyForReading = true;
     if (HAPPlatformFileHandleRegister(&_new->handle, _new->fd, _new->interests,
-        pal_socket_handle_event_cb, _new) != kHAPError_None) {
+        _new->handle_cb, _new) != kHAPError_None) {
         SOCKET_LOG(Error, o, "%s: Failed to register handle callback", __func__);
         return PAL_SOCKET_ERR_UNKNOWN;
     }
@@ -424,8 +426,7 @@ static void pal_socket_handle_connect_cb(
         break;
     }
 
-    o->interests.isReadyForWriting = false;
-    HAPPlatformFileHandleUpdateInterests(o->handle, o->interests, pal_socket_handle_event_cb, o);
+    pal_socket_enable_write(o, false);
 
     if (o->connected_cb) {
         o->connected_cb(o, err, o->cb_arg);
@@ -468,8 +469,7 @@ static void pal_socket_handle_send_cb(
 
     pal_socket_mbuf_out(o);
     if (!pal_socket_mbuf_top(o)) {
-        o->interests.isReadyForWriting = false;
-        HAPPlatformFileHandleUpdateInterests(o->handle, o->interests, pal_socket_handle_event_cb, o);
+        pal_socket_enable_write(o, false);
     }
 
     if (mbuf->sent_cb) {
@@ -511,7 +511,7 @@ static void pal_socket_handle_recv_cb(
         uint16_t port = pal_socket_addr_get_port(_sa);
         pal_socket_addr_get_str_addr(_sa, addr, sizeof(addr));
         o->receiving = false;
-        SOCKET_LOG(Debug, o, "Receive message(len=%zu) from %s:%u", len, addr, port);
+        SOCKET_LOG(Debug, o, "Received message(len=%zu) from %s:%u", len, addr, port);
         if (o->recved_cb) {
             o->recved_cb(o, err, addr, port, buf, len, o->cb_arg);
         }
@@ -526,7 +526,7 @@ static void pal_socket_handle_recv_cb(
     }
 }
 
-static void pal_socket_handle_event_cb(
+static void pal_socket_tcp_handle_event_cb(
         HAPPlatformFileHandleRef fileHandle,
         HAPPlatformFileHandleEvent fileHandleEvents,
         void *context) {
@@ -542,14 +542,31 @@ static void pal_socket_handle_event_cb(
         pal_socket_handle_accept_cb(fileHandle, fileHandleEvents, context);
         break;
     case PAL_SOCKET_ST_CONNECTED:
-        if (fileHandleEvents.isReadyForWriting) {
-            pal_socket_handle_send_cb(fileHandle, fileHandleEvents, context);
-        }
         if (fileHandleEvents.isReadyForReading) {
             pal_socket_handle_recv_cb(fileHandle, fileHandleEvents, context);
         }
+        if (fileHandleEvents.isReadyForWriting) {
+            pal_socket_handle_send_cb(fileHandle, fileHandleEvents, context);
+        }
     default:
         break;
+    }
+}
+
+static void pal_socket_udp_handle_event_cb(
+        HAPPlatformFileHandleRef fileHandle,
+        HAPPlatformFileHandleEvent fileHandleEvents,
+        void *context) {
+    pal_socket_obj *o = context;
+
+    HAPPrecondition(o->handle == fileHandle);
+    HAPPrecondition(o->state == PAL_SOCKET_ST_NONE);
+
+    if (fileHandleEvents.isReadyForReading) {
+        pal_socket_handle_recv_cb(fileHandle, fileHandleEvents, context);
+    }
+    if (fileHandleEvents.isReadyForWriting) {
+        pal_socket_handle_send_cb(fileHandle, fileHandleEvents, context);
     }
 }
 
@@ -576,10 +593,12 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_socket_domain domain
     case PAL_SOCKET_TYPE_TCP:
         _type = SOCK_STREAM;
         _protocol = IPPROTO_TCP;
+        o->handle_cb = pal_socket_tcp_handle_event_cb;
         break;
     case PAL_SOCKET_TYPE_UDP:
         _type = SOCK_DGRAM;
         _protocol = IPPROTO_UDP;
+        o->handle_cb = pal_socket_udp_handle_event_cb;
         break;
     default:
         HAPAssertionFailure();
@@ -597,7 +616,7 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_socket_domain domain
 
     o->interests.isReadyForReading = true;
     if (HAPPlatformFileHandleRegister(&o->handle, o->fd, o->interests,
-        pal_socket_handle_event_cb, o) != kHAPError_None) {
+        o->handle_cb, o) != kHAPError_None) {
         SOCKET_LOG(Error, o, "%s: Failed to register handle callback", __func__);
         goto err1;
     }
@@ -607,6 +626,7 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_socket_domain domain
     o->id = ++gsocket_count;
     o->mbuf_list_ptail = &o->mbuf_list_head;
 
+    SOCKET_LOG(Debug, o, "%s(type = %d, domain = %d) = %p", __func__, type, domain, o);
     return o;
 
 err1:
@@ -620,6 +640,7 @@ void pal_socket_destroy(pal_socket_obj *o) {
     if (!o) {
         return;
     }
+    SOCKET_LOG(Debug, o, "%s(%p)", __func__, o);
     close(o->fd);
     if (o->handle) {
         HAPPlatformFileHandleDeregister(o->handle);
@@ -661,6 +682,8 @@ pal_socket_err pal_socket_bind(pal_socket_obj *o, const char *addr, uint16_t por
     int ret;
     pal_socket_addr sa;
 
+    SOCKET_LOG(Debug, o, "%s(addr = \"%s\", port = %u)", __func__, addr, port);
+
     if (!pal_socket_addr_set(&sa, o->domain, addr, port)) {
         return PAL_SOCKET_ERR_INVALID_ARG;
     }
@@ -676,6 +699,8 @@ pal_socket_err pal_socket_bind(pal_socket_obj *o, const char *addr, uint16_t por
 
 pal_socket_err pal_socket_listen(pal_socket_obj *o, int backlog) {
     HAPPrecondition(o);
+
+    SOCKET_LOG(Debug, o, "%s(backlog = %d)", __func__, backlog);
 
     if (o->state != PAL_SOCKET_ST_NONE) {
         return PAL_SOCKET_ERR_INVALID_STATE;
@@ -709,6 +734,8 @@ pal_socket_accept(pal_socket_obj *o, pal_socket_obj **new_o, char *addr, size_t 
     HAPPrecondition(addrlen > 0);
     HAPPrecondition(port);
     HAPPrecondition(accepted_cb);
+
+    SOCKET_LOG(Debug, o, "%s()", __func__);
 
     if (o->state != PAL_SOCKET_ST_LISTENED) {
         return PAL_SOCKET_ERR_INVALID_STATE;
@@ -747,8 +774,7 @@ static void pal_socket_connect_timeout_cb(HAPPlatformTimerRef timer, void *conte
 
     o->timer = 0;
     o->state = PAL_SOCKET_ST_NONE;
-    o->interests.isReadyForWriting = false;
-    HAPPlatformFileHandleUpdateInterests(o->handle, o->interests, pal_socket_handle_event_cb, o);
+    pal_socket_enable_write(o, false);
 
     if (o->connected_cb) {
         o->connected_cb(o, PAL_SOCKET_ERR_TIMEOUT, o->cb_arg);
@@ -760,6 +786,8 @@ pal_socket_err pal_socket_connect(pal_socket_obj *o, const char *addr, uint16_t 
     HAPPrecondition(o);
     HAPPrecondition(addr);
     HAPPrecondition(connected_cb);
+
+    SOCKET_LOG(Debug, o, "%s(addr = \"%s\", port = %u)", __func__, addr, port);
 
     if (o->state != PAL_SOCKET_ST_NONE) {
         return PAL_SOCKET_ERR_INVALID_STATE;
@@ -778,8 +806,7 @@ pal_socket_err pal_socket_connect(pal_socket_obj *o, const char *addr, uint16_t 
             SOCKET_LOG(Error, o, "Failed to create timeout timer.");
             return PAL_SOCKET_ERR_UNKNOWN;
         }
-        o->interests.isReadyForWriting = true;
-        HAPPlatformFileHandleUpdateInterests(o->handle, o->interests, pal_socket_handle_event_cb, o);
+        pal_socket_enable_write(o, true);
         o->state = PAL_SOCKET_ST_CONNECTING;
         o->connected_cb = connected_cb;
         o->cb_arg = arg;
@@ -803,6 +830,8 @@ pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data, size_t len, 
         HAPPrecondition(data);
     }
 
+    SOCKET_LOG(Debug, o, "%s(len = %zu)", __func__, len);
+
     if (o->state != PAL_SOCKET_ST_CONNECTED) {
         return PAL_SOCKET_ERR_INVALID_STATE;
     }
@@ -823,8 +852,7 @@ pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data, size_t len, 
             return PAL_SOCKET_ERR_ALLOC;
         }
         pal_socket_mbuf_in(o, mbuf);
-        o->interests.isReadyForWriting = true;
-        HAPPlatformFileHandleUpdateInterests(o->handle, o->interests, pal_socket_handle_event_cb, o);
+        pal_socket_enable_write(o, true);
         SOCKET_LOG(Debug, o, "Sending packet(len=%zu) ...", len);
         break;
     }
@@ -851,6 +879,8 @@ pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t len
         HAPPrecondition(data);
     }
 
+    SOCKET_LOG(Debug, o, "%s(len = %zu, addr = %s, port = %u)", __func__, len, addr, port);
+
     if (o->state != PAL_SOCKET_ST_CONNECTED) {
         return PAL_SOCKET_ERR_INVALID_STATE;
     }
@@ -876,8 +906,7 @@ pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t len
             return PAL_SOCKET_ERR_ALLOC;
         }
         pal_socket_mbuf_in(o, mbuf);
-        o->interests.isReadyForWriting = true;
-        HAPPlatformFileHandleUpdateInterests(o->handle, o->interests, pal_socket_handle_event_cb, o);
+        pal_socket_enable_write(o, true);
         SOCKET_LOG(Debug, o, "Sending message(len=%zu) ...", len);
         break;
     }
@@ -896,8 +925,6 @@ static void pal_socket_recv_timeout_cb(HAPPlatformTimerRef timer, void *context)
 
     o->timer = 0;
     o->receiving = false;
-    o->interests.isReadyForWriting = false;
-    HAPPlatformFileHandleUpdateInterests(o->handle, o->interests, pal_socket_handle_event_cb, o);
 
     if (o->recved_cb) {
         o->recved_cb(o, PAL_SOCKET_ERR_TIMEOUT, NULL, 0, NULL, 0, o->cb_arg);
@@ -908,6 +935,8 @@ pal_socket_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recv
     HAPPrecondition(o);
     HAPPrecondition(maxlen > 0);
     HAPPrecondition(recved_cb);
+
+    SOCKET_LOG(Debug, o, "%s(maxlen = %zu)", __func__, maxlen);
 
     if (o->type == PAL_SOCKET_TYPE_TCP && o->state != PAL_SOCKET_ST_CONNECTED) {
         return PAL_SOCKET_ERR_INVALID_STATE;
