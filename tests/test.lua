@@ -1,5 +1,6 @@
 local suites = {
-    "testhap"
+    "testhap",
+    "testsocket"
 }
 
 local function run()

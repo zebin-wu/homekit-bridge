@@ -5,16 +5,16 @@ local socket = {}
 local _socket = {}
 
 ---@alias SocketType
----|'"TCP"'
----|'"UDP"'
+---|'"TCP"'     # Transmission Control Protocol
+---|'"UDP"'     # User Datagram Protocol
 
 ---@alias SocketDomain
 ---|'"INET"'    # IPv4 Internet protocols
 ---|'"INET6"'   # IPv6 Internet protocols
 
 ---Create an endpoint for communication.
----@param type SocketType
----@param domain SocketDomain
+---@param type SocketType Socket type.
+---@param domain SocketDomain Socket Domain.
 ---@return Socket object Socket object.
 function socket.create(type, domain) end
 

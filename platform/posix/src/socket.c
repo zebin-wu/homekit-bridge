@@ -307,14 +307,12 @@ pal_socket_send_async(pal_socket_obj *o, const void *data, size_t *len, pal_sock
             SOCKET_LOG_ERRNO(o, "sendto");
             return PAL_SOCKET_ERR_UNKNOWN;
         }
-    } else if (rc == 0) {
-        *len = 0;
-        return PAL_SOCKET_ERR_CLOSED;
     }
     if (rc != *len) {
         *len = rc;
         return PAL_SOCKET_ERR_IN_PROGRESS;
     }
+    *len = rc;
     return PAL_SOCKET_ERR_OK;
 }
 
@@ -453,6 +451,10 @@ static void pal_socket_handle_send_cb(
         issendto ? &mbuf->to_addr : NULL);
     switch (err) {
     case PAL_SOCKET_ERR_IN_PROGRESS:
+        if (o->type == PAL_SOCKET_TYPE_UDP) {
+            err = PAL_SOCKET_ERR_OK;
+            break;
+        }
         mbuf->pos += sent_len;
         return;
     case PAL_SOCKET_ERR_OK: {
@@ -473,7 +475,7 @@ static void pal_socket_handle_send_cb(
     }
 
     if (mbuf->sent_cb) {
-        mbuf->sent_cb(o, err, mbuf->arg);
+        mbuf->sent_cb(o, err, sent_len, mbuf->arg);
     }
     pal_mem_free(mbuf);
 }
@@ -544,8 +546,7 @@ static void pal_socket_tcp_handle_event_cb(
     case PAL_SOCKET_ST_CONNECTED:
         if (fileHandleEvents.isReadyForReading) {
             pal_socket_handle_recv_cb(fileHandle, fileHandleEvents, context);
-        }
-        if (fileHandleEvents.isReadyForWriting) {
+        } else if (fileHandleEvents.isReadyForWriting) {
             pal_socket_handle_send_cb(fileHandle, fileHandleEvents, context);
         }
     default:
@@ -560,12 +561,10 @@ static void pal_socket_udp_handle_event_cb(
     pal_socket_obj *o = context;
 
     HAPPrecondition(o->handle == fileHandle);
-    HAPPrecondition(o->state == PAL_SOCKET_ST_NONE);
 
     if (fileHandleEvents.isReadyForReading) {
         pal_socket_handle_recv_cb(fileHandle, fileHandleEvents, context);
-    }
-    if (fileHandleEvents.isReadyForWriting) {
+    } else if (fileHandleEvents.isReadyForWriting) {
         pal_socket_handle_send_cb(fileHandle, fileHandleEvents, context);
     }
 }
@@ -823,71 +822,37 @@ pal_socket_err pal_socket_connect(pal_socket_obj *o, const char *addr, uint16_t 
     return err;
 }
 
-pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data, size_t len, pal_socket_sent_cb sent_cb, void *arg) {
-    HAPPrecondition(o);
-    HAPPrecondition(sent_cb);
-    if (len > 0) {
-        HAPPrecondition(data);
-    }
-
-    SOCKET_LOG(Debug, o, "%s(len = %zu)", __func__, len);
-
-    if (o->state != PAL_SOCKET_ST_CONNECTED) {
-        return PAL_SOCKET_ERR_INVALID_STATE;
-    }
-
-    size_t sent_len;
-    pal_socket_err err;
-    if (pal_socket_mbuf_top(o)) {
-        sent_len = 0;
-        err = PAL_SOCKET_ERR_IN_PROGRESS;
-    } else {
-        sent_len = len;
-        err = pal_socket_send_async(o, data, &sent_len, NULL);
-    }
-    switch (err) {
-    case PAL_SOCKET_ERR_IN_PROGRESS: {
-        pal_socket_mbuf *mbuf = pal_socket_mbuf_create(data + sent_len, len - sent_len, NULL, sent_cb, arg);
-        if (!mbuf) {
-            return PAL_SOCKET_ERR_ALLOC;
-        }
-        pal_socket_mbuf_in(o, mbuf);
-        pal_socket_enable_write(o, true);
-        SOCKET_LOG(Debug, o, "Sending packet(len=%zu) ...", len);
-        break;
-    }
-    case PAL_SOCKET_ERR_OK: {
-        char addr[64];
-        SOCKET_LOG(Debug, o, "Sent packet(len=%zd) to %s:%u", len,
-            pal_socket_addr_get_str_addr(&o->remote_addr, addr, sizeof(addr)),
-            pal_socket_addr_get_port(&o->remote_addr));
-        break;
-    }
-    default:
-        break;
-    }
-
-    return err;
+pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data,
+    size_t *len, pal_socket_sent_cb sent_cb, void *arg) {
+    return pal_socket_sendto(o, data, len, NULL, 0, sent_cb, arg);
 }
 
-pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t len,
+pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t *len,
     const char *addr, uint16_t port, pal_socket_sent_cb sent_cb, void *arg) {
     HAPPrecondition(o);
-    HAPPrecondition(addr);
     HAPPrecondition(sent_cb);
-    if (len > 0) {
+    HAPPrecondition(len);
+    if (*len > 0) {
         HAPPrecondition(data);
     }
 
-    SOCKET_LOG(Debug, o, "%s(len = %zu, addr = %s, port = %u)", __func__, len, addr, port);
-
-    if (o->state != PAL_SOCKET_ST_CONNECTED) {
-        return PAL_SOCKET_ERR_INVALID_STATE;
+    if (addr) {
+        SOCKET_LOG(Debug, o, "sendto(len = %zu, addr = \"%s\", port = %u)", *len, addr, port);
+    } else {
+        SOCKET_LOG(Debug, o, "send(len = %zu)", *len);
     }
 
+    char buf[64];
+    pal_socket_addr *psa = NULL;
     pal_socket_addr sa;
-    if (!pal_socket_addr_set(&sa, o->domain, addr, port)) {
-        return PAL_SOCKET_ERR_INVALID_ARG;
+    if (addr) {
+        psa = &sa;
+        if (!pal_socket_addr_set(psa, o->domain, addr, port)) {
+            return PAL_SOCKET_ERR_INVALID_ARG;
+        }
+    } else {
+        addr = pal_socket_addr_get_str_addr(&o->remote_addr, buf, sizeof(buf));
+        port = pal_socket_addr_get_port(&o->remote_addr);
     }
 
     size_t sent_len;
@@ -896,26 +861,34 @@ pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t len
         sent_len = 0;
         err = PAL_SOCKET_ERR_IN_PROGRESS;
     } else {
-        sent_len = len;
-        err = pal_socket_send_async(o, data, &sent_len, &sa);
+        sent_len = *len;
+        err = pal_socket_send_async(o, data, &sent_len, psa);
     }
     switch (err) {
     case PAL_SOCKET_ERR_IN_PROGRESS: {
-        pal_socket_mbuf *mbuf = pal_socket_mbuf_create(data + sent_len, len - sent_len, &sa, sent_cb, arg);
+        if (o->type == PAL_SOCKET_TYPE_UDP) {
+            SOCKET_LOG(Debug, o, "Only sent message(len=%zu, total len = %zu) to %s:%u",
+                sent_len, *len, addr, port);
+            err = PAL_SOCKET_ERR_OK;
+            break;
+        }
+        pal_socket_mbuf *mbuf = pal_socket_mbuf_create(data + sent_len, *len - sent_len, psa, sent_cb, arg);
         if (!mbuf) {
             return PAL_SOCKET_ERR_ALLOC;
         }
         pal_socket_mbuf_in(o, mbuf);
         pal_socket_enable_write(o, true);
-        SOCKET_LOG(Debug, o, "Sending message(len=%zu) ...", len);
+        SOCKET_LOG(Debug, o, "Sending message(len=%zu) ...", *len);
         break;
     }
     case PAL_SOCKET_ERR_OK:
-        SOCKET_LOG(Debug, o, "Sent message(len=%zu) to %s:%u", len, addr, port);
+        SOCKET_LOG(Debug, o, "Sent message(len=%zu) to %s:%u", *len, addr, port);
         break;
     default:
         break;
     }
+
+    *len = sent_len;
 
     return err;
 }
@@ -973,7 +946,6 @@ const char *pal_socket_get_error_str(pal_socket_err err) {
         [PAL_SOCKET_ERR_ALLOC] = "failed to alloc",
         [PAL_SOCKET_ERR_INVALID_ARG] = "invalid argument",
         [PAL_SOCKET_ERR_INVALID_STATE] = "invalid state",
-        [PAL_SOCKET_ERR_CLOSED] = "the peer closed the connection",
         [PAL_SOCKET_ERR_BUSY] = "busy now, try again later",
     };
     return err_strs[err];
