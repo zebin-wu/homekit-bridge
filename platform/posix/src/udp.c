@@ -10,7 +10,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include <sys/select.h>
 #include <pal/udp.h>
 #include <pal/memory.h>
 
@@ -119,17 +118,6 @@ static void pal_udp_del_mbuf_list(pal_udp *udp) {
         pal_mem_free(cur);
     }
     udp->mbuf_list_ptail = &udp->mbuf_list_head;
-}
-
-static bool pal_udp_socket_writable(pal_udp *udp) {
-    fd_set write_fds;
-    struct timeval tv = {
-        .tv_sec = 0,
-        .tv_usec = 0
-    };
-    FD_ZERO(&write_fds);
-    FD_SET(udp->fd, &write_fds);
-    return select(udp->fd + 1, NULL, &write_fds, NULL, &tv) == 1 && FD_ISSET(udp->fd, &write_fds);
 }
 
 static void pal_udp_raw_recv(pal_udp *udp) {
@@ -442,10 +430,6 @@ pal_net_err pal_udp_send(pal_udp *udp, const void *data, size_t len) {
 
     UDP_LOG(Debug, udp, "%s(len = %zu)", __func__, len);
 
-    if (pal_udp_socket_writable(udp)) {
-        return pal_udp_send_sync(udp, NULL, 0, data, len);
-    }
-
     pal_udp_mbuf *mbuf = pal_mem_alloc(sizeof(*mbuf) + len);
     if (!mbuf) {
         UDP_LOG(Error, udp, "%s: Failed to alloc memory.", __func__);
@@ -476,10 +460,6 @@ pal_net_err pal_udp_sendto(pal_udp *udp, const void *data, size_t len,
     }
 
     UDP_LOG(Debug, udp, "%s(len = %zu, addr = %s, port = %u)", __func__, len, addr, port);
-
-    if (pal_udp_socket_writable(udp)) {
-        return pal_udp_send_sync(udp, addr, port, data, len);
-    }
 
     switch (udp->domain) {
     case PAL_NET_DOMAIN_INET: {
