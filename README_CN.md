@@ -90,20 +90,12 @@ $ homekit-bridge
 
 根据ESP-IDF官方文档[快速入门](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/get-started/index.html)准备环境。
 
-目前经过测试的ESP-IDF版本为**v4.3.1**，通过以下命令切换到该版本：
+目前经过测试的ESP-IDF版本为**v4.3.2**，通过以下命令切换到该版本：
 
 ```bash
 $ git fetch --tag
-$ git checkout v4.3.1
+$ git checkout v4.3.2
 $ git submodule update
-```
-
-ESP-IDF当前使用的MbedTLS版本为2.16.x，然而HomeKit ADK最低需要2.18版本的MbedTLS。目前维护了一个分支[mbedtls-2.16.6-adk](https://github.com/espressif/mbedtls/tree/mbedtls-2.16.6-adk)，在2.16之上包含了2.18的补丁，可以根据以下步骤切换到该分支：
-
-```bash
-$ cd $IDF_PATH/components/mbedtls/mbedtls
-$ git pull
-$ git checkout -b mbedtls-2.16.6-adk origin/mbedtls-2.16.6-adk
 ```
 
 #### 编译、烧录和运行

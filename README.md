@@ -88,20 +88,12 @@ The configuration script `config.lua` is placed in `/usr/local/lib/homekit-bridg
 
 Set up the host environment and ESP-IDF as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
 
-The currently tested ESP-IDF version is **v4.3.1**, switch to this version with the following command:
+The currently tested ESP-IDF version is **v4.3.2**, switch to this version with the following command:
 
 ```bash
 $ git fetch --tag
-$ git checkout v4.3.1
+$ git checkout v4.3.2
 $ git submodule update
-```
-
-ESP-IDF currently uses MbedTLS 2.16.x, whereas HomeKit ADK requires 2.18. A branch mbedtls-2.16.6-adk is being maintained [here](https://github.com/espressif/mbedtls/tree/mbedtls-2.16.6-adk) which has the required patches from 2.18, on top of 2.16.6. To switch to this, follow these steps:
-
-```bash
-$ cd $IDF_PATH/components/mbedtls/mbedtls
-$ git pull
-$ git checkout -b mbedtls-2.16.6-adk origin/mbedtls-2.16.6-adk
 ```
 
 #### Compile and flash
