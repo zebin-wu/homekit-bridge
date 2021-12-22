@@ -1,13 +1,15 @@
 # directory
 set(ADK_DIR ${TOP_DIR}/ext/HomeKitAdk)
-set(ADK_INC_DIR
+set(ADK_PAL_LINUX_DIR ${ADK_DIR}/PAL/Linux)
+
+set(ADK_INC_DIRS
     ${ADK_DIR}/HAP
     ${ADK_DIR}/PAL
+    ${ADK_DIR}/PAL/Crypto/MbedTLS
     ${ADK_DIR}/External/Base64
     ${ADK_DIR}/External/JSON
     ${ADK_DIR}/External/HTTP
 )
-set(ADK_PAL_LINUX_DIR ${ADK_DIR}/PAL/Linux)
 
 # collect adk sources
 set(ADK_SRCS
@@ -106,9 +108,10 @@ set(ADK_PAL_LINUX
     ${ADK_PAL_LINUX_DIR}/HAPPlatformServiceDiscovery.c
 )
 
-set(ADK_PAL_MBEDTLS_SRCS 
+set(ADK_PAL_MBEDTLS_SRCS
     ${ADK_DIR}/PAL/Crypto/MbedTLS/HAPMbedTLS.c
 )
+
 set(ADK_PAL_OPENSSL_SRCS
     ${ADK_DIR}/PAL/Crypto/OpenSSL/HAPOpenSSL.c
 )
