@@ -88,7 +88,7 @@ check_style(cstyle ${TOP_DIR}
 # add include directories
 target_include_directories(${PROJECT}
     PRIVATE
-        ${ADK_INC_DIR}
+        ${ADK_INC_DIRS}
         ${ADK_PAL_LINUX_DIR}
         ${BRIDGE_INC_DIR}
         ${LUA_INC_DIR}
