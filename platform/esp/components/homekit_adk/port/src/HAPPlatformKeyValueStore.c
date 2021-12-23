@@ -57,7 +57,7 @@ end:
     keyValueStore->namespace_prefix = strdup(options->namespace_prefix);
     keyValueStore->read_only = options->read_only;
 
-    HAPLog(&logObject, "keyValueStore %s Initialized", keyValueStore->part_name);
+    HAPLog(&logObject, "KeyValueStore \"%s\" Initialized.", keyValueStore->part_name);
 }
 
 /**
@@ -76,7 +76,13 @@ static esp_err_t HAPPlatformKeyValueStoreGetHandle(
     HAPPrecondition(keyValueStore->namespace_prefix);
     char name_space[15];
     snprintf(name_space, sizeof(name_space), "%s.%02X", keyValueStore->namespace_prefix, domain);
-    return nvs_open_from_partition(keyValueStore->part_name, name_space, NVS_READWRITE, store_handle);
+    esp_err_t err = nvs_open_from_partition(keyValueStore->part_name, name_space, NVS_READWRITE, store_handle);
+    if (err != ESP_OK) {
+        HAPLogError(&logObject, "Failed to open NVS!");
+        HAPLogDebug(&logObject, "nvs_open_from_partition(part_name=\"%s\", name=\"%s\") returned %s",
+            keyValueStore->part_name, name_space, esp_err_to_name(err));
+    }
+    return err;
 }
 
 HAP_RESULT_USE_CHECK
@@ -99,11 +105,10 @@ HAPError HAPPlatformKeyValueStoreGet(
 
     err = HAPPlatformKeyValueStoreGetHandle(keyValueStore, domain, &store_handle);
     if (err != ESP_OK) {
-        HAPLogError(&logObject, "Error (%d) opening NVS!", err);
         return kHAPError_Unknown;
     }
 
-    char keyname[15]; /* 15 is max key length for NVS */
+    char keyname[3];
     snprintf(keyname, sizeof(keyname), "%02X", key);
 
     size_t num_bytes = maxBytes;
@@ -113,7 +118,8 @@ HAPError HAPPlatformKeyValueStoreGet(
     nvs_close(store_handle);
     /* Checking error code after nvs_close(), because the close has to be called in any case */
     if (err != ESP_OK) {
-        HAPLog(&logObject, "Error (%d). Key %02X not found in KeyStore", err, key);
+        HAPLog(&logObject, "Key %02X.%02X not found in KeyStore.", domain, key);
+        HAPLogDebug(&logObject, "%s() returned %s", "nvs_get_blob", esp_err_to_name(err));
         return kHAPError_None;
     }
     *found = true;
@@ -146,15 +152,15 @@ HAPError HAPPlatformKeyValueStoreSet(
     esp_err_t err;
     err = HAPPlatformKeyValueStoreGetHandle(keyValueStore, domain, &store_handle);
     if (err != ESP_OK) {
-        HAPLogError(&logObject, "Error (%d) opening NVS!", err);
         return kHAPError_Unknown;
     }
 
-    char keyname[15]; /* 15 is max key length for NVS */
+    char keyname[3];
     snprintf(keyname, sizeof(keyname), "%02X", key);
     err = nvs_set_blob(store_handle, keyname, (const void *) bytes, (size_t) numBytes);
     if (err != ESP_OK) {
-        HAPLogError(&logObject, "Error (%d) setting NVS blob!", err);
+        HAPLogError(&logObject, "Failed to set NVS blob!");
+        HAPLogDebug(&logObject, "%s() returned %s", "nvs_set_blob", esp_err_to_name(err));
         nvs_close(store_handle);
         return kHAPError_Unknown;
     }
@@ -163,7 +169,8 @@ HAPError HAPPlatformKeyValueStoreSet(
     nvs_close(store_handle);
     /* Checking error code after nvs_close(), because the close has to be called in any case */
     if (err != ESP_OK) {
-        HAPLogError(&logObject, "Error (%d) committing to NVS!", err);
+        HAPLogError(&logObject, "Failed to commit to NVS!");
+        HAPLogDebug(&logObject, "%s() returned %s", "nvs_commit", esp_err_to_name(err));
         return kHAPError_Unknown;
     }
 
@@ -187,7 +194,6 @@ HAPError HAPPlatformKeyValueStoreRemove(
     esp_err_t err;
     err = HAPPlatformKeyValueStoreGetHandle(keyValueStore, domain, &store_handle);
     if (err != ESP_OK) {
-        HAPLogError(&logObject, "Error (%d) opening NVS!", err);
         return kHAPError_Unknown;
     }
 
@@ -195,7 +201,8 @@ HAPError HAPPlatformKeyValueStoreRemove(
     snprintf(keyname, sizeof(keyname), "%02X", key);
     err = nvs_erase_key(store_handle, keyname);
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
-        HAPLogError(&logObject, "Error (%d) erasing NVS key!", err);
+        HAPLogError(&logObject, "Failed to erase NVS key!");
+        HAPLogDebug(&logObject, "%s() returned %s", "nvs_erase_key", esp_err_to_name(err));
         nvs_close(store_handle);
         return kHAPError_Unknown;
     }
@@ -204,7 +211,8 @@ HAPError HAPPlatformKeyValueStoreRemove(
     nvs_close(store_handle);
     /* Checking error code after nvs_close(), because the close has to be called in any case */
     if (err != ESP_OK) {
-        HAPLogError(&logObject, "Error (%d) committing to NVS!", err);
+        HAPLogError(&logObject, "Failed to commit to NVS!");
+        HAPLogDebug(&logObject, "%s() returned %s", "nvs_commit", esp_err_to_name(err));
         return kHAPError_Unknown;
     }
 
@@ -255,13 +263,13 @@ HAPError HAPPlatformKeyValueStorePurgeDomain(
     esp_err_t err;
     err = HAPPlatformKeyValueStoreGetHandle(keyValueStore, domain, &store_handle);
     if (err != ESP_OK) {
-        HAPLogError(&logObject, "Error (%d) opening NVS!", err);
         return kHAPError_Unknown;
     }
 
     err = nvs_erase_all(store_handle);
     if (err != ESP_OK) {
-        HAPLogError(&logObject, "Error (%d) erasing NVS namespace!", err);
+        HAPLogError(&logObject, "Failed to erase NVS namespace!");
+        HAPLogDebug(&logObject, "%s() returned %s", "nvs_erase_all", esp_err_to_name(err));
         nvs_close(store_handle);
         return kHAPError_Unknown;
     }
@@ -270,7 +278,8 @@ HAPError HAPPlatformKeyValueStorePurgeDomain(
     nvs_close(store_handle);
     /* Checking error code after nvs_close(), because the close has to be called in any case */
     if (err != ESP_OK) {
-        HAPLogError(&logObject, "Error (%d) committing to NVS!", err);
+        HAPLogError(&logObject, "Failed to commit to NVS!");
+        HAPLogDebug(&logObject, "%s() returned %s", "nvs_commit", esp_err_to_name(err));
         return kHAPError_Unknown;
     }
     return kHAPError_None;
