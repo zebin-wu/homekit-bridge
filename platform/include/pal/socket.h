@@ -102,11 +102,11 @@ pal_socket_err pal_socket_listen(pal_socket_obj *o, int backlog);
 /**
  * A callback called when the socket accepted a new connection.
  *
- * @param o
- * @param err
+ * @param o The pointer to the socket object.
+ * @param err The error of the accept procress.
  * @param new_o The pointer to the new socket object for the incoming connection.
- * @param addr
- * @param port
+ * @param addr The remote address.
+ * @param port The remote port.
  * @param arg The last paramter of pal_socket_accept().
  */
 typedef void (*pal_socket_accepted_cb)(pal_socket_obj *o, pal_socket_err err,
@@ -116,9 +116,9 @@ typedef void (*pal_socket_accepted_cb)(pal_socket_obj *o, pal_socket_err err,
  * Accept a connection.
  *
  * @param o The pointer to the socket object.
- * @param new_o
- * @param addr
- * @param addrlen
+ * @param new_o The pointer to the new socket object for the incoming connection.
+ * @param addr The buffer for storing the remote address.
+ * @param addrlen The length of the buffer.
  * @param accepted_cb A callback called when the socket accepted a new connection.
  * @param arg The value to be passed as the last argument to accept_cb.
  * @returns zero on success, error number on error.
@@ -164,8 +164,8 @@ typedef void (*pal_socket_sent_cb)(pal_socket_obj *o, pal_socket_err err, size_t
  * Send a message.
  *
  * @param o The pointer to the socket object.
- * @param buf A pointer to the data to be send.
- * @param len Length of the data to be send.
+ * @param buf A pointer to the data to be sent.
+ * @param len Length of the data to be sent.
  * @param sent_cb A callback called when the message is sent.
  * @param arg The value to be passed as the last argument to sent_cb.
  * @returns zero on success, error number on error.
@@ -178,8 +178,8 @@ pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data, size_t *len,
  * Send a message to remote addr and port.
  *
  * @param o The pointer to the socket object.
- * @param buf A pointer to the data to be send.
- * @param len Length of the data to be send.
+ * @param buf A pointer to the data to be sent.
+ * @param len Length of the data to be sent.
  * @param addr Remote address to use.
  * @param port Remote port number, in host order.
  * @param sent_cb A callback called when the message is sent.
@@ -198,8 +198,8 @@ pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t *le
  * @param err The error of the receive procress.
  * @param addr The remote address.
  * @param port The remote port.
- * @param data
- * @param len
+ * @param data The received data.
+ * @param len The length of the received data.
  * @param arg The last paramter of pal_socket_recv().
  */
 typedef void (*pal_socket_recved_cb)(pal_socket_obj *o, pal_socket_err err,
