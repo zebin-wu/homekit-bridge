@@ -73,6 +73,11 @@ void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store) {
 #if IP
 void
 pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t readable_cnt, size_t writable_cnt, size_t notify_cnt) {
+    HAPPrecondition(options);
+    HAPPrecondition(readable_cnt);
+    HAPPrecondition(writable_cnt);
+    HAPPrecondition(notify_cnt);
+
     // Prepare accessory server storage.
     static HAPIPSession ipSessions[PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS];
     static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE];
@@ -106,6 +111,8 @@ pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t readable_cnt, size_t 
 }
 
 void pal_hap_deinit_ip(HAPAccessoryServerOptions *options) {
+    HAPPrecondition(options);
+
     HAPIPAccessoryServerStorage *storage = options->ip.accessoryServerStorage;
     for (size_t i = 0; i < storage->numSessions; i++) {
         pal_mem_free(storage->sessions[i].eventNotifications);
@@ -117,6 +124,8 @@ void pal_hap_deinit_ip(HAPAccessoryServerOptions *options) {
 
 #if BLE
 void pal_hap_init_ble(HAPAccessoryServerOptions *options, size_t attribute_cnt) {
+    HAPPrecondition(options);
+
     static HAPBLESessionCacheElementRef sessionCacheElements[kHAPBLESessionCache_MinElements];
     static HAPSessionRef session;
     static uint8_t procedureBytes[2048];
@@ -143,6 +152,8 @@ void pal_hap_init_ble(HAPAccessoryServerOptions *options, size_t attribute_cnt) 
 }
 
 void pal_hap_deinit_ble(HAPAccessoryServerOptions *options) {
+    HAPPrecondition(options);
+
     pal_mem_free(options->ble.accessoryServerStorage->gattTableElements);
 }
 #endif

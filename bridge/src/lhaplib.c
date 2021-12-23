@@ -2523,6 +2523,16 @@ parse_cb:
         }
     }
 
+    if (readable_cnt == 0) {
+        readable_cnt = 1;
+    }
+    if (writable_cnt == 0) {
+        writable_cnt = 1;
+    }
+    if (notify_cnt == 0) {
+        notify_cnt = 1;
+    }
+
     pal_hap_init_ip(&desc->server_options, readable_cnt, writable_cnt, notify_cnt);
 #endif
 
