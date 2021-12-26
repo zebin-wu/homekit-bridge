@@ -1,0 +1,32 @@
+name: Linux CI
+
+on:
+  pull_request:
+  push:
+    branches: master
+
+jobs:
+  linux-build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Prepare enviroment
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            cmake ninja-build clang \
+            libavahi-compat-libdnssd-dev \
+            libssl-dev python3-pip
+          sudo pip3 install cpplint
+
+      - name: Linux build
+        run: |
+          mkdir build
+          cd build
+          cmake -G Ninja ..
+          ninja
