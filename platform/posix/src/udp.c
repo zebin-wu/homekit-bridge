@@ -178,8 +178,7 @@ static void pal_udp_raw_recv(pal_udp *udp) {
             HAPAssertionFailure();
         }
     }
-    HAPLogBufferDebug(&udp_log_obj, buf, rc, "(id=%u) Receive packet(len=%zd) from %s:%u",
-        udp->id, rc, from_addr, from_port);
+    UDP_LOG(Debug, udp, "Receive packet(len=%zd) from %s:%u", rc, from_addr, from_port);
     if (udp->recv_cb) {
         udp->recv_cb(udp, buf, rc, from_addr, from_port, udp->recv_arg);
     }
@@ -238,8 +237,7 @@ static pal_net_err pal_udp_send_sync(pal_udp *udp, const char *addr, uint16_t po
         }
         return PAL_NET_ERR_UNKNOWN;
     }
-    HAPLogBufferDebug(&udp_log_obj, data, len,
-        "(id=%u) Sent packet(len=%zd) to %s:%u", udp->id,
+    UDP_LOG(Debug, udp, "Sent packet(len=%zd) to %s:%u",
         len, addr ? addr : udp->remote_addr,
         addr ? port : udp->remote_port);
     return PAL_NET_ERR_OK;
