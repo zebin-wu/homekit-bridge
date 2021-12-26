@@ -8,14 +8,21 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: espressif/idf:release-v4.3
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v1
       with:
-        submodules: 'recursive'
+        submodules: 'true'
+
+    - name: Prepare enviroment
+      run: |
+        apt update
+        apt install -y xxd
 
     - name: ESP-IDF build
-      uses: espressif/esp-idf-ci-action@release-v4.3
-      with:
-        path: 'platform/esp'
+      run: |
+        cd platform/esp
+        . $IDF_PATH/export.sh
+        idf.py build
