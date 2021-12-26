@@ -1,5 +1,6 @@
 return {
     bridge = {
+        version = "${PROJECT_VER}",
         name = "HomeKit Bridge"
     },
     plugins = {},

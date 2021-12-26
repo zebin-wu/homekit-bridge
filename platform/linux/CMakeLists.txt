@@ -98,7 +98,6 @@ target_include_directories(${PROJECT}
 # add definitions
 target_compile_definitions(${PROJECT}
     PRIVATE
-        BRIDGE_VER="${PROJECT_VER}"
         BRIDGE_WORK_DIR="${BRIDGE_WORK_DIR}"
         BRIDGE_EMBEDFS_ROOT=${BRIDGE_EMBEDFS_ROOT}
         IP=1

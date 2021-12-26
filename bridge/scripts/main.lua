@@ -1,7 +1,7 @@
 local config = require "config"
 local core = require "core"
 local hap = require "hap"
-local board = require "board"
+local chip = require "chip"
 
 local logger = log.getLogger()
 
@@ -10,11 +10,11 @@ core.start(config.plugins, config.accessories, function (bridgedAccessories)
         aid = 1, -- Primary accessory must have aid 1.
         category = "Bridges",
         name = config.bridge.name or "HomeKit Bridge",
-        mfg = board.getInfo("mfg"),
-        model = board.getInfo("model"),
-        sn = board.getInfo("sn"),
-        fwVer = board.getInfo("fwver"),
-        hwVer = board.getInfo("hwver"),
+        mfg = chip.getInfo("mfg"),
+        model = chip.getInfo("model"),
+        sn = chip.getInfo("sn"),
+        fwVer = config.bridge.version,
+        hwVer = chip.getInfo("hwver"),
         services = {
             hap.AccessoryInformationService,
             hap.HapProtocolInformationService,

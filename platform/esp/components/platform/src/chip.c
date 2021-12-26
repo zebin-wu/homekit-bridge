@@ -4,9 +4,8 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#include <pal/board.h>
+#include <pal/chip.h>
 #include <esp_system.h>
-#include <esp_ota_ops.h>
 
 #define SERIAL_NUMBER_BUF_LEN (6 * 2 + 1)
 #define HARDWARE_VERSION_BUF_LEN 16
@@ -26,12 +25,12 @@ static char *format_mac(const uint8_t *mac, char *buf, size_t buf_len)
 	return buf;
 }
 
-const char *pal_board_get_manufacturer(void)
+const char *pal_chip_get_manufacturer(void)
 {
     return "Espressif";
 }
 
-const char *pal_board_get_model(void)
+const char *pal_chip_get_model(void)
 {
     const char *model;
     esp_chip_info_t info;
@@ -57,7 +56,7 @@ const char *pal_board_get_model(void)
     return model;
 }
 
-const char *pal_board_get_serial_number(void)
+const char *pal_chip_get_serial_number(void)
 {
     if (serial_number[0] != '\0') {
         return serial_number;
@@ -67,12 +66,7 @@ const char *pal_board_get_serial_number(void)
     return format_mac(mac, serial_number, sizeof(serial_number));
 }
 
-const char *pal_board_get_firmware_version(void)
-{
-    return esp_ota_get_app_description()->version;
-}
-
-const char *pal_board_get_hardware_version(void)
+const char *pal_chip_get_hardware_version(void)
 {
     if (hardware_version[0] != '\0') {
         return hardware_version;

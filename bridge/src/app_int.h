@@ -19,8 +19,8 @@ extern "C" {
  */
 #define APP_BRIDGE_LOG_SUBSYSTEM "com.apple.mfi.HomeKit.Bridge"
 
-#define LUA_BOARD_NAME "board"
-LUAMOD_API int luaopen_board(lua_State *L);
+#define LUA_CHIP_NAME "chip"
+LUAMOD_API int luaopen_chip(lua_State *L);
 
 #define LUA_CIPHER_NAME "cipher"
 LUAMOD_API int luaopen_cipher(lua_State *L);

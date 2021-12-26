@@ -16,7 +16,7 @@ set(PLATFORM_ESP_SRC_DIR ${PLATFORM_ESP_DIR}/src)
 
 # collect platform headers
 set(PLATFORM_HEADERS
-    ${PLATFORM_INC_DIR}/pal/board.h
+    ${PLATFORM_INC_DIR}/pal/chip.h
     ${PLATFORM_INC_DIR}/pal/memory.h
     ${PLATFORM_INC_DIR}/pal/hap.h
     ${PLATFORM_INC_DIR}/pal/net.h
@@ -33,7 +33,7 @@ set(PLATFORM_LINUX_SRCS
     ${PLATFORM_COMMON_POSIX_SRC_DIR}/socket.c
     ${PLATFORM_OPENSSL_SRC_DIR}/cipher.c
     ${PLATFORM_OPENSSL_SRC_DIR}/md5.c
-    ${PLATFORM_LINUX_SRC_DIR}/board.c
+    ${PLATFORM_LINUX_SRC_DIR}/chip.c
     ${PLATFORM_LINUX_SRC_DIR}/memory.c
     ${PLATFORM_LINUX_SRC_DIR}/main.c
 )
@@ -45,6 +45,6 @@ set(PLATFORM_ESP_SRCS
     ${PLATFORM_COMMON_POSIX_SRC_DIR}/socket.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/cipher.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/md5.c
-    ${PLATFORM_ESP_SRC_DIR}/board.c
+    ${PLATFORM_ESP_SRC_DIR}/chip.c
     ${PLATFORM_ESP_SRC_DIR}/memory.c
 )
