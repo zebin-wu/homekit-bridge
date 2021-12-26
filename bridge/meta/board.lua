@@ -1,24 +1,16 @@
 ---@class boardlib
 local board = {}
 
----Get manufacturer.
----@return string
-function board.getManufacturer() end
+---@alias BoardInfoType
+---|'"mfg"'     # Manufacturer
+---|'"model"'   # Model
+---|'"sn"'      # Serial number
+---|'"fwver"'   # Firmware version
+---|'"hwver"'   # Hardware version
 
----Get model.
+---Get board inforamtion.
+---@param type BoardInfoType
 ---@return string
-function board.getModel() end
-
----Get serial number.
----@return string
-function board.getSerialNumber() end
-
----Get firmware version.
----@return string
-function board.getFirmwareVersion() end
-
----Get hardware version.
----@return string
-function board.getHardwareVersion() end
+function board.getInfo(type) end
 
 return board

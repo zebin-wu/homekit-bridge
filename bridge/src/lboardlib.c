@@ -9,37 +9,35 @@
 
 #include "app_int.h"
 
-static int lboard_getManufacturer(lua_State *L) {
-    lua_pushstring(L, pal_board_get_manufacturer());
-    return 1;
-}
+typedef enum {
+    LBOARD_MFG,
+    LBOARD_MODEL,
+    LBOARD_SN,
+    LBOARD_FW_VER,
+    LBOARD_HW_VER,
+} lboard_info_type;
 
-static int lboard_getModel(lua_State *L) {
-    lua_pushstring(L, pal_board_get_model());
-    return 1;
-}
+static const char *(*lboard_get_info_funcs[])() = {
+    [LBOARD_MFG] = pal_board_get_manufacturer,
+    [LBOARD_MODEL] = pal_board_get_model,
+    [LBOARD_SN] = pal_board_get_serial_number,
+    [LBOARD_FW_VER] = pal_board_get_firmware_version,
+    [LBOARD_HW_VER] = pal_board_get_hardware_version,
+};
 
-static int lboard_getSerialNumber(lua_State *L) {
-    lua_pushstring(L, pal_board_get_serial_number());
-    return 1;
-}
-
-static int lboard_getFirmwareVersion(lua_State *L) {
-    lua_pushstring(L, pal_board_get_firmware_version());
-    return 1;
-}
-
-static int lboard_getHardwareVersion(lua_State *L) {
-    lua_pushstring(L, pal_board_get_hardware_version());
+static int lboard_get_info(lua_State *L) {
+    lua_pushstring(L, lboard_get_info_funcs[luaL_checkoption(L, 1, NULL, (const char *[]) {
+        [LBOARD_MFG] = "mfg",
+        [LBOARD_MODEL] = "model",
+        [LBOARD_SN] = "sn",
+        [LBOARD_FW_VER] = "fwver",
+        [LBOARD_HW_VER] = "hwver",
+    })]());
     return 1;
 }
 
 static const luaL_Reg lboard_funcs[] = {
-    {"getManufacturer", lboard_getManufacturer},
-    {"getModel", lboard_getModel},
-    {"getSerialNumber", lboard_getSerialNumber},
-    {"getFirmwareVersion", lboard_getFirmwareVersion},
-    {"getHardwareVersion", lboard_getHardwareVersion},
+    {"getInfo", lboard_get_info},
     {NULL, NULL},
 };
 

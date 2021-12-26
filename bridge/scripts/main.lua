@@ -10,11 +10,11 @@ core.start(config.plugins, config.accessories, function (bridgedAccessories)
         aid = 1, -- Primary accessory must have aid 1.
         category = "Bridges",
         name = config.bridge.name or "HomeKit Bridge",
-        mfg = board.getManufacturer(),
-        model = board.getModel(),
-        sn = board.getSerialNumber(),
-        fwVer = board.getFirmwareVersion(),
-        hwVer = board.getHardwareVersion(),
+        mfg = board.getInfo("mfg"),
+        model = board.getInfo("model"),
+        sn = board.getInfo("sn"),
+        fwVer = board.getInfo("fwver"),
+        hwVer = board.getInfo("hwver"),
         services = {
             hap.AccessoryInformationService,
             hap.HapProtocolInformationService,
