@@ -8,7 +8,7 @@ set(PLUGINS_DIR ${TOP_DIR}/plugins)
 set(SCRIPTS_DST_DIR ${CMAKE_BINARY_DIR}/bridge_scripts)
 
 # set extra component directroies
-set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/system/console/components)
+set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/system/console/advanced/components)
 
 # set the embedfs root
 set(BRIDGE_EMBEDFS_ROOT bridge_embedfs_root)
@@ -54,5 +54,6 @@ endif()
 target_add_lua_binary_embedfs(${PROJECT}.elf
     ${BRIDGE_EMBEDFS_ROOT}
     ${LUAC_BINARY}
+    DEBUG
     SRC_DIRS ${SCRIPTS_SRC_DIRS} ${PLUGINS_DIR}
 )
