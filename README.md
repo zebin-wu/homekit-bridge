@@ -88,11 +88,11 @@ The configuration script `config.lua` is placed in `/usr/local/lib/homekit-bridg
 
 Set up the host environment and ESP-IDF as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
 
-The currently tested ESP-IDF version is **v4.4-beta1**, switch to this version with the following command:
+The currently tested ESP-IDF version is **v4.3.2**, switch to this version with the following command:
 
 ```bash
 $ git fetch --tag
-$ git checkout v4.4-beta1
+$ git checkout v4.3.2
 $ git submodule update
 ```
 

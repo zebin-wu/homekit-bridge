@@ -90,11 +90,11 @@ $ homekit-bridge
 
 根据ESP-IDF官方文档[快速入门](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/get-started/index.html)准备环境。
 
-目前经过测试的ESP-IDF版本为**v4.4-beta1**，通过以下命令切换到该版本：
+目前经过测试的ESP-IDF版本为**v4.3.2**，通过以下命令切换到该版本：
 
 ```bash
 $ git fetch --tag
-$ git checkout v4.4-beta1
+$ git checkout v4.3.2
 $ git submodule update
 ```
 
