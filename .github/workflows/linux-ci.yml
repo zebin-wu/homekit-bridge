@@ -6,8 +6,8 @@ on:
     branches: master
 
 jobs:
-  linux-build:
-    runs-on: ubuntu-20.04
+  build:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code

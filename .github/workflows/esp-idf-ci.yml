@@ -1,0 +1,21 @@
+name: ESP-IDF CI
+
+on:
+  pull_request:
+  push:
+    branches: master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
+    - name: ESP-IDF build
+      uses: espressif/esp-idf-ci-action@release-v4.3
+      with:
+        path: 'platform/esp'
