@@ -32,7 +32,7 @@ Xiaomi DC Variable Frequency Tower Fan | `dmaker.fan.p9`
 ## Supported platform
 
 - Linux (Ubuntu/Raspberry Pi OS)
-- ESP-IDF (ESP32/ESP32-S2)
+- ESP-IDF (ESP32/ESP32-S2/ESP32-C3/ESP32-S3)
 
 ## Getting started
 
@@ -103,7 +103,7 @@ You can use homekit-bridge with any ESP32 or ESP32-S2 board. Compile, flash and 
 ```bash
 $ cd /path/to/homekit-bridge/platform/esp
 $ export ESPPORT=/dev/ttyUSB0  # Set your board's serial port here
-$ idf.py set-target <esp32/esp32s2>
+$ idf.py set-target [esp32|esp32s2|esp32c3|esp32s3]
 $ idf.py flash
 $ idf.py monitor
 ```

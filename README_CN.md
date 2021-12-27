@@ -34,7 +34,7 @@
 目前针对以下平台做了适配：
 
 - Linux (Ubuntu/Raspberry Pi OS)
-- ESP-IDF (ESP32/ESP32-S2)
+- ESP-IDF (ESP32/ESP32-S2/ESP32-C3/ESP32-S3)
 
 ## 入门
 
@@ -105,7 +105,7 @@ $ git submodule update
 ```bash
 $ cd /path/to/homekit-bridge/platform/esp
 $ export ESPPORT=/dev/ttyUSB0  # 设置开发板的串口
-$ idf.py set-target <esp32/esp32s2>
+$ idf.py set-target [esp32|esp32s2|esp32c3|esp32s3]
 $ idf.py flash
 $ idf.py monitor
 ```
