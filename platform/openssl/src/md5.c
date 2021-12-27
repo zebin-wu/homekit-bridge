@@ -4,9 +4,11 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
+#include <stdbool.h>
 #include <openssl/md5.h>
 #include <pal/memory.h>
 #include <pal/md5.h>
+#include <HAPBase.h>
 
 struct pal_md5_ctx {
     MD5_CTX ctx;

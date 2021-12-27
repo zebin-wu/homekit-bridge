@@ -7,6 +7,7 @@
 #include <openssl/evp.h>
 #include <pal/cipher.h>
 #include <pal/memory.h>
+#include <HAPBase.h>
 
 struct pal_cipher_ctx {
     EVP_CIPHER_CTX *ctx;

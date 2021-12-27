@@ -22,12 +22,9 @@ set(PORT_SRCS
 
 set(PORT_INC_DIR port/include)
 
-set(SRCS ${ADK_SRCS} ${PORT_SRCS})
-set(INC_DIR ${ADK_INC_DIRS} ${PORT_INC_DIR})
-
 idf_component_register(
-    SRCS ${SRCS}
-    INCLUDE_DIRS ${INC_DIR}
+    SRCS ${ADK_SRCS} ${PORT_SRCS}
+    INCLUDE_DIRS ${ADK_INC_DIRS} ${PORT_INC_DIR}
     REQUIRES
     PRIV_REQUIRES nvs_flash mdns
 )

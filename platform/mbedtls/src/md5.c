@@ -7,6 +7,7 @@
 #include <mbedtls/md5.h>
 #include <pal/memory.h>
 #include <pal/md5.h>
+#include <HAPBase.h>
 
 struct pal_md5_ctx {
     mbedtls_md5_context ctx;

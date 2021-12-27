@@ -5,7 +5,6 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <lauxlib.h>
-#include <HAPBase.h>
 #include <pal/md5.h>
 
 #define LUA_HASH_OBJ_NAME "HashObject*"
@@ -14,7 +13,6 @@
     luaL_checkudata(L, idx, LUA_HASH_OBJ_NAME)
 
 typedef struct {
-    const char *name;
     size_t digest_len; /* The length of the digest. */
     void *(*new)(void); /* New a context. */
     void (*free)(void *); /* Free a context. */
@@ -22,15 +20,12 @@ typedef struct {
     void (*digest)(void *ctx, void *output); /* Get the digest. */
 } lhash_method;
 
-static const lhash_method lhash_mths[] = {
-    {
-        .name = "md5",
-        .digest_len = PAL_MD5_HASHSIZE,
-        .new = (void *(*)())pal_md5_new,
-        .free = (void (*)(void *))pal_md5_free,
-        .update = (void (*)(void *, const void *, size_t))pal_md5_update,
-        .digest = (void (*)(void *, void *))pal_md5_digest,
-    },
+static const lhash_method lhash_md5_mth = {
+    .digest_len = PAL_MD5_HASHSIZE,
+    .new = (void *(*)())pal_md5_new,
+    .free = (void (*)(void *))pal_md5_free,
+    .update = (void (*)(void *, const void *, size_t))pal_md5_update,
+    .digest = (void (*)(void *, void *))pal_md5_digest,
 };
 
 /**
@@ -41,20 +36,7 @@ typedef struct {
     void *ctx;
 } lhash_obj;
 
-static const lhash_method *lhash_method_lookup_by_name(const char *name) {
-    for (size_t i = 0; i < HAPArrayCount(lhash_mths); i++) {
-        if (HAPStringAreEqual(lhash_mths[i].name, name)) {
-            return lhash_mths + i;
-        }
-    }
-    return NULL;
-}
-
-static int lhash_new(lua_State *L, const char *name) {
-    const lhash_method *mth = lhash_method_lookup_by_name(name);
-    if (!mth) {
-        luaL_error(L, "'%s' hash algorithm does not support", name);
-    }
+static int lhash_new(lua_State *L, const lhash_method *mth) {
     lhash_obj *obj = lua_newuserdata(L, sizeof(lhash_obj));
     luaL_setmetatable(L, LUA_HASH_OBJ_NAME);
     obj->ctx = mth->new();
@@ -67,7 +49,7 @@ static int lhash_new(lua_State *L, const char *name) {
 }
 
 static int lhash_md5(lua_State *L) {
-    return lhash_new(L, "md5");
+    return lhash_new(L, &lhash_md5_mth);
 }
 
 static const luaL_Reg hashlib[] = {

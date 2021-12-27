@@ -4,7 +4,7 @@
 // You may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#include <HAPLog.h>
+#include <string.h>
 #include <lauxlib.h>
 #include <lgc.h>
 
@@ -19,7 +19,7 @@ static const HAPLogObject lc_log = {
 static const lc_table_kv *
 lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *key) {
     for (; kv_tab->key != NULL; kv_tab++) {
-        if (HAPStringAreEqual(kv_tab->key, key)) {
+        if (!strcmp(kv_tab->key, key)) {
             return kv_tab;
         }
     }
@@ -115,22 +115,6 @@ void lc_create_enum_table(lua_State *L, const char *enum_array[], int len) {
 
 void lc_collectgarbage(lua_State *L) {
     luaC_fullgc(L, 0);
-}
-
-char *lc_new_str(lua_State *L, int idx) {
-    size_t len;
-    const char *str = lua_tolstring(L, idx, &len);
-    if (str[len] != '\0') {
-        HAPLogError(&lc_log, "%s: Invalid string.", __func__);
-        return NULL;
-    }
-    char *copy = lc_malloc(len + 1);
-    if (!copy) {
-        return NULL;
-    }
-    HAPRawBufferCopyBytes(copy, str, len);
-    copy[len] = '\0';
-    return copy;
 }
 
 void lc_add_searcher(lua_State *L, lua_CFunction searcher) {

@@ -7,7 +7,7 @@
 #include <lauxlib.h>
 #include <lualib.h>
 #include <embedfs.h>
-
+#include <pal/memory.h>
 #include <app.h>
 
 #include "app_int.h"

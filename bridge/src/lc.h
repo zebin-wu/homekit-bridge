@@ -12,12 +12,6 @@ extern "C" {
 #endif
 
 #include <lua.h>
-#include <pal/memory.h>
-
-#define lc_malloc(size)     pal_mem_alloc(size)
-#define lc_calloc(size)     pal_mem_calloc(size)
-#define lc_free(p)          pal_mem_free(p)
-#define lc_safe_free(p)     do { if (p) { lc_free((void *)p); (p) = NULL; } } while (0)
 
 #define LC_TNONE            0                           // none
 #define LC_TNIL             (1 << LUA_TNIL)             // nil
@@ -77,11 +71,6 @@ void lc_create_enum_table(lua_State *L, const char *enum_array[], int len);
  * Collect garbage.
  */
 void lc_collectgarbage(lua_State *L);
-
-/**
- * Return a new copy from the str on the "idx" of the stack.
- */
-char *lc_new_str(lua_State *L, int idx);
 
 /**
  * Add searcher to package.searchers.

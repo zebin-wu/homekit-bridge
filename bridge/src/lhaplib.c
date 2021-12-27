@@ -7,12 +7,18 @@
 #include <lualib.h>
 #include <lauxlib.h>
 #include <pal/hap.h>
+#include <pal/memory.h>
 #include <HAP.h>
 #include <HAPCharacteristic.h>
 #include <HAPAccessorySetup.h>
 
 #include "app_int.h"
 #include "lc.h"
+
+#define lhap_malloc(size)     pal_mem_alloc(size)
+#define lhap_calloc(size)     pal_mem_calloc(size)
+#define lhap_free(p)          pal_mem_free(p)
+#define lhap_safe_free(p)     do { if (p) { lhap_free((void *)p); (p) = NULL; } } while (0)
 
 /**
  * Default number of services and characteristics contained in the accessory.
@@ -743,6 +749,23 @@ static void lhap_rawsetp_reset(lua_State *L, int idx, const void *p) {
     lua_rawsetp(L, idx, p);
 }
 
+// Return a new copy from the str on the "idx" of the stack.
+static char *lhap_new_str(lua_State *L, int idx) {
+    size_t len;
+    const char *str = lua_tolstring(L, idx, &len);
+    if (str[len] != '\0') {
+        HAPLogError(&lhap_log, "%s: Invalid string.", __func__);
+        return NULL;
+    }
+    char *copy = lhap_malloc(len + 1);
+    if (!copy) {
+        return NULL;
+    }
+    HAPRawBufferCopyBytes(copy, str, len);
+    copy[len] = '\0';
+    return copy;
+}
+
 // Find the string and return the string index, if not found, return -1.
 static int lhap_lookup_by_name(const char *name, const char *strs[], int len) {
     for (int i = 0; i < len; i++) {
@@ -811,7 +834,7 @@ lhap_accessory_name_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->name) =
-        lc_new_str(L, -1)) ? true : false;
+        lhap_new_str(L, -1)) ? true : false;
 }
 
 static bool
@@ -819,7 +842,7 @@ lhap_accessory_mfg_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->manufacturer) =
-        lc_new_str(L, -1)) ? true : false;
+        lhap_new_str(L, -1)) ? true : false;
 }
 
 static bool
@@ -827,7 +850,7 @@ lhap_accessory_model_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->model) =
-        lc_new_str(L, -1)) ? true : false;
+        lhap_new_str(L, -1)) ? true : false;
 }
 
 static bool
@@ -835,7 +858,7 @@ lhap_accessory_sn_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->serialNumber) =
-        lc_new_str(L, -1)) ? true : false;
+        lhap_new_str(L, -1)) ? true : false;
 }
 
 static bool
@@ -843,7 +866,7 @@ lhap_accessory_fw_ver_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->firmwareVersion) =
-        lc_new_str(L, -1)) ? true : false;
+        lhap_new_str(L, -1)) ? true : false;
 }
 
 static bool
@@ -851,7 +874,7 @@ lhap_accessory_hw_ver_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->hardwareVersion) =
-        lc_new_str(L, -1)) ? true : false;
+        lhap_new_str(L, -1)) ? true : false;
 }
 
 static bool
@@ -886,7 +909,7 @@ static bool
 lhap_service_name_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     HAPService *service = arg;
 
-    return (*((char **)&service->name) = lc_new_str(L, -1)) ? true : false;
+    return (*((char **)&service->name) = lhap_new_str(L, -1)) ? true : false;
 }
 
 static bool
@@ -964,7 +987,7 @@ static bool
 lhap_characteristic_mfg_desc_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     HAPBaseCharacteristic *ch = arg;
 
-    return (*((char **)&ch->manufacturerDescription) = lc_new_str(L, -1)) ? true : false;
+    return (*((char **)&ch->manufacturerDescription) = lhap_new_str(L, -1)) ? true : false;
 }
 
 static bool
@@ -1255,7 +1278,7 @@ lhap_char_constraints_valid_vals_cb(lua_State *L, const lc_table_kv *kv, void *a
             return false;
         }
         size_t vals_len = (len + 1) * sizeof(uint8_t *);
-        uint8_t **vals = lc_malloc(vals_len + sizeof(uint8_t) * len);
+        uint8_t **vals = lhap_malloc(vals_len + sizeof(uint8_t) * len);
         if (!vals) {
             HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
             return false;
@@ -1333,7 +1356,7 @@ lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, const lc_table_kv *kv, 
         }
         size_t ranges_len = (len + 1) * sizeof(HAPUInt8CharacteristicValidValuesRange *);
         HAPUInt8CharacteristicValidValuesRange **ranges =
-            lc_malloc(ranges_len + len * sizeof(HAPUInt8CharacteristicValidValuesRange));
+            lhap_malloc(ranges_len + len * sizeof(HAPUInt8CharacteristicValidValuesRange));
         if (!ranges) {
             HAPLogError(&lhap_log, "%s: Failed to alloc ranges.", __func__);
             return false;
@@ -1997,7 +2020,7 @@ static bool lhap_service_characteristics_arr_cb(lua_State *L, size_t i, void *ar
         return false;
     }
 
-    HAPCharacteristic *c = lc_calloc(lhap_characteristic_struct_size[format]);
+    HAPCharacteristic *c = lhap_calloc(lhap_characteristic_struct_size[format]);
     if (!c) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         return false;
@@ -2014,7 +2037,7 @@ static bool lhap_service_characteristics_arr_cb(lua_State *L, size_t i, void *ar
 static void lhap_reset_characteristic(lua_State *L, HAPCharacteristic *characteristic) {
     HAPCharacteristicFormat format =
         ((HAPBaseCharacteristic *)characteristic)->format;
-    lc_safe_free(((HAPBaseCharacteristic *)characteristic)->manufacturerDescription);
+    lhap_safe_free(((HAPBaseCharacteristic *)characteristic)->manufacturerDescription);
 
 #define LHAP_RESET_CHAR_CBS(type, ptr) \
     LHAP_CASE_CHAR_FORMAT_CODE(type, ptr, \
@@ -2029,10 +2052,10 @@ static void lhap_reset_characteristic(lua_State *L, HAPCharacteristic *character
     LHAP_RESET_CHAR_CBS(Bool, characteristic)
     LHAP_CASE_CHAR_FORMAT_CODE(UInt8, characteristic,
         if (p->constraints.validValues) {
-            lc_safe_free(p->constraints.validValues);
+            lhap_safe_free(p->constraints.validValues);
         }
         if (p->constraints.validValuesRanges) {
-            lc_safe_free(p->constraints.validValuesRanges);
+            lhap_safe_free(p->constraints.validValuesRanges);
         }
         lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleRead);
         lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleWrite);
@@ -2062,7 +2085,7 @@ lhap_service_chars_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
         return true;
     }
 
-    HAPCharacteristic **characteristics = lc_calloc((len + 1) * sizeof(HAPCharacteristic *));
+    HAPCharacteristic **characteristics = lhap_calloc((len + 1) * sizeof(HAPCharacteristic *));
     if (!characteristics) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         return false;
@@ -2071,9 +2094,9 @@ lhap_service_chars_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
         HAPLogError(&lhap_log, "%s: Failed to parse characteristics.", __func__);
         for (HAPCharacteristic **c = characteristics; *c; c++) {
             lhap_reset_characteristic(L, *c);
-            lc_free(*c);
+            lhap_free(*c);
         }
-        lc_safe_free(characteristics);
+        lhap_safe_free(characteristics);
         return false;
     }
     *pcharacteristic = characteristics;
@@ -2090,13 +2113,13 @@ static const lc_table_kv lhap_service_kvs[] = {
 };
 
 static void lhap_reset_service(lua_State *L, HAPService *service) {
-    lc_safe_free(service->name);
+    lhap_safe_free(service->name);
     if (service->characteristics) {
         for (HAPCharacteristic **c = (HAPCharacteristic **)service->characteristics; *c; c++) {
             lhap_reset_characteristic(L, *c);
-            lc_free(*c);
+            lhap_free(*c);
         }
-        lc_safe_free(service->characteristics);
+        lhap_safe_free(service->characteristics);
     }
 }
 
@@ -2116,7 +2139,7 @@ lhap_accessory_services_arr_cb(lua_State *L, size_t i, void *arg) {
     if (!lua_istable(L, -1)) {
         return false;
     }
-    HAPService *s = lc_calloc(sizeof(HAPService));
+    HAPService *s = lhap_calloc(sizeof(HAPService));
     if (!s) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         return false;
@@ -2141,7 +2164,7 @@ lhap_accessory_services_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
         return true;
     }
 
-    HAPService **services = lc_calloc((len + 1) * sizeof(HAPService *));
+    HAPService **services = lhap_calloc((len + 1) * sizeof(HAPService *));
     if (!services) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         return false;
@@ -2152,10 +2175,10 @@ lhap_accessory_services_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
         for (HAPService **s = services; *s; s++) {
             if (!lhap_service_is_light_userdata(*s)) {
                 lhap_reset_service(L, *s);
-                lc_free(*s);
+                lhap_free(*s);
             }
         }
-        lc_safe_free(services);
+        lhap_safe_free(services);
         return false;
     }
 
@@ -2254,20 +2277,20 @@ static const lc_table_kv lhap_accessory_kvs[] = {
 };
 
 static void lhap_reset_accessory(lua_State *L, HAPAccessory *accessory) {
-    lc_safe_free(accessory->name);
-    lc_safe_free(accessory->manufacturer);
-    lc_safe_free(accessory->model);
-    lc_safe_free(accessory->serialNumber);
-    lc_safe_free(accessory->firmwareVersion);
-    lc_safe_free(accessory->hardwareVersion);
+    lhap_safe_free(accessory->name);
+    lhap_safe_free(accessory->manufacturer);
+    lhap_safe_free(accessory->model);
+    lhap_safe_free(accessory->serialNumber);
+    lhap_safe_free(accessory->firmwareVersion);
+    lhap_safe_free(accessory->hardwareVersion);
     if (accessory->services) {
         for (HAPService **s = (HAPService **)accessory->services; *s; s++) {
             if (!lhap_service_is_light_userdata(*s)) {
                 lhap_reset_service(L, *s);
-                lc_free(*s);
+                lhap_free(*s);
             }
         }
-        lc_safe_free(accessory->services);
+        lhap_safe_free(accessory->services);
     }
     lua_pushnil(L);
     lua_rawsetp(L, LUA_REGISTRYINDEX, accessory);
@@ -2283,7 +2306,7 @@ lhap_accessories_arr_cb(lua_State *L, size_t i, void *arg) {
             "%s: The type of the element is not table.", __func__);
         return false;
     }
-    HAPAccessory *acc = lc_calloc(sizeof(HAPAccessory));
+    HAPAccessory *acc = lhap_calloc(sizeof(HAPAccessory));
     if (!acc) {
         HAPLogError(&lhap_log,
             "%s: Failed to alloc memory.", __func__);
@@ -2447,7 +2470,7 @@ static int lhap_init(lua_State *L) {
     luaL_checktype(L, 2, LUA_TTABLE);
     luaL_checktype(L, 3, LUA_TTABLE);
 
-    desc->primary_acc = lc_calloc(sizeof(HAPAccessory));
+    desc->primary_acc = lhap_calloc(sizeof(HAPAccessory));
     if (!desc->primary_acc) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         goto err;
@@ -2474,7 +2497,7 @@ static int lhap_init(lua_State *L) {
     }
 
     desc->bridged_accs =
-        lc_calloc((len + 1) * sizeof(HAPAccessory *));
+        lhap_calloc((len + 1) * sizeof(HAPAccessory *));
     if (!desc->bridged_accs) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         goto err1;
@@ -2567,13 +2590,13 @@ err2:
     if (desc->bridged_accs) {
         for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
             lhap_reset_accessory(L, *pa);
-            lc_free(*pa);
+            lhap_free(*pa);
         }
-        lc_safe_free(desc->bridged_accs);
+        lhap_safe_free(desc->bridged_accs);
     }
 err1:
     lhap_reset_accessory(L, desc->primary_acc);
-    lc_safe_free(desc->primary_acc);
+    lhap_safe_free(desc->primary_acc);
 err:
     lua_pushboolean(L, false);
     return 1;
@@ -2610,13 +2633,13 @@ int lhap_deinit(lua_State *L) {
     if (desc->bridged_accs) {
         for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
             lhap_reset_accessory(L, *pa);
-            lc_free(*pa);
+            lhap_free(*pa);
         }
-        lc_safe_free(desc->bridged_accs);
+        lhap_safe_free(desc->bridged_accs);
     }
     if (desc->primary_acc) {
         lhap_reset_accessory(L, desc->primary_acc);
-        lc_safe_free(desc->primary_acc);
+        lhap_safe_free(desc->primary_acc);
     }
     desc->attribute_cnt = LHAP_ATTR_CNT_DFT;
     desc->bridged_aid = 1;

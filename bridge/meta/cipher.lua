@@ -104,7 +104,7 @@ function _cipher:getIVLen() end
 function _cipher:setPadding(padding) end
 
 ---Begin a encryption/decryption process.
----@param op '"encrypt"'  |'"decrypt"'   Operation.
+---@param op '"encrypt"'|'"decrypt"'   Operation.
 ---@param key string The key to use.
 ---@param iv? string The initialization vector (IV).
 ---@return boolean status true on success, false on failure.
