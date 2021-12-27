@@ -8,13 +8,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: espressif/idf:release-v4.3
+    container: espressif/idf:release-v4.4
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v1
       with:
-        submodules: 'true'
+        submodules: 'recursive'
 
     - name: Prepare enviroment
       run: |
