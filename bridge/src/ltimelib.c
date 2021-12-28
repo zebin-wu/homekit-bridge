@@ -50,7 +50,8 @@ static int ltime_sleep(lua_State *L) {
     luaL_argcheck(L, ms >= 0, 1, "ms out of range");
 
     HAPPlatformTimerRef timer;
-    if (HAPPlatformTimerRegister(&timer, (HAPTime)ms + HAPPlatformClockGetCurrent(),
+    if (HAPPlatformTimerRegister(&timer,
+        ms ? (HAPTime)ms + HAPPlatformClockGetCurrent() : 0,
         ltime_sleep_cb, L) != kHAPError_None) {
         luaL_error(L, "failed to create a timer");
     }
@@ -125,9 +126,9 @@ static int ltime_timer_start(lua_State *L) {
         HAPPlatformTimerDeregister(ctx->timer);
     }
 
-    HAPError err = HAPPlatformTimerRegister(&ctx->timer,
-        (HAPTime)ms + HAPPlatformClockGetCurrent(), ltime_timer_cb, ctx);
-    if (err != kHAPError_None) {
+    if (HAPPlatformTimerRegister(&ctx->timer,
+        ms ? (HAPTime)ms + HAPPlatformClockGetCurrent() : 0,
+        ltime_timer_cb, ctx) != kHAPError_None) {
         luaL_error(L, "failed to start the timer");
     }
     return 0;
