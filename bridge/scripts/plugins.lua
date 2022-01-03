@@ -5,6 +5,11 @@ local plugins = {}
 local logger = log.getLogger("plugins")
 local tinsert = table.insert
 
+---@alias PluginState
+---|'"INITED"'
+---|'"PENDING"'
+---|'"DONE"'
+
 ---@class AccessoryConf:table Accessory configuration.
 ---
 ---@field plugin string Plugin name.
@@ -18,36 +23,24 @@ local tinsert = table.insert
 ---@field init fun(conf: PluginConf|nil): boolean Initialize plugin.
 ---@field gen fun(conf: AccessoryConf): HapAccessory|nil Generate accessory via configuration.
 ---@field isPending fun(): boolean Whether the accessory is waiting to be generated.
+---@field handleState fun(state: HapServerState) Handle HAP server state.
 
 local priv = {
-    plugins = {},
+    ---@type table<string, PluginState>
+    states = {},
+    ---@type table<string, Plugin>
+    pendings = {},
     accessories = {},
     done = nil
 }
-
----Report generated bridged accessory.
----@param name string Plugin name.
----@param accessory HapAccessory Accessory.
-function plugins.report(name, accessory)
-    tinsert(priv.accessories, accessory)
-
-    if priv.plugins[name].isPending() == false then
-        priv.plugins[name] = nil
-        if util.isEmptyTable(priv.plugins) then
-            priv.done(priv.accessories)
-            priv.accessories = {}
-            priv.done = nil
-        end
-    end
-end
 
 ---Load plugin.
 ---@param name string Plugin name.
 ---@param conf? PluginConf Plugin configuration.
 ---@return Plugin|nil
 local function loadPlugin(name, conf)
-    if priv.plugins[name] then
-        return priv.plugins[name]
+    if priv.states[name] then
+        return require(name .. ".plugin")
     end
 
     local plugin = require(name .. ".plugin")
@@ -74,8 +67,26 @@ local function loadPlugin(name, conf)
         logger:error(("Failed to init plugin '%s'"):format(name))
         return nil
     end
-    priv.plugins[name] = plugin
+    priv.states[name] = "INITED"
     return plugin
+end
+
+---Report generated bridged accessory.
+---@param name string Plugin name.
+---@param accessory HapAccessory Accessory.
+function plugins.report(name, accessory)
+    assert(priv.states[name] == "PENDING")
+    tinsert(priv.accessories, accessory)
+
+    if loadPlugin(name).isPending() == false then
+        priv.states[name] = "DONE"
+        priv.pendings[name] = nil
+        if util.isEmptyTable(priv.pendings) then
+            priv.done(priv.accessories)
+            priv.accessories = {}
+            priv.done = nil
+        end
+    end
 end
 
 ---Load plugins and generate bridged accessories.
@@ -98,17 +109,31 @@ function plugins.start(pluginConfs, accessoryConfs, done)
         end
     end
 
-    for name, plugin in pairs(priv.plugins) do
-        if plugin.isPending() == false then
-            priv.plugins[name] = nil
+    local states = priv.states
+
+    for name, _ in pairs(states) do
+        if loadPlugin(name).isPending() == true then
+            states[name] = "PENDING"
+            priv.pendings[name] = true
+        else
+            states[name] = "DONE"
         end
     end
 
-    if util.isEmptyTable(priv.plugins) then
+    if util.isEmptyTable(priv.pendings) then
         done(priv.accessories)
         priv.accessories = {}
     else
         priv.done = done
+    end
+end
+
+---Handle HAP server state.
+---@param state HapServerState
+function plugins.handleState(state)
+    for name, st in pairs(priv.states) do
+        assert(st == "DONE")
+        loadPlugin(name).handleState(state)
     end
 end
 

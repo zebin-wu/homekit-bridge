@@ -29,6 +29,7 @@ plugins.start(config.plugins, config.accessories, function (bridgedAccessories)
     }, bridgedAccessories, {
         updatedState = function (state)
             logger:default("Accessory Server State did update: " .. state .. ".")
+            plugins.handleState(state)
         end,
         sessionAccept = function ()
             logger:default("Session is accepted")

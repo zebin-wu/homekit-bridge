@@ -31,6 +31,11 @@ function plugin.isPending()
     return util.isEmptyTable(priv.pending) == false
 end
 
+---Handle HAP server state.
+---@param state HapServerState
+function plugin.handleState(state)
+end
+
 ---Report bridged accessory.
 ---@param obj MiioDevice Device object.
 ---@param accessory? HapAccessory Bridged accessory.

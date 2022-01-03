@@ -12,6 +12,12 @@ function plugin.isPending()
     return isPending
 end
 
+---Handle HAP server state.
+---@param state HapServerState
+function plugin.handleState(state)
+    logger:info("HAP server state: " .. state)
+end
+
 local function checkAccessoryConf(conf)
     return true
 end
