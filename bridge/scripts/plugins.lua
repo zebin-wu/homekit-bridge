@@ -1,8 +1,8 @@
 local util = require "util"
 
-local core = {}
+local plugins = {}
 
-local logger = log.getLogger("core")
+local logger = log.getLogger("plugins")
 local tinsert = table.insert
 
 ---@class AccessoryConf:table Accessory configuration.
@@ -82,7 +82,7 @@ end
 ---@param pluginConfs PluginConf[] Plugin configurations.
 ---@param accessoryConfs AccessoryConf[] Accessory configurations.
 ---@param done async fun(bridgedAccessories: HapAccessory[]) Function called after the bridged accessories is generated.
-function core.start(pluginConfs, accessoryConfs, done)
+function plugins.start(pluginConfs, accessoryConfs, done)
     if pluginConfs then
         for _, conf in ipairs(pluginConfs) do
             loadPlugin(conf.name, conf)
@@ -112,4 +112,4 @@ function core.start(pluginConfs, accessoryConfs, done)
     end
 end
 
-return core
+return plugins

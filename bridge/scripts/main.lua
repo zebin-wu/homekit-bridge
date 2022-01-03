@@ -1,11 +1,11 @@
 local config = require "config"
-local core = require "core"
+local plugins = require "plugins"
 local hap = require "hap"
 local chip = require "chip"
 
 local logger = log.getLogger()
 
-core.start(config.plugins, config.accessories, function (bridgedAccessories)
+plugins.start(config.plugins, config.accessories, function (bridgedAccessories)
     assert(hap.init({
         aid = 1, -- Primary accessory must have aid 1.
         category = "Bridges",
