@@ -1,5 +1,6 @@
 local device = require "miio.device"
 local protocol = require "miio.protocol"
+local plugins = require "plugins"
 local util = require "util"
 
 local plugin = {}
@@ -17,11 +18,9 @@ local priv = {
 
 ---Initialize plugin.
 ---@param conf any Plugin configuration.
----@param report fun(plugin: string, accessory: HapAccessory) Report accessory to **core**.
 ---@return boolean status true on success, false on failure.
-function plugin.init(conf, report)
+function plugin.init(conf)
     protocol.init()
-    priv.report = report
     logger:info("Initialized.")
     return true
 end
@@ -40,7 +39,7 @@ local function _report(obj, addr, accessory)
     if not accessory then
         priv.devices[addr] = nil
     end
-    priv.report("miio", accessory)
+    plugins.report("miio", accessory)
 end
 
 ---Generate accessory via configuration.

@@ -15,7 +15,7 @@ local tinsert = table.insert
 
 ---@class Plugin:table Plugin.
 ---
----@field init fun(conf: PluginConf|nil, report: fun(plugin: string, accessory: HapAccessory)): boolean Initialize plugin.
+---@field init fun(conf: PluginConf|nil): boolean Initialize plugin.
 ---@field gen fun(conf: AccessoryConf): HapAccessory|nil Generate accessory via configuration.
 ---@field isPending fun(): boolean Whether the accessory is waiting to be generated.
 
@@ -28,7 +28,7 @@ local priv = {
 ---Report generated bridged accessory.
 ---@param name string Plugin name.
 ---@param accessory HapAccessory Accessory.
-local function _report(name, accessory)
+function plugins.report(name, accessory)
     tinsert(priv.accessories, accessory)
 
     if priv.plugins[name].isPending() == false then
@@ -70,7 +70,7 @@ local function loadPlugin(name, conf)
             return nil
         end
     end
-    if plugin.init(conf, _report) == false then
+    if plugin.init(conf) == false then
         logger:error(("Failed to init plugin '%s'"):format(name))
         return nil
     end
