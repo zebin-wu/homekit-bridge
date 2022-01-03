@@ -16,7 +16,6 @@ local tinsert = table.insert
 ---@class Plugin:table Plugin.
 ---
 ---@field init fun(conf: PluginConf|nil, report: fun(plugin: string, accessory: HapAccessory)): boolean Initialize plugin.
----@field deinit fun() Deinitialize plugin.
 ---@field gen fun(conf: AccessoryConf): HapAccessory|nil Generate accessory via configuration.
 ---@field isPending fun(): boolean Whether the accessory is waiting to be generated.
 
@@ -57,7 +56,6 @@ local function loadPlugin(name, conf)
     end
     local fields = {
         init = "function",
-        deinit = "function",
         gen = "function",
         isPending = "function",
     }

@@ -8,10 +8,6 @@ function plugin.init()
     return true
 end
 
-function plugin.deinit()
-    logger:info("Deinitialized.")
-end
-
 function plugin.isPending()
     return isPending
 end

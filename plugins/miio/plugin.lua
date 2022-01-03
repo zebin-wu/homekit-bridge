@@ -26,15 +26,6 @@ function plugin.init(conf, report)
     return true
 end
 
----Deinitialize plugin.
-function plugin.deinit()
-    priv.report = nil
-    priv.pending = {}
-    priv.devices = {}
-    protocol.deinit()
-    logger:info("Deinitialized.")
-end
-
 ---Whether the accessory is waiting to be generated.
 ---@return boolean status
 function plugin.isPending()
