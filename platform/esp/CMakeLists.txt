@@ -31,6 +31,7 @@ compile_luac(${LUAC_BINARY}
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 add_definitions(-DBRIDGE_EMBEDFS_ROOT=${BRIDGE_EMBEDFS_ROOT})
+add_definitions(-DBRIDGE_VERSION="${PROJECT_VER}")
 if(CONFIG_HAP_MFI_HW_AUTH)
     add_definitions(-DHAVE_MFI_HW_AUTH=1)
 endif()

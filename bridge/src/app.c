@@ -17,6 +17,10 @@
 #define LUA_CJSON_NAME "cjson"
 extern int luaopen_cjson(lua_State *L);
 
+#ifndef BRIDGE_VERSION
+#error "Please define BRIDGE_VERSION"
+#endif  // BRIDGE_VERSION
+
 #define luaL_dobufferx(L, buff, sz, name, mode) \
     (luaL_loadbufferx(L, buff, sz, name, mode) || lua_pcall(L, 0, LUA_MULTRET, 0))
 
@@ -131,6 +135,10 @@ static int app_lua_run(lua_State *L) {
 
     // add searcher_embedfs to package.searcher
     lc_add_searcher(L, searcher_embedfs);
+
+    // set _BRIDGE_VERSION
+    lua_pushstring(L, BRIDGE_VERSION);
+    lua_setglobal(L, "_BRIDGE_VERSION");
 
     // run entry
     int nres, status;
