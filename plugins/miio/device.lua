@@ -183,7 +183,8 @@ local function createPropMgr(syncTimer, onUpdate, ...)
         onUpdate = onUpdate,
         args = {...},
         isSyncing = false,
-        retry = 3
+        retry = 3,
+        update = false
     }
 
     return pm
@@ -248,7 +249,7 @@ function _device:regProps(names, onUpdate, ...)
                 end
             end
             startSync(obj)
-            if #updatedNames ~= 0 then
+            if #updatedNames ~= 0 and pm.update then
                 pm.onUpdate(obj, updatedNames, tunpack(pm.args))
             end
         end, getPropsErrCb, "get_prop", names, names)
@@ -305,7 +306,7 @@ function _device:regPropsMiot(mapping, onUpdate, ...)
                 end
             end
             startSync(obj)
-            if #updatedNames ~= 0 then
+            if #updatedNames ~= 0 and pm.update then
                 pm.onUpdate(obj, updatedNames, tunpack(pm.args))
             end
         end, getPropsErrCb, "get_properties", params)
@@ -317,6 +318,12 @@ function _device:regPropsMiot(mapping, onUpdate, ...)
     self.pm = pm
 
     syncPropsMiot(self, params)
+end
+
+---Enable property update.
+function _device:enablePropUpdate()
+    assert(self.state == "INITED")
+    self.pm.update = true
 end
 
 ---Get property.

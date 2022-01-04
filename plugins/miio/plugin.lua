@@ -6,8 +6,8 @@ local util = require "util"
 local plugin = {}
 local logger = log.getLogger("miio.plugin")
 local priv = {
-    pending = {},
-    devices = {}
+    pending = {},   ---@type table<string, boolean>
+    devices = {}    ---@type table<string, MiioDevice>
 }
 
 ---@class MiioDeviceConf:table Miio device configuration.
@@ -34,6 +34,11 @@ end
 ---Handle HAP server state.
 ---@param state HapServerState
 function plugin.handleState(state)
+    if state == "Running" then
+        for _, o in pairs(priv.devices) do
+            o:enablePropUpdate()
+        end
+    end
 end
 
 ---Report bridged accessory.
