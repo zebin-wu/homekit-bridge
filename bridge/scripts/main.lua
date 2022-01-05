@@ -13,6 +13,7 @@ plugins.start(config.plugins, config.accessories, function (bridgedAccessories)
         mfg = chip.getInfo("mfg"),
         model = chip.getInfo("model"),
         sn = chip.getInfo("sn"),
+        ---@diagnostic disable-next-line: undefined-global
         fwVer = _BRIDGE_VERSION,
         hwVer = chip.getInfo("hwver"),
         services = {
