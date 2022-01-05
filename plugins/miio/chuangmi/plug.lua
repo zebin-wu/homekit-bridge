@@ -12,7 +12,7 @@ local plug = {}
 function plug.gen(device, info, conf, on)
     ---@class PlugIIDs:table Plug Instance ID table.
     local iids = {
-        acc = hap.getNewBridgedAccessoryID(),
+        acc = conf.aid,
         outlet = hap.getNewInstanceID(),
         on = hap.getNewInstanceID()
     }

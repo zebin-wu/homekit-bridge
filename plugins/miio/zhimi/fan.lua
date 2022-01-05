@@ -26,7 +26,7 @@ local valMapping = {
 function fan.gen(device, info, conf)
     ---@class ZhimiFanIIDs:table Zhimi Fan Instance ID table.
     local iids = {
-        acc = hap.getNewBridgedAccessoryID(),
+        acc = conf.aid,
         fan = hap.getNewInstanceID(),
         active = hap.getNewInstanceID(),
         rotationSpeed = hap.getNewInstanceID(),

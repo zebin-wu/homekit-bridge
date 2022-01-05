@@ -15,7 +15,7 @@ local fan = {}
 function fan.gen(device, info, conf, mapping)
     ---@class DmakerFanIIDs:table Dmaker Fan Instance ID table.
     local iids = {
-        acc = hap.getNewBridgedAccessoryID(),
+        acc = conf.aid,
         fan = hap.getNewInstanceID(),
         active = hap.getNewInstanceID(),
         rotationSpeed = hap.getNewInstanceID(),

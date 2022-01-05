@@ -15,7 +15,7 @@ end
 ---Handle HAP server state.
 ---@param state HapServerState
 function plugin.handleState(state)
-    logger:info("HAP server state: " .. state)
+    logger:info("HAP server state: " .. state .. ".")
 end
 
 local function checkAccessoryConf(conf)
@@ -37,7 +37,7 @@ function plugin.gen(conf)
     local Name = require("hap.char.Name")
 
     local context = {
-        aid = hap.getNewBridgedAccessoryID(),
+        aid = conf.aid,
         mechanismIID = hap.getNewInstanceID(),
         curStateIID = hap.getNewInstanceID(),
         tgtStateIID = hap.getNewInstanceID(),

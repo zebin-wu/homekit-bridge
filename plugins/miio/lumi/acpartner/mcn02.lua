@@ -35,7 +35,7 @@ local valMapping = {
 function acpartner.gen(device, info, conf)
     ---@class AcpartnerIIDS:table Acpartner Instance ID table.
     local iids = {
-        acc = hap.getNewBridgedAccessoryID(),
+        acc = conf.aid,
         heaterCooler = hap.getNewInstanceID(),
         active = hap.getNewInstanceID(),
         curTemp = hap.getNewInstanceID(),

@@ -10,9 +10,8 @@ local priv = {
     devices = {}    ---@type table<string, MiioDevice>
 }
 
----@class MiioDeviceConf:table Miio device configuration.
+---@class MiioDeviceConf:AccessoryConf Miio device configuration.
 ---
----@field name string Accessory name.
 ---@field addr string Device address.
 ---@field token string Device token.
 
