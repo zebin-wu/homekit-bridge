@@ -16,11 +16,6 @@ jobs:
       with:
         submodules: 'recursive'
 
-    - name: Prepare enviroment
-      run: |
-        apt update
-        apt install -y xxd
-
     - name: ESP-IDF build
       run: |
         cd platform/esp

@@ -123,11 +123,6 @@ endfunction(check_style)
 #
 # target_add_embedfs(<target> <dir> <root_name>)
 function (target_add_embedfs target dir root_name)
-    find_program(XXD NAMES "xxd")
-    if(NOT XXD)
-        message(FATAL_ERROR "Please install xxd via \"sudo apt install xxd\".")
-    endif()
-
     set(dest_dir ${CMAKE_BINARY_DIR}/${target}_${root_name})
     set(output ${dest_dir}/${target}_${root_name}.c)
 
@@ -137,11 +132,10 @@ function (target_add_embedfs target dir root_name)
         set(headers ${headers} ${header})
         add_custom_command(OUTPUT ${header}
             COMMAND cd ${dir}
-            COMMAND ${XXD}
-                -c 12 -i ${file} |
-                sed "s/unsigned char/static const char/" |
-                sed "/unsigned int/s/[=\;]//g\;s/unsigned int/#define/"
-                > ${header}
+            COMMAND ${CMAKE_COMMAND}
+            -D OUTPUT=${header}
+            -D INPUT=${file}
+            -P ${TOP_DIR}/cmake/bin2hex.cmake
             COMMAND echo "Generated ${header}"
             DEPENDS ${dir}/${file}
             COMMENT "Generating ${header}"
@@ -171,11 +165,6 @@ endfunction(target_add_embedfs)
 # target_add_lua_binary_embedfs(<target> <root_name> <luac> [DEBUG]
 #                               [SRC_DIRS dir1 [dir2...]])
 function(target_add_lua_binary_embedfs target root_name luac)
-    find_program(XXD NAMES "xxd")
-    if(NOT XXD)
-        message(FATAL_ERROR "Please install xxd via \"sudo apt install xxd\".")
-    endif()
-
     set(options DEBUG)
     set(multi SRC_DIRS)
     cmake_parse_arguments(arg "${options}" "" "${multi}" "${ARGN}")
@@ -203,11 +192,10 @@ function(target_add_lua_binary_embedfs target root_name luac)
             string(REGEX REPLACE "[/.]" "_" filename ${bin})
             add_custom_command(OUTPUT ${header}
                 COMMAND cd ${binary_dir}
-                COMMAND ${XXD}
-                    -c 12 -i ${bin} |
-                    sed "s/unsigned char/static const char/" |
-                    sed "/unsigned int/s/[=\;]//g\;s/unsigned int/#define/"
-                    > ${header}
+                COMMAND ${CMAKE_COMMAND}
+                    -D OUTPUT=${header}
+                    -D INPUT=${bin}
+                    -P ${TOP_DIR}/cmake/bin2hex.cmake
                 COMMAND echo "Generated ${header}"
                 DEPENDS ${binary_dir}/${bin}
                 COMMENT "Generating ${header}"
