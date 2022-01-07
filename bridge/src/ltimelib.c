@@ -86,8 +86,7 @@ static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
     HAPAssert(lua_gettop(L) == 0);
 
     int nres, status;
-    lua_State *co = lua_newthread(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, co);
+    lua_State *co = lc_newthread(L);
     HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, &ctx->timer) == LUA_TTABLE);
     for (int i = 1; i <= ctx->nargs + 1; i++) {
         lua_geti(co, 1, i);
@@ -96,15 +95,12 @@ static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
     lua_pushnil(co);
     lua_rawsetp(co, LUA_REGISTRYINDEX, &ctx->timer);
     status = lua_resume(co, L, ctx->nargs, &nres);
-    if (status == LUA_OK || status == LUA_YIELD) {
-        if (status == LUA_OK) {
-            lua_resetthread(co);
-            lua_pushnil(L);
-            lua_rawsetp(L, LUA_REGISTRYINDEX, co);
-        }
-    } else {
+    if (status == LUA_OK) {
+        lc_freethread(co);
+    } else if (status != LUA_YIELD) {
         luaL_traceback(L, co, lua_tostring(co, -1), 1);
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
+        lc_freethread(co);
     }
 
     lua_settop(L, 0);
