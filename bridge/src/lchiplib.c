@@ -23,13 +23,16 @@ static const char *(*lchip_get_info_funcs[])() = {
     [LCHIP_HW_VER] = pal_chip_get_hardware_version,
 };
 
+const char *lchip_info_strs[] = {
+    "mfg",
+    "model",
+    "sn",
+    "hwver",
+    NULL
+};
+
 static int lchip_get_info(lua_State *L) {
-    lua_pushstring(L, lchip_get_info_funcs[luaL_checkoption(L, 1, NULL, (const char *[]) {
-        [LCHIP_MFG] = "mfg",
-        [LCHIP_MODEL] = "model",
-        [LCHIP_SN] = "sn",
-        [LCHIP_HW_VER] = "hwver",
-    })]());
+    lua_pushstring(L, lchip_get_info_funcs[luaL_checkoption(L, 1, NULL, lchip_info_strs)]());
     return 1;
 }
 

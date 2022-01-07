@@ -25,13 +25,9 @@ static const HAPLogObject lsocket_log = {
 
 static int lsocket_create(lua_State *L) {
     pal_socket_type type = luaL_checkoption(L, 1, NULL, (const char *[]) {
-        [PAL_SOCKET_TYPE_TCP] = "TCP",
-        [PAL_SOCKET_TYPE_UDP] = "UDP"
-    });
+        "TCP", "UDP", NULL});
     pal_socket_domain domain = luaL_checkoption(L, 2, NULL, (const char *[]) {
-        [PAL_SOCKET_DOMAIN_INET] = "INET",
-        [PAL_SOCKET_DOMAIN_INET6] = "INET6"
-    });
+        "INET", "INET6", NULL});
 
     lsocket_obj *obj = lua_newuserdata(L, sizeof(lsocket_obj));
     luaL_setmetatable(L, LUA_SOCKET_OBJECT_NAME);

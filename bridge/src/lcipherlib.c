@@ -85,6 +85,7 @@ static const char *lcipher_type_strs[] = {
     "AES-256-XTS",
     "CHACHA20",
     "CHACHA20-POLY1305",
+    NULL,
 };
 
 static const char *lcipher_padding_strs[] = {
@@ -93,11 +94,13 @@ static const char *lcipher_padding_strs[] = {
     "ISO7816_4",
     "ANSI923",
     "ZERO",
+    NULL
 };
 
 static const char *lcipher_op_strs[] = {
     "encrypt",
     "decrypt",
+    NULL,
 };
 
 typedef struct {
