@@ -107,7 +107,7 @@ static void lsocket_accepted_cb(pal_socket_obj *o, pal_socket_err err, pal_socke
     if (status == LUA_OK) {
         lc_freethread(co);
     } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 1);
+        luaL_traceback(L, co, lua_tostring(co, -1), 0);
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
         lc_freethread(co);
     }
@@ -173,7 +173,7 @@ static void lsocket_connected_cb(pal_socket_obj *o, pal_socket_err err, void *ar
     if (status == LUA_OK) {
         lc_freethread(co);
     } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 1);
+        luaL_traceback(L, co, lua_tostring(co, -1), 0);
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
         lc_freethread(co);
     }
@@ -221,7 +221,7 @@ static void lsocket_sent_cb(pal_socket_obj *o, pal_socket_err err, size_t sent_l
     if (status == LUA_OK) {
         lc_freethread(co);
     } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 1);
+        luaL_traceback(L, co, lua_tostring(co, -1), 0);
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
         lc_freethread(co);
     }
@@ -287,7 +287,7 @@ static void lsocket_recved_cb(pal_socket_obj *o, pal_socket_err err,
     if (status == LUA_OK) {
         lc_freethread(co);
     } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 1);
+        luaL_traceback(L, co, lua_tostring(co, -1), 0);
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
         lc_freethread(co);
     }

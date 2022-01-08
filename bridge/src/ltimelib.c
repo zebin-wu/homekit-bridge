@@ -36,7 +36,7 @@ static void ltime_sleep_cb(HAPPlatformTimerRef timer, void *context) {
     if (status == LUA_OK) {
         lc_freethread(co);
     } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 1);
+        luaL_traceback(L, co, lua_tostring(co, -1), 0);
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
         lc_freethread(co);
     }
@@ -98,7 +98,7 @@ static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
     if (status == LUA_OK) {
         lc_freethread(co);
     } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 1);
+        luaL_traceback(L, co, lua_tostring(co, -1), 0);
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
         lc_freethread(co);
     }

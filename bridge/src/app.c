@@ -150,7 +150,7 @@ static int app_lua_run(lua_State *L) {
     if (status == LUA_OK) {
         lc_freethread(co);
     } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 1);
+        luaL_traceback(L, co, lua_tostring(co, -1), 0);
         lua_error(L);
         lc_freethread(co);
     }
