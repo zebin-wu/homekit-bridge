@@ -8,12 +8,9 @@ set(APP_SRCS
     app_console.c
 )
 
-set(SRCS ${APP_SRCS} ${BRIDGE_SRCS})
-set(INC_DIRS ${BRIDGE_INC_DIR})
-
 idf_component_register(
-    SRCS ${SRCS}
-    INCLUDE_DIRS ${INC_DIRS}
+    SRCS ${APP_SRCS} ${BRIDGE_SRCS}
+    INCLUDE_DIRS ${BRIDGE_INC_DIR}
 )
 
 add_definitions(-DHAP_LOG_LEVEL=${CONFIG_HAP_LOG_LEVEL})
