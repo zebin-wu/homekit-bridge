@@ -78,33 +78,31 @@ pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t readable_cnt, size_t 
     HAPPrecondition(writable_cnt);
     HAPPrecondition(notify_cnt);
 
+    size_t char_cnt = HAPMax(readable_cnt, writable_cnt);
+
     // Prepare accessory server storage.
     static HAPIPSession ipSessions[PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS];
     static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE];
     static uint8_t ipOutboundBuffers[HAPArrayCount(ipSessions)][PAL_HAP_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE];
+    static uint8_t ipScratchBuffer[HAPArrayCount(ipSessions)][PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE];
     for (size_t i = 0; i < HAPArrayCount(ipSessions); i++) {
         ipSessions[i].inboundBuffer.bytes = ipInboundBuffers[i];
-        ipSessions[i].inboundBuffer.numBytes = sizeof ipInboundBuffers[i];
+        ipSessions[i].inboundBuffer.numBytes = sizeof(ipInboundBuffers[i]);
         ipSessions[i].outboundBuffer.bytes = ipOutboundBuffers[i];
-        ipSessions[i].outboundBuffer.numBytes = sizeof ipOutboundBuffers[i];
+        ipSessions[i].outboundBuffer.numBytes = sizeof(ipOutboundBuffers[i]);
+        ipSessions[i].scratchBuffer.bytes = ipScratchBuffer[i];
+        ipSessions[i].scratchBuffer.numBytes = sizeof(ipScratchBuffer[i]);
+        ipSessions[i].contexts = pal_mem_alloc(sizeof(HAPIPCharacteristicContextRef) * char_cnt);
+        HAPAssert(ipSessions[i].contexts);
+        ipSessions[i].numContexts = char_cnt;
         ipSessions[i].eventNotifications = pal_mem_alloc(sizeof(HAPIPEventNotificationRef) * notify_cnt);
         HAPAssert(ipSessions[i].eventNotifications);
         ipSessions[i].numEventNotifications = notify_cnt;
     }
-    HAPIPReadContextRef *ipReadContexts = pal_mem_alloc(sizeof(HAPIPReadContextRef) * readable_cnt);
-    HAPAssert(ipReadContexts);
-    HAPIPWriteContextRef *ipWriteContexts = pal_mem_alloc(sizeof(HAPIPWriteContextRef) * writable_cnt);
-    HAPAssert(ipWriteContexts);
-    static uint8_t ipScratchBuffer[PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE];
     static HAPIPAccessoryServerStorage ipAccessoryServerStorage = {
         .sessions = ipSessions,
         .numSessions = HAPArrayCount(ipSessions),
-        .scratchBuffer = { .bytes = ipScratchBuffer, .numBytes = sizeof ipScratchBuffer }
     };
-    ipAccessoryServerStorage.readContexts = ipReadContexts;
-    ipAccessoryServerStorage.numReadContexts = readable_cnt;
-    ipAccessoryServerStorage.writeContexts = ipWriteContexts;
-    ipAccessoryServerStorage.numWriteContexts = writable_cnt;
 
     options->ip.transport = &kHAPAccessoryServerTransport_IP;
     options->ip.accessoryServerStorage = &ipAccessoryServerStorage;
@@ -115,10 +113,9 @@ void pal_hap_deinit_ip(HAPAccessoryServerOptions *options) {
 
     HAPIPAccessoryServerStorage *storage = options->ip.accessoryServerStorage;
     for (size_t i = 0; i < storage->numSessions; i++) {
+        pal_mem_free(storage->sessions[i].contexts);
         pal_mem_free(storage->sessions[i].eventNotifications);
     }
-    pal_mem_free(storage->readContexts);
-    pal_mem_free(storage->writeContexts);
 }
 #endif
 

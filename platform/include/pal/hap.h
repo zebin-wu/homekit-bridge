@@ -14,7 +14,7 @@ extern "C" {
 #include <HAP.h>
 
 // Number of elements in a HAPIPSessionStorage.
-#define PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS ((size_t) 9)
+#define PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS ((size_t) 5)
 
 // Size for the inbound buffer of an IP session.
 #define PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE ((size_t) 1500)

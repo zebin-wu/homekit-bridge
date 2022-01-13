@@ -50,6 +50,7 @@ set(ADK_SRCS
     ${ADK_DIR}/HAP/HAPBLETransaction.c
     ${ADK_DIR}/HAP/HAPBitSet.c
     ${ADK_DIR}/HAP/HAPCharacteristic.c
+    ${ADK_DIR}/HAP/HAPCharacteristicResponse.c
     ${ADK_DIR}/HAP/HAPCharacteristicTypes.c
     ${ADK_DIR}/HAP/HAPDeviceID.c
     ${ADK_DIR}/HAP/HAPIP+ByteBuffer.c
