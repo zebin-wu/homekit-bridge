@@ -452,6 +452,11 @@ static void pal_socket_handle_send_cb(
     switch (err) {
     case PAL_SOCKET_ERR_IN_PROGRESS:
         if (o->type == PAL_SOCKET_TYPE_UDP) {
+            char addr[64];
+            pal_socket_addr *_sa = issendto ? &mbuf->to_addr : &o->remote_addr;
+            SOCKET_LOG(Debug, o, "Only sent message(len=%zu, total len = %zu) to %s:%u",
+                mbuf->pos, mbuf->len, pal_socket_addr_get_str_addr(_sa, addr, sizeof(addr)),
+                pal_socket_addr_get_port(_sa));
             err = PAL_SOCKET_ERR_OK;
             break;
         }
@@ -872,10 +877,11 @@ pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t *le
             err = PAL_SOCKET_ERR_OK;
             break;
         }
-        pal_socket_mbuf *mbuf = pal_socket_mbuf_create(data + sent_len, *len - sent_len, psa, sent_cb, arg);
+        pal_socket_mbuf *mbuf = pal_socket_mbuf_create(data, *len, psa, sent_cb, arg);
         if (!mbuf) {
             return PAL_SOCKET_ERR_ALLOC;
         }
+        mbuf->pos += sent_len;
         pal_socket_mbuf_in(o, mbuf);
         pal_socket_enable_write(o, true);
         SOCKET_LOG(Debug, o, "Sending message(len=%zu) ...", *len);
