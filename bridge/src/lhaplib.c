@@ -2343,33 +2343,44 @@ HAPError lhap_accessory_identify_cb(
 
     HAPError err = kHAPError_Unknown;
     lua_State *L = app_get_lua_main_thread();
+    lua_State *co = lc_newthread(L);
     const HAPAccessory *accessory = request->accessory;
 
-    lc_push_traceback(L);
-
     // push the identify function
-    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX,
+    HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX,
         &(accessory->callbacks.identify)) == LUA_TFUNCTION);
 
     // push the table request
-    lhap_create_request_table(L, request->transportType,
+    lhap_create_request_table(co, request->transportType,
         request->session, &request->remote, accessory, NULL, NULL);
 
     // push the context
-    lua_rawgetp(L, LUA_REGISTRYINDEX, accessory);
+    lua_rawgetp(co, LUA_REGISTRYINDEX, accessory);
 
-    if (lua_pcall(L, 2, 1, 1)) {
+    int nres;
+    int status = lua_resume(co, L, 2, &nres);
+    switch (status) {
+    case LUA_OK:
+        if (nres == 1) {
+            if (lua_isinteger(co, -1)) {
+                err = lua_tointeger(co, -1);
+            } else {
+                LHAP_LOG_TYPE_ERROR(co, "error code", LUA_TNUMBER, lua_type(co, -1));
+            }
+        } else {
+            HAPLogError(&lhap_log, "%s: No return value.", __func__);
+        }
+        lc_freethread(co);
+        break;
+    case LUA_YIELD:
+        err = kHAPError_None;
+        break;
+    default:
+        luaL_traceback(L, co, lua_tostring(co, -1), 0);
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
-        goto end;
+        lc_freethread(co);
     }
 
-    if (!lua_isnumber(L, -1)) {
-        LHAP_LOG_TYPE_ERROR(L, "error code", LUA_TNUMBER, lua_type(L, -1));
-        goto end;
-    }
-
-    err = lua_tointeger(L, -1);
-end:
     lua_settop(L, 0);
     lc_collectgarbage(L);
     return err;
