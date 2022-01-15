@@ -13,6 +13,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /**
  * Communication type.
@@ -164,32 +165,37 @@ typedef void (*pal_socket_sent_cb)(pal_socket_obj *o, pal_socket_err err, size_t
  * Send a message.
  *
  * @param o The pointer to the socket object.
- * @param buf A pointer to the data to be sent.
- * @param len Length of the data to be sent.
- * @param sent_cb A callback called when the message is sent.
- * @param arg The value to be passed as the last argument to sent_cb.
+ * @param data A pointer to the data to be sent.
+ * @param len Length of @p data.
+ * @param all Whether @p data is completely sent.
+ * @param sent_cb A callback called when @p data is sent.
+ * @param arg The value to be passed as the last argument to @p sent_cb.
  * @returns zero on success, error number on error.
- * @return PAL_SOCKET_ERR_OK on success
- * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to send, the sent_cb will be called when the message is sent.
+ * @return PAL_SOCKET_ERR_OK on success.
+ * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to send,
+ *         @p sent_cb will be called when @p data is sent.
  */
-pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data, size_t *len, pal_socket_sent_cb sent_cb, void *arg);
+pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data, size_t *len, bool all,
+    pal_socket_sent_cb sent_cb, void *arg);
 
 /**
  * Send a message to remote addr and port.
  *
  * @param o The pointer to the socket object.
- * @param buf A pointer to the data to be sent.
- * @param len Length of the data to be sent.
+ * @param data A pointer to the data to be sent.
+ * @param len Length of @p data.
  * @param addr Remote address to use.
  * @param port Remote port number, in host order.
+ * @param all Whether @p data is completely sent.
  * @param sent_cb A callback called when the message is sent.
- * @param arg The value to be passed as the last argument to sent_cb.
+ * @param arg The value to be passed as the last argument to @p sent_cb.
  * @returns zero on success, error number on error.
- * @return PAL_SOCKET_ERR_OK on success
- * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to send, the sent_cb will be called when the message is sent.
+ * @return PAL_SOCKET_ERR_OK on success.
+ * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to send,
+ *         @p sent_cb will be called when @p data is sent.
  */
 pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t *len,
-    const char *addr, uint16_t port, pal_socket_sent_cb sent_cb, void *arg);
+    const char *addr, uint16_t port, bool all, pal_socket_sent_cb sent_cb, void *arg);
 
 /**
  * A callback called when a socket received a message.

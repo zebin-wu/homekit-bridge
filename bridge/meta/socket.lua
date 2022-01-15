@@ -47,12 +47,20 @@ function _socket:accept() end
 
 ---Send a message.
 ---@param message string The message to be sent.
+---@return integer len Sent length.
 function _socket:send(message) end
+
+---Send all the meesage.
+---
+---This function will return after all the data sent.
+---@param message string The message to be sent.
+function _socket:sendall(message) end
 
 ---Send a message to remote addr and port.
 ---@param message string The message to be sent.
 ---@param addr string Remote address to use.
 ---@param port integer Remote port number, in host order.
+---@return integer len Sent length.
 function _socket:sendto(message, addr, port) end
 
 ---Receive a message from a socket.

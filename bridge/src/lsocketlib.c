@@ -232,11 +232,12 @@ static void lsocket_sent_cb(pal_socket_obj *o, pal_socket_err err, size_t sent_l
 
 static int finshsend(lua_State *L, int status, lua_KContext extra) {
     // lua_stack: [-1] = sent_len, [-2] = err
+    bool all = (bool)extra;
     pal_socket_err err = luaL_checkinteger(L, -2);
 
     switch (err) {
     case PAL_SOCKET_ERR_OK:
-        return 1;
+        return all ? 0 : 1;
     case PAL_SOCKET_ERR_IN_PROGRESS:
         lua_yieldk(L, 0, extra, finshsend);
         break;
@@ -247,15 +248,23 @@ static int finshsend(lua_State *L, int status, lua_KContext extra) {
     return 0;
 }
 
-static int lsocket_obj_send(lua_State *L) {
+static int lsocket_obj_sent_int(lua_State *L, bool all) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
     size_t len;
     const char *data = luaL_checklstring(L, 2, &len);
 
     size_t sent_len = len;
-    lua_pushinteger(L, pal_socket_send(obj->socket, data, &sent_len, lsocket_sent_cb, L));
+    lua_pushinteger(L, pal_socket_send(obj->socket, data, &sent_len, all, lsocket_sent_cb, L));
     lua_pushinteger(L, sent_len);
-    return finshsend(L, 0, (lua_KContext)obj);
+    return finshsend(L, 0, (lua_KContext)all);
+}
+
+static int lsocket_obj_send(lua_State *L) {
+    return lsocket_obj_sent_int(L, false);
+}
+
+static int lsocket_obj_sendall(lua_State *L) {
+    return lsocket_obj_sent_int(L, true);
 }
 
 static int lsocket_obj_sendto(lua_State *L) {
@@ -267,9 +276,9 @@ static int lsocket_obj_sendto(lua_State *L) {
     luaL_argcheck(L, (port >= 0) && (port <= 65535), 4, "port out of range");
 
     size_t sent_len = len;
-    lua_pushinteger(L, pal_socket_sendto(obj->socket, data, &sent_len, addr, port, lsocket_sent_cb, L));
+    lua_pushinteger(L, pal_socket_sendto(obj->socket, data, &sent_len, addr, port, false, lsocket_sent_cb, L));
     lua_pushinteger(L, sent_len);
-    return finshsend(L, 0, (lua_KContext)obj);
+    return finshsend(L, 0, (lua_KContext)false);
 }
 
 static void lsocket_recved_cb(pal_socket_obj *o, pal_socket_err err,
@@ -390,6 +399,7 @@ static const luaL_Reg lsocket_obj_meth[] = {
     {"accept", lsocket_obj_accept},
     {"connect", lsocket_obj_connect},
     {"send", lsocket_obj_send},
+    {"sendall", lsocket_obj_sendall},
     {"sendto", lsocket_obj_sendto},
     {"recv", lsocket_obj_recv},
     {"recvfrom", lsocket_obj_recvfrom},
