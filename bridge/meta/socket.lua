@@ -45,32 +45,32 @@ function _socket:listen(backlog) end
 ---@return integer port Remote port.
 function _socket:accept() end
 
----Send a message.
----@param message string The message to be sent.
+---Send data.
+---@param data string The data to be sent.
 ---@return integer len Sent length.
-function _socket:send(message) end
+function _socket:send(data) end
 
----Send all the meesage.
+---Send all the data.
 ---
 ---This function will return after all the data sent.
----@param message string The message to be sent.
-function _socket:sendall(message) end
+---@param data string The data to be sent.
+function _socket:sendall(data) end
 
----Send a message to remote addr and port.
----@param message string The message to be sent.
+---Send data to remote addr and port.
+---@param data string The data to be sent.
 ---@param addr string Remote address to use.
 ---@param port integer Remote port number, in host order.
 ---@return integer len Sent length.
-function _socket:sendto(message, addr, port) end
+function _socket:sendto(data, addr, port) end
 
----Receive a message from a socket.
----@param maxlen integer The max length of the message.
----@return string message The received message.
+---Receive data from a socket.
+---@param maxlen integer The max length of the data.
+---@return string message The received data.
 function _socket:recv(maxlen) end
 
 ---Receive a message from a socket.
 ---@param maxlen integer The max length of the message.
----@return string message The received message.
+---@return string data The received message.
 ---@return string addr The remote address.
 ---@return integer port The remote port.
 function _socket:recvfrom(maxlen) end
