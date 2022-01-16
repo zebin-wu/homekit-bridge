@@ -1,8 +1,9 @@
 local hap = require "hap"
-local util = require "util"
 local Active = require "hap.char.Active"
 local RotationSpeed = require "hap.char.RotationSpeed"
 local SwingMode = require "hap.char.SwingMode"
+local searchKey = require "util".searchKey
+local raiseEvent = hap.raiseEvent
 
 local fan = {}
 
@@ -57,12 +58,13 @@ function fan.gen(device, info, conf, mapping)
                         else
                             value = activeVal.Inactive
                         end
-                        self.logger:info("Read Active: " .. util.searchKey(activeVal, value))
+                        self.logger:info("Read Active: " .. searchKey(activeVal, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         local activeVal = Active.value
-                        self.logger:info("Write Active: " .. util.searchKey(activeVal, value))
+                        self.logger:info("Write Active: " .. searchKey(activeVal, value))
                         self:setProp("power", value == activeVal.Active)
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
                         return hap.Error.None
                     end),
                     RotationSpeed.new(iids.rotationSpeed, function (request, self)
@@ -72,6 +74,7 @@ function fan.gen(device, info, conf, mapping)
                     end, function (request, value, self)
                         self.logger:info("Write RotationSpeed: " .. value)
                         self:setProp("fanSpeed", math.tointeger(value))
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
                         return hap.Error.None
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request, self)
@@ -82,12 +85,13 @@ function fan.gen(device, info, conf, mapping)
                         else
                             value = swingModeVal.Disabled
                         end
-                        self.logger:info("Read SwingMode: " .. util.searchKey(swingModeVal, value))
+                        self.logger:info("Read SwingMode: " .. searchKey(swingModeVal, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
                         local swingModeVal = SwingMode.value
-                        self.logger:info("Write SwingMode: " .. util.searchKey(swingModeVal, value))
+                        self.logger:info("Write SwingMode: " .. searchKey(swingModeVal, value))
                         self:setProp("swingMode", value == swingModeVal.Enabled)
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
                         return hap.Error.None
                     end)
                 }

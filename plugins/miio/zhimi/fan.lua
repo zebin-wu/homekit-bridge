@@ -1,8 +1,9 @@
 local hap = require "hap"
-local util = require "util"
 local Active = require "hap.char.Active"
 local RotationSpeed = require "hap.char.RotationSpeed"
 local SwingMode = require "hap.char.SwingMode"
+local searchKey = require "util".searchKey
+local raiseEvent = hap.raiseEvent
 
 local fan = {}
 
@@ -60,11 +61,12 @@ function fan.gen(device, info, conf)
                 chars = {
                     Active.new(iids.active, function (request, self)
                         local value = valMapping.power[self:getProp("power")]
-                        self.logger:info("Read Active: " .. util.searchKey(Active.value, value))
+                        self.logger:info("Read Active: " .. searchKey(Active.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
-                        self.logger:info("Write Active: " .. util.searchKey(Active.value, value))
-                        self:setProp("power", util.searchKey(valMapping.power, value))
+                        self.logger:info("Write Active: " .. searchKey(Active.value, value))
+                        self:setProp("power", searchKey(valMapping.power, value))
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
                         return hap.Error.None
                     end),
                     RotationSpeed.new(iids.rotationSpeed, function (request, self)
@@ -74,15 +76,17 @@ function fan.gen(device, info, conf)
                     end, function (request, value, self)
                         self.logger:info("Write RotationSpeed: " .. value)
                         self:setProp("speed_level", math.tointeger(value))
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
                         return hap.Error.None
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request, self)
                         local value = valMapping.angle_enable[self:getProp("angle_enable")]
-                        self.logger:info("Read SwingMode: " .. util.searchKey(SwingMode.value, value))
+                        self.logger:info("Read SwingMode: " .. searchKey(SwingMode.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
-                        self.logger:info("Write SwingMode: " .. util.searchKey(SwingMode.value, value))
-                        self:setProp("angle_enable", util.searchKey(valMapping.angle_enable, value))
+                        self.logger:info("Write SwingMode: " .. searchKey(SwingMode.value, value))
+                        self:setProp("angle_enable", searchKey(valMapping.angle_enable, value))
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
                         return hap.Error.None
                     end)
                 }

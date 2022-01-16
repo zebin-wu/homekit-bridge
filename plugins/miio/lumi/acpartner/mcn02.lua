@@ -1,5 +1,4 @@
 local hap = require "hap"
-local util = require "util"
 local Active = require "hap.char.Active"
 local CurTemp = require "hap.char.CurrentTemperature"
 local CurHeatCoolState = require "hap.char.CurrentHeaterCoolerState"
@@ -7,6 +6,8 @@ local TgtHeatCoolState = require "hap.char.TargetHeaterCoolerState"
 local CoolThrholdTemp = require "hap.char.CoolingThresholdTemperature"
 local HeatThrholdTemp = require "hap.char.HeatingThresholdTemperature"
 local SwingMode = require "hap.char.SwingMode"
+local searchKey = require "util".searchKey
+local raiseEvent = hap.raiseEvent
 
 local acpartner = {}
 
@@ -45,6 +46,7 @@ function acpartner.gen(device, info, conf)
         heatThrTemp = hap.getNewInstanceID(),
         swingMode = hap.getNewInstanceID()
     }
+    device.iids = iids
 
     return {
         aid = iids.acc,
@@ -73,16 +75,18 @@ function acpartner.gen(device, info, conf)
                 chars = {
                     Active.new(iids.active, function (request, self)
                         local value = valMapping.power[self:getProp("power")]
-                        self.logger:info("Read Active: " .. util.searchKey(Active.value, value))
+                        self.logger:info("Read Active: " .. searchKey(Active.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
-                        self.logger:info("Write Active: " .. util.searchKey(Active.value, value))
-                        self:setProp("power", util.searchKey(valMapping.power, value))
-                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
-                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
-                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
-                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
-                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
+                        local iids = self.iids
+                        self.logger:info("Write Active: " .. searchKey(Active.value, value))
+                        self:setProp("power", searchKey(valMapping.power, value))
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
+                        raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
+                        raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
+                        raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
+                        raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
+                        raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
                         return hap.Error.None
                     end),
                     CurTemp.new(iids.curTemp, function (request, self)
@@ -100,7 +104,7 @@ function acpartner.gen(device, info, conf)
                         else
                             value = CurHeatCoolState.value.Idle
                         end
-                        self.logger:info("Read CurrentHeaterCoolerState: " .. util.searchKey(CurHeatCoolState.value, value))
+                        self.logger:info("Read CurrentHeaterCoolerState: " .. searchKey(CurHeatCoolState.value, value))
                         return value, hap.Error.None
                     end),
                     TgtHeatCoolState.new(iids.tgtState, function (request, self)
@@ -111,14 +115,16 @@ function acpartner.gen(device, info, conf)
                         else
                             value = valMapping.mode[mode]
                         end
-                        self.logger:info("Read TargetHeaterCoolerState: " .. util.searchKey(TgtHeatCoolState.value, value))
+                        self.logger:info("Read TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
-                        self.logger:info("Write TargetHeaterCoolerState: " .. util.searchKey(TgtHeatCoolState.value, value))
-                        self:setProp("mode", util.searchKey(valMapping.mode, value))
-                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
-                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
-                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
+                        local iids = self.iids
+                        self.logger:info("Write TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
+                        self:setProp("mode", searchKey(valMapping.mode, value))
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
+                        raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
+                        raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
+                        raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
                         return hap.Error.None
                     end),
                     CoolThrholdTemp.new(iids.coolThrTemp, function (request, self)
@@ -128,6 +134,7 @@ function acpartner.gen(device, info, conf)
                     end, function (request, value, self)
                         self.logger:info("Write CoolingThresholdTemperature: " .. value)
                         self:setProp("tar_temp", math.tointeger(value))
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
                         return hap.Error.None
                     end, 16, 30, 1),
                     HeatThrholdTemp.new(iids.heatThrTemp, function (request, self)
@@ -137,6 +144,7 @@ function acpartner.gen(device, info, conf)
                     end, function (request, value, self)
                         self.logger:info("Write HeatingThresholdTemperature: " .. value)
                         self:setProp("tar_temp", math.tointeger(value))
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
                         return hap.Error.None
                     end, 16, 30, 1),
                     SwingMode.new(iids.swingMode, function (request, self)
@@ -147,11 +155,12 @@ function acpartner.gen(device, info, conf)
                         else
                             value = valMapping.ver_swing[ver_swing]
                         end
-                        self.logger:info("Read SwingMode: " .. util.searchKey(SwingMode.value, value))
+                        self.logger:info("Read SwingMode: " .. searchKey(SwingMode.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
-                        self.logger:info("Write SwingMode: " .. util.searchKey(SwingMode.value, value))
-                        self:setProp("ver_swing", util.searchKey(valMapping.ver_swing, value))
+                        self.logger:info("Write SwingMode: " .. searchKey(SwingMode.value, value))
+                        self:setProp("ver_swing", searchKey(valMapping.ver_swing, value))
+                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
                         return hap.Error.None
                     end)
                 }
