@@ -100,23 +100,21 @@ function _cipher:getIVLen() end
 
 ---Set the padding mode, for cipher modes that use padding.
 ---@param padding CipherPadding The padding mode.
----@return boolean status true on success, false on failure.
 function _cipher:setPadding(padding) end
 
 ---Begin a encryption/decryption process.
 ---@param op '"encrypt"'|'"decrypt"'   Operation.
 ---@param key string The key to use.
 ---@param iv? string The initialization vector (IV).
----@return boolean status true on success, false on failure.
 function _cipher:begin(op, key, iv) end
 
 ---The generic cipher update function.
 ---@param input string Input binary data.
----@return string|nil output Output binary data.
+---@return string output Output binary data.
 function _cipher:update(input) end
 
 ---Finsh the encryption/decryption process.
----@return string|nil output Output binary data.
+---@return string output Output binary data.
 function _cipher:finsh() end
 
 return cipher
