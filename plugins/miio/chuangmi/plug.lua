@@ -17,14 +17,6 @@ function plug.gen(device, info, conf, on)
         on = hap.getNewInstanceID()
     }
 
-    device:regProps({ on },
-    ---@param obj MiioDevice Device Object.
-    ---@param names string[] Property Names.
-    ---@param iids PlugIIDs Plug Instance ID table.
-    function (obj, names, iids)
-        hap.raiseEvent(iids.acc, iids.outlet, iids.on)
-    end, iids)
-
     return {
         aid = iids.acc,
         category = "BridgedAccessory",

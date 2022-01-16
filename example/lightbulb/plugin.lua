@@ -1,15 +1,9 @@
 local plugin = {}
 
 local logger = log.getLogger("lightbulb.plugin")
-local isPending = false
 
 function plugin.init()
     logger:info("Initialized.")
-    return true
-end
-
-function plugin.isPending()
-    return isPending
 end
 
 ---Handle HAP server state.

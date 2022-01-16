@@ -4,7 +4,6 @@ local hap = require "hap"
 local plugins = {}
 
 local logger = log.getLogger("plugins")
-local tinsert = table.insert
 
 ---@class AccessoryConf:table Accessory configuration.
 ---
@@ -18,21 +17,16 @@ local tinsert = table.insert
 
 ---@class Plugin:table Plugin.
 ---
----@field init fun(conf: PluginConf|nil): boolean Initialize plugin.
----@field gen fun(conf: AccessoryConf): HapAccessory|nil Generate accessory via configuration.
----@field isPending fun(): boolean Whether the accessory is waiting to be generated.
+---@field init fun(conf: PluginConf|nil) Initialize plugin and generate accessories in initialization.
+---@field gen fun(conf: AccessoryConf): HapAccessory Generate accessory via configuration.
 ---@field handleState fun(state: HapServerState) Handle HAP server state.
 
 local priv = {
     plugins = {},   ---@type table<string, Plugin>
-    pendings = {},  ---@type table<string, Plugin>
-    accessories = {},
-    done = nil
 }
 
 ---Load plugin.
 ---@param name string Plugin name.
----@param conf? PluginConf Plugin configuration.
 ---@return Plugin|nil
 local function loadPlugin(name, conf)
     local plugin = priv.plugins[name]
@@ -47,7 +41,6 @@ local function loadPlugin(name, conf)
     local fields = {
         init = "function",
         gen = "function",
-        isPending = "function",
         handleState = "function"
     }
     for k, t in pairs(fields) do
@@ -59,65 +52,38 @@ local function loadPlugin(name, conf)
             error(("%s.%s: type error, expected %s, got %s."):format(name, k, t, _t))
         end
     end
-    if plugin.init(conf) == false then
-        error(("Failed to init plugin '%s'"):format(name))
-    end
+    plugin.init(conf)
     priv.plugins[name] = plugin
     return plugin
-end
-
----Report generated bridged accessory.
----@param name string Plugin name.
----@param accessory HapAccessory Accessory.
-function plugins.report(name, accessory)
-    tinsert(priv.accessories, accessory)
-
-    local plugin = loadPlugin(name)
-    if plugin.isPending() == false then
-        priv.pendings[name] = nil
-        if util.isEmptyTable(priv.pendings) then
-            priv.done(priv.accessories)
-            priv.accessories = {}
-            priv.done = nil
-        end
-    end
 end
 
 ---Load plugins and generate bridged accessories.
 ---@param pluginConfs PluginConf[] Plugin configurations.
 ---@param accessoryConfs AccessoryConf[] Accessory configurations.
----@param done async fun(bridgedAccessories: HapAccessory[]) Function called after the bridged accessories is generated.
-function plugins.start(pluginConfs, accessoryConfs, done)
+---@return HapAccessory[] accessories
+function plugins.start(pluginConfs, accessoryConfs)
     if pluginConfs then
         for _, conf in ipairs(pluginConfs) do
             loadPlugin(conf.name, conf)
         end
     end
 
+    local accessories = {}
+
     if accessoryConfs then
+        local tinsert = table.insert
         for _, conf in ipairs(accessoryConfs) do
             local plugin = loadPlugin(conf.plugin)
             conf.aid = hap.getNewBridgedAccessoryID()
-            local acc = plugin.gen(conf)
-            if acc then
-                tinsert(priv.accessories, acc)
+            local success, result = xpcall(plugin.gen, debug.traceback, conf)
+            if success == false then
+                logger:error(result)
+            else
+                tinsert(accessories, result)
             end
         end
     end
-
-    local pendings = priv.pendings
-    for name, plugin in pairs(priv.plugins) do
-        if plugin.isPending() == true then
-            pendings[name] = true
-        end
-    end
-
-    if util.isEmptyTable(pendings) then
-        done(priv.accessories)
-        priv.accessories = {}
-    else
-        priv.done = done
-    end
+    return accessories
 end
 
 ---Handle HAP server state.
@@ -125,12 +91,6 @@ end
 function plugins.handleState(state)
     for _, plugin in pairs(priv.plugins) do
         plugin.handleState(state)
-    end
-    if state == "Running" then
-        local loaded = package.loaded
-        for name, _ in pairs(loaded) do
-            loaded[name] = nil
-        end
     end
 end
 

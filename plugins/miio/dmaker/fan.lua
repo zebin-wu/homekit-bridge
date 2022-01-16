@@ -22,21 +22,7 @@ function fan.gen(device, info, conf, mapping)
         swingMode = hap.getNewInstanceID(),
     }
 
-    device:regPropsMiot(mapping,
-    ---@param obj MiioDevice Device Object.
-    ---@param names string[] Property names.
-    ---@param iids DmakerFanIIDs Dmaker Fan Instance ID table.
-    function (obj, names, iids)
-        for _, name in ipairs(names) do
-            if name == "power" then
-                hap.raiseEvent(iids.acc, iids.fan, iids.active)
-            elseif name == "fanSpeed" then
-                hap.raiseEvent(iids.acc, iids.fan, iids.rotationSpeed)
-            elseif name == "swingMode" then
-                hap.raiseEvent(iids.acc, iids.fan, iids.swingMode)
-            end
-        end
-    end, iids)
+    device:setMapping(mapping)
 
     return {
         aid = iids.acc,

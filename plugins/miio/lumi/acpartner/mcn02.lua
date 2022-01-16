@@ -46,29 +46,6 @@ function acpartner.gen(device, info, conf)
         swingMode = hap.getNewInstanceID()
     }
 
-    device:regProps({
-        "power", "mode", "tar_temp", "ver_swing"
-    },
-    ---@param obj MiioDevice Device Object.
-    ---@param names string[] Property Names.
-    ---@param iids AcpartnerIIDS Acpartner Instance ID table.
-    function (obj, names, iids)
-        for _, name in ipairs(names) do
-            if name == "power" then
-                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.active)
-            elseif name == "mode" then
-                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
-                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.tgtState)
-            elseif name == "tar_temp" then
-                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
-                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
-                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
-            elseif name == "ver_swing" then
-                hap.raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
-            end
-        end
-    end, iids)
-
     return {
         aid = iids.acc,
         category = "BridgedAccessory",
@@ -101,6 +78,11 @@ function acpartner.gen(device, info, conf)
                     end, function (request, value, self)
                         self.logger:info("Write Active: " .. util.searchKey(Active.value, value))
                         self:setProp("power", util.searchKey(valMapping.power, value))
+                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
+                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
+                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
+                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
+                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
                         return hap.Error.None
                     end),
                     CurTemp.new(iids.curTemp, function (request, self)
@@ -134,6 +116,9 @@ function acpartner.gen(device, info, conf)
                     end, function (request, value, self)
                         self.logger:info("Write TargetHeaterCoolerState: " .. util.searchKey(TgtHeatCoolState.value, value))
                         self:setProp("mode", util.searchKey(valMapping.mode, value))
+                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
+                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
+                        hap.raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
                         return hap.Error.None
                     end),
                     CoolThrholdTemp.new(iids.coolThrTemp, function (request, self)

@@ -1,17 +1,13 @@
-local udp = require "udp"
-local time = require "time"
+local socket = require "socket"
 local hash = require "hash"
 local json = require "cjson"
 
 local assert = assert
 local type = type
+local error = error
 
 local protocol = {}
 local logger = log.getLogger("miio.protocol")
-
-local priv = {
-    pcbs = {}
-}
 
 ---
 --- Message format
@@ -99,8 +95,7 @@ local function newEncryption(token)
     end
 
     local cipher = require("cipher").create("AES-128-CBC")
-    assert(cipher, "Failed to create a AES-128-CBC cipher.")
-    assert(cipher:setPadding("PKCS7"), "Failed to set padding to the cipher.")
+    cipher:setPadding("PKCS7")
 
     local key = md5(token)
     local iv = md5(key .. token)
@@ -210,77 +205,88 @@ local function packHello()
     )
 end
 
+---@class ScanResult Scan Result.
+---
+---@field addr string Device address.
+---@field devid integer Device ID: 32-bit.
+---@field stamp integer Device time stamp.
+
 ---Scan for devices in the local network.
 ---
 ---This method is used to discover supported devices by sending
 ---a handshake message to the broadcast address on port 54321.
 ---If the target IP address is given, the handshake will be send as an unicast packet.
----@param cb fun(addr: string, devid: integer, stamp: integer, ...) Function call when the device is scaned.
+---@param timeout integer Timeout period (in milliseconds).
 ---@param addr? string Target Address.
----@return MiioScanContext ctx Scan context.
-function protocol.scan(cb, addr, ...)
-    assert(type(cb) == "function")
+---@return ScanResult[] results A array of scan results.
+function protocol.scan(timeout, addr)
+    assert(timeout > 0, "timeout must be greater then 0")
 
-    local handle = udp.open("inet")
-    assert(handle, "Failed to open a UDP handle.")
+    local sock <close> = socket.create("UDP", "INET")
+    sock:settimeout(timeout)
 
     if not addr then
-        handle:enableBroadcast()
+        sock:enablebroadcast()
     end
 
     local hello = packHello()
     for i = 1, 3, 1 do
-        assert(handle:sendto(hello, addr or "255.255.255.255", 54321), "Failed to send hello message.")
+        assert(sock:sendto(hello, addr or "255.255.255.255", 54321), "Failed to send hello message.")
     end
 
-    ---@class MiioScanContext
-    local ctx = {
-        cb = cb,
-        handle = handle,
-        addr = addr,
-        seen_addr = {},
-        args = {...}
-    }
+    local seen = {}
+    local results = {}
 
-    handle:setRecvCb(function (data, from_addr, from_port, self)
-        if from_port ~= 54321 then
-            return
-        end
-        if self.seen_addr[from_addr] then
-            return
-        end
-        self.seen_addr[from_addr] = true
-        local m = unpack(data)
-        if m and m.unknown == 0 and m.data == nil then
-            if self.addr and self.addr == from_addr then
-                logger:debug("Scan done.")
-                self.handle:close()
+    while true do
+        local success, result, fromAddr, _ = pcall(sock.recvfrom, sock, 1024)
+        if success == false then
+            if addr == nil and result:find("timeout") then
+                return results
             end
-            self.cb(from_addr, m.did, m.stamp, table.unpack(self.args))
+            error(result)
         end
-    end, ctx)
-
-    ---Stop scanning.
-    function ctx:stop()
-        self.handle:close()
+        local m = unpack(result)
+        if m == nil or m.unknown ~= 0 or m.data then
+            error("Got a invalid miIO protocol packet.")
+        end
+        table.insert(results, {
+            addr = fromAddr,
+            devid = m.did,
+            stamp = m.stamp
+        })
+        if addr then
+            assert(addr == fromAddr)
+            return results
+        end
+        if seen[fromAddr] == false then
+            seen[fromAddr] = true
+        end
     end
+end
 
-    return ctx
+local function handshake(addr)
+    logger:debug("Handshake ...")
+    local results = protocol.scan(3000, addr)
+    local result = results[1]
+    logger:debug("Handshake done.")
+    return result.devid, result.stamp
 end
 
 ---@class MiioPcb: MiioPcbPriv miio protocol control block.
 local _pcb = {}
 
----Start a request and ``respCb`` will be called when a response is received.
----@param respCb fun(result: any, ...) Response callback.
----@param errCb fun(code: integer|'"Timeout"'|'"Unknown"', message: string, ...) Error Callback.
+---@class MiioError miIO error.
+---
+---@field code integer Error code.
+---@field message string Error message.
+
+---Start a request.
 ---@param timeout integer Timeout period (in milliseconds).
 ---@param method string The request method.
 ---@param params? table Array of parameters.
-function _pcb:request(respCb, errCb, timeout, method, params, ...)
-    assert(priv.pcbs[self.addr] == nil)
-    assert(type(respCb) == "function")
-    assert(type(errCb) == "function")
+---@return any result
+---@error MiioError|string
+function _pcb:request(timeout, method, params)
     assert(timeout > 0, "timeout must be greater then 0")
     assert(type(method) == "string")
 
@@ -288,15 +294,14 @@ function _pcb:request(respCb, errCb, timeout, method, params, ...)
         assert(type(params) == "table")
     end
 
-    self.respCb = respCb
-    self.errCb = errCb
-    self.args = {...}
-
     local reqid = self.reqid + 1
     if reqid == 9999 then
         reqid = 1
     end
     self.reqid = reqid
+
+    local sock <close> = socket.create("UDP", "INET")
+    sock:settimeout(timeout)
 
     local data = json.encode({
         id = reqid,
@@ -304,37 +309,58 @@ function _pcb:request(respCb, errCb, timeout, method, params, ...)
         params = params or nil
     })
 
-    assert(priv.handle:sendto(pack(0, self.devid, os.time() - self.stampDiff,
+::send::
+    assert(sock:sendto(pack(0, self.devid, os.time() - self.stampDiff,
         self.token, self.encryption:encrypt(data)), self.addr, 54321))
 
-    priv.pcbs[self.addr] = self
-
-    self.timer:start(timeout)
     logger:debug(("%s => %s"):format(data, self.addr))
-end
 
----Abort the previous request.
-function _pcb:abort()
-    local pcbs = priv.pcbs
-    if pcbs[self.addr] then
-        self.args = nil
-        self.timer:stop()
-        pcbs[self.addr] = nil
+    local success, result = pcall(sock.recv, sock, 1024)
+    if success == false then
+        if result:find("timeout") then
+            local _, stamp = handshake(self.addr)
+            self.stampDiff = os.time() - stamp
+            goto send
+        end
+        error(result)
     end
+    self.errCnt = 0
+    local msg = unpack(result, self.token)
+
+    if msg == nil or msg.did ~= self.devid or msg.data == nil then
+        error("Receive a invalid message.")
+    end
+    local s = self.encryption:decrypt(msg.data)
+    if not s then
+        error("Failed to decrypt the message.")
+    end
+    logger:debug(("%s => %s"):format(self.addr, s))
+    local payload =  json.decode(s)
+    if not payload then
+        error("Failed to parse the JSON string.")
+    end
+    if payload.id ~= reqid then
+        error("response id ~= request id")
+    end
+    ---@class MiioError
+    local err = payload.error
+    if err then
+        error(err)
+    end
+
+    return payload.result
 end
 
 ---Create a PCB(protocol control block).
 ---@param addr string Device address.
----@param devid integer Device ID: 32-bit.
 ---@param token string Device token: 128-bit.
----@param stamp integer Device time stamp obtained by scanning.
 ---@return MiioPcb pcb Protocol control block.
-function protocol.create(addr, devid, token, stamp)
+function protocol.create(addr, token)
     assert(type(addr) == "string")
-    assert(math.type(devid) == "integer")
     assert(type(token) == "string")
     assert(#token == 16)
-    assert(math.type(stamp) == "integer")
+
+    local devid, stamp = handshake(addr)
 
     ---@class MiioPcbPriv: table
     local pcb = {
@@ -342,86 +368,16 @@ function protocol.create(addr, devid, token, stamp)
         stampDiff = os.time() - stamp,
         token = token,
         devid = devid,
-        reqid = 0
+        reqid = 0,
     }
 
     pcb.encryption = newEncryption(token)
-    pcb.timer = time.createTimer(function (self)
-        local args = self.args
-        self.args = nil
-        priv.pcbs[self.addr] = nil
-        self.errCb("Timeout", "Request timeout.", table.unpack(args))
-    end, pcb)
 
     setmetatable(pcb, {
         __index = _pcb
     })
 
     return pcb
-end
-
----Initialize protocol module.
-function protocol.init()
-    local handle = udp.open("inet")
-    assert(handle)
-    handle:setRecvCb(function (data, from_addr, from_port, priv)
-        local pcb = priv.pcbs[from_addr]
-        if not pcb then
-            logger:debug(("No pending request to %s:%d, skip the received message."):format(from_addr, from_port))
-            return
-        end
-        pcb.timer:stop()
-        priv.pcbs[pcb.addr] = nil
-
-        local errCb = pcb.errCb
-        local args = pcb.args
-        pcb.args = nil
-
-        local msg = unpack(data, pcb.token)
-
-        if not msg then
-            errCb("Unknown", "Receive a invalid message.", table.unpack(args))
-            return
-        end
-        if msg.did ~= pcb.devid then
-            errCb("Unknown", "Not a match Device ID.", table.unpack(args))
-            return
-        end
-        if not msg.data then
-            errCb("Unknown", "Not a response message.", table.unpack(args))
-            return
-        end
-        local s = pcb.encryption:decrypt(msg.data)
-        if not s then
-            errCb("Unknown", "Failed to decrypt the message.", table.unpack(args))
-            return
-        end
-        logger:debug(("%s => %s"):format(from_addr, s))
-        local payload =  json.decode(s)
-        if not payload then
-            errCb("Unknown", "Failed to parse the JSON string.", table.unpack(args))
-            return
-        end
-        if payload.id ~= pcb.reqid then
-            errCb("Unknown", "response id ~= request id", table.unpack(args))
-            return
-        end
-        local error = payload.error
-        if error then
-            errCb(error.code, error.message, table.unpack(args))
-            return
-        end
-
-        pcb.respCb(payload.result, table.unpack(args))
-    end, priv)
-    priv.handle = handle
-end
-
----De-initialize protocol module.
-function protocol.deinit()
-    priv.handle:close()
-    priv.handle = nil
-    priv.pcbs = {}
 end
 
 return protocol
