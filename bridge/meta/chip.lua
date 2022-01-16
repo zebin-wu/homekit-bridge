@@ -10,6 +10,7 @@ local chip = {}
 ---Get chip inforamtion.
 ---@param type ChipInfoType
 ---@return string
+---@nodiscard
 function chip.getInfo(type) end
 
 return chip

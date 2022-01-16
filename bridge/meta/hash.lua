@@ -10,10 +10,12 @@ function _hash:update(data) end
 
 ---Return the digest of the data passed to the update() method so far.
 ---@return string digest
+---@nodiscard
 function _hash:digest() end
 
 ---New a MD5 (128-bits) hash object.
 ---@return _hash _hash
+---@nodiscard
 function hash.md5() end
 
 return hash

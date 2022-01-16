@@ -28,6 +28,7 @@ local priv = {
 ---Load plugin.
 ---@param name string Plugin name.
 ---@return Plugin|nil
+---@nodiscard
 local function loadPlugin(name, conf)
     local plugin = priv.plugins[name]
     if plugin then
@@ -61,6 +62,7 @@ end
 ---@param pluginConfs PluginConf[] Plugin configurations.
 ---@param accessoryConfs AccessoryConf[] Accessory configurations.
 ---@return HapAccessory[] accessories
+---@nodiscard
 function plugins.start(pluginConfs, accessoryConfs)
     if pluginConfs then
         for _, conf in ipairs(pluginConfs) do

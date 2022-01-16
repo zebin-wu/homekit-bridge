@@ -431,10 +431,12 @@ function hap.raiseEvent(accessoryIID, serviceIID, characteristicIID, session) en
 
 ---Get a new Instance ID for bridged accessory.
 ---@return integer iid Instance ID.
+---@nodiscard
 function hap.getNewBridgedAccessoryID() end
 
 ---Get a new Instance ID for service or characteristic.
 ---@return integer iid Instance ID.
+---@nodiscard
 function hap.getNewInstanceID() end
 
 return hap

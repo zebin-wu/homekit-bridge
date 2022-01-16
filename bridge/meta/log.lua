@@ -8,6 +8,7 @@ log = {}
 ---If no name is specified, return the default logger.
 ---@param name? string the specified name
 ---@return logger
+---@nodiscard
 function log.getLogger(name) end
 
 ---@class logger

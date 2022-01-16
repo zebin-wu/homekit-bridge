@@ -3,6 +3,7 @@ local util = {}
 ---Check if table ``t`` is empty.
 ---@param t table table
 ---@return boolean
+---@nodiscard
 function util.isEmptyTable(t)
     return next(t) == nil
 end
@@ -11,6 +12,7 @@ end
 ---@param t table table
 ---@param v any value
 ---@return any key
+---@nodiscard
 function util.searchKey(t, v)
     for _k, _v in pairs(t) do
         if v == _v then
@@ -24,6 +26,7 @@ end
 ---@param s string
 ---@param c string
 ---@return table results
+---@nodiscard
 function util.split(s, c)
     local rl = {}
     local tinsert = table.insert
@@ -36,6 +39,7 @@ end
 ---Hex to binary.
 ---@param s string Hex string.
 ---@return string # Binary string.
+---@nodiscard
 function util.hex2bin(s)
     return s:gsub("..", function (cc)
         return string.char(tonumber(cc, 16))
@@ -45,6 +49,7 @@ end
 ---Binary to hex.
 ---@param s string Binary string.
 ---@return string # Hex string.
+---@nodiscard
 function util.bin2hex(s)
     return s:gsub(".", function (c)
         return ("%02X"):format(string.byte(c))
@@ -54,6 +59,7 @@ end
 ---Serialize a Lua value.
 ---@param v any Lua value
 ---@return string
+---@nodiscard
 local function serialize(v)
     local t = type(v)
     if t == "string" then

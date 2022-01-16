@@ -44,6 +44,7 @@ end
 ---Get property.
 ---@param name string Property name.
 ---@return string|number|boolean value Property value.
+---@nodiscard
 function _device:getProp(name)
     if self.mapping then
         local result = self:request("get_properties", {{
@@ -78,6 +79,7 @@ end
 
 ---Get device information.
 ---@return MiioDeviceInfo info
+---@nodiscard
 function _device:getInfo()
     return self:request("miIO.info")
 end
@@ -86,6 +88,7 @@ end
 ---@param addr string Device address.
 ---@param token string Device token.
 ---@return MiioDevice obj Device object.
+---@nodiscard
 function device.create(addr, token)
     assert(type(addr) == "string")
     assert(type(token) == "string")

@@ -87,6 +87,7 @@ local logger = log.getLogger("miio.protocol")
 ---New a encryption.
 ---@param token string Device token.
 ---@return MiioEncryption encryption A new encryption.
+---@nodiscard
 local function newEncryption(token)
     local function md5(data)
         local m = hash.md5()
@@ -126,6 +127,7 @@ end
 ---@param token? string Device token: 128-bit.
 ---@param data? string Optional variable-sized data.
 ---@return string package
+---@nodiscard
 local function pack(unknown, did, stamp, token, data)
     local len = 32
     if data then
@@ -159,15 +161,16 @@ end
 ---Unpack a message from a binary package.
 ---@param package string A binary package.
 ---@param token? string Device token: 128-bit.
----@return MiioMessage|nil message
+---@return MiioMessage message
+---@nodiscard
 local function unpack(package, token)
     if string.unpack(">I2", package, 1) ~= 0x2131 then
-        return nil
+        error("Invalid magic number.")
     end
 
     local len = string.unpack(">I2", package, 3)
     if len < 32 or len ~= #package then
-        return nil
+        error("Invalid package length.")
     end
 
     local data = nil
@@ -182,8 +185,7 @@ local function unpack(package, token)
             md5:update(data)
         end
         if md5:digest() ~= string.unpack("c16", package, 17) then
-            logger:error("Got checksum error which indicates use of an invalid token.")
-            return nil
+            error("Got checksum error which indicates use of an invalid token.")
         end
     end
 
@@ -197,6 +199,7 @@ end
 
 ---Pack a hello package.
 ---@return string package A binary package.
+---@nodiscard
 local function packHello()
     return pack(
         0xffffffff,
@@ -219,6 +222,7 @@ end
 ---@param timeout integer Timeout period (in milliseconds).
 ---@param addr? string Target Address.
 ---@return ScanResult[] results A array of scan results.
+---@nodiscard
 function protocol.scan(timeout, addr)
     assert(timeout > 0, "timeout must be greater then 0")
 
@@ -285,7 +289,6 @@ local _pcb = {}
 ---@param method string The request method.
 ---@param params? table Array of parameters.
 ---@return any result
----@error MiioError|string
 function _pcb:request(timeout, method, params)
     assert(timeout > 0, "timeout must be greater then 0")
     assert(type(method) == "string")
@@ -355,6 +358,7 @@ end
 ---@param addr string Device address.
 ---@param token string Device token: 128-bit.
 ---@return MiioPcb pcb Protocol control block.
+---@nodiscard
 function protocol.create(addr, token)
     assert(type(addr) == "string")
     assert(type(token) == "string")

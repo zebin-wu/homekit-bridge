@@ -16,6 +16,7 @@ local _socket = {}
 ---@param type SocketType Socket type.
 ---@param domain SocketDomain Socket Domain.
 ---@return Socket object Socket object.
+---@nodiscard
 function socket.create(type, domain) end
 
 ---Set the timeout.
@@ -43,6 +44,7 @@ function _socket:listen(backlog) end
 ---@return Socket object Socket object.
 ---@return string addr Remote address.
 ---@return integer port Remote port.
+---@nodiscard
 function _socket:accept() end
 
 ---Send data.
@@ -66,6 +68,7 @@ function _socket:sendto(data, addr, port) end
 ---Receive data from a socket.
 ---@param maxlen integer The max length of the data.
 ---@return string message The received data.
+---@nodiscard
 function _socket:recv(maxlen) end
 
 ---Receive a message from a socket.
@@ -73,6 +76,7 @@ function _socket:recv(maxlen) end
 ---@return string data The received message.
 ---@return string addr The remote address.
 ---@return integer port The remote port.
+---@nodiscard
 function _socket:recvfrom(maxlen) end
 
 ---Destroy the socket object.
