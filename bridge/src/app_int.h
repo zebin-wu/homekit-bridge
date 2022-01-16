@@ -34,9 +34,6 @@ LUAMOD_API int luaopen_hash(lua_State *L);
 #define LUA_LOG_NAME "log"
 LUAMOD_API int luaopen_log(lua_State *L);
 
-#define LUA_UDP_NAME "udp"
-LUAMOD_API int luaopen_udp(lua_State *L);
-
 #define LUA_TIME_NAME "time"
 LUAMOD_API int luaopen_time(lua_State *L);
 
