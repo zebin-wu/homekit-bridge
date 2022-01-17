@@ -1,4 +1,5 @@
 local hap = require "hap"
+local time = require "time"
 local Active = require "hap.char.Active"
 local CurTemp = require "hap.char.CurrentTemperature"
 local CurHeatCoolState = require "hap.char.CurrentHeaterCoolerState"
@@ -78,15 +79,16 @@ function acpartner.gen(device, info, conf)
                         self.logger:info("Read Active: " .. searchKey(Active.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
-                        local iids = self.iids
                         self.logger:info("Write Active: " .. searchKey(Active.value, value))
                         self:setProp("power", searchKey(valMapping.power, value))
                         raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
-                        raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
-                        raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
-                        raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
-                        raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
-                        raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
+                        time.createTimer(function (iids)
+                            raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
+                            raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
+                            raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
+                            raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
+                            raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
+                        end, self.iids):start(500)
                         return hap.Error.None
                     end),
                     CurTemp.new(iids.curTemp, function (request, self)
@@ -118,13 +120,14 @@ function acpartner.gen(device, info, conf)
                         self.logger:info("Read TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
-                        local iids = self.iids
                         self.logger:info("Write TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
                         self:setProp("mode", searchKey(valMapping.mode, value))
                         raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
-                        raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
-                        raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
-                        raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
+                        time.createTimer(function (iids)
+                            raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
+                            raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
+                            raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
+                        end, self.iids):start(500)
                         return hap.Error.None
                     end),
                     CoolThrholdTemp.new(iids.coolThrTemp, function (request, self)
