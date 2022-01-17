@@ -94,6 +94,12 @@ function plugins.handleState(state)
     for _, plugin in pairs(priv.plugins) do
         plugin.handleState(state)
     end
+    if state == "Running" then
+        local loaded = package.loaded
+        for name, _ in pairs(loaded) do
+            loaded[name] = nil
+        end
+    end
 end
 
 return plugins
