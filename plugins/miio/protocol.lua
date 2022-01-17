@@ -268,14 +268,6 @@ function protocol.scan(timeout, addr)
     end
 end
 
-local function handshake(addr)
-    logger:debug("Handshake ...")
-    local results = protocol.scan(3000, addr)
-    local result = results[1]
-    logger:debug("Handshake done.")
-    return result.devid, result.stamp
-end
-
 ---@class MiioPcb: MiioPcbPriv miio protocol control block.
 local _pcb = {}
 
@@ -283,6 +275,17 @@ local _pcb = {}
 ---
 ---@field code integer Error code.
 ---@field message string Error message.
+
+---Handshake.
+---@param timeout integer Timeout period (in milliseconds).
+function _pcb:handshake(timeout)
+    logger:debug("Handshake ...")
+    local results = protocol.scan(timeout, self.addr)
+    local result = results[1]
+    logger:debug("Handshake done.")
+    self.devid = result.devid
+    self.stampDiff = os.time() - result.stamp
+end
 
 ---Start a request.
 ---@param timeout integer Timeout period (in milliseconds).
@@ -297,33 +300,36 @@ function _pcb:request(timeout, method, params)
         assert(type(params) == "table")
     end
 
+    if self.stampDiff == nil then
+        self:handshake(timeout)
+    end
+
+    local sock <close> = socket.create("UDP", "INET")
+    sock:settimeout(timeout)
+    sock:connect(self.addr, 54321)
+
     local reqid = self.reqid + 1
     if reqid == 9999 then
         reqid = 1
     end
     self.reqid = reqid
+    do
+        local data = json.encode({
+            id = reqid,
+            method = method,
+            params = params or nil
+        })
 
-    local sock <close> = socket.create("UDP", "INET")
-    sock:settimeout(timeout)
+        sock:send(pack(0, self.devid, os.time() - self.stampDiff,
+            self.token, self.encryption:encrypt(data)))
 
-    local data = json.encode({
-        id = reqid,
-        method = method,
-        params = params or nil
-    })
-
-::send::
-    assert(sock:sendto(pack(0, self.devid, os.time() - self.stampDiff,
-        self.token, self.encryption:encrypt(data)), self.addr, 54321))
-
-    logger:debug(("%s => %s"):format(data, self.addr))
+        logger:debug(("%s => %s"):format(data, self.addr))
+    end
 
     local success, result = pcall(sock.recv, sock, 1024)
     if success == false then
         if result:find("timeout") then
-            local _, stamp = handshake(self.addr)
-            self.stampDiff = os.time() - stamp
-            goto send
+            self.stampDiff = nil
         end
         error(result)
     end
@@ -364,14 +370,10 @@ function protocol.create(addr, token)
     assert(type(token) == "string")
     assert(#token == 16)
 
-    local devid, stamp = handshake(addr)
-
     ---@class MiioPcbPriv: table
     local pcb = {
         addr = addr,
-        stampDiff = os.time() - stamp,
         token = token,
-        devid = devid,
         reqid = 0,
     }
 
