@@ -55,6 +55,8 @@
 #define APP_MAIN_TASK_STACKSIZE 10 * 1024
 #define APP_MAIN_TASK_PRIORITY 6
 #define APP_SPIFFS_DIR_PATH "/spiffs"
+#define APP_NVS_NAMESPACE_NAME "bridge"
+#define APP_NVS_LOG_ENABLED_TYPE "log"
 
 /**
  * Global platform objects.
@@ -192,7 +194,11 @@ static int app_log_cmd(int argc, char **argv) {
         for (int i = 0; i < HAPArrayCount(enabled_type_strs); i++) {
             if (HAPStringAreEqual(argv[1], enabled_type_strs[i])) {
                 HAPPlatformLogSetEnabledTypes(NULL, i);
-                return 0;
+                nvs_handle_t nvs_handle;
+                ESP_ERROR_CHECK(nvs_open(APP_NVS_NAMESPACE_NAME, NVS_READWRITE, &nvs_handle));
+                esp_err_t err = nvs_set_u8(nvs_handle, APP_NVS_LOG_ENABLED_TYPE, i);
+                nvs_close(nvs_handle);
+                return err;
             }
         }
     }
@@ -215,6 +221,16 @@ void app_main() {
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    // Get log enabled type from NVS
+    nvs_handle_t nvs_handle;
+    uint8_t log_enabled_type;
+    ESP_ERROR_CHECK(nvs_open(APP_NVS_NAMESPACE_NAME, NVS_READWRITE, &nvs_handle));
+    ret = nvs_get_u8(nvs_handle, APP_NVS_LOG_ENABLED_TYPE, &log_enabled_type);
+    nvs_close(nvs_handle);
+    if (ret == ESP_OK) {
+        HAPPlatformLogSetEnabledTypes(NULL, log_enabled_type);
+    }
 
     app_console_init();
     app_wifi_init();
