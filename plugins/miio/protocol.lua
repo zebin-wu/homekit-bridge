@@ -68,7 +68,7 @@ local logger = log.getLogger("miio.protocol")
 ---@field data string
 
 ---
---- Encryption
+--- miIO Encryption.
 ---
 --- The variable-sized data payload is encrypted with the Advanced Encryption Standard (AES).
 ---
@@ -79,43 +79,55 @@ local logger = log.getLogger("miio.protocol")
 ---
 --- The mode of operation is Cipher Block Chaining (CBC).
 ---
----@class MiioEncryption
----
----@field encrypt fun(input: string): string
----@field decrypt fun(input: string): string
+---@class MiioEncryption: MiioEncryptionPriv
+local encryption = {}
 
----New a encryption.
+---Encrypt data.
+---@param input string
+---@return string output
+function encryption:encrypt(input)
+    self.cipher:begin("encrypt", self.key, self.iv)
+    return self.cipher:update(input) .. self.cipher:finsh()
+end
+
+---Decrypt data.
+---@param input string
+---@return string output
+function encryption:decrypt(input)
+    self.cipher:begin("decrypt", self.key, self.iv)
+    return self.cipher:update(input) .. self.cipher:finsh()
+end
+
+---Calculates a MD5 checksum for the given data.
+---@param data string
+---@return string digest
+local function md5(data)
+    local m = hash.md5()
+    m:update(data)
+    return m:digest()
+end
+
+---Create an encryption.
 ---@param token string Device token.
 ---@return MiioEncryption encryption A new encryption.
 ---@nodiscard
-local function newEncryption(token)
-    local function md5(data)
-        local m = hash.md5()
-        m:update(data)
-        return m:digest()
-    end
-
+local function createEncryption(token)
     local cipher = require("cipher").create("AES-128-CBC")
     cipher:setPadding("PKCS7")
 
     local key = md5(token)
     local iv = md5(key .. token)
 
+    ---@class MiioEncryptionPriv
     local o = {
         cipher = cipher,
         key = key,
         iv = iv,
     }
 
-    function o:encrypt(input)
-        self.cipher:begin("encrypt", self.key, self.iv)
-        return self.cipher:update(input) .. self.cipher:finsh()
-    end
-
-    function o:decrypt(input)
-        self.cipher:begin("decrypt", self.key, self.iv)
-        return self.cipher:update(input) .. self.cipher:finsh()
-    end
+    setmetatable(o, {
+        __index = encryption
+    })
 
     return o
 end
@@ -138,24 +150,14 @@ local function pack(unknown, did, stamp, token, data)
         0x2131, len, unknown, did, stamp)
     local checksum = nil
     if token then
-        local md5 = hash.md5()
-        md5:update(header .. token)
-        if data then
-            md5:update(data)
-        end
-        checksum = md5:digest()
+        checksum = md5(header .. token .. (data or ""))
     else
         checksum = string.pack(">I4>I4>I4>I4",
             0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff)
     end
     assert(#checksum == 16)
 
-    local msg = header .. checksum
-    if data then
-        msg = msg .. data
-    end
-
-    return msg
+    return header .. checksum .. (data or "")
 end
 
 ---Unpack a message from a binary package.
@@ -179,12 +181,9 @@ local function unpack(package, token)
     end
 
     if token then
-        local md5 = hash.md5()
-        md5:update(string.unpack("c16", package, 1) .. token)
-        if data then
-            md5:update(data)
-        end
-        if md5:digest() ~= string.unpack("c16", package, 17) then
+        local checksum = md5(string.unpack("c16", package, 1) .. token .. (data or ""))
+        assert(#checksum == 16)
+        if checksum ~= string.unpack("c16", package, 17) then
             error("Got checksum error which indicates use of an invalid token.")
         end
     end
@@ -195,17 +194,6 @@ local function unpack(package, token)
         stamp = string.unpack(">I4", package, 13),
         data = data
     }
-end
-
----Pack a hello package.
----@return string package A binary package.
----@nodiscard
-local function packHello()
-    return pack(
-        0xffffffff,
-        0xffffffff,
-        0xffffffff
-    )
 end
 
 ---@class ScanResult Scan Result.
@@ -233,7 +221,7 @@ function protocol.scan(timeout, addr)
         sock:enablebroadcast()
     end
 
-    local hello = packHello()
+    local hello = pack(0xffffffff, 0xffffffff, 0xffffffff)
     for i = 1, 3, 1 do
         assert(sock:sendto(hello, addr or "255.255.255.255", 54321), "Failed to send hello message.")
     end
@@ -269,7 +257,7 @@ function protocol.scan(timeout, addr)
 end
 
 ---@class MiioPcb: MiioPcbPriv miio protocol control block.
-local _pcb = {}
+local pcb = {}
 
 ---@class MiioError miIO error.
 ---
@@ -278,7 +266,7 @@ local _pcb = {}
 
 ---Handshake.
 ---@param timeout integer Timeout period (in milliseconds).
-function _pcb:handshake(timeout)
+function pcb:handshake(timeout)
     logger:debug("Handshake ...")
     local results = protocol.scan(timeout, self.addr)
     local result = results[1]
@@ -292,7 +280,7 @@ end
 ---@param method string The request method.
 ---@param params? table Array of parameters.
 ---@return any result
-function _pcb:request(timeout, method, params)
+function pcb:request(timeout, method, params)
     assert(timeout > 0, "timeout must be greater then 0")
     assert(type(method) == "string")
 
@@ -370,20 +358,20 @@ function protocol.create(addr, token)
     assert(type(token) == "string")
     assert(#token == 16)
 
-    ---@class MiioPcbPriv: table
-    local pcb = {
+    ---@class MiioPcbPriv
+    local o = {
         addr = addr,
         token = token,
         reqid = 0,
     }
 
-    pcb.encryption = newEncryption(token)
+    o.encryption = createEncryption(token)
 
-    setmetatable(pcb, {
-        __index = _pcb
+    setmetatable(o, {
+        __index = pcb
     })
 
-    return pcb
+    return o
 end
 
 return protocol

@@ -46,6 +46,8 @@ end
 ---@return string|number|boolean value Property value.
 ---@nodiscard
 function _device:getProp(name)
+    assert(type(name) == "string")
+
     if self.mapping then
         local result = self:request("get_properties", {{
             did = name,
@@ -55,9 +57,7 @@ function _device:getProp(name)
         assert(#result == 1 and result[1])
         return result[1].value
     else
-        local result = self:request("get_prop", {name})
-        assert(#result == 1)
-        return result[1]
+        return self:request("get_prop", {name})[1]
     end
 end
 
@@ -65,15 +65,17 @@ end
 ---@param name string Property name.
 ---@param value string|number|boolean Property value.
 function _device:setProp(name, value)
+    assert(type(name) == "string")
+
     if self.mapping then
-        self:request("set_properties", {{
+        assert(self:request("set_properties", {{
             did = name,
             siid = self.mapping[name].siid,
             piid = self.mapping[name].piid,
             value = value
-        }})
+        }})[1].code == 0)
     else
-        self:request("set_" .. name, {value})
+        assert(self:request("set_" .. name, {value})[1] == "ok")
     end
 end
 
