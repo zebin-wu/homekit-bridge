@@ -62,19 +62,16 @@ static int ltime_sleep(lua_State *L) {
 static int ltime_createTimer(lua_State *L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
 
-    // pack function and args to a table
     int n = lua_gettop(L);
-    lua_createtable(L, n, 1);
+    ltime_timer_ctx *ctx = lua_newuserdatauv(L, sizeof(ltime_timer_ctx), n);
     luaL_setmetatable(L, LUA_TIMER_NAME);
-    lua_insert(L, 1);  // put the table at index 1
+    lua_insert(L, 1);  // put the userdata at index 1
     for (int i = n; i >= 1; i--) {
-        lua_seti(L, 1, i);
+        lua_setiuservalue(L, 1, i);
     }
-    ltime_timer_ctx *ctx = lua_newuserdata(L, sizeof(ltime_timer_ctx));
     ctx->nargs = n - 1;
     ctx->timer = 0;
-    lua_setfield(L, 1, "ctx");  // t.ctx = timer object context
-    return 1;  // return the table
+    return 1;
 }
 
 static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
@@ -87,13 +84,13 @@ static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
 
     int nres, status;
     lua_State *co = lc_newthread(L);
-    HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, &ctx->timer) == LUA_TTABLE);
+    HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, ctx) == LUA_TUSERDATA);
     for (int i = 1; i <= ctx->nargs + 1; i++) {
-        lua_geti(co, 1, i);
+        lua_getiuservalue(co, 1, i);
     }
     lua_remove(co, 1);
     lua_pushnil(co);
-    lua_rawsetp(co, LUA_REGISTRYINDEX, &ctx->timer);
+    lua_rawsetp(co, LUA_REGISTRYINDEX, ctx);
     status = lua_resume(co, L, ctx->nargs, &nres);
     if (status == LUA_OK) {
         lc_freethread(co);
@@ -108,15 +105,10 @@ static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
 }
 
 static int ltime_timer_start(lua_State *L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
+    ltime_timer_ctx *ctx = luaL_checkudata(L, 1, LUA_TIMER_NAME);
 
     lua_Integer ms = luaL_checkinteger(L, 2);
     luaL_argcheck(L, ms >= 0, 2, "ms out of range");
-
-    lua_getfield(L, 1, "ctx");
-    ltime_timer_ctx *ctx = lua_touserdata(L, -1);
-    lua_pop(L, 2);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &ctx->timer);
 
     if (ctx->timer) {
         HAPPlatformTimerDeregister(ctx->timer);
@@ -127,43 +119,26 @@ static int ltime_timer_start(lua_State *L) {
         ltime_timer_cb, ctx) != kHAPError_None) {
         luaL_error(L, "failed to start the timer");
     }
+    lua_pop(L, 1);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, ctx);
     return 0;
 }
 
 static int ltime_timer_stop(lua_State *L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
+    ltime_timer_ctx *ctx = luaL_checkudata(L, 1, LUA_TIMER_NAME);
 
-    lua_getfield(L, 1, "ctx");
-    ltime_timer_ctx *ctx = lua_touserdata(L, -1);
-    if (!ctx->timer) {
-        return 0;
-    }
-    HAPPlatformTimerDeregister(ctx->timer);
-    ctx->timer = 0;
-    lua_pushnil(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &ctx->timer);
-    return 0;
-}
-
-static int ltime_timer_gc(lua_State *L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
-
-    lua_getfield(L, 1, "ctx");
-    ltime_timer_ctx *ctx = lua_touserdata(L, -1);
     if (ctx->timer) {
         HAPPlatformTimerDeregister(ctx->timer);
         ctx->timer = 0;
         lua_pushnil(L);
-        lua_rawsetp(L, LUA_REGISTRYINDEX, &ctx->timer);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, ctx);
     }
     return 0;
 }
 
 static int ltime_timer_tostring(lua_State *L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
+    ltime_timer_ctx *ctx = luaL_checkudata(L, 1, LUA_TIMER_NAME);
 
-    lua_getfield(L, 1, "ctx");
-    ltime_timer_ctx *ctx = lua_touserdata(L, -1);
     if (ctx->timer) {
         lua_pushfstring(L, "timer (%u)", ctx->timer);
     } else {
@@ -183,7 +158,7 @@ static const luaL_Reg ltime_funcs[] = {
  */
 static const luaL_Reg ltime_timer_metameth[] = {
     {"__index", NULL},  /* place holder */
-    {"__gc", ltime_timer_gc},
+    {"__gc", ltime_timer_stop},
     {"__tostring", ltime_timer_tostring},
     {NULL, NULL}
 };
