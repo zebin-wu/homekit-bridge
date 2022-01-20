@@ -1,3 +1,9 @@
+# Copyright (c) 2021-2022 KNpTrue and homekit-bridge contributors
+#
+# Licensed under the Apache License, Version 2.0 (the “License”);
+# you may not use this file except in compliance with the License.
+# See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
+
 if(NOT OUTPUT)
     message(FATAL_ERROR "OUTPUT must be specified")
 endif()
