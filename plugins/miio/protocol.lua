@@ -102,7 +102,7 @@ end
 ---@param data string
 ---@return string digest
 local function md5(data)
-    local m = hash.md5()
+    local m = hash.new("MD5")
     m:update(data)
     return m:digest()
 end

@@ -5,55 +5,45 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <lauxlib.h>
-#include <pal/md5.h>
+#include <pal/md.h>
 
 #define LUA_HASH_OBJ_NAME "HashObject*"
 
 #define LHASH_GET_OBJ(L, idx) \
     luaL_checkudata(L, idx, LUA_HASH_OBJ_NAME)
 
-typedef struct {
-    size_t digest_len; /* The length of the digest. */
-    void *(*new)(void); /* New a context. */
-    void (*free)(void *); /* Free a context. */
-    void (*update)(void *ctx, const void *data, size_t len); /* Update data. */
-    void (*digest)(void *ctx, void *output); /* Get the digest. */
-} lhash_method;
-
-static const lhash_method lhash_md5_mth = {
-    .digest_len = PAL_MD5_HASHSIZE,
-    .new = (void *(*)())pal_md5_new,
-    .free = (void (*)(void *))pal_md5_free,
-    .update = (void (*)(void *, const void *, size_t))pal_md5_update,
-    .digest = (void (*)(void *, void *))pal_md5_digest,
-};
-
 /**
  * Hash object.
  */
 typedef struct {
-    const lhash_method *mth;
-    void *ctx;
+    pal_md_ctx *ctx;
 } lhash_obj;
 
-static int lhash_new(lua_State *L, const lhash_method *mth) {
+const char *lhash_type_strs[] = {
+    "MD4",
+    "MD5",
+    "SHA1",
+    "SHA224",
+    "SHA256",
+    "SHA384",
+    "SHA512",
+    "RIPEMD160",
+    NULL
+};
+
+static int lhash_new(lua_State *L) {
+    pal_md_type type = luaL_checkoption(L, 1, NULL, lhash_type_strs);
     lhash_obj *obj = lua_newuserdata(L, sizeof(lhash_obj));
     luaL_setmetatable(L, LUA_HASH_OBJ_NAME);
-    obj->ctx = mth->new();
+    obj->ctx = pal_md_new(type);
     if (!obj->ctx) {
-        luaL_pushfail(L);
-    } else {
-        obj->mth = mth;
+        luaL_error(L, "Failed to create a hash context.");
     }
     return 1;
 }
 
-static int lhash_md5(lua_State *L) {
-    return lhash_new(L, &lhash_md5_mth);
-}
-
 static const luaL_Reg hashlib[] = {
-    {"md5", lhash_md5},
+    {"new", lhash_new},
     {NULL, NULL},
 };
 
@@ -61,21 +51,26 @@ static int lhash_obj_update(lua_State *L) {
     size_t len;
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
     const char *s = luaL_checklstring(L, 2, &len);
-    obj->mth->update(obj->ctx, s, len);
+    if (!pal_md_update(obj->ctx, s, len)) {
+        luaL_error(L, "Failed to update data.");
+    }
     return 0;
 }
 
 static int lhash_obj_digest(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    char out[obj->mth->digest_len];
-    obj->mth->digest(obj->ctx, out);
-    lua_pushlstring(L, out, obj->mth->digest_len);
+    size_t len = pal_md_get_size(obj->ctx);
+    char out[len];
+    if (!pal_md_digest(obj->ctx, (uint8_t *)out)) {
+        luaL_error(L, "Failed to finishes the digest operation.");
+    }
+    lua_pushlstring(L, out, len);
     return 1;
 }
 
 static int lhash_obj_gc(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    obj->mth->free(obj->ctx);
+    pal_md_free(obj->ctx);
     return 0;
 }
 

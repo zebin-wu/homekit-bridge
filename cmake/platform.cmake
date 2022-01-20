@@ -20,7 +20,7 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/memory.h
     ${PLATFORM_INC_DIR}/pal/hap.h
     ${PLATFORM_INC_DIR}/pal/cipher.h
-    ${PLATFORM_INC_DIR}/pal/md5.h
+    ${PLATFORM_INC_DIR}/pal/md.h
     ${PLATFORM_INC_DIR}/pal/socket.h
 )
 
@@ -29,7 +29,7 @@ set(PLATFORM_LINUX_SRCS
     ${PLATFORM_COMMON_SRC_DIR}/hap.c
     ${PLATFORM_COMMON_POSIX_SRC_DIR}/socket.c
     ${PLATFORM_OPENSSL_SRC_DIR}/cipher.c
-    ${PLATFORM_OPENSSL_SRC_DIR}/md5.c
+    ${PLATFORM_OPENSSL_SRC_DIR}/md.c
     ${PLATFORM_LINUX_SRC_DIR}/chip.c
     ${PLATFORM_LINUX_SRC_DIR}/memory.c
     ${PLATFORM_LINUX_SRC_DIR}/main.c
@@ -40,7 +40,7 @@ set(PLATFORM_ESP_SRCS
     ${PLATFORM_COMMON_SRC_DIR}/hap.c
     ${PLATFORM_COMMON_POSIX_SRC_DIR}/socket.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/cipher.c
-    ${PLATFORM_MBEDTLS_SRC_DIR}/md5.c
+    ${PLATFORM_MBEDTLS_SRC_DIR}/md.c
     ${PLATFORM_ESP_SRC_DIR}/chip.c
     ${PLATFORM_ESP_SRC_DIR}/memory.c
 )
