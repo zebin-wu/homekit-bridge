@@ -1,8 +1,8 @@
 ---@class hashlib
 local hash = {}
 
----@class _hash:userdata Hash object.
-local _hash = {}
+---@class HashContext:userdata Hash context.
+local ctx = {}
 
 ---@alias HashType
 ---|'"MD4"'
@@ -14,19 +14,19 @@ local _hash = {}
 ---|'"SHA512"'
 ---|'"RIPEMD160"'
 
----Update hash object with binary data.
+---Update hash context with binary data.
 ---@param data string Binary data.
-function _hash:update(data) end
+function ctx:update(data) end
 
 ---Return the digest of the data passed to the update() method so far.
 ---@return string digest
 ---@nodiscard
-function _hash:digest() end
+function ctx:digest() end
 
----New a hash object.
+---Create a hash context.
 ---@param type HashType
----@return _hash _hash
+---@return HashContext ctx
 ---@nodiscard
-function hash.new(type) end
+function hash.create(type) end
 
 return hash

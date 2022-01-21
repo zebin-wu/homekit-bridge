@@ -86,23 +86,25 @@ local encryption = {}
 ---@param input string
 ---@return string output
 function encryption:encrypt(input)
-    self.cipher:begin("encrypt", self.key, self.iv)
-    return self.cipher:update(input) .. self.cipher:finsh()
+    local cipher = self.cipher
+    cipher:begin("encrypt", self.key, self.iv)
+    return cipher:update(input) .. cipher:finsh()
 end
 
 ---Decrypt data.
 ---@param input string
 ---@return string output
 function encryption:decrypt(input)
-    self.cipher:begin("decrypt", self.key, self.iv)
-    return self.cipher:update(input) .. self.cipher:finsh()
+    local cipher = self.cipher
+    cipher:begin("decrypt", self.key, self.iv)
+    return cipher:update(input) .. cipher:finsh()
 end
 
 ---Calculates a MD5 checksum for the given data.
 ---@param data string
 ---@return string digest
 local function md5(data)
-    local m = hash.new("MD5")
+    local m = hash.create("MD5")
     m:update(data)
     return m:digest()
 end

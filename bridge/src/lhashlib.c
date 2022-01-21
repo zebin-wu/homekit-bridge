@@ -31,19 +31,19 @@ const char *lhash_type_strs[] = {
     NULL
 };
 
-static int lhash_new(lua_State *L) {
+static int lhash_create(lua_State *L) {
     pal_md_type type = luaL_checkoption(L, 1, NULL, lhash_type_strs);
     lhash_obj *obj = lua_newuserdata(L, sizeof(lhash_obj));
     luaL_setmetatable(L, LUA_HASH_OBJ_NAME);
     obj->ctx = pal_md_new(type);
     if (!obj->ctx) {
-        luaL_error(L, "Failed to create a hash context.");
+        luaL_error(L, "Failed to create a %s context.", lhash_type_strs[type]);
     }
     return 1;
 }
 
 static const luaL_Reg hashlib[] = {
-    {"new", lhash_new},
+    {"create", lhash_create},
     {NULL, NULL},
 };
 
