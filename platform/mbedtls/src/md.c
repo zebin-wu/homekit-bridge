@@ -6,7 +6,7 @@
 
 #include <mbedtls/md.h>
 #include <pal/memory.h>
-#include <pal/md.h>
+#include <pal/crypto/md.h>
 #include <HAPBase.h>
 
 struct pal_md_ctx {

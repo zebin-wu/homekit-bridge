@@ -5,7 +5,7 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <openssl/evp.h>
-#include <pal/cipher.h>
+#include <pal/crypto/cipher.h>
 #include <pal/memory.h>
 #include <HAPBase.h>
 

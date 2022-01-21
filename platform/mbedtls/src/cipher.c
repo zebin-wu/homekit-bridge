@@ -6,7 +6,7 @@
 
 #include <mbedtls/cipher.h>
 #include <mbedtls/error.h>
-#include <pal/cipher.h>
+#include <pal/crypto/cipher.h>
 #include <pal/memory.h>
 #include <HAPPlatform.h>
 

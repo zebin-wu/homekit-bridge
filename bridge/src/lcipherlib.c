@@ -5,7 +5,7 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <lauxlib.h>
-#include <pal/cipher.h>
+#include <pal/crypto/cipher.h>
 
 #define LCIPHER_CTX_NAME "CipherContext*"
 

@@ -4,14 +4,15 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_CIPHER_H_
-#define PLATFORM_INCLUDE_PAL_CIPHER_H_
+#ifndef PLATFORM_INCLUDE_PAL_CRYPTO_CIPHER_H_
+#define PLATFORM_INCLUDE_PAL_CRYPTO_CIPHER_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <stddef.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 /**
@@ -226,4 +227,4 @@ bool pal_cipher_finsh(pal_cipher_ctx *ctx, void *out, size_t *olen);
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_CIPHER_H_
+#endif  // PLATFORM_INCLUDE_PAL_CRYPTO_CIPHER_H_

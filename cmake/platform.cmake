@@ -25,8 +25,8 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/chip.h
     ${PLATFORM_INC_DIR}/pal/memory.h
     ${PLATFORM_INC_DIR}/pal/hap.h
-    ${PLATFORM_INC_DIR}/pal/cipher.h
-    ${PLATFORM_INC_DIR}/pal/md.h
+    ${PLATFORM_INC_DIR}/pal/crypto/cipher.h
+    ${PLATFORM_INC_DIR}/pal/crypto/md.h
     ${PLATFORM_INC_DIR}/pal/socket.h
 )
 
