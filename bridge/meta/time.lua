@@ -10,7 +10,7 @@ function time.sleep(ms) end
 
 ---Create a timer.
 ---@param cb async fun(...) Function to call when the timer expires.
----@vararg any Arguments passed to the callback.
+---@param ... any Arguments passed to the callback.
 ---@return Timer timer
 ---@nodiscard
 function time.createTimer(cb, ...) end
