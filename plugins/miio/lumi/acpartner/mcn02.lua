@@ -25,7 +25,7 @@ local valMapping = {
     mode = {
         cool = TgtHeatCoolState.value.Cool,
         heat = TgtHeatCoolState.value.Heat,
-        auto = TgtHeatCoolState.value.HeatOrCool
+        auto = TgtHeatCoolState.value.HeatOrCool,
     }
 }
 
@@ -112,8 +112,8 @@ function acpartner.gen(device, info, conf)
                     TgtHeatCoolState.new(iids.tgtState, function (request, self)
                         local mode = self:getProp("mode")
                         local value
-                        if mode == "unsupport" then
-                            value = TgtHeatCoolState.value.Cool
+                        if mode == "unsupport" or mode == "dry" or mode == "wind" then
+                            value = TgtHeatCoolState.value.HeatOrCool
                         else
                             value = valMapping.mode[mode]
                         end
