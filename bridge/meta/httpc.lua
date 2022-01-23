@@ -1,5 +1,5 @@
----@class httplib
-local http = {}
+---@class httpclib
+local httpc = {}
 
 ---@alias HTTPMethod
 ---| '"GET"'
@@ -15,11 +15,11 @@ local client = {}
 
 ---Connect to HTTP server and return a client.
 ---@param host string Server host name or IP address.
----@param tls boolean Whether to enable TLS.
+---@param ssl boolean Whether to enable SSL/TLS.
 ---@param timeout? integer Timeout period (in milliseconds).
 ---@return HTTPClient client HTTP client.
 ---@nodiscard
-function http.connect(host, tls, timeout) end
+function httpc.connect(host, ssl, timeout) end
 
 ---Start a HTTP request.
 ---@param method HTTPMethod The request method.
@@ -34,4 +34,4 @@ function client:request(method, path, headers, content) end
 
 function client:close() end
 
-return http
+return httpc
