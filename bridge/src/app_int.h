@@ -40,6 +40,9 @@ LUAMOD_API int luaopen_time(lua_State *L);
 #define LUA_SOCKET_NAME "socket"
 LUAMOD_API int luaopen_socket(lua_State *L);
 
+#define LUA_MQ_NAME "mq"
+LUAMOD_API int luaopen_mq(lua_State *L);
+
 /**
  * Set HomeKit platform.
  */

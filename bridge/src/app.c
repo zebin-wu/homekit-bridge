@@ -32,7 +32,6 @@ static lua_State *L;
 static const luaL_Reg globallibs[] = {
     {LUA_GNAME, luaopen_base},
     {LUA_LOADLIBNAME, luaopen_package},
-    {LUA_COLIBNAME, luaopen_coroutine},
     {LUA_TABLIBNAME, luaopen_table},
     {LUA_IOLIBNAME, luaopen_io},
     {LUA_OSLIBNAME, luaopen_os},
@@ -52,6 +51,7 @@ static const luaL_Reg dynamiclibs[] = {
     {LUA_CIPHER_NAME, luaopen_cipher},
     {LUA_CJSON_NAME, luaopen_cjson},
     {LUA_SOCKET_NAME, luaopen_socket},
+    {LUA_MQ_NAME, luaopen_mq},
     {NULL, NULL}
 };
 
