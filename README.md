@@ -9,7 +9,7 @@ homekit-bridge designed for embedded devices allows you to connect non-HomeKit d
 - Configure the devices you want to connect to HomeKit.
 - Write plugins to generate HomeKit bridged accessories.
 
-homekit-bridge is based on [HomeKitADK](https://github.com/apple/HomeKitADK); the main C code is in the application layer of ADK, using PAL interface or HAP interface, and not directly using platform-related interfaces.
+homekit-bridge is based on [HomeKitADK](https://github.com/apple/HomeKitADK); the main C code is in the application layer of ADK.
 > HomekitADK not only implements HomeKit Accessory Protocol(HAP), but also abstracts platform-related interfaces to Platform Adapter Layer(PAL) to make the same application code behave consistently on different platforms.
 
 In order to achieve better scalability and reduce development difficulty, homekit-bridge introduced the dynamic language [Lua](https://www.lua.org), encapsulated C modules into Lua modules, and used Lua to write upper-level applications. homekit-bridge also made the following optimizations to run Lua on devices with compact resources:

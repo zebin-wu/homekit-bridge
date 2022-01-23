@@ -9,7 +9,7 @@
 - 配置你想要连接到HomeKit的设备
 - 编写插件来生成HomeKit桥接配件(Bridged Accessory)
 
-**homekit-bridge**在[HomeKitADK](https://github.com/apple/HomeKitADK)的基础上实现，主要的C代码位于ADK的应用层，只调用平台适配层(PAL)接口或者HomeKit协议(HAP)接口，不直接调用适配平台相关的接口。
+**homekit-bridge**在[HomeKitADK](https://github.com/apple/HomeKitADK)的基础上实现，主要的C代码位于ADK的应用层。
 > HomeKitADK不仅实现了HomeKit协议(HAP)，还将平台相关的接口抽象到了平台适配层(PAL)，使得应用代码在不同平台上表现一致。
 
 为了更好的扩展性以及降低开发难度，**homekit-bridge**引入了动态语言[Lua](https://www.lua.org)，将C模块封装成Lua模块，使用Lua来编写上层应用代码。**homekit-bridge**还做了以下的优化，使得Lua能够在资源紧凑的设备上运行：
