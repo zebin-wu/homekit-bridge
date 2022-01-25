@@ -42,7 +42,8 @@ typedef struct pal_md_ctx pal_md_ctx;
  * New a message-digest context.
  *
  * @param type Type of digest.
- * @return message-digest context.
+ * @return message-digest context on success.
+ * @return NULL on failure.
  */
 pal_md_ctx *pal_md_new(pal_md_type type);
 
@@ -64,6 +65,8 @@ size_t pal_md_get_size(pal_md_ctx *ctx);
  * @param ctx message-digest context.
  * @param data The data to update.
  * @param len The length of the data.
+ * @return true on success
+ * @return false on failure.
  */
 bool pal_md_update(pal_md_ctx *ctx, const void *data, size_t len);
 
@@ -72,7 +75,9 @@ bool pal_md_update(pal_md_ctx *ctx, const void *data, size_t len);
  *
  * @param ctx message-digest context.
  * @param output The buffer to receive the hash value. Its size must be
- *  (at least) PAL_MD_HASHSIZE.
+ *  (at least) the size returned by pal_md_get_size().
+ * @return true on success
+ * @return false on failure.
  */
 bool pal_md_digest(pal_md_ctx *ctx, uint8_t *output);
 
