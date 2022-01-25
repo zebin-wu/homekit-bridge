@@ -357,6 +357,12 @@ static int lsocket_obj_recvfrom(lua_State *L) {
     return finshrecvfrom(L, 0, (lua_KContext)obj);
 }
 
+static int lsocket_obj_readable(lua_State *L) {
+    lsocket_obj *obj = lsocket_obj_get(L, 1);
+    lua_pushboolean(L, pal_socket_readable(obj->socket));
+    return 1;
+}
+
 static int lsocket_obj_destroy(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
     pal_socket_destroy(obj->socket);
@@ -403,6 +409,7 @@ static const luaL_Reg lsocket_obj_meth[] = {
     {"sendto", lsocket_obj_sendto},
     {"recv", lsocket_obj_recv},
     {"recvfrom", lsocket_obj_recvfrom},
+    {"readable", lsocket_obj_readable},
     {"destroy", lsocket_obj_destroy},
     {NULL, NULL}
 };

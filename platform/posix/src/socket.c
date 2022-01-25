@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <pal/socket.h>
 #include <pal/memory.h>
 
@@ -946,6 +947,17 @@ pal_socket_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recv
     SOCKET_LOG(Debug, o, "Receiving ...");
 
     return PAL_SOCKET_ERR_IN_PROGRESS;
+}
+
+bool pal_socket_readable(pal_socket_obj *o) {
+    fd_set read_fds;
+    struct timeval tv = {
+        .tv_sec = 0,
+        .tv_usec = 0
+    };
+    FD_ZERO(&read_fds);
+    FD_SET(o->fd, &read_fds);
+    return select(o->fd + 1, &read_fds, NULL, NULL, &tv) == 1 && FD_ISSET(o->fd, &read_fds);
 }
 
 const char *pal_socket_get_error_str(pal_socket_err err) {

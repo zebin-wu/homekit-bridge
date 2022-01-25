@@ -79,6 +79,10 @@ function _socket:recv(maxlen) end
 ---@nodiscard
 function _socket:recvfrom(maxlen) end
 
+--Whether the socket is readable.
+---@return boolean
+function _socket:readable() end
+
 ---Destroy the socket object.
 function _socket:destroy() end
 

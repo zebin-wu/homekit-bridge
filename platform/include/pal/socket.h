@@ -153,7 +153,7 @@ pal_socket_err pal_socket_connect(pal_socket_obj *o, const char *addr, uint16_t 
     pal_socket_connected_cb connected_cb, void *arg);
 
 /**
- * A callback called when the message is sent.
+ * A callback called when the data is sent.
  *
  * @param o The pointer to the socket object.
  * @param err The error of the send procress.
@@ -162,7 +162,7 @@ pal_socket_err pal_socket_connect(pal_socket_obj *o, const char *addr, uint16_t 
 typedef void (*pal_socket_sent_cb)(pal_socket_obj *o, pal_socket_err err, size_t sent_len, void *arg);
 
 /**
- * Send a message.
+ * Send data.
  *
  * @param o The pointer to the socket object.
  * @param data A pointer to the data to be sent.
@@ -179,7 +179,7 @@ pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data, size_t *len,
     pal_socket_sent_cb sent_cb, void *arg);
 
 /**
- * Send a message to remote addr and port.
+ * Send data to remote addr and port.
  *
  * @param o The pointer to the socket object.
  * @param data A pointer to the data to be sent.
@@ -187,7 +187,7 @@ pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data, size_t *len,
  * @param addr Remote address to use.
  * @param port Remote port number, in host order.
  * @param all Whether @p data is completely sent.
- * @param sent_cb A callback called when the message is sent.
+ * @param sent_cb A callback called when the data is sent.
  * @param arg The value to be passed as the last argument to @p sent_cb.
  * @returns zero on success, error number on error.
  * @return PAL_SOCKET_ERR_OK on success.
@@ -198,7 +198,7 @@ pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t *le
     const char *addr, uint16_t port, bool all, pal_socket_sent_cb sent_cb, void *arg);
 
 /**
- * A callback called when a socket received a message.
+ * A callback called when a socket received data.
  *
  * @param o The pointer to the socket object.
  * @param err The error of the receive procress.
@@ -212,19 +212,27 @@ typedef void (*pal_socket_recved_cb)(pal_socket_obj *o, pal_socket_err err,
     const char *addr, uint16_t port, void *data, size_t len, void *arg);
 
 /**
- * Receive a message.
+ * Receive data.
  *
  * @param o The pointer to the socket object.
- * @param maxlen The max length of the message.
- * @param recved_cb A callback called when a socket received a message.
+ * @param maxlen The max length of the data.
+ * @param recved_cb A callback called when a socket received data.
  * @param arg The value to be passed as the last argument to recved_cb.
  * @returns zero on success, error number on error.
  */
 pal_socket_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recved_cb recved_cb, void *arg);
 
 /**
+ * Whether the socket is readable.
+ *
+ * @param o The pointer to the socket object.
+ * @returns 1 if there is buffered record data in the socket and 0 otherwise.
+ */
+bool pal_socket_readable(pal_socket_obj *o);
+
+/**
  * Get the error string.
- * 
+ *
  * @param err Socket error number.
  * @returns the error string.
  */
