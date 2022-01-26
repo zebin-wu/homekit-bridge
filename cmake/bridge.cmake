@@ -22,6 +22,7 @@ set(BRIDGE_SRCS
     ${BRIDGE_SRC_DIR}/lcipherlib.c
     ${BRIDGE_SRC_DIR}/lsocketlib.c
     ${BRIDGE_SRC_DIR}/lmqlib.c
+    ${BRIDGE_SRC_DIR}/lssllib.c
     ${BRIDGE_SRC_DIR}/embedfs.c
 )
 

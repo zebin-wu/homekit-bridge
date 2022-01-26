@@ -98,7 +98,7 @@ target_include_directories(${PROJECT}
         ${ADK_PAL_LINUX_DIR}
         ${BRIDGE_INC_DIR}
         ${LUA_INC_DIR}
-        ${PLATFORM_INC_DIR}
+        ${PLATFORM_LINUX_INC_DIRS}
 )
 
 # add definitions

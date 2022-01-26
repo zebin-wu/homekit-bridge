@@ -12,6 +12,7 @@ set(PLATFORM_COMMON_SRC_DIR ${PLATFORM_COMMON_DIR}/src)
 set(PLATFORM_COMMON_POSIX_DIR ${PLATFORM_DIR}/posix)
 set(PLATFORM_COMMON_POSIX_SRC_DIR ${PLATFORM_COMMON_POSIX_DIR}/src)
 set(PLATFORM_MBEDTLS_DIR ${PLATFORM_DIR}/mbedtls)
+set(PLATFORM_MBEDTLS_INC_DIR ${PLATFORM_DIR}/mbedtls/include)
 set(PLATFORM_MBEDTLS_SRC_DIR ${PLATFORM_MBEDTLS_DIR}/src)
 set(PLATFORM_OPENSSL_DIR ${PLATFORM_DIR}/openssl)
 set(PLATFORM_OPENSSL_SRC_DIR ${PLATFORM_OPENSSL_DIR}/src)
@@ -27,7 +28,14 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/hap.h
     ${PLATFORM_INC_DIR}/pal/crypto/cipher.h
     ${PLATFORM_INC_DIR}/pal/crypto/md.h
+    ${PLATFORM_INC_DIR}/pal/crypto/ssl.h
     ${PLATFORM_INC_DIR}/pal/socket.h
+)
+
+# collect platform Linux include directories
+set(PLATFORM_LINUX_INC_DIRS
+    ${PLATFORM_INC_DIR}
+    ${PLATFORM_MBEDTLS_INC_DIR}
 )
 
 # collect platform Linux sources
@@ -36,9 +44,16 @@ set(PLATFORM_LINUX_SRCS
     ${PLATFORM_COMMON_POSIX_SRC_DIR}/socket.c
     ${PLATFORM_OPENSSL_SRC_DIR}/cipher.c
     ${PLATFORM_OPENSSL_SRC_DIR}/md.c
+    ${PLATFORM_OPENSSL_SRC_DIR}/ssl.c
     ${PLATFORM_LINUX_SRC_DIR}/chip.c
     ${PLATFORM_LINUX_SRC_DIR}/memory.c
     ${PLATFORM_LINUX_SRC_DIR}/main.c
+)
+
+# collect platform ESP include directories
+set(PLATFORM_ESP_INC_DIRS
+    ${PLATFORM_INC_DIR}
+    ${PLATFORM_MBEDTLS_INC_DIR}
 )
 
 # collect platform ESP sources
@@ -47,6 +62,8 @@ set(PLATFORM_ESP_SRCS
     ${PLATFORM_COMMON_POSIX_SRC_DIR}/socket.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/cipher.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/md.c
+    ${PLATFORM_MBEDTLS_SRC_DIR}/ssl.c
+    ${PLATFORM_ESP_SRC_DIR}/ssl.c
     ${PLATFORM_ESP_SRC_DIR}/chip.c
     ${PLATFORM_ESP_SRC_DIR}/memory.c
 )

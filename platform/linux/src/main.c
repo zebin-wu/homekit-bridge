@@ -14,6 +14,7 @@
 
 #include <app.h>
 #include <pal/hap.h>
+#include <pal/crypto/ssl.h>
 
 #include <HAPPlatform+Init.h>
 #include <HAPPlatformAccessorySetup+Init.h>
@@ -192,6 +193,9 @@ int main(int argc, char *argv[]) {
     // Parse arguments.
     doargs(argc, argv);
 
+    // Initialize pal modules.
+    pal_ssl_init();
+
     // Initialize global platform objects.
     init_platform();
 
@@ -204,6 +208,9 @@ int main(int argc, char *argv[]) {
     app_deinit();
 
     deinit_platform();
+
+    // De-initialize pal modules.
+    pal_ssl_deinit();
 
     return 0;
 }

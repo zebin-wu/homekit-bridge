@@ -32,6 +32,7 @@
 
 #include <app.h>
 #include <pal/hap.h>
+#include <pal/crypto/ssl.h>
 
 #include <HAPPlatform+Init.h>
 #include <HAPPlatformAccessorySetup+Init.h>
@@ -165,6 +166,9 @@ static void deinit_platform() {
 void app_main_task(void *arg) {
     HAPAssert(HAPGetCompatibilityVersion() == HAP_COMPATIBILITY_VERSION);
 
+    // Initialize pal modules.
+    pal_ssl_init();
+
     // Initialize global platform objects.
     init_platform();
 
@@ -177,6 +181,9 @@ void app_main_task(void *arg) {
     app_deinit();
 
     deinit_platform();
+
+    // De-initialize pal modules.
+    pal_ssl_deinit();
 }
 
 static int app_log_cmd(int argc, char **argv) {

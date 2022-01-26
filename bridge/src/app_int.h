@@ -43,6 +43,9 @@ LUAMOD_API int luaopen_socket(lua_State *L);
 #define LUA_MQ_NAME "mq"
 LUAMOD_API int luaopen_mq(lua_State *L);
 
+#define LUA_SSL_NAME "ssl"
+LUAMOD_API int luaopen_ssl(lua_State *L);
+
 /**
  * Set HomeKit platform.
  */
