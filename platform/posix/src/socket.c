@@ -283,9 +283,12 @@ static pal_socket_err pal_socket_connect_async(pal_socket_obj *o) {
             pal_socket_addr_set_len(&o->remote_addr));
     } while (ret == -1 && errno == EINTR);
     if (ret == -1) {
-        if (errno == EINPROGRESS) {
+        switch (errno) {
+        case EINPROGRESS:
             return PAL_SOCKET_ERR_IN_PROGRESS;
-        } else {
+        case EISCONN:
+            return PAL_SOCKET_ERR_OK;
+        default:
             SOCKET_LOG_ERRNO(o, "connect");
             return PAL_SOCKET_ERR_UNKNOWN;
         }
