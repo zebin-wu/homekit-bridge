@@ -124,4 +124,4 @@ TODO
 
 ## 许可证
 
-[Apache-2.0 © 2021-2022 KNpTrue and homekit-bridge contributors.](LICENSE)
+[Apache-2.0 © 2021-2022 Zebin Wu and homekit-bridge contributors.](LICENSE)

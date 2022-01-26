@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022 KNpTrue and homekit-bridge contributors
+// Copyright (c) 2021-2022 Zebin Wu and homekit-bridge contributors
 //
 // Licensed under the Apache License, Version 2.0 (the “License”);
 // you may not use this file except in compliance with the License.
@@ -1578,7 +1578,7 @@ int finsh_call_handle_read(lua_State *L, int status, lua_KContext _ctx) {
             err == kHAPError_None ? lua_tostring(L, -2) : NULL);
         break;
     case kHAPCharacteristicFormat_TLV8:
-        // TODO(KNpTrue): Implement TLV8 in lua.
+        // TODO(Zebin Wu): Implement TLV8 in lua.
         HAPAssertionFailure();
     }
     if (err != kHAPError_None) {
@@ -1822,7 +1822,7 @@ HAPError lhap_char_TLV8_handleRead(
         goto end;
     }
 
-    // TODO(KNpTrue): Implement TLV8 in lua.
+    // TODO(Zebin Wu): Implement TLV8 in lua.
     HAPAssertionFailure();
 
 end:
@@ -2048,7 +2048,7 @@ HAPError lhap_char_TLV8_handleWrite(
         (const HAPBaseCharacteristic *)request->characteristic,
         &request->characteristic->callbacks.handleWrite);
 
-    // TODO(KNpTrue): Implement TLV8 in lua.
+    // TODO(Zebin Wu): Implement TLV8 in lua.
     HAPAssertionFailure();
 
     return lhap_char_last_handleWrite(L, co, request->accessory);
