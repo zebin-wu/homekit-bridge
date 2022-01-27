@@ -5,7 +5,7 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <lauxlib.h>
-#include <pal/socket.h>
+#include <pal/net/socket.h>
 #include <HAPBase.h>
 #include <HAPLog.h>
 
@@ -26,13 +26,13 @@ static const HAPLogObject lsocket_log = {
 static int lsocket_create(lua_State *L) {
     pal_socket_type type = luaL_checkoption(L, 1, NULL, (const char *[]) {
         "TCP", "UDP", NULL});
-    pal_socket_domain domain = luaL_checkoption(L, 2, NULL, (const char *[]) {
-        "INET", "INET6", NULL});
+    pal_addr_family af = luaL_checkoption(L, 2, NULL, (const char *[]) {
+        "", "INET", "INET6", NULL});
 
     lsocket_obj *obj = lua_newuserdata(L, sizeof(lsocket_obj));
     luaL_setmetatable(L, LUA_SOCKET_OBJECT_NAME);
 
-    obj->socket = pal_socket_create(type, domain);
+    obj->socket = pal_socket_create(type, af);
     if (!obj->socket) {
         luaL_error(L, "failed to create socket object");
     }

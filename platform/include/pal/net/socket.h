@@ -4,8 +4,8 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_SOCKET_H_
-#define PLATFORM_INCLUDE_PAL_SOCKET_H_
+#ifndef PLATFORM_INCLUDE_PAL_NET_SOCKET_H_
+#define PLATFORM_INCLUDE_PAL_NET_SOCKET_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,6 +14,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <pal/net/addr.h>
 
 /**
  * Communication type.
@@ -22,14 +23,6 @@ typedef enum {
     PAL_SOCKET_TYPE_TCP,            /**< TCP */
     PAL_SOCKET_TYPE_UDP,            /**< UDP */
 } pal_socket_type;
-
-/**
- * Communication domain.
- */
-typedef enum {
-    PAL_SOCKET_DOMAIN_INET,         /**< IPv4 Internet protocols. */
-    PAL_SOCKET_DOMAIN_INET6,         /**< IPv6 Internet protocols. */
-} pal_socket_domain;
 
 /**
  * Socket error numbers.
@@ -56,10 +49,10 @@ typedef struct pal_socket_obj pal_socket_obj;
  * Create a socket object.
  *
  * @param type Specified communication type.
- * @param domain Specified communication domain.
+ * @param af Specified address family.
  * @returns a socket pointer or NULL if the allocation fails.
  */
-pal_socket_obj *pal_socket_create(pal_socket_type type, pal_socket_domain domain);
+pal_socket_obj *pal_socket_create(pal_socket_type type, pal_addr_family af);
 
 /**
  * Destroy the socket object.
@@ -242,4 +235,4 @@ const char *pal_socket_get_error_str(pal_socket_err err);
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_SOCKET_H_
+#endif  // PLATFORM_INCLUDE_PAL_NET_SOCKET_H_

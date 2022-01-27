@@ -29,7 +29,8 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/crypto/cipher.h
     ${PLATFORM_INC_DIR}/pal/crypto/md.h
     ${PLATFORM_INC_DIR}/pal/crypto/ssl.h
-    ${PLATFORM_INC_DIR}/pal/socket.h
+    ${PLATFORM_INC_DIR}/pal/net/socket.h
+    ${PLATFORM_INC_DIR}/pal/net/addr.h
 )
 
 # collect platform Linux include directories

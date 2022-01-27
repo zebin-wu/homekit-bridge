@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/select.h>
-#include <pal/socket.h>
+#include <pal/net/socket.h>
 #include <pal/memory.h>
 
 #include <HAPLog.h>
@@ -66,7 +66,7 @@ struct pal_socket_obj {
     pal_socket_state state;
 
     pal_socket_type type;
-    pal_socket_domain domain;
+    pal_addr_family af;
     uint16_t id;
     int fd;
     uint32_t timeout;
@@ -101,9 +101,9 @@ static const HAPLogObject socket_log_obj = {
 static uint16_t gsocket_count;
 
 static bool
-pal_socket_addr_set(pal_socket_addr *addr, pal_socket_domain domain, const char *str_addr, uint16_t port) {
-    switch (domain) {
-    case PAL_SOCKET_DOMAIN_INET: {
+pal_socket_addr_set(pal_socket_addr *addr, pal_addr_family af, const char *str_addr, uint16_t port) {
+    switch (af) {
+    case PAL_ADDR_FAMILY_INET: {
         struct sockaddr_in *sa = &addr->in;
         sa->sin_family = AF_INET;
         int ret = inet_pton(AF_INET, str_addr, &sa->sin_addr);
@@ -113,7 +113,7 @@ pal_socket_addr_set(pal_socket_addr *addr, pal_socket_domain domain, const char 
         sa->sin_port = htons(port);
         break;
     }
-    case PAL_SOCKET_DOMAIN_INET6: {
+    case PAL_ADDR_FAMILY_INET6: {
         struct sockaddr_in6 *sa = &addr->in6;
         sa->sin6_family = AF_INET6;
         int ret = inet_pton(AF_INET6, str_addr, &sa->sin6_addr);
@@ -252,7 +252,7 @@ static pal_socket_err pal_socket_accept_async(pal_socket_obj *o, pal_socket_obj 
 
     _new->fd = new_fd;
     _new->type = o->type;
-    _new->domain = o->domain;
+    _new->af = o->af;
     _new->id = ++gsocket_count;
     _new->state = PAL_SOCKET_ST_CONNECTED;
     _new->remote_addr = *addr;
@@ -577,21 +577,21 @@ static void pal_socket_udp_handle_event_cb(
     }
 }
 
-pal_socket_obj *pal_socket_create(pal_socket_type type, pal_socket_domain domain) {
+pal_socket_obj *pal_socket_create(pal_socket_type type, pal_addr_family af) {
     pal_socket_obj *o = pal_mem_calloc(sizeof(*o));
     if (!o) {
         HAPLogWithType(&socket_log_obj, kHAPLogType_Error, "%s: Failed to calloc memory.", __func__);
         return NULL;
     }
 
-    int _domain, _type, _protocol;
+    int _af, _type, _protocol;
 
-    switch (domain) {
-    case PAL_SOCKET_DOMAIN_INET:
-        _domain = AF_INET;
+    switch (af) {
+    case PAL_ADDR_FAMILY_INET:
+        _af = AF_INET;
         break;
-    case PAL_SOCKET_DOMAIN_INET6:
-        _domain = AF_INET6;
+    case PAL_ADDR_FAMILY_INET6:
+        _af = AF_INET6;
         break;
     default:
         HAPAssertionFailure();
@@ -611,7 +611,7 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_socket_domain domain
         HAPAssertionFailure();
     }
 
-    o->fd = socket(_domain, _type, _protocol);
+    o->fd = socket(_af, _type, _protocol);
     if (o->fd == -1) {
         SOCKET_LOG_ERRNO(o, "socket");
         goto err;
@@ -629,11 +629,11 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_socket_domain domain
     }
 
     o->type = type;
-    o->domain = domain;
+    o->af = af;
     o->id = ++gsocket_count;
     o->mbuf_list_ptail = &o->mbuf_list_head;
 
-    SOCKET_LOG(Debug, o, "%s(type = %d, domain = %d) = %p", __func__, type, domain, o);
+    SOCKET_LOG(Debug, o, "%s(type = %d, af = %d) = %p", __func__, type, af, o);
     return o;
 
 err1:
@@ -691,7 +691,7 @@ pal_socket_err pal_socket_bind(pal_socket_obj *o, const char *addr, uint16_t por
 
     SOCKET_LOG(Debug, o, "%s(addr = \"%s\", port = %u)", __func__, addr, port);
 
-    if (!pal_socket_addr_set(&sa, o->domain, addr, port)) {
+    if (!pal_socket_addr_set(&sa, o->af, addr, port)) {
         return PAL_SOCKET_ERR_INVALID_ARG;
     }
 
@@ -800,7 +800,7 @@ pal_socket_err pal_socket_connect(pal_socket_obj *o, const char *addr, uint16_t 
         return PAL_SOCKET_ERR_INVALID_STATE;
     }
 
-    if (!pal_socket_addr_set(&o->remote_addr, o->domain, addr, port)) {
+    if (!pal_socket_addr_set(&o->remote_addr, o->af, addr, port)) {
         return PAL_SOCKET_ERR_INVALID_ARG;
     }
 
@@ -855,7 +855,7 @@ pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t *le
     pal_socket_addr sa;
     if (addr) {
         psa = &sa;
-        if (!pal_socket_addr_set(psa, o->domain, addr, port)) {
+        if (!pal_socket_addr_set(psa, o->af, addr, port)) {
             return PAL_SOCKET_ERR_INVALID_ARG;
         }
     } else {
