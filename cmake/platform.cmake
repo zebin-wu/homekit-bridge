@@ -31,6 +31,7 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/crypto/ssl.h
     ${PLATFORM_INC_DIR}/pal/net/socket.h
     ${PLATFORM_INC_DIR}/pal/net/addr.h
+    ${PLATFORM_INC_DIR}/pal/net/dns.h
 )
 
 # collect platform Linux include directories
@@ -49,6 +50,7 @@ set(PLATFORM_LINUX_SRCS
     ${PLATFORM_LINUX_SRC_DIR}/chip.c
     ${PLATFORM_LINUX_SRC_DIR}/memory.c
     ${PLATFORM_LINUX_SRC_DIR}/main.c
+    ${PLATFORM_LINUX_SRC_DIR}/dns.c
 )
 
 # collect platform ESP include directories

@@ -121,6 +121,7 @@ target_link_libraries(${PROJECT}
         m
         dns_sd
         dl
+        anl
 )
 
 # add compile options
