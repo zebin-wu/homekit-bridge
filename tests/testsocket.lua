@@ -24,7 +24,7 @@ do
     assert(success == false)
 end
 
----Test socket.create() with invalid domain.
+---Test socket.create() with invalid address family.
 do
     local success = pcall(socket.create, "TCP", nil)
     assert(success == false)

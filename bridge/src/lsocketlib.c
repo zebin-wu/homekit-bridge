@@ -23,11 +23,22 @@ static const HAPLogObject lsocket_log = {
     .category = "lsocket",
 };
 
+static const char *lsocket_type_strs[] = {
+    "TCP",
+    "UDP",
+    NULL,
+};
+
+static const char *lsocket_af_strs[] = {
+    "",
+    "IPV4",
+    "IPV6",
+    NULL,
+};
+
 static int lsocket_create(lua_State *L) {
-    pal_socket_type type = luaL_checkoption(L, 1, NULL, (const char *[]) {
-        "TCP", "UDP", NULL});
-    pal_addr_family af = luaL_checkoption(L, 2, NULL, (const char *[]) {
-        "", "INET", "INET6", NULL});
+    pal_socket_type type = luaL_checkoption(L, 1, NULL, lsocket_type_strs);
+    pal_addr_family af = luaL_checkoption(L, 2, NULL, lsocket_af_strs);
 
     lsocket_obj *obj = lua_newuserdata(L, sizeof(lsocket_obj));
     luaL_setmetatable(L, LUA_SOCKET_OBJECT_NAME);

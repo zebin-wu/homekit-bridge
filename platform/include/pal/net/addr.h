@@ -16,8 +16,8 @@ extern "C" {
  */
 typedef enum {
     PAL_ADDR_FAMILY_UNSPEC,     /**< Unspecific. */
-    PAL_ADDR_FAMILY_INET,       /**< IPv4. */
-    PAL_ADDR_FAMILY_INET6,      /**< IPv6. */
+    PAL_ADDR_FAMILY_IPV4,       /**< IPv4. */
+    PAL_ADDR_FAMILY_IPV6,       /**< IPv6. */
 } pal_addr_family;
 
 #ifdef __cplusplus

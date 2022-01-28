@@ -103,7 +103,7 @@ static uint16_t gsocket_count;
 static bool
 pal_socket_addr_set(pal_socket_addr *addr, pal_addr_family af, const char *str_addr, uint16_t port) {
     switch (af) {
-    case PAL_ADDR_FAMILY_INET: {
+    case PAL_ADDR_FAMILY_IPV4: {
         struct sockaddr_in *sa = &addr->in;
         sa->sin_family = AF_INET;
         int ret = inet_pton(AF_INET, str_addr, &sa->sin_addr);
@@ -113,7 +113,7 @@ pal_socket_addr_set(pal_socket_addr *addr, pal_addr_family af, const char *str_a
         sa->sin_port = htons(port);
         break;
     }
-    case PAL_ADDR_FAMILY_INET6: {
+    case PAL_ADDR_FAMILY_IPV6: {
         struct sockaddr_in6 *sa = &addr->in6;
         sa->sin6_family = AF_INET6;
         int ret = inet_pton(AF_INET6, str_addr, &sa->sin6_addr);
@@ -587,10 +587,10 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_addr_family af) {
     int _af, _type, _protocol;
 
     switch (af) {
-    case PAL_ADDR_FAMILY_INET:
+    case PAL_ADDR_FAMILY_IPV4:
         _af = AF_INET;
         break;
-    case PAL_ADDR_FAMILY_INET6:
+    case PAL_ADDR_FAMILY_IPV6:
         _af = AF_INET6;
         break;
     default:

@@ -29,8 +29,8 @@ static const HAPLogObject dns_log_obj = {
 
 static const int pal_dns_af_mapping[] = {
     [PAL_ADDR_FAMILY_UNSPEC] = AF_UNSPEC,
-    [PAL_ADDR_FAMILY_INET] = AF_INET,
-    [PAL_ADDR_FAMILY_INET6] = AF_INET6
+    [PAL_ADDR_FAMILY_IPV4] = AF_INET,
+    [PAL_ADDR_FAMILY_IPV6] = AF_INET6
 };
 
 static void pal_dns_destroy_req_ctx(pal_dns_req_ctx *ctx) {
@@ -83,7 +83,7 @@ static void pal_dns_req_ctx_notify(__sigval_t sigev_value) {
 pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
     pal_dns_response_cb response_cb, void *arg) {
     HAPPrecondition(hostname);
-    HAPPrecondition(af >= PAL_ADDR_FAMILY_UNSPEC && af <= PAL_ADDR_FAMILY_INET6);
+    HAPPrecondition(af >= PAL_ADDR_FAMILY_UNSPEC && af <= PAL_ADDR_FAMILY_IPV6);
     HAPPrecondition(response_cb);
 
     size_t namelen = strlen(hostname);
