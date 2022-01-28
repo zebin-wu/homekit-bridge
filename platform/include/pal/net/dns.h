@@ -28,6 +28,16 @@ typedef struct pal_dns_req_ctx pal_dns_req_ctx;
 typedef void (*pal_dns_response_cb)(const char *addr, void *arg);
 
 /**
+ * Initialize DNS module.
+ */
+void pal_dns_init();
+
+/**
+ * De-initialize DNS module.
+ */
+void pal_dns_deinit();
+
+/**
  * Start a DNS resolve request.
  *
  * @param hostname Host name.

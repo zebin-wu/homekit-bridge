@@ -33,6 +33,7 @@
 #include <app.h>
 #include <pal/hap.h>
 #include <pal/crypto/ssl.h>
+#include <pal/net/dns.h>
 
 #include <HAPPlatform+Init.h>
 #include <HAPPlatformAccessorySetup+Init.h>
@@ -168,6 +169,7 @@ void app_main_task(void *arg) {
 
     // Initialize pal modules.
     pal_ssl_init();
+    pal_dns_init();
 
     // Initialize global platform objects.
     init_platform();
@@ -183,6 +185,7 @@ void app_main_task(void *arg) {
     deinit_platform();
 
     // De-initialize pal modules.
+    pal_dns_deinit();
     pal_ssl_deinit();
 }
 

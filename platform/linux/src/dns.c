@@ -69,6 +69,7 @@ static void pal_dns_req_ctx_schedule(void* _Nullable context, size_t contextSize
 
 done:
     if (!ctx->iscancel) {
+        ctx->iscancel = true;
         ctx->cb(addr, ctx->arg);
     }
     pal_dns_destroy_req_ctx(ctx);
@@ -77,7 +78,13 @@ done:
 static void pal_dns_req_ctx_notify(__sigval_t sigev_value) {
     struct pal_dns_req_ctx *ctx = sigev_value.sival_ptr;
     HAPAssert(HAPPlatformRunLoopScheduleCallback(pal_dns_req_ctx_schedule,
-        &ctx, sizeof(&ctx)) == kHAPError_None);
+        &ctx, sizeof(ctx)) == kHAPError_None);
+}
+
+void pal_dns_init() {
+}
+
+void pal_dns_deinit() {
 }
 
 pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
