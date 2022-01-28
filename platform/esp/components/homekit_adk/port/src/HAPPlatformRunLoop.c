@@ -3,20 +3,6 @@
 // Licensed under the Apache License, Version 2.0 (the “License”);
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
-//
-// Copyright 2020 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 // This implementation is based on `select` for maximum portability but may be extended to also support
 // `poll`, `epoll` or `kqueue`.
@@ -27,17 +13,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/select.h>
+#include <sys/socket.h>
 
 #include "HAPPlatform+Init.h"
 #include "HAPPlatformFileHandle.h"
 #include "HAPPlatformLog+Init.h"
 #include "HAPPlatformRunLoop+Init.h"
-
-// Header files added by Espressif
-#include <string.h>
-#include <sys/types.h>
-#include <lwip/sockets.h>
-#include <sys/syslimits.h>
 
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "RunLoop" };
 
@@ -157,14 +138,19 @@ static struct {
      * Start of linked list of timers, ordered by deadline.
      */
     HAPPlatformTimer* _Nullable timers;
-    
+
     /**
      * Loopback file descriptor to receive data.
      */
-    volatile int loopbackFileDescriptor;
+    volatile int loopbackFileDescriptor0;
 
     /**
-     * Self-pipe byte buffer.
+     * Loopback file descriptor to send data.
+     */
+    volatile int loopbackFileDescriptor1;
+
+    /**
+     * Loopback byte buffer.
      *
      * - Callbacks are serialized into the buffer as:
      *   - 8-byte aligned callback pointer.
@@ -202,7 +188,8 @@ static struct {
 
               .timers = NULL,
 
-              .loopbackFileDescriptor = -1 };
+              .loopbackFileDescriptor0 = -1,
+              .loopbackFileDescriptor1 = -1 };
 
 HAP_RESULT_USE_CHECK
 HAPError HAPPlatformFileHandleRegister(
@@ -385,25 +372,43 @@ static void ProcessExpiredTimers(void) {
     }
 }
 
-void CloseLoopback(int fileDescriptor)
-{
-    if (fileDescriptor != -1) {
-        HAPLogDebug(&logObject, "close(%d);", fileDescriptor);
-        int e = close(fileDescriptor);
+static void CloseLoopback(int fileDescriptor0, int fileDescriptor1) {
+    if (fileDescriptor0 != -1) {
+        HAPLogDebug(&logObject, "close(%d);", fileDescriptor0);
+        int e = close(fileDescriptor0);
         if (e != 0) {
             int _errno = errno;
             HAPAssert(e == -1);
-            HAPPlatformLogPOSIXError(kHAPLogType_Error, "Closing loopback failed (log, fileDescriptor0).",
-                _errno, __func__, HAP_FILE, __LINE__);
+            HAPPlatformLogPOSIXError(
+                    kHAPLogType_Error,
+                    "Closing pipe failed (log, fileDescriptor0).",
+                    _errno,
+                    __func__,
+                    HAP_FILE,
+                    __LINE__);
+        }
+    }
+    if (fileDescriptor1 != -1) {
+        HAPLogDebug(&logObject, "close(%d);", fileDescriptor1);
+        int e = close(fileDescriptor1);
+        if (e != 0) {
+            int _errno = errno;
+            HAPAssert(e == -1);
+            HAPPlatformLogPOSIXError(
+                    kHAPLogType_Error,
+                    "Closing pipe failed (log, fileDescriptor1).",
+                    _errno,
+                    __func__,
+                    HAP_FILE,
+                    __LINE__);
         }
     }
 }
 
 static void HandleLoopbackFileHandleCallback(
-    HAPPlatformFileHandleRef fileHandle,
-    HAPPlatformFileHandleEvent fileHandleEvents,
-    void *_Nullable context HAP_UNUSED)
-{
+        HAPPlatformFileHandleRef fileHandle,
+        HAPPlatformFileHandleEvent fileHandleEvents,
+        void* _Nullable context HAP_UNUSED) {
     HAPAssert(fileHandle);
     HAPAssert(fileHandle == runLoop.loopbackFileHandle);
     HAPAssert(fileHandleEvents.isReadyForReading);
@@ -412,19 +417,17 @@ static void HandleLoopbackFileHandleCallback(
     
     ssize_t n;
     do {
-        n = recvfrom(runLoop.loopbackFileDescriptor,
+        n = recv(runLoop.loopbackFileDescriptor0,
                 &runLoop.loopbackBytes[runLoop.numLoopbackBytes],
-                sizeof runLoop.loopbackBytes - runLoop.numLoopbackBytes, 0, NULL, NULL);
+                sizeof runLoop.loopbackBytes - runLoop.numLoopbackBytes, 0);
     } while (n == -1 && errno == EINTR);
     if (n == -1 && errno == EAGAIN) {
         return;
     }
-
     if (n < 0) {
         int _errno = errno;
         HAPAssert(n == -1);
-        HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "Loopback read failed.", _errno, __func__, HAP_FILE, __LINE__);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error, "Loopback read failed.", _errno, __func__, HAP_FILE, __LINE__);
         HAPFatalError();
     }
     if (n == 0) {
@@ -444,27 +447,20 @@ static void HandleLoopbackFileHandleCallback(
         }
 
         HAPPlatformRunLoopCallback callback;
+        HAPRawBufferCopyBytes(&callback, &runLoop.loopbackBytes[0], sizeof(HAPPlatformRunLoopCallback));
         HAPRawBufferCopyBytes(
-            &callback,
-            &runLoop.loopbackBytes[0],
-            sizeof (HAPPlatformRunLoopCallback));
-        HAPRawBufferCopyBytes(
-            &runLoop.loopbackBytes[0],
-            &runLoop.loopbackBytes[sizeof (HAPPlatformRunLoopCallback) + 1],
-            runLoop.numLoopbackBytes - (sizeof (HAPPlatformRunLoopCallback) + 1));
-        runLoop.numLoopbackBytes -= (sizeof (HAPPlatformRunLoopCallback) + 1);
+                &runLoop.loopbackBytes[0],
+                &runLoop.loopbackBytes[sizeof(HAPPlatformRunLoopCallback) + 1],
+                runLoop.numLoopbackBytes - (sizeof(HAPPlatformRunLoopCallback) + 1));
+        runLoop.numLoopbackBytes -= (sizeof(HAPPlatformRunLoopCallback) + 1);
 
         // Issue memory barrier to ensure visibility of data referenced by callback context.
         __sync_synchronize();
 
-        callback(
-            contextSize ? &runLoop.loopbackBytes[0] : NULL,
-            contextSize);
+        callback(contextSize ? &runLoop.loopbackBytes[0] : NULL, contextSize);
 
         HAPRawBufferCopyBytes(
-            &runLoop.loopbackBytes[0],
-            &runLoop.loopbackBytes[contextSize],
-            runLoop.numLoopbackBytes - contextSize);
+                &runLoop.loopbackBytes[0], &runLoop.loopbackBytes[contextSize], runLoop.numLoopbackBytes - contextSize);
         runLoop.numLoopbackBytes -= contextSize;
     }
 }
@@ -480,20 +476,56 @@ void HAPPlatformRunLoopCreate(const HAPPlatformRunLoopOptions* options) {
 
     // Open loop back
 
-    HAPPrecondition(runLoop.loopbackFileDescriptor == -1);
-    int fileDescriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (fileDescriptor < 0) {
+    HAPPrecondition(runLoop.loopbackFileDescriptor0 == -1);
+    HAPPrecondition(runLoop.loopbackFileDescriptor1 == -1);
+
+    int fileDescriptor[2];
+
+    fileDescriptor[0] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (fileDescriptor[0] < 0) {
         int _errno = errno;
-        HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "Loopback creation failed (log, call 'socket').",
-            _errno, __func__, HAP_FILE, __LINE__);
+        HAPPlatformLogPOSIXError(
+                kHAPLogType_Error,
+                "Socket creation failed (log, call fileDescriptor[0]).",
+                _errno,
+                __func__,
+                HAP_FILE,
+                __LINE__);
         HAPFatalError();
     }
-    int e = fcntl(fileDescriptor, F_SETFL, O_NONBLOCK);
-    if (e == -1) {
-        HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "System call 'fcntl' to set loopback recv file descriptor flags to 'non-blocking' failed.",
-            errno, __func__, HAP_FILE, __LINE__);
+    fileDescriptor[1] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (fileDescriptor[1] < 0) {
+        int _errno = errno;
+        HAPPlatformLogPOSIXError(
+                kHAPLogType_Error,
+                "Socket creation failed (log, call fileDescriptor[1]).",
+                _errno,
+                __func__,
+                HAP_FILE,
+                __LINE__);
+        HAPFatalError();
+    }
+
+    HAPAssert(fileDescriptor[0] != -1);
+    if (fcntl(fileDescriptor[0], F_SETFL, O_NONBLOCK) == -1) {
+        HAPPlatformLogPOSIXError(
+                kHAPLogType_Error,
+                "System call 'fcntl' to set self pipe file descriptor 0 flags to 'non-blocking' failed.",
+                errno,
+                __func__,
+                HAP_FILE,
+                __LINE__);
+        HAPFatalError();
+    }
+    HAPAssert(fileDescriptor[1] != -1);
+    if (fcntl(fileDescriptor[1], F_SETFL, O_NONBLOCK) == -1) {
+        HAPPlatformLogPOSIXError(
+                kHAPLogType_Error,
+                "System call 'fcntl' to set self pipe file descriptor 1 flags to 'non-blocking' failed.",
+                errno,
+                __func__,
+                HAP_FILE,
+                __LINE__);
         HAPFatalError();
     }
 
@@ -502,25 +534,39 @@ void HAPPlatformRunLoopCreate(const HAPPlatformRunLoopOptions* options) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(LOOPBACK_PORT);
     inet_aton("127.0.0.1", &addr.sin_addr);
-    if (bind(fileDescriptor, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        CloseLoopback(fileDescriptor);
+    if (bind(fileDescriptor[0], (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         int _errno = errno;
-        HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "Loopback socket bind failed (log, call 'bind').",
-            _errno, __func__, HAP_FILE, __LINE__);
+        HAPPlatformLogPOSIXError(
+                kHAPLogType_Error,
+                "Socket bind failed (log, fileDescriptor[0]).",
+                _errno,
+                __func__,
+                HAP_FILE,
+                __LINE__);
+        HAPFatalError();
+    }
+    if (connect(fileDescriptor[1], (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        int _errno = errno;
+        HAPPlatformLogPOSIXError(
+                kHAPLogType_Error,
+                "Socket connect failed (log, fileDescriptor[0]).",
+                _errno,
+                __func__,
+                HAP_FILE,
+                __LINE__);
         HAPFatalError();
     }
 
-    runLoop.loopbackFileDescriptor = fileDescriptor;
+    runLoop.loopbackFileDescriptor0 = fileDescriptor[0];
+    runLoop.loopbackFileDescriptor1 = fileDescriptor[1];
 
-    err = HAPPlatformFileHandleRegister(&runLoop.loopbackFileHandle,
-        runLoop.loopbackFileDescriptor,
-        (HAPPlatformFileHandleEvent) {
-            .isReadyForReading = true,
-            .isReadyForWriting = false,
-            .hasErrorConditionPending = false
-        },
-        HandleLoopbackFileHandleCallback, NULL);
+    err = HAPPlatformFileHandleRegister(
+            &runLoop.loopbackFileHandle,
+            runLoop.loopbackFileDescriptor0,
+            (HAPPlatformFileHandleEvent) {
+                    .isReadyForReading = true, .isReadyForWriting = false, .hasErrorConditionPending = false },
+            HandleLoopbackFileHandleCallback,
+            NULL);
     if (err) {
         HAPAssert(err == kHAPError_OutOfResources);
         HAPLogError(&logObject, "Failed to register loopback file handle.");
@@ -529,15 +575,16 @@ void HAPPlatformRunLoopCreate(const HAPPlatformRunLoopOptions* options) {
     HAPAssert(runLoop.loopbackFileHandle);
 
     runLoop.state = kHAPPlatformRunLoopState_Idle;
-    
+
     // Issue memory barrier to ensure visibility of write to runLoop.selfPipeFileDescriptor1 on other threads.
     __sync_synchronize();
 }
 
 void HAPPlatformRunLoopRelease(void) {
-    CloseLoopback(runLoop.loopbackFileDescriptor);
+    CloseLoopback(runLoop.loopbackFileDescriptor0, runLoop.loopbackFileDescriptor1);
 
-    runLoop.loopbackFileDescriptor = -1;
+    runLoop.loopbackFileDescriptor0 = -1;
+    runLoop.loopbackFileDescriptor1 = -1;
 
     if (runLoop.loopbackFileHandle) {
         HAPPlatformFileHandleDeregister(runLoop.loopbackFileHandle);
@@ -667,6 +714,9 @@ HAPError HAPPlatformRunLoopScheduleCallback(
         return kHAPError_OutOfResources;
     }
 
+    // Issue memory barrier to ensure visibility of write to runLoop.loopbackFileDescriptor1 on other threads.
+    __sync_synchronize();
+
     // Serialize event context.
     // Format: Callback pointer followed by 1 byte context size and context data.
     // Context is copied to offset 0 when invoking the callback to ensure proper alignment.
@@ -682,37 +732,12 @@ HAPError HAPPlatformRunLoopScheduleCallback(
     }
     HAPAssert(numBytes <= sizeof bytes);
 
-    int fileDescriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (fileDescriptor < 0) {
-        int _errno = errno;
-        HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "Loopback client socket failed (log, call 'bind').",
-            _errno, __func__, HAP_FILE, __LINE__);
-        HAPFatalError();
-    }
-
-    int e = fcntl(fileDescriptor, F_SETFL, O_NONBLOCK);
-    if (e == -1) {
-        HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "System call 'fcntl' to set loopback send file descriptor flags to 'non-blocking' failed.",
-            errno, __func__, HAP_FILE, __LINE__);
-        HAPFatalError();
-    }
-    
-    struct sockaddr_in to_addr;
-    to_addr.sin_family = AF_INET;
-    to_addr.sin_port = htons(LOOPBACK_PORT);
-    inet_aton("127.0.0.1", &to_addr.sin_addr);
     ssize_t n;
     do {
-        n = sendto(fileDescriptor, bytes, numBytes, 0, (struct sockaddr *)&to_addr, sizeof(to_addr));
+        n = send(runLoop.loopbackFileDescriptor1, bytes, numBytes, 0);
     } while (n == -1 && errno == EINTR);
-    close(fileDescriptor);
     if (n == -1) {
-        int _errno = errno;
-        HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "Loopback client socket failed to send data (log, call 'sendto').",
-            _errno, __func__, HAP_FILE, __LINE__);
+        HAPLogError(&logObject, "send failed: %ld.", (long) n);
         return kHAPError_Unknown;
     }
 
