@@ -216,7 +216,7 @@ end
 function protocol.scan(timeout, addr)
     assert(timeout > 0, "timeout must be greater then 0")
 
-    local sock <close> = socket.create("UDP", "INET")
+    local sock <close> = socket.create("UDP", "IPV4")
     sock:settimeout(timeout)
 
     if not addr then
@@ -294,7 +294,7 @@ function pcb:request(timeout, method, params)
         self:handshake(timeout)
     end
 
-    local sock <close> = socket.create("UDP", "INET")
+    local sock <close> = socket.create("UDP", "IPV4")
     sock:settimeout(timeout)
     sock:connect(self.addr, 54321)
 
