@@ -36,6 +36,8 @@ typedef struct {
     ap_wifi_state state;
     wifi_mode_t mode;
     esp_timer_handle_t reconn_timer;
+    bool got_ipv4;
+    bool got_ipv6;
     void (*connected_cb)(void);
 } app_wifi_desc;
 
@@ -66,6 +68,8 @@ static void event_handler(void* arg, esp_event_base_t event_base,
                 esp_timer_start_once(gv_wifi_desc.reconn_timer,
                     APP_WIFI_RECONN_INTEVAL_MS * 1000);
             }
+            gv_wifi_desc.got_ipv4 = false;
+            gv_wifi_desc.got_ipv6 = false;
             break;
         }
         case WIFI_EVENT_STA_CONNECTED:
@@ -87,7 +91,8 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             ip_event_got_ip_t *evt = event_data;
             ESP_LOGI(TAG, "Got IPv4 address: " IPSTR, IP2STR(&evt->ip_info.ip));
             retry = 0;
-            if (gv_wifi_desc.connected_cb) {
+            gv_wifi_desc.got_ipv4 = true;
+            if (gv_wifi_desc.got_ipv6 && gv_wifi_desc.connected_cb) {
                 gv_wifi_desc.connected_cb();
             }
             break;
@@ -96,6 +101,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         {
             ip_event_got_ip6_t *evt = (ip_event_got_ip6_t *)event_data;
             ESP_LOGI(TAG, "Got IPv6 address: " IPV6STR, IPV62STR(evt->ip6_info.ip));
+            gv_wifi_desc.got_ipv6 = true;
+            if (gv_wifi_desc.got_ipv4 && gv_wifi_desc.connected_cb) {
+                gv_wifi_desc.connected_cb();
+            }
             break;
         }
         default:
