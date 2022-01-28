@@ -53,6 +53,7 @@ static const luaL_Reg dynamiclibs[] = {
     {LUA_SOCKET_NAME, luaopen_socket},
     {LUA_MQ_NAME, luaopen_mq},
     {LUA_SSL_NAME, luaopen_ssl},
+    {LUA_DNS_NAME, luaopen_dns},
     {NULL, NULL}
 };
 
