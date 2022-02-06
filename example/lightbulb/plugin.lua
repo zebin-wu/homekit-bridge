@@ -1,36 +1,34 @@
+local hap = require "hap"
+local ServiceSignature = require "hap.char.ServiceSignature"
+local Name = require "hap.char.Name"
+local On = require "hap.char.On"
+
 local plugin = {}
 
 local logger = log.getLogger("lightbulb.plugin")
-
-function plugin.init()
-    logger:info("Initialized.")
-end
-
----Handle HAP server state.
----@param state HapServerState
-function plugin.handleState(state)
-    logger:info("HAP server state: " .. state .. ".")
-end
 
 local function checkAccessoryConf(conf)
     return true
 end
 
-function plugin.gen(conf)
+---LightBulb configuation.
+---@class LightBulbConf: AccessoryConf
+---
+---@field sn integer Serial number.
+
+---Generate accessory via configuration.
+---@param conf LightBulbConf
+---@return HapAccessory
+local function gen(conf)
     if checkAccessoryConf(conf) == false then
         return nil
     end
-
-    local hap = require("hap")
-    local ServiceSignature = require("hap.char.ServiceSignature")
-    local Name = require("hap.char.Name")
-    local On = require("hap.char.On")
 
     local context = {
         lightBulbOn = false,
     }
     return {
-        aid = conf.aid,
+        aid = hap.getNewBridgedAccessoryID(),
         category = "BridgedAccessory",
         name = conf.name,
         mfg = "Acme",
@@ -81,6 +79,25 @@ function plugin.gen(conf)
         },
         context = context
     }
+end
+
+---Initialize plugin.
+---@param conf PluginConf Plugin configuration.
+---@return HapAccessory[]
+function plugin.init(conf)
+    logger:info("Initialized.")
+
+    local accessories = {}
+    for _, accessoryConf in ipairs(conf.accessories) do
+        table.insert(accessories, gen(accessoryConf))
+    end
+    return accessories
+end
+
+---Handle HAP server state.
+---@param state HapServerState
+function plugin.handleState(state)
+    logger:info("HAP server state: " .. state .. ".")
 end
 
 return plugin

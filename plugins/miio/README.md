@@ -32,13 +32,20 @@ return {
     bridge = {
         name = "HomeKit Bridge"
     },
-    plugins = {},
-    accessories = {
-        {
-            plugin = "miio",
-            addr = "192.168.1.10",
-            token = "d1abcd1230238cf1f123a142962afdd1",
-            name = "My device"
+    plugins = {
+        miio = {
+            accessories = {
+                {
+                    addr = "192.168.1.10",
+                    token = "d1abcd1230238cf1f123a142962afdd1",
+                    name = "My device"
+                },
+                {
+                    addr = "192.168.1.11",
+                    token = "ababcd1230238cf1fde3a1429da7918f",
+                    name = "My device 2"
+                }
+            }
         }
     }
 }

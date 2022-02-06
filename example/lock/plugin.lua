@@ -1,37 +1,35 @@
+local hap = require "hap"
+local util = require "util"
+local LockCurrentState = require "hap.char.LockCurrentState"
+local LockTargetState = require "hap.char.LockTargetState"
+local LockControlPoint = require "hap.char.LockControlPoint"
+local ServiceSignature = require "hap.char.ServiceSignature"
+local Version = require "hap.char.Version"
+local Name = require "hap.char.Name"
+
 local plugin = {}
 
 local logger = log.getLogger("lock.plugin")
-
-function plugin.init()
-    logger:info("Initialized.")
-end
-
----Handle HAP server state.
----@param state HapServerState
-function plugin.handleState(state)
-    logger:info("HAP server state: " .. state .. ".")
-end
 
 local function checkAccessoryConf(conf)
     return true
 end
 
-function plugin.gen(conf)
+---Lock configuation.
+---@class LockConf: AccessoryConf
+---
+---@field sn integer Serial number.
+
+---Generate accessory via configuration.
+---@param conf LockConf
+---@return HapAccessory
+local function gen(conf)
     if checkAccessoryConf(conf) == false then
         return nil
     end
 
-    local hap = require ("hap")
-    local util = require ("util")
-    local LockCurrentState = require("hap.char.LockCurrentState")
-    local LockTargetState = require("hap.char.LockTargetState")
-    local LockControlPoint = require("hap.char.LockControlPoint")
-    local ServiceSignature = require("hap.char.ServiceSignature")
-    local Version = require("hap.char.Version")
-    local Name = require("hap.char.Name")
-
     local context = {
-        aid = conf.aid,
+        aid = hap.getNewBridgedAccessoryID(),
         mechanismIID = hap.getNewInstanceID(),
         curStateIID = hap.getNewInstanceID(),
         tgtStateIID = hap.getNewInstanceID(),
@@ -122,6 +120,25 @@ function plugin.gen(conf)
         },
         context = context
     }
+end
+
+---Initialize plugin.
+---@param conf PluginConf Plugin configuration.
+---@return HapAccessory[]
+function plugin.init(conf)
+    logger:info("Initialized.")
+
+    local accessories = {}
+    for _, accessoryConf in ipairs(conf.accessories) do
+        table.insert(accessories, gen(accessoryConf))
+    end
+    return accessories
+end
+
+---Handle HAP server state.
+---@param state HapServerState
+function plugin.handleState(state)
+    logger:info("HAP server state: " .. state .. ".")
 end
 
 return plugin

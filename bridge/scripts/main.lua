@@ -5,8 +5,6 @@ local chip = require "chip"
 
 local logger = log.getLogger()
 
-local accessories = plugins.start(config.plugins, config.accessories)
-
 hap.init({
     aid = 1, -- Primary accessory must have aid 1.
     category = "Bridges",
@@ -28,7 +26,7 @@ hap.init({
             return hap.Error.None
         end
     }
-}, accessories, {
+}, plugins.init(config.plugins), {
     updatedState = function (state)
         logger:default("Accessory Server State did update: " .. state .. ".")
         plugins.handleState(state)
@@ -40,4 +38,5 @@ hap.init({
         logger:default("Session is invalidated")
     end
 })
+
 hap.start(true)
