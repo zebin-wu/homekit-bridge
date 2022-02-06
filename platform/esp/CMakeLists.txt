@@ -50,7 +50,7 @@ if(CONFIG_LUA_APP_DEFAULT)
     spiffs_create_partition_image(storage
         ${SCRIPTS_DST_DIR}
         FLASH_IN_PROJECT
-        DEPENDS ${TOP_DIR}/config/config.lua.in
+        DEPENDS ${SCRIPTS_DST_DIR}/config.lua
     )
 elseif(CONFIG_LUA_APP_EXAMPLE)
     set(SCRIPTS_SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${TOP_DIR}/example)
