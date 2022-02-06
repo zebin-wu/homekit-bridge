@@ -2841,7 +2841,7 @@ static int lhap_stop(lua_State *L) {
 }
 
 /**
- * raiseEvent(accessoryIID:integer, serviceIID:integer, characteristicIID:integer) -> boolean
+ * raiseEvent(accessoryIID:integer, serviceIID:integer, characteristicIID:integer)
  */
 static int lhap_raise_event(lua_State *L) {
     lua_Integer iid;
@@ -2867,33 +2867,36 @@ static int lhap_raise_event(lua_State *L) {
         goto service;
     }
     if (!desc->bridged_accs) {
-        goto err;
+        luaL_argerror(L, 1, "accessory not found");
     }
     for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
         if ((*pa)->aid == iid) {
             a = *pa;
-            goto service;
+            break;
         }
     }
-    goto err;
+    if (!a) {
+        luaL_argerror(L, 1, "accessory not found");
+    }
 
 service:
     if (!a->services) {
-        goto err;
+        luaL_argerror(L, 2, "service not found");
     }
     HAPService *s = NULL;
     iid = lua_tointeger(L, 2);
     for (HAPService **ps = (HAPService **)a->services; *ps; ps++) {
         if ((*ps)->iid == iid) {
             s = *ps;
-            goto characteristic;
+            break;
         }
     }
-    goto err;
+    if (!s) {
+        luaL_argerror(L, 2, "service not found");
+    }
 
-characteristic:
     if (!s->characteristics) {
-        goto err;
+        luaL_argerror(L, 3, "characteristic not found");
     }
     HAPCharacteristic *c = NULL;
     iid = lua_tointeger(L, 3);
@@ -2904,7 +2907,7 @@ characteristic:
         }
     }
     if (!c) {
-        goto err;
+        luaL_argerror(L, 3, "characteristic not found");
     }
 
     if (session) {
@@ -2913,12 +2916,7 @@ characteristic:
         HAPAccessoryServerRaiseEvent(&desc->server, c, s, a);
     }
 
-    lua_pushboolean(L, true);
-    return 1;
-
-err:
-    lua_pushboolean(L, false);
-    return 1;
+    return 0;
 }
 
 static int lhap_get_new_bridged_aid(lua_State *L) {
