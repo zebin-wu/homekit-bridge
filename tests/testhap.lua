@@ -40,7 +40,7 @@ local function setField(t, k, v)
 end
 
 ---Test init() with a accessory.
----@param expect boolean The expected value returned by init().
+---@param expect boolean Success or failure of init().
 ---@param primary boolean Primary or bridged accessory.
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
@@ -103,17 +103,17 @@ local function testAccessory(expect, primary, k, vals, log)
         else
             setField(accs[t], k, v)
         end
-        local status = hap.init(accs.primary, { accs.bridged }, {
+        local success, result = pcall(hap.init, accs.primary, { accs.bridged }, {
             updatedState = function (state) end
         })
-        assert(status == expect, ("assertion failed: init() return %s, except %s"):format(status, expect))
-        if status then hap.deinit() end
+        assert(success == expect, ("assertion failed: initialization %s, except %s"):format(success and "successed" or "failed", expect))
+        if success then hap.deinit() end
     end
     testFn(_test, vals)
 end
 
 ---Test init() with a service.
----@param expect boolean The expected value returned by init().
+---@param expect boolean Success or failure of init().
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
 ---@param log? boolean
@@ -151,7 +151,7 @@ local function testService(expect, k, vals, log)
 end
 
 ---Test init() with a characteristic.
----@param expect boolean The expected value returned by init().
+---@param expect boolean Success or failure of init().
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
 ---@param format? HapCharacteristicFormat Characteristic format.

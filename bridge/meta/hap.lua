@@ -407,7 +407,6 @@ hap.PairingService = {}
 ---@param primaryAccessory HapAccessory Primary accessory to serve.
 ---@param bridgedAccessories HapAccessory[] Array of bridged accessories.
 ---@param serverCallbacks HapServerCallbacks Accessory server callbacks.
----@return boolean status true on success, false on failure.
 function hap.init(primaryAccessory, bridgedAccessories, serverCallbacks) end
 
 ---De-initialize then you can init() again.

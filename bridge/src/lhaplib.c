@@ -2604,7 +2604,7 @@ lhap_count_attr(const HAPAccessory *acc, size_t *readable, size_t *writable, siz
 #endif
 
 /**
- * init(primaryAccessory: table, bridgedAccessories?: table, serverCallbacks: table) -> boolean
+ * init(primaryAccessory: table, bridgedAccessories?: table, serverCallbacks: table)
  *
  * If the category of the accessory is bridge, the parameters
  * bridgedAccessories is valid.
@@ -2614,7 +2614,8 @@ static int lhap_init(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
 
     if (desc->inited) {
-        luaL_error(L, "HAP is already initialized.");
+        lua_pushliteral(L, "HAP is already initialized.");
+        goto err;
     }
 
     luaL_checktype(L, 1, LUA_TTABLE);
@@ -2623,18 +2624,16 @@ static int lhap_init(lua_State *L) {
 
     desc->primary_acc = lhap_calloc(sizeof(HAPAccessory));
     if (!desc->primary_acc) {
-        HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
+        lua_pushliteral(L, "Failed to alloc memory.");
         goto err;
     }
     if (!lc_traverse_table(L, 1, lhap_accessory_kvs, desc->primary_acc)) {
-        HAPLogError(&lhap_log,
-            "%s: Failed to generate accessory structure from table accessory.",
-            __func__);
+        lua_pushliteral(L, "Failed to generate accessory structure from table accessory.");
         goto err1;
     }
 
     if (desc->primary_acc->aid != 1) {
-        HAPLogError(&lhap_log, "Primary accessory must have aid 1.");
+        lua_pushliteral(L, "Primary accessory must have aid 1.");
         goto err1;
     }
 
@@ -2650,35 +2649,34 @@ static int lhap_init(lua_State *L) {
     desc->bridged_accs =
         lhap_calloc((len + 1) * sizeof(HAPAccessory *));
     if (!desc->bridged_accs) {
-        HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
+        lua_pushliteral(L, "Failed to alloc memory.");
         goto err1;
     }
 
     if (!lc_traverse_array(L, 2, lhap_accessories_arr_cb,
         desc->bridged_accs)) {
-        HAPLogError(&lhap_log,
-            "%s: Failed to generate bridged accessories structureies"
-            " from table bridgedAccessories.", __func__);
+        lua_pushliteral(L, "Failed to generate bridged accessories structureies"
+            " from table bridgedAccessories.");
         goto err2;
     }
     for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
         if (!HAPBridgedAccessoryIsValid(*pa)) {
+            lua_pushfstring(L, "Invalid bridged accessory [%zu \"%s\"].",
+                (*pa)->aid, (*pa)->name);
             goto err2;
         }
     }
 
 parse_cb:
     if (!lc_traverse_table(L, 3, lhap_server_callbacks_kvs, &desc->server_cbs)) {
-        HAPLogError(&lhap_log,
-            "%s: Failed to parse the server callbacks from table serverCallbacks.",
-            __func__);
+        lua_pushliteral(L, "Failed to parse the server callbacks from table serverCallbacks.");
         goto err3;
     }
 
-    HAPLogInfo(&lhap_log,
+    HAPLog(&lhap_log,
         "Primary accessory \"%s\" has been configured.", desc->primary_acc->name);
     if (len) {
-        HAPLogInfo(&lhap_log,
+        HAPLog(&lhap_log,
             "%" LUA_INTEGER_FRMLEN "u"
             " bridged accessories have been configured.", len);
     }
@@ -2720,7 +2718,7 @@ parse_cb:
     // Display setup code.
     HAPSetupCode setupCode;
     HAPPlatformAccessorySetupLoadSetupCode(desc->platform->accessorySetup, &setupCode);
-    HAPLogInfo(&lhap_log, "Setup code: %s", setupCode.stringValue);
+    HAPLog(&lhap_log, "Setup code: %s", setupCode.stringValue);
 
     // Initialize accessory server.
     HAPAccessoryServerCreate(
@@ -2732,8 +2730,7 @@ parse_cb:
 
     desc->inited = true;
 
-    lua_pushboolean(L, true);
-    return 1;
+    return 0;
 
 err3:
     lhap_reset_server_cb(L, &desc->server_cbs);
@@ -2749,8 +2746,8 @@ err1:
     lhap_reset_accessory(L, desc->primary_acc);
     lhap_safe_free(desc->primary_acc);
 err:
-    lua_pushboolean(L, false);
-    return 1;
+    lua_error(L);
+    return 0;
 }
 
 /* deinit() */

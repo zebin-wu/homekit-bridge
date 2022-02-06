@@ -7,7 +7,7 @@ local logger = log.getLogger()
 
 local accessories = plugins.start(config.plugins, config.accessories)
 
-assert(hap.init({
+hap.init({
     aid = 1, -- Primary accessory must have aid 1.
     category = "Bridges",
     name = config.bridge.name or "HomeKit Bridge",
@@ -39,5 +39,5 @@ assert(hap.init({
     sessionInvalidate = function ()
         logger:default("Session is invalidated")
     end
-}))
+})
 hap.start(true)
