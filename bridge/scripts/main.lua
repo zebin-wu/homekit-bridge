@@ -26,7 +26,7 @@ hap.init({
             return hap.Error.None
         end
     }
-}, plugins.init(config.plugins), {
+}, {
     updatedState = function (state)
         logger:default("Accessory Server State did update: " .. state .. ".")
         plugins.handleState(state)
@@ -38,5 +38,7 @@ hap.init({
         logger:default("Session is invalidated")
     end
 })
+
+plugins.init(config.plugins)
 
 hap.start(true)

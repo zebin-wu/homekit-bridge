@@ -10,7 +10,7 @@ local fan = {}
 ---Create a fan.
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
----@param conf MiioDeviceConf Device configuration.
+---@param conf MiioAccessoryConf Device configuration.
 ---@param mapping table<string, MiotIID> Property name -> MIOT instance ID mapping.
 ---@return HapAccessory accessory HomeKit Accessory.
 function fan.gen(device, info, conf, mapping)

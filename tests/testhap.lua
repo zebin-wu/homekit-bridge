@@ -39,8 +39,8 @@ local function setField(t, k, v)
     t[rl[#rl]] = v
 end
 
----Test init() with a accessory.
----@param expect boolean Success or failure of init().
+---Configure with a accessory.
+---@param expect boolean Success or failure.
 ---@param primary boolean Primary or bridged accessory.
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
@@ -96,24 +96,33 @@ local function testAccessory(expect, primary, k, vals, log)
             }
         }
         if log then
-            logTestInfo("init", t .. "Accessory", k, v, expect)
+            logTestInfo(primary and "init" or "addBridgedAccessory", t .. "Accessory", k, v, expect)
         end
         if k == "service" then
             table.insert(accs[t].services, v)
         else
             setField(accs[t], k, v)
         end
-        local success, result = pcall(hap.init, accs.primary, { accs.bridged }, {
+        local success, result = xpcall(hap.init, debug.traceback, accs.primary, {
             updatedState = function (state) end
         })
-        assert(success == expect, ("assertion failed: initialization %s, except %s"):format(success and "successed" or "failed", expect))
-        if success then hap.deinit() end
+        if success == false then
+            logger:error(result)
+        end
+        if success then
+            success, result = xpcall(hap.addBridgedAccessory, debug.traceback, accs.bridged)
+            if success == false then
+                logger:error(result)
+            end
+            hap.deinit()
+        end
+        assert(success == expect, ("assertion failed: configure %s."):format(success and "successed" or "failed"))
     end
     testFn(_test, vals)
 end
 
----Test init() with a service.
----@param expect boolean Success or failure of init().
+---Configure with a service.
+---@param expect boolean Success or failure.
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
 ---@param log? boolean
@@ -150,8 +159,8 @@ local function testService(expect, k, vals, log)
     testFn(_test, vals)
 end
 
----Test init() with a characteristic.
----@param expect boolean Success or failure of init().
+---Configure with a characteristic.
+---@param expect boolean Success or failure.
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
 ---@param format? HapCharacteristicFormat Characteristic format.
@@ -195,19 +204,18 @@ local function testCharacteristic(expect, k, vals, format, constraints)
     testFn(_test, vals)
 end
 
----Initialize with valid accessory IID.
+---Configure with valid accessory IID.
 ---Primary accessory must have aid 1.
 ---Bridged accessory must have aid other than 1.
 testAccessory(true, true, "aid", { 1 })
 testAccessory(true, false, "aid", { 2 })
 
----Initialize with invalid accessory IID.
+---Configure with invalid accessory IID.
 testAccessory(false, true, "aid", { -1, 0, 1.1, 2, "1", {} })
 testAccessory(false, false, "aid", { 1 })
 
----Initialize with valid accessory category.
+---Configure with valid accessory category.
 testAccessory(true, true, "category", {
-    "BridgedAccessory",
     "Other",
     "Bridges",
     "Fans",
@@ -234,8 +242,11 @@ testAccessory(true, true, "category", {
     "Faucets",
     "ShowerSystems"
 })
+testAccessory(true, false, "category", {
+    "BridgedAccessory",
+})
 
----Initialize with invalid accessory category.
+---Configure with invalid accessory category.
 testAccessory(false, true, "category",  { "", "category1", {}, true, 1 })
 testAccessory(false, false, "category", {
     "Other",
@@ -265,52 +276,52 @@ testAccessory(false, false, "category", {
     "ShowerSystems"
 })
 
----Initialize with valid accessory name
+---Configure with valid accessory name
 testAccessory(true, false, "name", { "", "附件名称", fillStr(64) })
 
----Initialize with invalid accessory name.
+---Configure with invalid accessory name.
 testAccessory(false, false, "name", { fillStr(64 + 1), {}, true, 1 })
 
----Initialize with valid accessory manufacturer.
+---Configure with valid accessory manufacturer.
 testAccessory(true, false, "mfg", { "", fillStr(64) })
 
----Initialize with invalid accessory manufacturer.
+---Configure with invalid accessory manufacturer.
 testAccessory(false, false, "mfg", { fillStr(64 + 1), {}, true, 1 })
 
----Initialize with valid accessory model.
+---Configure with valid accessory model.
 testAccessory(true, false, "model", { fillStr(1), fillStr(64) })
 
----Initialize with invalid accessory model.
+---Configure with invalid accessory model.
 testAccessory(false, false, "model", { "", fillStr(64 + 1), {}, true, 1 })
 
----Initialize with valid accessory serial number.
+---Configure with valid accessory serial number.
 testAccessory(true, false, "sn", { fillStr(2), fillStr(64) })
 
----Initialize with invalid accessory serial number.
+---Configure with invalid accessory serial number.
 testAccessory(false, false, "sn", { "", fillStr(1), fillStr(64 + 1), {}, true, 1 })
 
----Initialize with invalid accessory firmware version.
+---Configure with invalid accessory firmware version.
 testAccessory(false, false, "fwVer", { {}, true, 1 })
 
----Initialize with invalid accessory hardware version.
+---Configure with invalid accessory hardware version.
 testAccessory(false, false, "hwVer", { {}, true, 1 })
 
----Initialize with valid accessory cbs.
+---Configure with valid accessory cbs.
 testAccessory(true, false, "cbs", { {} })
 
----Initialize with invalid accessory cbs.
+---Configure with invalid accessory cbs.
 testAccessory(false, false, "cbs", { true, 1, "test" })
 
----Initialize with valid accessory identify callback.
+---Configure with valid accessory identify callback.
 testAccessory(true, false, "cbs.identify", { function () end })
 
----Initialize with invalid accessory identify calback.
+---Configure with invalid accessory identify calback.
 testAccessory(false, false, "cbs.identify", { true, 1, "test", {} })
 
----Initialize with invalid service IID.
+---Configure with invalid service IID.
 testService(false, "iid", { -1, 1.1, {}, true })
 
----Initialize with valid service type.
+---Configure with valid service type.
 testService(true, "type", {
     "AccessoryInformation",
     "GarageDoorOpener",
@@ -354,28 +365,28 @@ testService(true, "type", {
     "Speaker",
 })
 
----Initialize with invalid service type.
+---Configure with invalid service type.
 testService(false, "type", { "type1", "", {}, true, 1 })
 
----Initialize with valid service props.
+---Configure with valid service props.
 testService(true, "props", { {} })
 
----Initialize with invalid service props.
+---Configure with invalid service props.
 testService(false, "props", { "test", true, 1 })
 
----Initialize with valid service proeprty ble.
+---Configure with valid service proeprty ble.
 testService(true, "props.ble", { {} })
 
----Initialize with invalid service property ble.
+---Configure with invalid service property ble.
 testService(false, "props.ble", { "test", true, 1 })
 
 
 for i, k in ipairs({ "primaryService", "hidden", "ble.supportsConfiguration" }) do
-    ---Initialize with invalid service property ``k``.
+    ---Configure with invalid service property ``k``.
     testService(false, "props." .. k, { {}, 1, "test" })
 end
 
----Initialize with invalid characteristic iid.
+---Configure with invalid characteristic iid.
 testCharacteristic(false, "iid", { -1, 1.1, true, {} })
 
 ---Configrue with valid characteristic format.
@@ -395,7 +406,7 @@ testCharacteristic(true, "format", {
 ---Configrue with invalid characteristic format.
 testCharacteristic(false, "format", { {}, 1, true, "test" })
 
----Initialize with valid characteristic type.
+---Configure with valid characteristic type.
 testCharacteristic(true, "type", {
     "AdministratorOnlyAccess",
     "AudioFeedback",
@@ -512,31 +523,31 @@ testCharacteristic(true, "type", {
     "ADKVersion",
 })
 
----Initialize with invalid characteristic type.
+---Configure with invalid characteristic type.
 testCharacteristic(false, "type", { {}, "test", true, 1 })
 
----Initialize with valid characteristic manufacturer description.
+---Configure with valid characteristic manufacturer description.
 testCharacteristic(true, "mfgDesc", { "", "manufacturer description", "厂商描述" })
 
----Initialize with invalid characteristic manufacturer description.
+---Configure with invalid characteristic manufacturer description.
 testCharacteristic(false, "mfgDesc", { {}, 1, true })
 
----Initialize with valid characteristic props.
+---Configure with valid characteristic props.
 testCharacteristic(true, "props", { {} })
 
----Initialize with invalid characteristic props.
+---Configure with invalid characteristic props.
 testCharacteristic(false, "props", { "test", true, 1 })
 
----Initialize with valid characteristic property ip.
+---Configure with valid characteristic property ip.
 testCharacteristic(true, "props.ip", { {} })
 
----Initialize with invalid characteristic property ip.
+---Configure with invalid characteristic property ip.
 testCharacteristic(false, "props.ip", { "test", true, 1 })
 
----Initialize with valid characteristic property ble.
+---Configure with valid characteristic property ble.
 testCharacteristic(true, "props.ble", { {} })
 
----Initialize with invalid characteristic property ble.
+---Configure with invalid characteristic property ble.
 testCharacteristic(false, "props.ble", { "test", true, 1 })
 
 for i, k in ipairs({
@@ -555,7 +566,7 @@ for i, k in ipairs({
     "ble.readableWithoutSecurity",
     "ble.writableWithoutSecurity"
 }) do
-    ---Initialize with invalid characteristic property ``k``.
+    ---Configure with invalid characteristic property ``k``.
     testCharacteristic(false, "props." .. k, { {}, 1, "test" })
 end
 
@@ -568,21 +579,21 @@ local units = {
     "Seconds"
 }
 
----Initialize with valid units.
+---Configure with valid units.
 for i, fmt in ipairs({ "UInt8", "UInt16", "UInt32", "UInt64", "Int", "Float" }) do
     testCharacteristic(true, "units", units, fmt)
 end
 
----Initialize with invalid units.
+---Configure with invalid units.
 for i, fmt in ipairs({ "Data", "String", "TLV8", "Bool" }) do
     testCharacteristic(false, "units", { "None" }, fmt)
 end
 testCharacteristic(false, "units", { "test", {}, true, 1 }, "UInt8")
 
----Initialize with valid constraints.
+---Configure with valid constraints.
 testCharacteristic(true, "constraints", { {} })
 
----Initialize with invalid constraints.
+---Configure with invalid constraints.
 testCharacteristic(false, "constraints", { true, "test", 1 })
 
 local format = {
@@ -608,12 +619,12 @@ local format = {
     }
 }
 
----Initialize with valid constraints maxLen.
+---Configure with valid constraints maxLen.
 for i, fmt in ipairs({ "String", "Data" }) do
     testCharacteristic(true, "constraints.maxLen", { format.UInt32.min, (format.UInt32.min + format.UInt32.max) // 2, format.UInt32.max }, fmt)
 end
 
----Initialize with invalid constraints maxLen.
+---Configure with invalid constraints maxLen.
 testCharacteristic(false, "constraints.maxLen", { format.UInt32.max + 1, 1.1, format.UInt32.min - 1, "test", {}, false }, "String")
 testCharacteristic(false, "constraints.maxLen", { 0 }, "Bool")
 
@@ -625,7 +636,7 @@ local function getDftNumberConstraints(fmt)
     }
 end
 
----Initialize with valid/invalid constraints minVal, maxVal, stepVal.
+---Configure with valid/invalid constraints minVal, maxVal, stepVal.
 for i, fmt in ipairs({ "UInt8", "UInt16", "UInt32", "UInt64", "Int" }) do
     for i, key in ipairs({ "minVal", "maxVal" }) do
         testCharacteristic(true, "constraints." .. key, { format[fmt].min, format[fmt].max }, fmt, getDftNumberConstraints(fmt))
@@ -635,19 +646,19 @@ for i, fmt in ipairs({ "UInt8", "UInt16", "UInt32", "UInt64", "Int" }) do
     testCharacteristic(false, "constraints.stepVal", { -1, format[fmt].max + 1, "test", {}, false }, fmt, getDftNumberConstraints(fmt))
 end
 
----Initialize with valid constraints validVals.
+---Configure with valid constraints validVals.
 testCharacteristic(true, "constraints.validVals", { { format.UInt8.min, format.UInt8.max } }, "UInt8")
 
----Initialize with invalid constraints validVals.
+---Configure with invalid constraints validVals.
 testCharacteristic(false, "constraints.validVals", { { format.UInt8.min - 1, format.UInt8.max + 1 }, { true, "test" }, "test", true, 1 }, "UInt8")
 testCharacteristic(false, "constraints.validVals", { { format.UInt8.min, format.UInt8.max } }, "Bool")
 
----Initialize with valid constraints validValsRanges.
+---Configure with valid constraints validValsRanges.
 testCharacteristic(true, "constraints.validValsRanges", { { { start = format.UInt8.min, stop = format.UInt8.max } } }, "UInt8")
 
----Initialize with mutli constraints validValsRanges.
+---Configure with mutli constraints validValsRanges.
 testCharacteristic(true, "constraints.validValsRanges", { { { start = 1, stop = 2 }, { start = 4, stop = 5 } } }, "UInt8")
 
----Initialize with invalid constraints validValsRanges.
+---Configure with invalid constraints validValsRanges.
 testCharacteristic(false, "constraints.validValsRanges", { false, "test", 1, { false }, { "test" }, { start = false }, { { start = format.UInt8.min, stop = true } } }, "UInt8")
 testCharacteristic(false, "constraints.validValsRanges", { { { start = format.UInt8.min, stop = format.UInt8.max } } }, "Bool")

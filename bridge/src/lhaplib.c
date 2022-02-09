@@ -23,6 +23,11 @@
 #define LHAP_ATTR_CNT_DFT ((size_t) 17)
 
 /**
+ * Default maxium number of bridged accessories.
+ */
+#define LHAP_BRIDGED_ACCS_MAX_CNT_DFT ((size_t) 10)
+
+/**
  * IID constants.
  */
 #define kIID_AccessoryInformation                 ((uint64_t) 1)
@@ -726,6 +731,8 @@ typedef struct {
     size_t iid;
     HAPAccessory *primary_acc;
     HAPAccessory **bridged_accs;
+    size_t bridged_accs_max;
+    size_t bridged_accs_cnt;
 
     HAPPlatform *platform;
     HAPAccessoryServerRef server;
@@ -2446,30 +2453,6 @@ static void lhap_reset_accessory(lua_State *L, HAPAccessory *accessory) {
     lua_rawsetp(L, LUA_REGISTRYINDEX, &(accessory->callbacks.identify));
 }
 
-static bool
-lhap_accessories_arr_cb(lua_State *L, size_t i, void *arg) {
-    HAPAccessory **accessories = arg;
-    if (!lua_istable(L, -1)) {
-        HAPLogError(&lhap_log,
-            "%s: The type of the element is not table.", __func__);
-        return false;
-    }
-    HAPAccessory *acc = pal_mem_calloc(sizeof(HAPAccessory));
-    if (!acc) {
-        HAPLogError(&lhap_log,
-            "%s: Failed to alloc memory.", __func__);
-        return false;
-    }
-    accessories[i] = acc;
-    if (!lc_traverse_table(L, -1, lhap_accessory_kvs, acc)) {
-        HAPLogError(&lhap_log,
-            "%s: Failed to generate accessory structure from table accessory.",
-            __func__);
-        return false;
-    }
-    return true;
-}
-
 static void lhap_server_handle_update_state(HAPAccessoryServerRef *server, void *_Nullable context) {
     HAPPrecondition(context);
     HAPPrecondition(server);
@@ -2601,13 +2584,12 @@ lhap_count_attr(const HAPAccessory *acc, size_t *readable, size_t *writable, siz
 #endif
 
 /**
- * init(primaryAccessory: table, bridgedAccessories?: table, serverCallbacks: table)
+ * init(primaryAccessory: table, serverCallbacks: table)
  *
  * If the category of the accessory is bridge, the parameters
  * bridgedAccessories is valid.
  */
 static int lhap_init(lua_State *L) {
-    lua_Unsigned len = 0;
     lhap_desc *desc = &gv_lhap_desc;
 
     if (desc->inited) {
@@ -2617,7 +2599,6 @@ static int lhap_init(lua_State *L) {
 
     luaL_checktype(L, 1, LUA_TTABLE);
     luaL_checktype(L, 2, LUA_TTABLE);
-    luaL_checktype(L, 3, LUA_TTABLE);
 
     desc->primary_acc = pal_mem_calloc(sizeof(HAPAccessory));
     if (!desc->primary_acc) {
@@ -2634,49 +2615,126 @@ static int lhap_init(lua_State *L) {
         goto err1;
     }
 
-    if (desc->primary_acc->category != kHAPAccessoryCategory_Bridges) {
-        goto parse_cb;
-    }
-
-    len = lua_rawlen(L, 2);
-    if (len == 0) {
-        goto parse_cb;
-    }
-
-    desc->bridged_accs =
-        pal_mem_calloc((len + 1) * sizeof(HAPAccessory *));
-    if (!desc->bridged_accs) {
-        lua_pushliteral(L, "Failed to alloc memory.");
-        goto err1;
-    }
-
-    if (!lc_traverse_array(L, 2, lhap_accessories_arr_cb,
-        desc->bridged_accs)) {
-        lua_pushliteral(L, "Failed to generate bridged accessories structureies"
-            " from table bridgedAccessories.");
-        goto err2;
-    }
-    for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
-        if (!HAPBridgedAccessoryIsValid(*pa)) {
-            lua_pushfstring(L, "Invalid bridged accessory [%zu \"%s\"].",
-                (*pa)->aid, (*pa)->name);
-            goto err2;
-        }
-    }
-
-parse_cb:
-    if (!lc_traverse_table(L, 3, lhap_server_callbacks_kvs, &desc->server_cbs)) {
+    if (!lc_traverse_table(L, 2, lhap_server_callbacks_kvs, &desc->server_cbs)) {
         lua_pushliteral(L, "Failed to parse the server callbacks from table serverCallbacks.");
-        goto err3;
+        goto err2;
     }
 
     HAPLog(&lhap_log,
         "Primary accessory \"%s\" has been configured.", desc->primary_acc->name);
-    if (len) {
-        HAPLog(&lhap_log,
-            "%" LUA_INTEGER_FRMLEN "u"
-            " bridged accessories have been configured.", len);
+
+    desc->inited = true;
+
+    return 0;
+
+err2:
+    lhap_reset_server_cb(L, &desc->server_cbs);
+err1:
+    lhap_reset_accessory(L, desc->primary_acc);
+    lhap_safe_free(desc->primary_acc);
+err:
+    lua_error(L);
+    return 0;
+}
+
+/* deinit() */
+int lhap_deinit(lua_State *L) {
+    lhap_desc *desc = &gv_lhap_desc;
+
+    if (!desc->inited) {
+        luaL_error(L, "HAP is not initialized.");
     }
+
+    if (desc->is_started) {
+        luaL_error(L, "HAP is started.");
+    }
+
+    lhap_reset_server_cb(L, &desc->server_cbs);
+
+    HAPRawBufferZero(&desc->server, sizeof(desc->server));
+    HAPRawBufferZero(&desc->server_cbs, sizeof(desc->server_cbs));
+
+    if (desc->bridged_accs) {
+        for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
+            lhap_reset_accessory(L, *pa);
+            pal_mem_free(*pa);
+        }
+        lhap_safe_free(desc->bridged_accs);
+    }
+    if (desc->primary_acc) {
+        lhap_reset_accessory(L, desc->primary_acc);
+        lhap_safe_free(desc->primary_acc);
+    }
+    desc->attribute_cnt = LHAP_ATTR_CNT_DFT;
+    desc->bridged_aid = 1;
+    desc->iid = LHAP_ATTR_CNT_DFT + 1;
+    desc->bridged_accs_cnt = 0;
+    desc->bridged_accs_max = 0;
+    desc->inited = false;
+    return 0;
+}
+
+/* addBridgedAccessory(accessory: table) */
+static int lhap_add_bridged_accessory(lua_State *L) {
+    lhap_desc *desc = &gv_lhap_desc;
+
+    if (!desc->inited) {
+        luaL_error(L, "HAP is not initialized.");
+    }
+
+    if (desc->is_started) {
+        luaL_error(L, "HAP is already started");
+    }
+
+    luaL_checktype(L, 1, LUA_TTABLE);
+
+    if (desc->bridged_accs_max - desc->bridged_accs_cnt <= 1) {
+        desc->bridged_accs_max = desc->bridged_accs_cnt ? desc->bridged_accs_cnt * 2 : 2;
+        HAPAccessory **accs = pal_mem_realloc(desc->bridged_accs, sizeof(HAPAccessory *) * desc->bridged_accs_max);
+        if (!accs) {
+            luaL_error(L, "Failed to alloc memory.");
+        }
+        accs[desc->bridged_accs_cnt] = NULL;
+        desc->bridged_accs = accs;
+    }
+
+    HAPAccessory *acc = pal_mem_calloc(sizeof(HAPAccessory));
+    if (!acc) {
+        luaL_error(L, "Failed to alloc memory.");
+    }
+    if (!lc_traverse_table(L, 1, lhap_accessory_kvs, acc)) {
+        lhap_reset_accessory(L, acc);
+        pal_mem_free(acc);
+        luaL_error(L, "Failed to generate accessory structure from table accessory.");
+    }
+    if (!HAPBridgedAccessoryIsValid(acc)) {
+        lhap_reset_accessory(L, acc);
+        pal_mem_free(acc);
+        luaL_error(L, "Invalid bridged accessory.");
+    }
+
+    desc->bridged_accs[desc->bridged_accs_cnt++] = acc;
+    desc->bridged_accs[desc->bridged_accs_cnt] = NULL;
+
+    HAPLog(&lhap_log, "Bridged accessory \"%s\" has been configured.", acc->name);
+    return 0;
+}
+
+/* start(confChanged: boolean) */
+static int lhap_start(lua_State *L) {
+    lhap_desc *desc = &gv_lhap_desc;
+
+    if (!desc->inited) {
+        luaL_error(L, "HAP is already initialized.");
+    }
+
+    if (desc->is_started) {
+        luaL_error(L, "HAP is already started");
+    }
+
+    luaL_checktype(L, 1, LUA_TBOOLEAN);
+
+    bool conf_changed = lua_toboolean(L, 1);
 
 #if IP
     size_t readable_cnt = 0;
@@ -2725,90 +2783,6 @@ parse_cb:
             &desc->server_cbs,
             desc);
 
-    desc->inited = true;
-
-    return 0;
-
-err3:
-    lhap_reset_server_cb(L, &desc->server_cbs);
-err2:
-    if (desc->bridged_accs) {
-        for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
-            lhap_reset_accessory(L, *pa);
-            pal_mem_free(*pa);
-        }
-        lhap_safe_free(desc->bridged_accs);
-    }
-err1:
-    lhap_reset_accessory(L, desc->primary_acc);
-    lhap_safe_free(desc->primary_acc);
-err:
-    lua_error(L);
-    return 0;
-}
-
-/* deinit() */
-int lhap_deinit(lua_State *L) {
-    lhap_desc *desc = &gv_lhap_desc;
-
-    if (!desc->inited) {
-        luaL_error(L, "HAP is not initialized.");
-    }
-
-    if (desc->is_started) {
-        luaL_error(L, "HAP is started.");
-    }
-
-    // Release accessory server.
-    HAPAccessoryServerRelease(&desc->server);
-
-#if IP
-    pal_hap_deinit_ip(&desc->server_options);
-#endif
-
-#if BLE
-    pal_hap_deinit_ble(&desc->server_options);
-#endif
-
-    lhap_reset_server_cb(L, &desc->server_cbs);
-
-    HAPRawBufferZero(&desc->server, sizeof(desc->server));
-    HAPRawBufferZero(&desc->server_cbs, sizeof(desc->server_cbs));
-
-    if (desc->bridged_accs) {
-        for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
-            lhap_reset_accessory(L, *pa);
-            pal_mem_free(*pa);
-        }
-        lhap_safe_free(desc->bridged_accs);
-    }
-    if (desc->primary_acc) {
-        lhap_reset_accessory(L, desc->primary_acc);
-        lhap_safe_free(desc->primary_acc);
-    }
-    desc->attribute_cnt = LHAP_ATTR_CNT_DFT;
-    desc->bridged_aid = 1;
-    desc->iid = LHAP_ATTR_CNT_DFT + 1;
-    desc->inited = false;
-    return 0;
-}
-
-/* start(confChanged: boolean) */
-static int lhap_start(lua_State *L) {
-    lhap_desc *desc = &gv_lhap_desc;
-
-    if (!desc->inited) {
-        luaL_error(L, "HAP is already initialized.");
-    }
-
-    if (desc->is_started) {
-        luaL_error(L, "HAP is already started");
-    }
-
-    luaL_checktype(L, 1, LUA_TBOOLEAN);
-
-    bool conf_changed = lua_toboolean(L, 1);
-
     // Start accessory server.
     if (desc->bridged_accs) {
         HAPAccessoryServerStartBridge(&desc->server, desc->primary_acc,
@@ -2831,6 +2805,17 @@ static int lhap_stop(lua_State *L) {
 
     // Stop accessory server.
     HAPAccessoryServerStop(&desc->server);
+
+    // Release accessory server.
+    HAPAccessoryServerRelease(&desc->server);
+
+#if IP
+    pal_hap_deinit_ip(&desc->server_options);
+#endif
+
+#if BLE
+    pal_hap_deinit_ble(&desc->server_options);
+#endif
 
     desc->is_started = false;
 
@@ -2929,6 +2914,7 @@ static int lhap_get_new_iid(lua_State *L) {
 static const luaL_Reg haplib[] = {
     {"init", lhap_init},
     {"deinit", lhap_deinit},
+    {"addBridgedAccessory", lhap_add_bridged_accessory},
     {"start", lhap_start},
     {"stop", lhap_stop},
     {"raiseEvent", lhap_raise_event},

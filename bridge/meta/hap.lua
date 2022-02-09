@@ -405,12 +405,15 @@ hap.PairingService = {}
 
 ---Initialize HAP.
 ---@param primaryAccessory HapAccessory Primary accessory to serve.
----@param bridgedAccessories HapAccessory[] Array of bridged accessories.
 ---@param serverCallbacks HapServerCallbacks Accessory server callbacks.
-function hap.init(primaryAccessory, bridgedAccessories, serverCallbacks) end
+function hap.init(primaryAccessory, serverCallbacks) end
 
 ---De-initialize then you can init() again.
 function hap.deinit() end
+
+---Add bridged accessory.
+---@param accessory HapAccessory Bridged accessory.
+function hap.addBridgedAccessory(accessory) end
 
 ---Start accessory server, you must init() first.
 ---@param confChanged boolean Whether or not the bridge configuration changed since the last start.

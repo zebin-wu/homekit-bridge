@@ -6,7 +6,7 @@ local plug = {}
 ---Create a plug.
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
----@param conf MiioDeviceConf Device configuration.
+---@param conf MiioAccessoryConf Device configuration.
 ---@param on string The property name of ``On``.
 ---@return HapAccessory accessory HomeKit Accessory.
 function plug.gen(device, info, conf, on)

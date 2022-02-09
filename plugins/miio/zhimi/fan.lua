@@ -22,7 +22,7 @@ local valMapping = {
 ---Create a fan.
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
----@param conf MiioDeviceConf Device configuration.
+---@param conf MiioAccessoryConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function fan.gen(device, info, conf)
     ---@class ZhimiFanIIDs:table Zhimi Fan Instance ID table.

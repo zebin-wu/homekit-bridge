@@ -32,7 +32,7 @@ local valMapping = {
 ---Create a acpartner.
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
----@param conf MiioDeviceConf Device configuration.
+---@param conf MiioAccessoryConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function acpartner.gen(device, info, conf)
     ---@class AcpartnerIIDS:table Acpartner Instance ID table.

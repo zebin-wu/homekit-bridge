@@ -6,13 +6,7 @@ local plugins = {}
 
 local logger = log.getLogger("plugins")
 
----@class AccessoryConf:table Accessory configuration.
----
----@field name string Accessory name.
-
 ---@class PluginConf:table Plugin configuration.
----
----@field accessories AccessoryConf[] Accessory configurations.
 
 ---@class Plugin:table Plugin.
 ---
@@ -25,8 +19,6 @@ local priv = {
 
 ---Load plugin.
 ---@param name string Plugin name.
----@return HapAccessory[]
----@nodiscard
 local function loadPlugin(name, conf)
     local plugin = priv.plugins[name]
     if plugin then
@@ -50,30 +42,21 @@ local function loadPlugin(name, conf)
             error(("%s.%s: type error, expected %s, got %s."):format(name, k, t, _t))
         end
     end
-    local accessories = plugin.init(conf)
+    plugin.init(conf)
     priv.plugins[name] = plugin
-    return accessories
 end
 
 ---Load plugins and generate bridged accessories.
 ---@param pluginConfs table<string, PluginConf> Plugin configurations.
----@return HapAccessory[] accessories
----@nodiscard
 function plugins.init(pluginConfs)
-    local accessories = {}
     if pluginConfs then
         for name, conf in pairs(pluginConfs) do
             local success, result = xpcall(loadPlugin, traceback, name, conf)
             if success == false then
                 logger:error(result)
-            else
-                for _, accessory in ipairs(result) do
-                    table.insert(accessories, accessory)
-                end
             end
         end
     end
-    return accessories
 end
 
 ---Handle HAP server state.

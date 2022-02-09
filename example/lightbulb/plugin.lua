@@ -7,23 +7,21 @@ local plugin = {}
 
 local logger = log.getLogger("lightbulb.plugin")
 
-local function checkAccessoryConf(conf)
-    return true
-end
-
----LightBulb configuation.
----@class LightBulbConf: AccessoryConf
+---LightBulb accessory configuration.
+---@class LightBulbAccessoryConf
 ---
 ---@field sn integer Serial number.
+---@field name string Accessory name.
+
+---LightBulb plugin configuration.
+---@class LightBulbPluginConf:PluginConf
+---
+---@field accessories LightBulbAccessoryConf[] Accessory configurations.
 
 ---Generate accessory via configuration.
----@param conf LightBulbConf
+---@param conf LightBulbAccessoryConf
 ---@return HapAccessory
 local function gen(conf)
-    if checkAccessoryConf(conf) == false then
-        return nil
-    end
-
     local context = {
         lightBulbOn = false,
     }
@@ -82,16 +80,13 @@ local function gen(conf)
 end
 
 ---Initialize plugin.
----@param conf PluginConf Plugin configuration.
----@return HapAccessory[]
+---@param conf LightBulbPluginConf Plugin configuration.
 function plugin.init(conf)
     logger:info("Initialized.")
 
-    local accessories = {}
     for _, accessoryConf in ipairs(conf.accessories) do
-        table.insert(accessories, gen(accessoryConf))
+        hap.addBridgedAccessory(gen(accessoryConf))
     end
-    return accessories
 end
 
 ---Handle HAP server state.
