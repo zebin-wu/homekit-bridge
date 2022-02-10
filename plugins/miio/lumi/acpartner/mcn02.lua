@@ -60,8 +60,6 @@ function acpartner.gen(device, info, conf)
         hwVer = info.hw_ver,
         services = {
             hap.AccessoryInformationService,
-            hap.HapProtocolInformationService,
-            hap.PairingService,
             {
                 iid = iids.heaterCooler,
                 type = "HeaterCooler",

@@ -28,8 +28,6 @@ function plug.gen(device, info, conf, on)
         hwVer = info.hw_ver,
         services = {
             hap.AccessoryInformationService,
-            hap.HapProtocolInformationService,
-            hap.PairingService,
             {
                 iid = iids.outlet,
                 type = "Outlet",

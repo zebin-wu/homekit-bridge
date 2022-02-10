@@ -45,8 +45,6 @@ function fan.gen(device, info, conf)
         hwVer = info.hw_ver,
         services = {
             hap.AccessoryInformationService,
-            hap.HapProtocolInformationService,
-            hap.PairingService,
             {
                 iid = iids.fan,
                 type = "Fan",

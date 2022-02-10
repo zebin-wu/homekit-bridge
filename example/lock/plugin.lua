@@ -45,8 +45,6 @@ local function gen(conf)
         hwVer = "1",
         services = {
             hap.AccessoryInformationService,
-            hap.HapProtocolInformationService,
-            hap.PairingService,
             {
                 iid = context.mechanismIID,
                 type = "LockMechanism",
