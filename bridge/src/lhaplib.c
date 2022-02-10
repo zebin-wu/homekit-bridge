@@ -2736,6 +2736,16 @@ static int lhap_start(lua_State *L) {
 
     bool conf_changed = lua_toboolean(L, 1);
 
+    if (desc->bridged_accs && desc->bridged_accs_max - desc->bridged_accs_cnt > 1) {
+        size_t max = desc->bridged_accs_cnt + 1;
+        HAPAccessory **accs = pal_mem_realloc(desc->bridged_accs, sizeof(HAPAccessory *) * max);
+        if (!accs) {
+            luaL_error(L, "Failed to resize bridged accessories.");
+        }
+        desc->bridged_accs = accs;
+        desc->bridged_accs_max = max;
+    }
+
 #if IP
     size_t readable_cnt = 0;
     size_t writable_cnt = 0;
