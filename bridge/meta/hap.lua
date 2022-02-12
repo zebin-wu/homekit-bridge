@@ -27,18 +27,12 @@ local hap = {}
 ---
 ---@field identify fun(request: HapAccessoryIdentifyRequest, context?: any):HapError The callback used to invoke the identify routine.
 
----@class HapAccessoryInformation:table Accessory information.
----
----@field aid integer Accessory instance ID.
----@field category HapAccessoryCategory Category information for the accessory.
----@field name string The display name of the accessory.
-
 ---@class HapAccessoryIdentifyRequest:table Accessory identify request.
 ---
 ---@field transportType HapTransportType Transport type over which the request has been received.
 ---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
 ---@field session HapSession The session over which the request has been received.
----@field accessory HapAccessoryInformation
+---@field aid integer Accessory instance ID.
 
 ---@class HapService:table HomeKit service.
 ---
@@ -59,12 +53,6 @@ local hap = {}
 ---
 ---@field supportsConfiguration boolean The service supports configuration. Only the HAP Protocol Information service may support configuration.
 
----@class HapServiceInformation
----
----@field iid integer Instance ID.
----@field type HapServiceType The type of the service.
----@field name string The name of the service.
-
 ---@class HapCharacteristic:table HomeKit characteristic.
 ---
 ---@field format HapCharacteristicFormat Format.
@@ -75,12 +63,6 @@ local hap = {}
 ---@field units HapCharacteristicUnits The units of the values for the characteristic. Format: UInt8|UInt16|UInt32|UInt64|Int|Float
 ---@field constraints HapStringCharacteristiConstraints|HapNumberCharacteristiConstraints|HapUInt8CharacteristiConstraints Value constraints.
 ---@field cbs HapCharacteristicCallbacks Callbacks.
-
----@class HapCharacteristicInformation
----
----@field iid integer Instance ID.
----@field format HapCharacteristicFormat Format.
----@field type HapCharacteristicType The type of the characteristic.
 
 ---@class HapStringCharacteristiConstraints:table Format: String|Data
 ---
@@ -111,26 +93,26 @@ local hap = {}
 ---
 ---@field transportType HapTransportType Transport type over which the request has been received.
 ---@field session HapSession The session over which the request has been received.
----@field accessory HapAccessoryInformation
----@field service HapServiceInformation
----@field characteristic HapCharacteristicInformation
+---@field aid integer Accessory instance ID.
+---@field sid integer Service instance ID.
+---@field cid integer Characteristic intstance ID.
 
 ---@class HapCharacteristicWriteRequest:table Characteristic write request.
 ---
 ---@field transportType HapTransportType Transport type over which the request has been received.
 ---@field session HapSession The session over which the request has been received.
----@field accessory HapAccessoryInformation
----@field service HapServiceInformation
----@field characteristic HapCharacteristicInformation
+---@field aid integer Accessory instance ID.
+---@field sid integer Service instance ID.
+---@field cid integer Characteristic intstance ID.
 ---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
 
 ---@class HapCharacteristicSubscriptionRequest:table Characteristic subscription request.
 ---
 ---@field transportType HapTransportType Transport type over which the request has been received.
 ---@field session HapSession The session over which the request has been received.
----@field accessory HapAccessoryInformation
----@field service HapServiceInformation
----@field characteristic HapCharacteristicInformation
+---@field aid integer Accessory instance ID.
+---@field sid integer Service instance ID.
+---@field cid integer Characteristic intstance ID.
 
 ---@class HapCharacteristicCallbacks:table Characteristic Callbacks.
 ---
@@ -424,12 +406,12 @@ function hap.stop() end
 
 ---Raises an event notification for a given characteristic in a given service provided by a given accessory.
 ---If has session, it raises event on a given session.
----@overload fun(accessoryIID: integer, serviceIID: integer, characteristicIID: integer)
----@param accessoryIID integer Accessory instance ID.
----@param serviceIID integer Service instance ID.
----@param characteristicIID integer characteristic intstance ID.
+---@overload fun(aid: integer, sid: integer, cid: integer)
+---@param aid integer Accessory instance ID.
+---@param sid integer Service instance ID.
+---@param cid integer Characteristic intstance ID.
 ---@param session? HapSession The session on which to raise the event.
-function hap.raiseEvent(accessoryIID, serviceIID, characteristicIID, session) end
+function hap.raiseEvent(aid, sid, cid, session) end
 
 ---Get a new Instance ID for bridged accessory.
 ---@return integer iid Instance ID.

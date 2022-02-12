@@ -59,8 +59,7 @@ local function gen(conf)
                             logger:info(("Write lightBulbOn: %s"):format(value))
                             if value ~= context.lightBulbOn then
                                 context.lightBulbOn = value
-                                hap.raiseEvent(request.accessory.aid,
-                                    request.service.iid, request.characteristic.iid)
+                                hap.raiseEvent(request.aid, request.sid, request.cid)
                             end
                             return hap.Error.None
                         end)

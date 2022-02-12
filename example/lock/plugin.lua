@@ -78,8 +78,7 @@ local function gen(conf)
                                 context.tgtState = value
                                 context.curState = value
                                 hap.raiseEvent(context.aid, context.mechanismIID, context.curStateIID)
-                                hap.raiseEvent(request.accessory.aid,
-                                    request.service.iid, request.characteristic.iid)
+                                hap.raiseEvent(request.aid, request.sid, request.cid)
                             end
                             return hap.Error.None
                         end)

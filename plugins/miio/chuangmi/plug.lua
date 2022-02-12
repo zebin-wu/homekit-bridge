@@ -1,5 +1,6 @@
 local hap = require "hap"
 local On = require "hap.char.On"
+local raiseEvent = hap.raiseEvent
 
 local plug = {}
 
@@ -47,7 +48,7 @@ function plug.gen(device, info, conf, on)
                     end, function (request, value, self)
                         self.logger:info(("Write On: %s"):format(value))
                         self:setOn(value)
-                        hap.raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
+                        raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end)
                 }

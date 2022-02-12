@@ -1402,60 +1402,6 @@ lhap_characteristic_constraints_cb(lua_State *L, const lc_table_kv *kv, void *ar
 }
 
 static void
-lhap_create_accessory_info_table(lua_State *L, int idx, const HAPAccessory *accessory) {
-    lua_createtable(L, 0, 3);
-    lua_pushinteger(L, accessory->aid);
-    lua_setfield(L, idx, "aid");
-    lua_pushstring(L, lhap_accessory_category_strs[accessory->category]);
-    lua_setfield(L, idx, "category");
-    lua_pushstring(L, accessory->name);
-    lua_setfield(L, idx, "name");
-    lua_setfield(L, idx, "accessory");
-}
-
-static const char *lhap_get_service_type_str(const HAPUUID *type) {
-    for (int i = 0; i < HAPArrayCount(lhap_service_type_tab); i++) {
-        if (lhap_service_type_tab[i].type == type) {
-            return lhap_service_type_tab[i].name;
-        }
-    }
-    return NULL;
-}
-
-static void
-lhap_create_service_info_table(lua_State *L, int idx, const HAPService *service) {
-    lua_createtable(L, 0, 3);
-    lua_pushinteger(L, service->iid);
-    lua_setfield(L, idx, "iid");
-    lua_pushstring(L, lhap_get_service_type_str(service->serviceType));
-    lua_setfield(L, idx, "type");
-    lua_pushstring(L, service->name);
-    lua_setfield(L, idx, "name");
-    lua_setfield(L, idx, "service");
-}
-
-static const char *lhap_get_char_type_str(const HAPUUID *type) {
-    for (int i = 0; i < HAPArrayCount(lhap_characteristic_type_tab); i++) {
-        if (lhap_characteristic_type_tab[i].type == type) {
-            return lhap_characteristic_type_tab[i].name;
-        }
-    }
-    return NULL;
-}
-
-static void
-lhap_create_char_info_table(lua_State *L, int idx, const HAPBaseCharacteristic *c) {
-    lua_createtable(L, 0, 3);
-    lua_pushinteger(L, c->iid);
-    lua_setfield(L, idx, "iid");
-    lua_pushstring(L, lhap_characteristic_format_strs[c->format]);
-    lua_setfield(L, idx, "format");
-    lua_pushstring(L, lhap_get_char_type_str(c->characteristicType));
-    lua_setfield(L, idx, "type");
-    lua_setfield(L, idx, "characteristic");
-}
-
-static void
 lhap_create_request_table(
         lua_State *L,
         HAPTransportType transportType,
@@ -1464,7 +1410,7 @@ lhap_create_request_table(
         const HAPAccessory *accessory,
         const HAPService *service,
         const HAPBaseCharacteristic *characteristic) {
-    lua_createtable(L, 0, remote ? 5 : 4);
+    lua_createtable(L, 0, 2 + (remote ? 1 : 0) + (service ? 1 : 0) + (characteristic ? 1 : 0));
     lua_pushstring(L, lhap_transport_type_strs[transportType]);
     lua_setfield(L, -2, "transportType");
     if (remote) {
@@ -1473,12 +1419,15 @@ lhap_create_request_table(
     }
     lua_pushlightuserdata(L, session);
     lua_setfield(L, -2, "session");
-    lhap_create_accessory_info_table(L, -2, accessory);
+    lua_pushinteger(L, accessory->aid);
+    lua_setfield(L, -2, "aid");
     if (service) {
-        lhap_create_service_info_table(L, -2, service);
+        lua_pushinteger(L, service->iid);
+        lua_setfield(L, -2, "sid");
     }
     if (characteristic) {
-        lhap_create_char_info_table(L, -2, characteristic);
+        lua_pushinteger(L, characteristic->iid);
+        lua_setfield(L, -2, "cid");
     }
 }
 

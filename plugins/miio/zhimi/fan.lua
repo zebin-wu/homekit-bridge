@@ -64,7 +64,7 @@ function fan.gen(device, info, conf)
                     end, function (request, value, self)
                         self.logger:info("Write Active: " .. searchKey(Active.value, value))
                         self:setProp("power", searchKey(valMapping.power, value))
-                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
+                        raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end),
                     RotationSpeed.new(iids.rotationSpeed, function (request, self)
@@ -74,7 +74,7 @@ function fan.gen(device, info, conf)
                     end, function (request, value, self)
                         self.logger:info("Write RotationSpeed: " .. value)
                         self:setProp("speed_level", math.tointeger(value))
-                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
+                        raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request, self)
@@ -84,7 +84,7 @@ function fan.gen(device, info, conf)
                     end, function (request, value, self)
                         self.logger:info("Write SwingMode: " .. searchKey(SwingMode.value, value))
                         self:setProp("angle_enable", searchKey(valMapping.angle_enable, value))
-                        raiseEvent(request.accessory.aid, request.service.iid, request.characteristic.iid)
+                        raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end)
                 }
