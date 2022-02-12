@@ -17,11 +17,7 @@ return {
             props = {
                 readable = true,
                 writable = true,
-                supportsEventNotification = true,
-                ble = {
-                    supportsBroadcastNotification = true,
-                    supportsDisconnectedNotification = true
-                }
+                supportsEventNotification = true
             },
             constraints = {
                 minVal = 0,
