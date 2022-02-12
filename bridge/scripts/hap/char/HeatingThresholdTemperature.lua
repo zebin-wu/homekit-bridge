@@ -15,8 +15,7 @@ return {
             props = {
                 readable = true,
                 writable = true,
-                supportsEventNotification = true,
-                requiresTimedWrite = true
+                supportsEventNotification = true
             },
             units = "Celsius",
             constraints = {

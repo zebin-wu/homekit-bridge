@@ -16,8 +16,7 @@ return {
             props = {
                 readable = true,
                 writable = true,
-                supportsEventNotification = true,
-                requiresTimedWrite = true
+                supportsEventNotification = true
             },
             constraints = {
                 minVal = 0,
