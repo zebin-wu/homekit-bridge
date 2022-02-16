@@ -44,7 +44,7 @@ After clone the repository to the local, please initialize submodules by the fol
 $ git submodule update --init
 ```
 
-### Linux
+### Linux (Ubuntu)
 
 #### Prepare
 
@@ -74,13 +74,13 @@ The following options can be specified when running homekit-bridge:
 
 Option | Description
 -|-
-`-d`, `--dir` | set the scripts directory
+`-d`, `--dir` | set the working directory
 `-e`, `--entry` | set the entry script name
 `-h`, `--help` | display this help and exit
 
 #### Configure
 
-The configuration script `config.lua` is placed in `/usr/local/lib/homekit-bridge` by default, you can edit it before running homekit-bridge. If you specified the scripts directory, homekit-bridge will find `config.lua` in the specified directory.
+The configuration script `config.lua` is placed in `/usr/local/lib/homekit-bridge` by default, you can edit it before running homekit-bridge. If you specified the working directory, homekit-bridge will find `config.lua` in the specified directory.
 
 ### ESP-IDF
 

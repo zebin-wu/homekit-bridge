@@ -142,12 +142,12 @@ static void deinit_platform() {
 static const char *help = \
     "usage: %s [options]\n"
     "options:\n"
-    "  -d, --dir    set the scripts directory\n"
+    "  -d, --dir    set the working directory\n"
     "  -e, --entry  set the entry script name\n"
     "  -h, --help   display this help and exit\n";
 
 static const char *progname = "homekit-bridge";
-static const char *scripts_dir = BRIDGE_WORK_DIR;
+static const char *workdir = BRIDGE_WORK_DIR;
 static const char *entry = BRIDGE_LUA_ENTRY_DEFAULT;
 
 static void usage(const char* message) {
@@ -170,8 +170,8 @@ static void doargs(int argc, char *argv[]) {
             usage(NULL);
             exit(EXIT_SUCCESS);
         } else if (HAPStringAreEqual(argv[i], "-d") || HAPStringAreEqual(argv[i], "--dir")) {
-            scripts_dir = argv[++i];
-            if (!scripts_dir || *scripts_dir == 0 || (*scripts_dir == '-' && scripts_dir[1] != 0)) {
+            workdir = argv[++i];
+            if (!workdir || *workdir == 0 || (*workdir == '-' && workdir[1] != 0)) {
                 usage("'-d' needs argument");
                 exit(EXIT_FAILURE);
             }
@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
     // Initialize global platform objects.
     init_platform();
 
-    app_init(&platform.hapPlatform, scripts_dir, entry);
+    app_init(&platform.hapPlatform, workdir, entry);
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
