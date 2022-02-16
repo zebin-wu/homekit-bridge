@@ -76,13 +76,13 @@ $ homekit-bridge
 
 选项 | 描述
 -|-
-`-d`, `--dir` | 设置脚本目录
+`-d`, `--dir` | 设置工作目录
 `-e`, `--entry` | 设置入口脚本的名称
 `-h`, `--help` | 显示帮助并退出
 
 #### 配置
 
-配置文件`config.lua`默认位于`/usr/local/lib/homekit-bridge`，可以在运行homekit-bridge之前修改它。如果你指定了脚本目录，homekit-bridge将会到指定脚本目录中寻找`config.lua`。
+配置文件`config.lua`默认位于`/usr/local/lib/homekit-bridge`，可以在运行homekit-bridge之前修改它。如果你指定了工作目录，homekit-bridge将会到指定目录中寻找`config.lua`。
 
 ### ESP-IDF
 

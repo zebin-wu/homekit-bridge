@@ -24,7 +24,7 @@ extern "C" {
  * Initialize App.
  *
  * @param platform The pointer to the HomeKit platform structure.
- * @param dir The path of the scripts directory.
+ * @param workdir The path of the working directory.
  * @param entry The name of the entry script.
  */
 void app_init(HAPPlatform *platform, const char *dir, const char *entry);

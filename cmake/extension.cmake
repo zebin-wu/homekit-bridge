@@ -64,11 +64,8 @@ function(compile_luac bin src_dir build_dir)
     set(multi DEPENDS)
     cmake_parse_arguments(arg "" "" "${multi}" "${ARGN}")
     add_custom_command(OUTPUT ${bin}
-        COMMAND ${CMAKE_COMMAND}
-            -S${src_dir}
-            -B${build_dir}
-            -G Ninja
-        COMMAND cmake --build ${build_dir} -j10
+        COMMAND ${CMAKE_COMMAND} ${src_dir} -B${build_dir} -G Ninja
+        COMMAND cmake --build ${build_dir}
         DEPENDS ${src_dir}/CMakeLists.txt ${arg_DEPENDS}
         COMMENT "Compiling luac"
     )
