@@ -38,7 +38,6 @@ local hap = {}
 ---
 ---@field iid integer Instance ID.
 ---@field type HapServiceType The type of the service.
----@field name string The name of the service.
 ---@field props HapServiceProperties HAP Service properties.
 ---@field linkedServices integer[] Array containing instance IDs of linked services.
 ---@field chars HapCharacteristic[] Array of contained characteristics.

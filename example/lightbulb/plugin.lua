@@ -25,10 +25,11 @@ local function gen(conf)
     local context = {
         lightBulbOn = false,
     }
+    local name = conf.name or "Light Bulb"
     return {
         aid = hap.getNewBridgedAccessoryID(),
         category = "BridgedAccessory",
-        name = conf.name,
+        name = name,
         mfg = "Acme",
         model = "LightBulb1,1",
         sn = conf.sn,
@@ -39,17 +40,13 @@ local function gen(conf)
             {
                 iid = hap.getNewInstanceID(),
                 type = "LightBulb",
-                name = "Light Bulb",
                 props = {
                     primaryService = true,
-                    hidden = false,
-                    ble = {
-                        supportsConfiguration = false,
-                    }
+                    hidden = false
                 },
                 chars = {
                     ServiceSignature.new(hap.getNewInstanceID()),
-                    Name.new(hap.getNewInstanceID()),
+                    Name.new(hap.getNewInstanceID(), name),
                     On.new(hap.getNewInstanceID(),
                         function (request, context)
                             logger:info(("Read lightBulbOn: %s"):format(context.lightBulbOn))

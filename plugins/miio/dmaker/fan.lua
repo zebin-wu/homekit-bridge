@@ -39,13 +39,9 @@ function fan.gen(device, info, conf, mapping)
             {
                 iid = iids.fan,
                 type = "Fan",
-                name = "Fan",
                 props = {
                     primaryService = true,
-                    hidden = false,
-                    ble = {
-                        supportsConfiguration = false,
-                    }
+                    hidden = false
                 },
                 chars = {
                     Active.new(iids.active, function (request, self)

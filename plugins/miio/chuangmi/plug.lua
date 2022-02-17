@@ -32,13 +32,9 @@ function plug.gen(device, info, conf, on)
             {
                 iid = iids.outlet,
                 type = "Outlet",
-                name = "Outlet",
                 props = {
                     primaryService = true,
-                    hidden = false,
-                    ble = {
-                        supportsConfiguration = false,
-                    }
+                    hidden = false
                 },
                 chars = {
                     On.new(iids.on, function (request, self)
