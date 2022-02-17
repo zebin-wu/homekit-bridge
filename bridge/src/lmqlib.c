@@ -42,26 +42,25 @@ static int lmq_create(lua_State *L) {
 
 static int lmq_obj_send(lua_State *L) {
     lmq_obj *obj = luaL_checkudata(L, 1, LUA_MQ_OBJ_NAME);
-    int nargs = lua_gettop(L) - 1;
+    int narg = lua_gettop(L) - 1;
     int status, nres;
 
     lua_getuservalue(L, 1);
 
     if (lua_getfield(L, -1, "wait") == LUA_TTABLE) {
-        int waiting = luaL_len(L, -1);
         lua_pushnil(L);
         lua_setfield(L, -3, "wait");  // que.wait = nil
-        lua_insert(L, 2);  // insert table 'wait' to index 2
-        lua_pop(L, 1);
+        int waiting = luaL_len(L, -1);
         for (int i = 1; i <= waiting; i++) {
-            HAPAssert(lua_geti(L, 2, i) == LUA_TTHREAD);
+            HAPAssert(lua_geti(L, -1, i) == LUA_TTHREAD);
             lua_State *co = lua_tothread(L, -1);
             lua_pop(L, 1);
-            for (int i = 1; i <= nargs; i++) {
-                lua_pushvalue(L, i + 3);
+            int max = 1 + narg;
+            for (int i = 2; i <= max; i++) {
+                lua_pushvalue(L, i);
             }
-            lua_xmove(L, co, nargs);
-            status = lua_resume(co, L, nargs, &nres);
+            lua_xmove(L, co, narg);
+            status = lua_resume(co, L, narg, &nres);
             if (status == LUA_OK) {
                 lc_freethread(co);
             } else if (status != LUA_YIELD) {
@@ -76,9 +75,9 @@ static int lmq_obj_send(lua_State *L) {
         }
         lua_pop(L, 1);
         lua_insert(L, 2);
-        lua_createtable(L, nargs, 0);
+        lua_createtable(L, narg, 0);
         lua_insert(L, 3);
-        for (int i = nargs; i >= 1; i--) {
+        for (int i = narg; i >= 1; i--) {
             lua_seti(L, 3, i);
         }
         lua_seti(L, 2, obj->last);
@@ -88,10 +87,6 @@ static int lmq_obj_send(lua_State *L) {
         }
     }
     return 0;
-}
-
-static int finshrecv(lua_State *L, int status, lua_KContext extra) {
-    return lua_gettop(L) - 1;
 }
 
 static int lmq_obj_recv(lua_State *L) {
@@ -115,8 +110,7 @@ static int lmq_obj_recv(lua_State *L) {
             lua_pop(L, 1);
         }
         lua_pop(L, 1);
-        lua_yieldk(L, 0, 0, finshrecv);
-        return 0;
+        return lua_yield(L, 0);
     } else {
         lua_geti(L, 2, obj->first);
         lua_pushnil(L);
