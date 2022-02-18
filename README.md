@@ -25,7 +25,8 @@ In order to achieve better scalability and reduce development difficulty, homeki
 Product Name | Model
 -|-
 Xiaomi Mi Air Conditioner Companion 2 | `lumi.acpartner.mcn02`
-Xiaomi Plug Base (1 Socket) | `chuangmi.plug.m3`
+Xiaomi Smart Plug (Wi-Fi) | `chuangmi.plug.m3`
+Xiaomi Smart Plug 2 (Bluetooth Gateway) | `chuangmi.plug.212a01`
 Zhimi DC Variable Frequency Fan 2S | `zhimi.fan.za4`
 Xiaomi DC Variable Frequency Tower Fan | `dmaker.fan.p9`
 

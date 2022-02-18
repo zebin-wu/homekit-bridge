@@ -6,18 +6,16 @@ local plug = {}
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function plug.gen(device, info, conf)
+    device:setMapping({
+        power = {siid = 2, piid = 1}
+    })
+
     function device:getOn()
-        return self:getProp("power") == "on"
+        return self:getProp("power")
     end
 
     function device:setOn(value)
-        local power
-        if value == true then
-            power = "on"
-        else
-            power = "off"
-        end
-        self:setProp("power", power)
+        self:setProp("power", value)
     end
 
     return require("miio.chuangmi.plug").gen(device, info, conf)

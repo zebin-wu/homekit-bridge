@@ -8,9 +8,8 @@ local plug = {}
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
----@param on string The property name of ``On``.
 ---@return HapAccessory accessory HomeKit Accessory.
-function plug.gen(device, info, conf, on)
+function plug.gen(device, info, conf)
     ---@class PlugIIDs:table Plug Instance ID table.
     local iids = {
         acc = conf.aid,
