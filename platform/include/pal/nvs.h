@@ -12,22 +12,25 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <stdbool.h>
+
+#define PAL_NVS_KEY_MAX_LEN 31
 
 typedef struct pal_nvs_handle pal_nvs_handle;
 
 pal_nvs_handle *pal_nvs_open(const char *namespace);
 
-void pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t *len);
+bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t *len);
 
-size_t pal_nvs_get_size(pal_nvs_handle *handle, const char *key);
+size_t pal_nvs_get_len(pal_nvs_handle *handle, const char *key);
 
-void pal_nvs_set(pal_nvs_handle *handle, const char *key, const void *buf, size_t len);
+bool pal_nvs_set(pal_nvs_handle *handle, const char *key, const void *value, size_t len);
 
 void pal_nvs_remove(pal_nvs_handle *handle, const char *key);
 
-void pal_nvs_earse(pal_nvs_handle *handle);
+void pal_nvs_erase(pal_nvs_handle *handle);
 
-void pal_nvs_commit(pal_nvs_handle *handle);
+bool pal_nvs_commit(pal_nvs_handle *handle);
 
 void pal_nvs_close(pal_nvs_handle *handle);
 
