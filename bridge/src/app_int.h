@@ -49,6 +49,9 @@ LUAMOD_API int luaopen_ssl(lua_State *L);
 #define LUA_DNS_NAME "dns"
 LUAMOD_API int luaopen_dns(lua_State *L);
 
+#define LUA_NVS_NAME "nvs"
+LUAMOD_API int luaopen_nvs(lua_State *L);
+
 /**
  * Set HomeKit platform.
  */

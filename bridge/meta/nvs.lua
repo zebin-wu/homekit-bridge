@@ -12,12 +12,12 @@ function nvs.open(namespace) end
 
 ---Fetch the value of a key in the namespace.
 ---@param key string
----@return boolean|number|string value
+---@return string value
 function handle:get(key) end
 
 ---Set the value of a key in the namespace.
 ---@param key string
----@param value boolean|number|string
+---@param value string
 function handle:set(key, value) end
 
 ---Remove the value of a key in the namesapce.
