@@ -47,19 +47,34 @@ static int lnvs_handle_get(lua_State *L) {
         return 1;
     }
 
+    lua_getfield(L, lua_upvalueindex(1), "decode");
+
     luaL_Buffer B;
     luaL_buffinitsize(L, &B, len);
     luaL_addsize(&B, len);
-    if (!pal_nvs_get(handle->handle, key, B.b, &B.n)) {
+    if (!pal_nvs_get(handle->handle, key, B.b, len)) {
         luaL_error(L, "failed to get key");
     }
     luaL_pushresult(&B);
+
+    // return json.decode(s)
+    lua_call(L, 1, 1);
     return 1;
 }
 
 static int lnvs_handle_set(lua_State *L) {
     lnvs_handle *handle = lnvs_get_handle(L, 1);
     const char *key = luaL_checkstring(L, 2);
+
+    if (lua_type(L, 3) == LUA_TNIL) {
+        pal_nvs_remove(handle->handle, key);
+        return 0;
+    }
+    // json.encode(value)
+    lua_getfield(L, lua_upvalueindex(1), "encode");
+    lua_insert(L, 3);
+    lua_call(L, 1, 1);
+
     size_t len;
     const char *value = luaL_checklstring(L, 3, &len);
 
@@ -69,21 +84,15 @@ static int lnvs_handle_set(lua_State *L) {
     return 0;
 }
 
-static int lnvs_handle_remove(lua_State *L) {
-    lnvs_handle *handle = lnvs_get_handle(L, 1);
-    const char *key = luaL_checkstring(L, 2);
-
-    pal_nvs_remove(handle->handle, key);
-    return 0;
-}
-
 static int lnvs_handle_erase(lua_State *L) {
     pal_nvs_erase(lnvs_get_handle(L, 1)->handle);
     return 0;
 }
 
 static int lnvs_handle_commit(lua_State *L) {
-    pal_nvs_commit(lnvs_get_handle(L, 1)->handle);
+    if (!pal_nvs_commit(lnvs_get_handle(L, 1)->handle)) {
+        luaL_error(L, "failed to commit all changes");
+    }
     return 0;
 }
 
@@ -138,7 +147,6 @@ static const luaL_Reg lnvs_handle_metameth[] = {
 static const luaL_Reg lnvs_handle_meth[] = {
     {"get", lnvs_handle_get},
     {"set", lnvs_handle_set},
-    {"remove", lnvs_handle_remove},
     {"erase", lnvs_handle_erase},
     {"commit", lnvs_handle_commit},
     {"close", lnvs_handle_close},
@@ -149,7 +157,10 @@ static void lnvs_createmeta(lua_State *L) {
     luaL_newmetatable(L, LUA_NVS_HANDLE_NAME);  /* metatable for NVS handle */
     luaL_setfuncs(L, lnvs_handle_metameth, 0);  /* add metamethods to new metatable */
     luaL_newlibtable(L, lnvs_handle_meth);  /* create method table */
-    luaL_setfuncs(L, lnvs_handle_meth, 0);  /* add NVS handle methods to method table */
+    lua_getglobal(L, "require");
+    lua_pushstring(L, "cjson");
+    lua_call(L, 1, 1);  /* require "cjson" */
+    luaL_setfuncs(L, lnvs_handle_meth, 1);  /* add NVS handle methods to method table */
     lua_setfield(L, -2, "__index");  /* metatable.__index = method table */
     lua_pop(L, 1);  /* pop metatable */
 }

@@ -1,5 +1,6 @@
----non-volatile storage.
----@class nvslib
+---@meta
+
+---@class nvslib:table non-volatile storage.
 local nvs = {}
 
 ---@class NVSHandle:userdata non-volatile storage handle.
@@ -8,21 +9,19 @@ local handle = {}
 ---Open a non-volatile storage handle with a given namespace.
 ---@param namespace string
 ---@return NVSHandle
+---@nodiscard
 function nvs.open(namespace) end
 
 ---Fetch the value of a key in the namespace.
 ---@param key string
----@return string value
+---@return boolean|number|table|string|nil value
+---@nodiscard
 function handle:get(key) end
 
 ---Set the value of a key in the namespace.
 ---@param key string
----@param value string
+---@param value boolean|number|table|string|nil
 function handle:set(key, value) end
-
----Remove the value of a key in the namesapce.
----@param key string
-function handle:remove(key) end
 
 ---Erase all key-value pairs in the namespace.
 function handle:erase() end
