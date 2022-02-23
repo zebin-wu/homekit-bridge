@@ -45,8 +45,9 @@ local function getProps(obj)
     local names = obj.names
     obj.names = {}
     local success, result = xpcall(obj.request, traceback, obj, "get_prop", names)
-    if not success then
+    if success == false then
         obj.mq:send(success, result)
+        return
     end
     local props = {}
     for i, value in ipairs(result) do
@@ -55,6 +56,8 @@ local function getProps(obj)
     obj.mq:send(success, props)
 end
 
+---Get properties(MIOT).
+---@param obj MiioDevice
 local function getPropsMiot(obj)
     local mapping = obj.mapping
     local params = {}
@@ -67,8 +70,9 @@ local function getPropsMiot(obj)
     end
     obj.names = {}
     local success, result = xpcall(obj.request, traceback, obj, "get_properties", params)
-    if not success then
+    if success == false then
         obj.mq:send(success, result)
+        return
     end
     local props = {}
     for _, prop in ipairs(result) do
@@ -105,7 +109,7 @@ function _device:getProp(name)
 
 ::recv::
     local success, result = self.mq:recv()
-    if not success then
+    if success == false then
         error(result)
     end
     if result[name] == nil then

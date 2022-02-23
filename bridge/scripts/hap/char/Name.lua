@@ -1,8 +1,9 @@
 return {
     ---New a ``Name`` characteristic.
     ---@param iid integer Instance ID.
+    ---@param name string Service name.
     ---@return HapCharacteristic characteristic
-    new = function (iid)
+    new = function (iid, name)
         local hap = require("hap")
         return {
             format = "String",
@@ -16,7 +17,7 @@ return {
             constraints = { maxLen = 64 },
             cbs = {
                 read = function (request, context)
-                    return request.service.name, hap.Error.None
+                    return name, hap.Error.None
                 end
             }
         }

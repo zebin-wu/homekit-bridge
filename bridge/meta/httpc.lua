@@ -1,3 +1,5 @@
+---@meta
+
 ---@class httpclib
 local httpc = {}
 

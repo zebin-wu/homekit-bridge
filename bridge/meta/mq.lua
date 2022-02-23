@@ -1,3 +1,5 @@
+---@meta
+
 ---Message Queue.
 ---
 ---This message queue can be used for inter-coroutine communication.

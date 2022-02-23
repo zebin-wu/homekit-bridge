@@ -1,3 +1,5 @@
+---@meta
+
 local ssl = {}
 
 ---@class SSLCtx:userdata SSL context.

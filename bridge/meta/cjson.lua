@@ -1,3 +1,5 @@
+---@meta
+
 ---@class cjsonlib
 ---
 ---@field null lightuserdata A Lua lightuserdata ``NULL`` pointer.

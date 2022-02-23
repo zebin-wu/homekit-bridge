@@ -911,13 +911,6 @@ lhap_service_type_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
 }
 
 static bool
-lhap_service_name_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
-    HAPService *service = arg;
-
-    return (*((char **)&service->name) = lhap_new_str(L, -1)) ? true : false;
-}
-
-static bool
 lhap_service_props_primary_service_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     ((HAPServiceProperties *)arg)->primaryService = lua_toboolean(L, -1);
     return true;
@@ -2205,7 +2198,6 @@ lhap_service_chars_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
 static const lc_table_kv lhap_service_kvs[] = {
     {"iid", LC_TNUMBER, lhap_service_iid_cb},
     {"type", LC_TSTRING, lhap_service_type_cb},
-    {"name", LC_TSTRING, lhap_service_name_cb},
     {"props", LC_TTABLE, lhap_service_props_cb},
     {"chars", LC_TTABLE, lhap_service_chars_cb},
     {NULL, LC_TNONE, NULL},

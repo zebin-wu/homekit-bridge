@@ -34,10 +34,11 @@ local function gen(conf)
         curState = LockCurrentState.value.Secured,
         tgtState = LockTargetState.value.Secured
     }
+    local name = conf.name or "Lock"
     return {
         aid = context.aid,
         category = "BridgedAccessory",
-        name = conf.name,
+        name = name,
         mfg = "Acme",
         model = "Lock1,1",
         sn = conf.sn,
@@ -48,17 +49,13 @@ local function gen(conf)
             {
                 iid = context.mechanismIID,
                 type = "LockMechanism",
-                name = "Lock",
                 props = {
                     primaryService = true,
-                    hidden = false,
-                    ble = {
-                        supportsConfiguration = false,
-                    }
+                    hidden = false
                 },
                 chars = {
                     ServiceSignature.new(hap.getNewInstanceID()),
-                    Name.new(hap.getNewInstanceID()),
+                    Name.new(hap.getNewInstanceID(), name),
                     LockCurrentState.new(context.curStateIID,
                         function (request, context)
                             logger:info(("Read currentState: %s"):format(

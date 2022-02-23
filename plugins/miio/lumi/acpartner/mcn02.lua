@@ -63,13 +63,9 @@ function acpartner.gen(device, info, conf)
             {
                 iid = iids.heaterCooler,
                 type = "HeaterCooler",
-                name = "Heater Cooler",
                 props = {
                     primaryService = true,
-                    hidden = false,
-                    ble = {
-                        supportsConfiguration = false,
-                    }
+                    hidden = false
                 },
                 chars = {
                     Active.new(iids.active, function (request, self)

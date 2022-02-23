@@ -4,6 +4,3 @@
 [submodule "ext/lua"]
 	path = ext/lua
 	url = ../lua
-[submodule "ext/lua-cjson"]
-	path = ext/lua-cjson
-	url = https://github.com/mpx/lua-cjson

@@ -25,7 +25,8 @@
 产品名称 | 型号
 -|-
 小米空调伴侣2代 | `lumi.acpartner.mcn02`
-小米智能插座基础版(1个插座) | `chuangmi.plug.m3`
+小米米家智能插座Wi-Fi版 | `chuangmi.plug.m3`
+米家智能插座2 蓝牙网关版 | `chuangmi.plug.212a01`
 智米直流变频落地扇2S | `zhimi.fan.za4`
 小米直流变频塔扇 | `dmaker.fan.p9`
 
