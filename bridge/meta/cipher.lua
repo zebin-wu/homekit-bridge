@@ -1,3 +1,5 @@
+---@meta
+
 ---@class cipherlib
 local cipher = {}
 

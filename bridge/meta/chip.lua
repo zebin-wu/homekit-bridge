@@ -1,3 +1,5 @@
+---@meta
+
 ---@class chiplib
 local chip = {}
 

@@ -1,3 +1,5 @@
+---@meta
+
 ---@class haplib
 local hap = {}
 

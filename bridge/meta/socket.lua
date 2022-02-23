@@ -1,3 +1,5 @@
+---@meta
+
 ---@class socketlib
 local socket = {}
 
