@@ -73,4 +73,5 @@ set(PLATFORM_ESP_SRCS
     ${PLATFORM_ESP_SRC_DIR}/chip.c
     ${PLATFORM_ESP_SRC_DIR}/memory.c
     ${PLATFORM_ESP_SRC_DIR}/dns.c
+    ${PLATFORM_ESP_SRC_DIR}/nvs.cpp
 )

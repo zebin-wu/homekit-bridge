@@ -18,17 +18,17 @@ extern "C" {
 
 typedef struct pal_nvs_handle pal_nvs_handle;
 
-pal_nvs_handle *pal_nvs_open(const char *namespace);
+pal_nvs_handle *pal_nvs_open(const char *name);
 
-bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t *len);
+bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t len);
 
 size_t pal_nvs_get_len(pal_nvs_handle *handle, const char *key);
 
 bool pal_nvs_set(pal_nvs_handle *handle, const char *key, const void *value, size_t len);
 
-void pal_nvs_remove(pal_nvs_handle *handle, const char *key);
+bool pal_nvs_remove(pal_nvs_handle *handle, const char *key);
 
-void pal_nvs_erase(pal_nvs_handle *handle);
+bool pal_nvs_erase(pal_nvs_handle *handle);
 
 bool pal_nvs_commit(pal_nvs_handle *handle);
 

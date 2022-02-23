@@ -231,21 +231,16 @@ static pal_nvs_item *pal_nvs_find_key(pal_nvs_handle *handle, const char *key) {
     return NULL;
 }
 
-bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t *len) {
+bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t len) {
     HAPPrecondition(handle);
     HAPPrecondition(key);
     HAPPrecondition(buf);
     HAPPrecondition(len);
-    HAPPrecondition(*len);
 
     pal_nvs_item *item = pal_nvs_find_key(handle, key);
     if (item) {
-        if (item->len > *len) {
-            HAPLogError(&logObject, "Buffer length is too short.");
-            return false;
-        }
-        *len = item->len;
-        memcpy(buf, item->value, item->len);
+        HAPAssert(len == item->len);
+        memcpy(buf, item->value, len);
         return true;
     }
 
@@ -282,8 +277,10 @@ bool pal_nvs_set(pal_nvs_handle *handle, const char *key, const void *value, siz
                     return false;
                 }
                 *t = item;
+                (*t)->len = len;
+            } else if (!memcmp((*t)->value, value, len)) {
+                return true;
             }
-            (*t)->len = len;
             memcpy((*t)->value, value, len);
             handle->changed = true;
             return true;
@@ -305,7 +302,7 @@ bool pal_nvs_set(pal_nvs_handle *handle, const char *key, const void *value, siz
     return true;
 }
 
-void pal_nvs_remove(pal_nvs_handle *handle, const char *key) {
+bool pal_nvs_remove(pal_nvs_handle *handle, const char *key) {
     HAPPrecondition(handle);
     HAPPrecondition(key);
 
@@ -315,12 +312,13 @@ void pal_nvs_remove(pal_nvs_handle *handle, const char *key) {
             *t = cur->next;
             pal_mem_free(cur);
             handle->changed = true;
-            return;
+            return true;
         }
     }
+    return false;
 }
 
-void pal_nvs_erase(pal_nvs_handle *handle) {
+bool pal_nvs_erase(pal_nvs_handle *handle) {
     HAPPrecondition(handle);
 
     for (pal_nvs_item *t = handle->item_list_head; t;) {
@@ -329,6 +327,7 @@ void pal_nvs_erase(pal_nvs_handle *handle) {
         pal_mem_free(cur);
     }
     handle->changed = true;
+    return true;
 }
 
 static size_t write_all(int fd, const void *buf, size_t len) {
