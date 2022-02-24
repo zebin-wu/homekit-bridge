@@ -16,9 +16,14 @@ extern "C" {
 
 #define PAL_NVS_KEY_MAX_LEN 31
 
+typedef enum pal_nvs_mode {
+    PAL_NVS_MODE_READONLY,
+    PAL_NVS_MODE_READWRITE,
+} pal_nvs_mode;
+
 typedef struct pal_nvs_handle pal_nvs_handle;
 
-pal_nvs_handle *pal_nvs_open(const char *name);
+pal_nvs_handle *pal_nvs_open(const char *name, pal_nvs_mode mode);
 
 bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t len);
 

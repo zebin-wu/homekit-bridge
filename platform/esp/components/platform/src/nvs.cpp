@@ -14,11 +14,17 @@ static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, 
 #define NVS_LOG_ERR(fmt, arg...) \
     HAPLogError(&logObject, "%s: " fmt, __func__, ##arg);
 
-extern "C" pal_nvs_handle *pal_nvs_open(const char *name) {
+static const nvs_open_mode_t open_mode_mapping[] = {
+    [PAL_NVS_MODE_READONLY] = NVS_READONLY,
+    [PAL_NVS_MODE_READWRITE] = NVS_READWRITE
+};
+
+extern "C" pal_nvs_handle *pal_nvs_open(const char *name, enum pal_nvs_mode mode) {
     HAPPrecondition(name);
+    HAPPrecondition(mode == PAL_NVS_MODE_READONLY || mode == PAL_NVS_MODE_READWRITE);
 
     esp_err_t err;
-    nvs::NVSHandle *handle = nvs::open_nvs_handle(name, NVS_READWRITE, &err).release();
+    nvs::NVSHandle *handle = nvs::open_nvs_handle(name, open_mode_mapping[mode], &err).release();
 
     if (err != ESP_OK) {
         NVS_LOG_ERR("Failed to open NVS!");

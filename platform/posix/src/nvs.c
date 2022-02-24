@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -29,20 +30,22 @@ static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, 
 struct pal_nvs_item {
     char key[PAL_NVS_KEY_MAX_LEN + 1];
     size_t len;
-    struct pal_nvs_item *next;
+    SLIST_ENTRY(pal_nvs_item) list_entry;
     char value[0];
 };
 
-typedef struct pal_nvs_item pal_nvs_item;
+struct pal_nvs_handle {
+    uint32_t using_count;
+    pal_nvs_mode mode;
+    bool changed;
+    char *name;
+    SLIST_HEAD(pal_nvs_item_list_head, pal_nvs_item) item_list_head;
+    LIST_ENTRY(pal_nvs_handle) list_entry;
+};
 
 static bool ginited;
 static char *gnvs_dir;
-
-struct pal_nvs_handle {
-    bool changed;
-    char *namespace;
-    pal_nvs_item *item_list_head;
-};
+static LIST_HEAD(pal_nvs_handle_list_head, pal_nvs_handle) ghandle_list_head;
 
 static ssize_t read_all(int fd, void *buf, size_t len) {
     ssize_t rc;
@@ -69,41 +72,73 @@ void pal_nvs_init(const char *dir) {
     HAPAssert(gnvs_dir);
     memcpy(gnvs_dir, dir, len);
     gnvs_dir[len] = '\0';
+    LIST_INIT(&ghandle_list_head);
     ginited = true;
 }
 
 void pal_nvs_deinit() {
     HAPPrecondition(ginited == true);
+    for (struct pal_nvs_handle *t = LIST_FIRST(&ghandle_list_head); t;) {
+        struct pal_nvs_handle *cur = t;
+        t = LIST_NEXT(t, list_entry);
+        pal_nvs_close(cur);
+    }
+    LIST_INIT(&ghandle_list_head);
     pal_mem_free(gnvs_dir);
     ginited = false;
 }
 
-pal_nvs_handle *pal_nvs_open(const char *namespace) {
-    HAPPrecondition(ginited);
-    HAPPrecondition(namespace);
+static void pal_nvs_remove_all_items(pal_nvs_handle *handle) {
+    for (struct pal_nvs_item *t = SLIST_FIRST(&handle->item_list_head); t;) {
+        struct pal_nvs_item *cur = t;
+        t = SLIST_NEXT(t, list_entry);
+        pal_mem_free(cur);
+    }
+    SLIST_INIT(&handle->item_list_head);
+}
 
-    pal_nvs_handle *handle = pal_mem_alloc(sizeof(*handle));
+pal_nvs_handle *pal_nvs_open(const char *name, pal_nvs_mode mode) {
+    HAPPrecondition(ginited);
+    HAPPrecondition(name);
+    HAPPrecondition(mode == PAL_NVS_MODE_READONLY || mode == PAL_NVS_MODE_READWRITE);
+
+    pal_nvs_handle *handle;
+    LIST_FOREACH(handle, &ghandle_list_head, list_entry) {
+        if (!strcmp(handle->name, name)) {
+            if (handle->mode == PAL_NVS_MODE_READONLY && mode == PAL_NVS_MODE_READONLY) {
+                handle->using_count++;
+                return handle;
+            } else {
+                NVS_LOG_ERR("Namespace '%s' is busy.", name);
+                return NULL;
+            }
+        }
+    }
+
+    handle = pal_mem_alloc(sizeof(*handle));
     if (!handle) {
         NVS_LOG_ERR("Failed to alloc memory.");
         return NULL;
     }
 
-    size_t namespace_len = strlen(namespace);
-    handle->namespace = pal_mem_alloc(namespace_len + 1);
-    if (!handle->namespace) {
+    size_t name_len = strlen(name);
+    handle->name = pal_mem_alloc(name_len + 1);
+    if (!handle->name) {
         NVS_LOG_ERR("Failed to alloc memory.");
         goto err;
     }
-    memcpy(handle->namespace, namespace, namespace_len);
-    handle->namespace[namespace_len] = '\0';
+    memcpy(handle->name, name, name_len);
+    handle->name[name_len] = '\0';
 
+    handle->using_count = 1;
+    handle->mode = mode;
     handle->changed = false;
-    handle->item_list_head = NULL;
+    SLIST_INIT(&handle->item_list_head);
 
     char path[256];
-    int len = snprintf(path, sizeof(path), "%s/%s", gnvs_dir, namespace);
-    if (len < 0 || path[len - 1] != namespace[namespace_len - 1]) {
-        NVS_LOG_ERR("Namespace '%s' too long.", namespace);
+    int len = snprintf(path, sizeof(path), "%s/%s", gnvs_dir, name);
+    if (len < 0 || path[len - 1] != name[name_len - 1]) {
+        NVS_LOG_ERR("Namespace '%s' too long.", name);
         goto err1;
     }
 
@@ -115,7 +150,7 @@ pal_nvs_handle *pal_nvs_open(const char *namespace) {
     if (fd < 0) {
         int _errno = errno;
         if (_errno == ENOENT) {
-            return handle;
+            goto done;
         }
         HAPAssert(fd == -1);
         NVS_LOG_ERR("open %s failed: %d.", path, _errno);
@@ -184,7 +219,7 @@ pal_nvs_handle *pal_nvs_open(const char *namespace) {
             goto err3;
         }
 
-        pal_nvs_item *item = pal_mem_alloc(sizeof(*item) + len);
+        struct pal_nvs_item *item = pal_mem_alloc(sizeof(*item) + len);
         if (!item) {
             NVS_LOG_ERR("Failed to alloc memory.");
             goto err3;
@@ -204,26 +239,28 @@ pal_nvs_handle *pal_nvs_open(const char *namespace) {
             goto err3;
         }
         item->len = len;
-        item->next = handle->item_list_head;
-        handle->item_list_head = item;
+        SLIST_INSERT_HEAD(&handle->item_list_head, item, list_entry);
         snprintf(item->key, sizeof(item->key), "%s", key);
     }
 
+done:
+    LIST_INSERT_HEAD(&ghandle_list_head, handle, list_entry);
     return handle;
 
 err3:
-    pal_nvs_erase(handle);
+    pal_nvs_remove_all_items(handle);
 err2:
     close(fd);
 err1:
-    pal_mem_free(handle->namespace);
+    pal_mem_free(handle->name);
 err:
     pal_mem_free(handle);
     return NULL;
 }
 
-static pal_nvs_item *pal_nvs_find_key(pal_nvs_handle *handle, const char *key) {
-    for (pal_nvs_item *t = handle->item_list_head; t; t = t->next) {
+static struct pal_nvs_item *pal_nvs_find_key(pal_nvs_handle *handle, const char *key) {
+    struct pal_nvs_item *t;
+    SLIST_FOREACH(t, &handle->item_list_head, list_entry) {
         if (!strcmp(t->key, key)) {
             return t;
         }
@@ -237,14 +274,14 @@ bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t len)
     HAPPrecondition(buf);
     HAPPrecondition(len);
 
-    pal_nvs_item *item = pal_nvs_find_key(handle, key);
+    struct pal_nvs_item *item = pal_nvs_find_key(handle, key);
     if (item) {
         HAPAssert(len == item->len);
         memcpy(buf, item->value, len);
         return true;
     }
 
-    HAPLog(&logObject, "No key '%s' in namespace '%s'.", key, handle->namespace);
+    HAPLog(&logObject, "No key '%s' in name '%s'.", key, handle->name);
     return false;
 }
 
@@ -252,7 +289,7 @@ size_t pal_nvs_get_len(pal_nvs_handle *handle, const char *key) {
     HAPPrecondition(handle);
     HAPPrecondition(key);
 
-    pal_nvs_item *item = pal_nvs_find_key(handle, key);
+    struct pal_nvs_item *item = pal_nvs_find_key(handle, key);
     if (item) {
         return item->len;
     }
@@ -265,15 +302,21 @@ bool pal_nvs_set(pal_nvs_handle *handle, const char *key, const void *value, siz
     HAPPrecondition(value);
     HAPPrecondition(len);
 
+    if (handle->mode == PAL_NVS_MODE_READONLY) {
+        NVS_LOG_ERR("No permission to set.");
+        return false;
+    }
+
     size_t keylen = strlen(key);
     HAPPrecondition(keylen <= PAL_NVS_KEY_MAX_LEN);
 
-    for (pal_nvs_item **t = &handle->item_list_head; *t; t = &(*t)->next) {
+    for (struct pal_nvs_item **t = &SLIST_FIRST(&handle->item_list_head); *t;
+        t = &SLIST_NEXT(*t, list_entry)) {
         if (!strcmp((*t)->key, key)) {
             if ((*t)->len != len) {
-                pal_nvs_item *item = pal_mem_realloc(*t, sizeof(**t) + len);
+                struct pal_nvs_item *item = pal_mem_realloc(*t, sizeof(**t) + len);
                 if (!item) {
-                    HAPLogError(&logObject, "Failed to alloc memory.");
+                    NVS_LOG_ERR("Failed to alloc memory.");
                     return false;
                 }
                 *t = item;
@@ -287,14 +330,13 @@ bool pal_nvs_set(pal_nvs_handle *handle, const char *key, const void *value, siz
         }
     }
 
-    pal_nvs_item *item = pal_mem_alloc(sizeof(*item) + len);
+    struct pal_nvs_item *item = pal_mem_alloc(sizeof(*item) + len);
     if (!item) {
-        HAPLogError(&logObject, "Failed to alloc memory.");
+        NVS_LOG_ERR("Failed to alloc memory.");
         return false;
     }
     item->len = len;
-    item->next = handle->item_list_head;
-    handle->item_list_head = item;
+    SLIST_INSERT_HEAD(&handle->item_list_head, item, list_entry);
     memcpy(item->key, key, keylen);
     item->key[keylen] = '\0';
     memcpy(item->value, value, len);
@@ -306,10 +348,16 @@ bool pal_nvs_remove(pal_nvs_handle *handle, const char *key) {
     HAPPrecondition(handle);
     HAPPrecondition(key);
 
-    for (pal_nvs_item **t = &handle->item_list_head; *t; t = &(*t)->next) {
+    if (handle->mode == PAL_NVS_MODE_READONLY) {
+        NVS_LOG_ERR("No permission to remove.");
+        return false;
+    }
+
+    for (struct pal_nvs_item **t = &SLIST_FIRST(&handle->item_list_head); *t;
+        t = &SLIST_NEXT(*t, list_entry)) {
         if (!strcmp((*t)->key, key)) {
-            pal_nvs_item *cur = *t;
-            *t = cur->next;
+            struct pal_nvs_item *cur = *t;
+            *t = SLIST_NEXT(cur, list_entry);
             pal_mem_free(cur);
             handle->changed = true;
             return true;
@@ -321,12 +369,15 @@ bool pal_nvs_remove(pal_nvs_handle *handle, const char *key) {
 bool pal_nvs_erase(pal_nvs_handle *handle) {
     HAPPrecondition(handle);
 
-    for (pal_nvs_item *t = handle->item_list_head; t;) {
-        pal_nvs_item *cur = t;
-        t = t->next;
-        pal_mem_free(cur);
+    if (handle->mode == PAL_NVS_MODE_READONLY) {
+        NVS_LOG_ERR("No permission to erase.");
+        return false;
     }
-    handle->changed = true;
+
+    if (SLIST_FIRST(&handle->item_list_head)) {
+        handle->changed = true;
+    }
+    pal_nvs_remove_all_items(handle);
     return true;
 }
 
@@ -366,14 +417,19 @@ static bool write_all_to_tmp_file(int fd, const char *path, const char *dir, con
 bool pal_nvs_commit(pal_nvs_handle *handle) {
     HAPPrecondition(handle);
 
+    if (handle->mode == PAL_NVS_MODE_READONLY) {
+        NVS_LOG_ERR("No permission to commit.");
+        return false;
+    }
+
     if (handle->changed == false) {
         return true;
     }
 
     char path[256];
-    snprintf(path, sizeof(path), "%s/%s", gnvs_dir, handle->namespace);
+    snprintf(path, sizeof(path), "%s/%s", gnvs_dir, handle->name);
 
-    if (handle->item_list_head == NULL) {
+    if (SLIST_FIRST(&handle->item_list_head) == NULL) {
         return HAPPlatformFileManagerRemoveFile(path) == kHAPError_None;
     }
 
@@ -402,10 +458,10 @@ bool pal_nvs_commit(pal_nvs_handle *handle) {
 
     // Create the filename of the temporary file.
     char tmp_path[256];
-    err = HAPStringWithFormat(tmp_path, sizeof(tmp_path), "%s-tmp", handle->namespace);
+    err = HAPStringWithFormat(tmp_path, sizeof(tmp_path), "%s-tmp", handle->name);
     if (err) {
         HAPAssert(err == kHAPError_OutOfResources);
-        NVS_LOG_ERR("Not enough resources to get path: %s-tmp", handle->namespace);
+        NVS_LOG_ERR("Not enough resources to get path: %s-tmp", handle->name);
         goto err;
     }
 
@@ -427,7 +483,8 @@ bool pal_nvs_commit(pal_nvs_handle *handle) {
         goto err1;
     }
 
-    for (pal_nvs_item *t = handle->item_list_head; t; t = t->next) {
+    struct pal_nvs_item *t;
+    SLIST_FOREACH(t, &handle->item_list_head, list_entry) {
         size_t len = strlen(t->key);
         if (!write_all_to_tmp_file(tmp_fd, tmp_path, gnvs_dir, &len, sizeof(len))) {
             goto err1;
@@ -473,7 +530,7 @@ bool pal_nvs_commit(pal_nvs_handle *handle) {
 
     // Rename file
     {
-        int e = renameat(dir_fd, tmp_path, dir_fd, handle->namespace);
+        int e = renameat(dir_fd, tmp_path, dir_fd, handle->name);
         if (e) {
             int _errno = errno;
             HAPAssert(e == -1);
@@ -512,8 +569,16 @@ err:
 void pal_nvs_close(pal_nvs_handle *handle) {
     HAPPrecondition(handle);
 
-    pal_nvs_commit(handle);
-    pal_nvs_erase(handle);
-    pal_mem_free(handle->namespace);
+    if (handle->using_count > 1) {
+        HAPAssert(handle->mode == PAL_NVS_MODE_READONLY);
+        handle->using_count--;
+        return;
+    }
+    if (handle->mode == PAL_NVS_MODE_READWRITE) {
+        pal_nvs_commit(handle);
+    }
+    LIST_REMOVE(handle, list_entry);
+    pal_nvs_remove_all_items(handle);
+    pal_mem_free(handle->name);
     pal_mem_free(handle);
 }

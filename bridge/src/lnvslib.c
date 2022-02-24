@@ -19,10 +19,11 @@ typedef struct {
 
 static int lnvs_open(lua_State *L) {
     const char *namespace = luaL_checkstring(L, 1);
+    enum pal_nvs_mode mode = luaL_checkoption(L, 2, "rw", (const char *[]) {"r", "rw", NULL});
 
     lnvs_handle *handle = lua_newuserdata(L, sizeof(*handle));
     luaL_setmetatable(L, LUA_NVS_HANDLE_NAME);
-    handle->handle = pal_nvs_open(namespace);
+    handle->handle = pal_nvs_open(namespace, mode);
     if (!handle->handle) {
         luaL_error(L, "failed to open NVS handle");
     }
@@ -85,7 +86,9 @@ static int lnvs_handle_set(lua_State *L) {
 }
 
 static int lnvs_handle_erase(lua_State *L) {
-    pal_nvs_erase(lnvs_get_handle(L, 1)->handle);
+    if (!pal_nvs_erase(lnvs_get_handle(L, 1)->handle)) {
+        luaL_error(L, "failed to erase all");
+    }
     return 0;
 }
 
@@ -98,15 +101,13 @@ static int lnvs_handle_commit(lua_State *L) {
 
 static int lnvs_handle_close(lua_State *L) {
     lnvs_handle *handle = lnvs_get_handle(L, 1);
-
     pal_nvs_close(handle->handle);
     handle->handle = NULL;
     return 0;
 }
 
 static int lnvs_handle_gc(lua_State *L) {
-    lnvs_handle *handle = lnvs_get_handle(L, 1);
-
+    lnvs_handle *handle = luaL_checkudata(L, 1, LUA_NVS_HANDLE_NAME);
     if (handle->handle) {
         pal_nvs_close(handle->handle);
         handle->handle = NULL;

@@ -6,11 +6,16 @@ local nvs = {}
 ---@class NVSHandle:userdata non-volatile storage handle.
 local handle = {}
 
+---@alias NVSHandleMode
+---|>'"rw"'     # Read or write.
+---| '"r"'      # Read only.
+
 ---Open a non-volatile storage handle with a given namespace.
 ---@param namespace string
----@return NVSHandle
+---@param mode? NVSHandleMode
+---@return NVSHandle handle
 ---@nodiscard
-function nvs.open(namespace) end
+function nvs.open(namespace, mode) end
 
 ---Fetch the value of a key in the namespace.
 ---@param key string
