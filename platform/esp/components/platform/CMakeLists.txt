@@ -11,7 +11,7 @@ idf_component_register(
     SRCS ${PLATFORM_ESP_SRCS}
     INCLUDE_DIRS ${PLATFORM_ESP_INC_DIRS}
     REQUIRES
-    PRIV_REQUIRES app_update homekit_adk mbedtls
+    PRIV_REQUIRES app_update homekit_adk mbedtls nvs_flash
 )
 
 add_definitions(

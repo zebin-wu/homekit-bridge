@@ -16,6 +16,7 @@
 #include <pal/hap.h>
 #include <pal/crypto/ssl.h>
 #include <pal/net/dns.h>
+#include <pal/nvs_int.h>
 
 #include <HAPPlatform+Init.h>
 #include <HAPPlatformAccessorySetup+Init.h>
@@ -197,6 +198,7 @@ int main(int argc, char *argv[]) {
     // Initialize pal modules.
     pal_ssl_init();
     pal_dns_init();
+    pal_nvs_init(".nvs");
 
     // Initialize global platform objects.
     init_platform();
@@ -212,6 +214,7 @@ int main(int argc, char *argv[]) {
     deinit_platform();
 
     // De-initialize pal modules.
+    pal_nvs_deinit();
     pal_dns_deinit();
     pal_ssl_deinit();
 
