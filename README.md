@@ -29,6 +29,7 @@ Xiaomi Smart Plug (Wi-Fi) | `chuangmi.plug.m3`
 Xiaomi Smart Plug 2 (Bluetooth Gateway) | `chuangmi.plug.212a01`
 Zhimi DC Variable Frequency Fan 2S | `zhimi.fan.za4`
 Xiaomi DC Variable Frequency Tower Fan | `dmaker.fan.p9`
+Xiaomi Smart Dehumidifier 22L | `dmaker.derh.22l`
 
 ## Supported platform
 

@@ -29,6 +29,7 @@
 米家智能插座2 蓝牙网关版 | `chuangmi.plug.212a01`
 智米直流变频落地扇2S | `zhimi.fan.za4`
 小米直流变频塔扇 | `dmaker.fan.p9`
+米家智能除湿机 22L | `dmaker.derh.22l`
 
 ## 支持的平台
 
