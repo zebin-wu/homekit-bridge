@@ -20,13 +20,6 @@ do
     local handle2 <close> = nvs.open("test", "r")
 end
 
--- Tests nvs.open() twice with read write mode.
-do
-    local handle1 <close> = nvs.open("test", "rw")
-    local success = pcall(nvs.open, "test", "rw")
-    assert(success == false)
-end
-
 -- Tests nvs.get() with valid parameters.
 do
     local handle <close> = nvs.open("test")
