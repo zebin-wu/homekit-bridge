@@ -111,9 +111,12 @@ static void *app_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
     }
 }
 
-// app_lua_run(dir: string, entry: string)
-static int app_lua_run(lua_State *L) {
-    const char *dir = luaL_checkstring(L, 1);
+// app_pinit(dir: lightuserdata, entry: lightuserdata)
+static int app_pinit(lua_State *L) {
+    const char *dir = lua_touserdata(L, 1);
+    const char *entry = lua_touserdata(L, 2);
+
+    lua_settop(L, 0);
 
     // load global libraries
     for (const luaL_Reg *lib = globallibs; lib->func; lib++) {
@@ -125,18 +128,36 @@ static int app_lua_run(lua_State *L) {
     lua_gc(L, LUA_GCGEN, 0, 0);
 
     // set file path
-    char path[256];
-    HAPAssert(HAPStringWithFormat(path, sizeof(path), "%s/?.lua;%s/?.luac", dir, dir) == kHAPError_None);
-    lc_set_path(L, path);
+    lua_getglobal(L, "package");
+    lua_pushfstring(L, "%s/?.lua;%s/?.luac", dir, dir);
+    lua_setfield(L, -2, "path");
 
     // set C path
-    lc_set_cpath(L, "");
+    lua_pushstring(L, "");
+    lua_setfield(L, -2, "cpath");
+    lua_pop(L, 1);
 
-    // add searcher_dl to package.searcher
-    lc_add_searcher(L, searcher_dl);
+    // push package.searchers to the stack
+    // package.searchers = {searcher_preload, searcher_Lua, searcher_C, searcher_Croot}
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "searchers");
+    lua_remove(L, -2);
 
-    // add searcher_embedfs to package.searcher
-    lc_add_searcher(L, searcher_embedfs);
+    // Get the length of the table 'searchers'
+    int len = luaL_len(L, -1);
+
+    // remove searchers [searcher_C, searcher_Croot] from table 'searchers'
+    len -= 2;
+
+    static const lua_CFunction searchers[] = {
+        searcher_dl, searcher_embedfs, NULL
+    };
+
+    // add searchers to package.searchers
+    for (int i = 0; searchers[i] != NULL; i++) {
+        lua_pushcfunction(L, searchers[i]);
+        lua_rawseti(L, -2, len + i + 1);
+    }
 
     // set _BRIDGE_VERSION
     lua_pushstring(L, BRIDGE_VERSION);
@@ -144,17 +165,12 @@ static int app_lua_run(lua_State *L) {
 
     // run entry
     int nres, status;
-    lua_State *co = lc_newthread(L);
+    lua_State *co = lua_newthread(L);
     lua_getglobal(co, "require");
-    lua_pushvalue(L, 2);
-    lua_xmove(L, co, 1);
-    status = lua_resume(co, L, 1, &nres);
-    if (status == LUA_OK) {
-        lc_freethread(co);
-    } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 0);
+    lua_pushstring(co, entry);
+    status = lc_startthread(co, L, 1, &nres);
+    if (status != LUA_OK && status != LUA_YIELD) {
         lua_error(L);
-        lc_freethread(co);
     }
     return 0;
 }
@@ -173,10 +189,10 @@ void app_init(HAPPlatform *platform, const char *dir, const char *entry) {
         HAPAssertionFailure();
     }
 
-    // call 'app_lua_init' in protected mode
-    lua_pushcfunction(L, app_lua_run);
-    lua_pushstring(L, dir);
-    lua_pushstring(L, entry);
+    // call 'app_pinit' in protected mode
+    lua_pushcfunction(L, app_pinit);
+    lua_pushlightuserdata(L, (void *)dir);
+    lua_pushlightuserdata(L, (void *)entry);
 
     // do the call
     int status = lua_pcall(L, 2, 0, 0);

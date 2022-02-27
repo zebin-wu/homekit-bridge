@@ -117,32 +117,6 @@ void lc_collectgarbage(lua_State *L) {
     luaC_fullgc(L, 0);
 }
 
-void lc_add_searcher(lua_State *L, lua_CFunction searcher) {
-    lua_getglobal(L, "package");
-    lua_getfield(L, -1, "searchers");
-
-    int len = lua_rawlen(L, -1);
-    lua_pushcfunction(L, searcher);
-    lua_rawseti(L, -2, len + 1);
-    lua_pop(L, 2);
-}
-
-void lc_set_path(lua_State *L, const char *path) {
-    lua_getglobal(L, "package");
-
-    lua_pushstring(L, path);
-    lua_setfield(L, -2, "path");
-    lua_pop(L, 1);
-}
-
-void lc_set_cpath(lua_State *L, const char *cpath) {
-    lua_getglobal(L, "package");
-
-    lua_pushstring(L, cpath);
-    lua_setfield(L, -2, "cpath");
-    lua_pop(L, 1);
-}
-
 static int traceback(lua_State *L) {
     const char *msg = lua_tostring(L, 1);
     if (msg) {
@@ -157,14 +131,44 @@ void lc_push_traceback(lua_State *L) {
     lua_pushcfunction(L, traceback);
 }
 
-lua_State *lc_newthread(lua_State *L) {
-    lua_State *co = lua_newthread(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, co);
-    return co;
-}
-
-int lc_freethread(lua_State *L) {
+static int lc_resetthread(lua_State *L) {
     lua_pushnil(L);
     lua_rawsetp(L, LUA_REGISTRYINDEX, L);
     return lua_resetthread(L);
+}
+
+int lc_startthread(lua_State *L, lua_State *from, int narg, int *nres) {
+    int status = lua_resume(L, from, narg, nres);
+    switch (status) {
+    case LUA_OK:
+        lua_xmove(L, from, *nres);
+        lua_resetthread(L);
+        break;
+    case LUA_YIELD:
+        lua_pushthread(L);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, L);
+        break;
+    default:
+        luaL_traceback(from, L, lua_tostring(L, -1), 1);
+        lua_resetthread(L);
+        break;
+    }
+    return status;
+}
+
+int lc_resumethread(lua_State *L, lua_State *from, int narg, int *nres) {
+    int status = lua_resume(L, from, narg, nres);
+    switch (status) {
+    case LUA_OK:
+        lua_xmove(L, from, *nres);
+        lc_resetthread(L);
+        break;
+    case LUA_YIELD:
+        break;
+    default:
+        luaL_traceback(from, L, lua_tostring(L, -1), 1);
+        lc_resetthread(L);
+        break;
+    }
+    return status;
 }

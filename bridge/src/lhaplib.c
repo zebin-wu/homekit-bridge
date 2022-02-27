@@ -1550,7 +1550,7 @@ HAPError lhap_char_base_handleRead(
         const HAPBaseCharacteristic *characteristic,
         const void *pfunc) {
     HAPError err = kHAPError_Unknown;
-    lua_State *co = lc_newthread(L);
+    lua_State *co = lua_newthread(L);
     lua_pushcfunction(co, lhap_char_call_handle_read);
     lhap_call_context *call_ctx = lua_newuserdata(co, sizeof(*call_ctx));
     call_ctx->in_progress = false;
@@ -1573,19 +1573,20 @@ HAPError lhap_char_base_handleRead(
     // push the context
     lua_rawgetp(co, LUA_REGISTRYINDEX, accessory);
 
-    int nres;
-    int status = lua_resume(co, L, 5, &nres);
-    if (status == LUA_OK) {
-        lua_xmove(co, L, nres);
-        lc_freethread(co);
+    int status, nres;
+    status = lc_startthread(co, L, 5, &nres);
+    switch (status) {
+    case LUA_OK:
+        HAPAssert(lua_isinteger(L, -1));
         err = lua_tointeger(L, -1);
-    } else if (status == LUA_YIELD) {
+        break;
+    case LUA_YIELD:
         call_ctx->in_progress = true;
         err = kHAPError_InProgress;
-    } else {
-        luaL_traceback(L, co, lua_tostring(co, -1), 0);
+        break;
+    default:
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lc_freethread(co);
+        break;
     }
 
     return err;
@@ -1814,7 +1815,7 @@ static lua_State *lhap_char_base_handleWrite(
         const HAPService *service,
         const HAPBaseCharacteristic *characteristic,
         const void *pfunc) {
-    lua_State *co = lc_newthread(L);
+    lua_State *co = lua_newthread(L);
     lua_pushcfunction(co, lhap_char_call_handle_write);
     lhap_call_context *call_ctx = lua_newuserdata(co, sizeof(*call_ctx));
     call_ctx->in_progress = false;
@@ -1844,18 +1845,20 @@ HAPError lhap_char_last_handleWrite(lua_State *L,
     // push the context
     lua_rawgetp(co, LUA_REGISTRYINDEX, accessory);
 
-    int nres;
-    int status = lua_resume(co, L, 6, &nres);
-    if (status == LUA_OK) {
+    int status, nres;
+    status = lc_startthread(co, L, 6, &nres);
+    switch (status) {
+    case LUA_OK:
+        HAPAssert(lua_isinteger(L, -1));
         err = lua_tointeger(co, -1);
-        lc_freethread(co);
-    } else if (status == LUA_YIELD) {
+        break;
+    case LUA_YIELD:
         call_ctx->in_progress = true;
         err = kHAPError_InProgress;
-    } else {
-        luaL_traceback(L, co, lua_tostring(co, -1), 0);
+        break;
+    default:
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lc_freethread(co);
+        break;
     }
 
     lua_settop(L, 0);
@@ -2288,7 +2291,7 @@ HAPError lhap_accessory_identify_cb(
 
     HAPError err = kHAPError_Unknown;
     lua_State *L = app_get_lua_main_thread();
-    lua_State *co = lc_newthread(L);
+    lua_State *co = lua_newthread(L);
     const HAPAccessory *accessory = request->accessory;
 
     // push the identify function
@@ -2302,28 +2305,25 @@ HAPError lhap_accessory_identify_cb(
     // push the context
     lua_rawgetp(co, LUA_REGISTRYINDEX, accessory);
 
-    int nres;
-    int status = lua_resume(co, L, 2, &nres);
+    int status, nres;
+    status = lc_startthread(co, L, 2, &nres);
     switch (status) {
     case LUA_OK:
         if (nres == 1) {
-            if (lua_isinteger(co, -1)) {
-                err = lua_tointeger(co, -1);
+            if (lua_isinteger(L, -1)) {
+                err = lua_tointeger(L, -1);
             } else {
-                LHAP_LOG_TYPE_ERROR(co, "error code", LUA_TNUMBER, lua_type(co, -1));
+                LHAP_LOG_TYPE_ERROR(L, "error code", LUA_TNUMBER, lua_type(L, -1));
             }
         } else {
-            HAPLogError(&lhap_log, "%s: No return value.", __func__);
+            HAPLogError(&lhap_log, "%s: Invalid returned value.", __func__);
         }
-        lc_freethread(co);
         break;
     case LUA_YIELD:
         err = kHAPError_None;
         break;
     default:
-        luaL_traceback(L, co, lua_tostring(co, -1), 0);
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lc_freethread(co);
     }
 
     lua_settop(L, 0);

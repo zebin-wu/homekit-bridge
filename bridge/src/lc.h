@@ -73,37 +73,13 @@ void lc_create_enum_table(lua_State *L, const char *enum_array[], int len);
 void lc_collectgarbage(lua_State *L);
 
 /**
- * Add searcher to package.searchers.
- * table.insert(package.searchers, searcher)
- */
-void lc_add_searcher(lua_State *L, lua_CFunction searcher);
-
-/**
- * Set search path for lua scripts.
- * package.path = path
- */
-void lc_set_path(lua_State *L, const char *path);
-
-/**
- * Set search path for C libraries.
- * package.cpath = cpath
- */
-void lc_set_cpath(lua_State *L, const char *cpath);
-
-/**
  * Push traceback function to lua stack.
  */
 void lc_push_traceback(lua_State *L);
 
-/**
- * New a Lua thread.
- */
-lua_State *lc_newthread(lua_State *L);
+int lc_startthread(lua_State *L, lua_State *from, int narg, int *nres);
 
-/**
- * Free the Lua thread.
- */
-int lc_freethread(lua_State *L);
+int lc_resumethread(lua_State *L, lua_State *from, int narg, int *nres);
 
 #ifdef __cplusplus
 }

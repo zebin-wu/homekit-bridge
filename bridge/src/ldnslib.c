@@ -26,19 +26,14 @@ void ldns_response_cb(const char *addr, void *arg) {
     lua_State *L = app_get_lua_main_thread();
     lua_State *co = arg;
     int status, nres;
-
+    int narg = 0;
     if (addr) {
+        narg = 1;
         lua_pushstring(co, addr);
-    } else {
-        lua_pushnil(co);
     }
-    status = lua_resume(co, L, 0, &nres);
-    if (status == LUA_OK) {
-        lc_freethread(co);
-    } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 0);
+    status = lc_resumethread(co, L, narg, &nres);
+    if (status != LUA_OK && status != LUA_YIELD) {
         HAPLogError(&ldns_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lc_freethread(co);
     }
 
     lua_settop(L, 0);
@@ -46,14 +41,10 @@ void ldns_response_cb(const char *addr, void *arg) {
 }
 
 static int finshresolve(lua_State *L, int status, lua_KContext extra) {
-    switch (lua_type(L, -1)) {
-    case LUA_TSTRING:
-        return 1;
-    default:
+    if (status != 1 || !lua_isstring(L, -1)) {
         luaL_error(L, "failed to resolve");
-        break;
     }
-    return 0;
+    return 1;
 }
 
 static int ldns_resolve(lua_State *L) {
@@ -63,8 +54,7 @@ static int ldns_resolve(lua_State *L) {
     if (!pal_dns_start_request(hostname, af, ldns_response_cb, L)) {
         luaL_error(L, "failed to start DNS resolution request");
     }
-    lua_yieldk(L, 0, 0, finshresolve);
-    return 0;
+    return lua_yieldk(L, 0, 0, finshresolve);
 }
 
 static const luaL_Reg ldns_funcs[] = {

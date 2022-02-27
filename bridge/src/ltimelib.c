@@ -32,13 +32,9 @@ static void ltime_sleep_cb(HAPPlatformTimerRef timer, void *context) {
     int status, nres;
 
     HAPAssert(lua_gettop(L) == 0);
-    status = lua_resume(co, L, 0, &nres);
-    if (status == LUA_OK) {
-        lc_freethread(co);
-    } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 0);
+    status = lc_resumethread(co, L, 0, &nres);
+    if (status != LUA_OK && status != LUA_YIELD) {
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lc_freethread(co);
     }
 
     lua_settop(L, 0);
@@ -83,7 +79,7 @@ static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
     HAPAssert(lua_gettop(L) == 0);
 
     int nres, status;
-    lua_State *co = lc_newthread(L);
+    lua_State *co = lua_newthread(L);
     HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, ctx) == LUA_TUSERDATA);
     for (int i = 1; i <= ctx->nargs + 1; i++) {
         lua_getiuservalue(co, 1, i);
@@ -91,13 +87,9 @@ static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
     lua_remove(co, 1);
     lua_pushnil(co);
     lua_rawsetp(co, LUA_REGISTRYINDEX, ctx);
-    status = lua_resume(co, L, ctx->nargs, &nres);
-    if (status == LUA_OK) {
-        lc_freethread(co);
-    } else if (status != LUA_YIELD) {
-        luaL_traceback(L, co, lua_tostring(co, -1), 0);
+    status = lc_startthread(co, L, ctx->nargs, &nres);
+    if (status != LUA_OK && status != LUA_YIELD) {
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
-        lc_freethread(co);
     }
 
     lua_settop(L, 0);

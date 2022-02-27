@@ -60,13 +60,9 @@ static int lmq_obj_send(lua_State *L) {
                 lua_pushvalue(L, i);
             }
             lua_xmove(L, co, narg);
-            status = lua_resume(co, L, narg, &nres);
-            if (status == LUA_OK) {
-                lc_freethread(co);
-            } else if (status != LUA_YIELD) {
-                luaL_traceback(L, co, lua_tostring(co, -1), 0);
+            status = lc_resumethread(co, L, narg, &nres);
+            if (status != LUA_OK && status != LUA_YIELD) {
                 HAPLogError(&lmq_log, "%s: %s", __func__, lua_tostring(L, -1));
-                lc_freethread(co);
             }
         }
     } else {
