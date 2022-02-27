@@ -11,9 +11,8 @@ local fan = {}
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
----@param mapping table<string, MiotIID> Property name -> MIOT instance ID mapping.
 ---@return HapAccessory accessory HomeKit Accessory.
-function fan.gen(device, info, conf, mapping)
+function fan.gen(device, info, conf)
     ---@class DmakerFanIIDs:table Dmaker Fan Instance ID table.
     local iids = {
         acc = conf.aid,
@@ -22,8 +21,6 @@ function fan.gen(device, info, conf, mapping)
         rotationSpeed = hap.getNewInstanceID(),
         swingMode = hap.getNewInstanceID(),
     }
-
-    device:setMapping(mapping)
 
     return {
         aid = iids.acc,

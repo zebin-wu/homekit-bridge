@@ -48,20 +48,19 @@ function derh.gen(device, info, conf)
                 },
                 chars = {
                     Active.new(iids.active, function (request, self)
-                        local activeVal = Active.value
                         local value
                         if self:getProp("power") then
-                            value = activeVal.Active
+                            value = Active.value.Active
                         else
-                            value = activeVal.Inactive
+                            value = Active.value.Inactive
                         end
-                        self.logger:info("Read Active: " .. searchKey(activeVal, value))
+                        self.logger:info("Read Active: " .. searchKey(Active.value, value))
                         return value, hap.Error.None
                     end, function (request, value, self)
-                        local activeVal = Active.value
-                        self.logger:info("Write Active: " .. searchKey(activeVal, value))
-                        self:setProp("power", value == activeVal.Active)
+                        self.logger:info("Write Active: " .. searchKey(Active.value, value))
+                        self:setProp("power", value == Active.value.Active)
                         raiseEvent(request.aid, request.sid, request.cid)
+                        raiseEvent(request.aid, request.sid, self.iids.curState)
                         return hap.Error.None
                     end),
                     CurrentState.new(iids.curState, function (request, self)
