@@ -19,12 +19,11 @@ typedef struct {
 
 static int lnvs_open(lua_State *L) {
     const char *namespace = luaL_checkstring(L, 1);
-    enum pal_nvs_mode mode = luaL_checkoption(L, 2, "rw", (const char *[]) {"r", "rw", NULL});
 
     lnvs_handle *handle = lua_newuserdata(L, sizeof(*handle));
     luaL_setmetatable(L, LUA_NVS_HANDLE_NAME);
-    handle->handle = pal_nvs_open(namespace, mode);
-    if (!handle->handle) {
+    handle->handle = pal_nvs_open(namespace);
+    if (luai_unlikely(!handle->handle)) {
         luaL_error(L, "failed to open NVS handle");
     }
     return 1;
@@ -32,7 +31,7 @@ static int lnvs_open(lua_State *L) {
 
 static lnvs_handle *lnvs_get_handle(lua_State *L, int idx) {
     lnvs_handle *handle = luaL_checkudata(L, idx, LUA_NVS_HANDLE_NAME);
-    if (!handle->handle) {
+    if (luai_unlikely(!handle->handle)) {
         luaL_error(L, "attemp to use a closed NVS handle");
     }
     return handle;
@@ -53,7 +52,7 @@ static int lnvs_handle_get(lua_State *L) {
     luaL_Buffer B;
     luaL_buffinitsize(L, &B, len);
     luaL_addsize(&B, len);
-    if (!pal_nvs_get(handle->handle, key, B.b, len)) {
+    if (luai_unlikely(!pal_nvs_get(handle->handle, key, B.b, len))) {
         luaL_error(L, "failed to get key");
     }
     luaL_pushresult(&B);
@@ -79,7 +78,7 @@ static int lnvs_handle_set(lua_State *L) {
     size_t len;
     const char *value = luaL_checklstring(L, 3, &len);
 
-    if (!pal_nvs_set(handle->handle, key, value, len)) {
+    if (luai_unlikely(!pal_nvs_set(handle->handle, key, value, len))) {
         luaL_error(L, "failed to set key");
     }
     return 0;
@@ -93,7 +92,7 @@ static int lnvs_handle_erase(lua_State *L) {
 }
 
 static int lnvs_handle_commit(lua_State *L) {
-    if (!pal_nvs_commit(lnvs_get_handle(L, 1)->handle)) {
+    if (luai_unlikely(!pal_nvs_commit(lnvs_get_handle(L, 1)->handle))) {
         luaL_error(L, "failed to commit all changes");
     }
     return 0;

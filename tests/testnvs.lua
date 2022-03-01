@@ -1,9 +1,6 @@
 local nvs = require "nvs"
 
 -- Tests nvs.open() with valid parameters.
-for _, mode in ipairs({"r", "rw"}) do
-    local handle <close> = nvs.open("test", mode)
-end
 do
     local handle <close> = nvs.open("test")
 end
@@ -14,10 +11,10 @@ do
     assert(success == false)
 end
 
--- Tests nvs.open() twice with read only mode.
+-- Tests nvs.open() twice.
 do
-    local handle1 <close> = nvs.open("test", "r")
-    local handle2 <close> = nvs.open("test", "r")
+    local handle1 <close> = nvs.open("test")
+    local handle2 <close> = nvs.open("test")
 end
 
 -- Tests nvs.get() with valid parameters.

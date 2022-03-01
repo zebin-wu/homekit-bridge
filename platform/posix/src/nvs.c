@@ -36,7 +36,6 @@ struct pal_nvs_item {
 
 struct pal_nvs_handle {
     uint32_t using_count;
-    pal_nvs_mode mode;
     bool changed;
     char *name;
     SLIST_HEAD(pal_nvs_item_list_head, pal_nvs_item) item_list_head;
@@ -97,21 +96,15 @@ static void pal_nvs_remove_all_items(pal_nvs_handle *handle) {
     SLIST_INIT(&handle->item_list_head);
 }
 
-pal_nvs_handle *pal_nvs_open(const char *name, pal_nvs_mode mode) {
+pal_nvs_handle *pal_nvs_open(const char *name) {
     HAPPrecondition(ginited);
     HAPPrecondition(name);
-    HAPPrecondition(mode == PAL_NVS_MODE_READONLY || mode == PAL_NVS_MODE_READWRITE);
 
     pal_nvs_handle *handle;
     LIST_FOREACH(handle, &ghandle_list_head, list_entry) {
         if (!strcmp(handle->name, name)) {
-            if (handle->mode == PAL_NVS_MODE_READONLY && mode == PAL_NVS_MODE_READONLY) {
-                handle->using_count++;
-                return handle;
-            } else {
-                NVS_LOG_ERR("Namespace '%s' is busy.", name);
-                return NULL;
-            }
+            handle->using_count++;
+            return handle;
         }
     }
 
@@ -131,7 +124,6 @@ pal_nvs_handle *pal_nvs_open(const char *name, pal_nvs_mode mode) {
     handle->name[name_len] = '\0';
 
     handle->using_count = 1;
-    handle->mode = mode;
     handle->changed = false;
     SLIST_INIT(&handle->item_list_head);
 
@@ -302,11 +294,6 @@ bool pal_nvs_set(pal_nvs_handle *handle, const char *key, const void *value, siz
     HAPPrecondition(value);
     HAPPrecondition(len);
 
-    if (handle->mode == PAL_NVS_MODE_READONLY) {
-        NVS_LOG_ERR("No permission to set.");
-        return false;
-    }
-
     size_t keylen = strlen(key);
     HAPPrecondition(keylen <= PAL_NVS_KEY_MAX_LEN);
 
@@ -348,11 +335,6 @@ bool pal_nvs_remove(pal_nvs_handle *handle, const char *key) {
     HAPPrecondition(handle);
     HAPPrecondition(key);
 
-    if (handle->mode == PAL_NVS_MODE_READONLY) {
-        NVS_LOG_ERR("No permission to remove.");
-        return false;
-    }
-
     for (struct pal_nvs_item **t = &SLIST_FIRST(&handle->item_list_head); *t;
         t = &SLIST_NEXT(*t, list_entry)) {
         if (!strcmp((*t)->key, key)) {
@@ -368,11 +350,6 @@ bool pal_nvs_remove(pal_nvs_handle *handle, const char *key) {
 
 bool pal_nvs_erase(pal_nvs_handle *handle) {
     HAPPrecondition(handle);
-
-    if (handle->mode == PAL_NVS_MODE_READONLY) {
-        NVS_LOG_ERR("No permission to erase.");
-        return false;
-    }
 
     if (SLIST_FIRST(&handle->item_list_head)) {
         handle->changed = true;
@@ -416,11 +393,6 @@ static bool write_all_to_tmp_file(int fd, const char *path, const char *dir, con
 
 bool pal_nvs_commit(pal_nvs_handle *handle) {
     HAPPrecondition(handle);
-
-    if (handle->mode == PAL_NVS_MODE_READONLY) {
-        NVS_LOG_ERR("No permission to commit.");
-        return false;
-    }
 
     if (handle->changed == false) {
         return true;
@@ -570,13 +542,10 @@ void pal_nvs_close(pal_nvs_handle *handle) {
     HAPPrecondition(handle);
 
     if (handle->using_count > 1) {
-        HAPAssert(handle->mode == PAL_NVS_MODE_READONLY);
         handle->using_count--;
         return;
     }
-    if (handle->mode == PAL_NVS_MODE_READWRITE) {
-        pal_nvs_commit(handle);
-    }
+    pal_nvs_commit(handle);
     LIST_REMOVE(handle, list_entry);
     pal_nvs_remove_all_items(handle);
     pal_mem_free(handle->name);
