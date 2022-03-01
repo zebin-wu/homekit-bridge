@@ -1561,7 +1561,7 @@ HAPError lhap_char_base_handleRead(
     call_ctx->service = service;
     call_ctx->characteristic = characteristic;
 
-    lc_push_traceback(co);
+    lc_pushtraceback(co);
 
     // push the function
     HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, pfunc) == LUA_TFUNCTION);
@@ -1574,7 +1574,7 @@ HAPError lhap_char_base_handleRead(
     lua_rawgetp(co, LUA_REGISTRYINDEX, accessory);
 
     int status, nres;
-    status = lc_startthread(co, L, 5, &nres);
+    status = lc_resume(co, L, 5, &nres);
     switch (status) {
     case LUA_OK:
         HAPAssert(lua_isinteger(L, -1));
@@ -1826,7 +1826,7 @@ static lua_State *lhap_char_base_handleWrite(
     call_ctx->service = service;
     call_ctx->characteristic = characteristic;
 
-    lc_push_traceback(co);
+    lc_pushtraceback(co);
     HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, pfunc) == LUA_TFUNCTION);
     lhap_create_request_table(co, transportType, session, &remote,
         accessory, service, characteristic);
@@ -1846,7 +1846,7 @@ HAPError lhap_char_last_handleWrite(lua_State *L,
     lua_rawgetp(co, LUA_REGISTRYINDEX, accessory);
 
     int status, nres;
-    status = lc_startthread(co, L, 6, &nres);
+    status = lc_resume(co, L, 6, &nres);
     switch (status) {
     case LUA_OK:
         HAPAssert(lua_isinteger(L, -1));
@@ -2306,7 +2306,7 @@ HAPError lhap_accessory_identify_cb(
     lua_rawgetp(co, LUA_REGISTRYINDEX, accessory);
 
     int status, nres;
-    status = lc_startthread(co, L, 2, &nres);
+    status = lc_resume(co, L, 2, &nres);
     switch (status) {
     case LUA_OK:
         if (nres == 1) {
@@ -2402,7 +2402,7 @@ static void lhap_server_handle_update_state(HAPAccessoryServerRef *server, void 
     lua_State *L = app_get_lua_main_thread();
 
     HAPAssert(lua_gettop(L) == 0);
-    lc_push_traceback(L);
+    lc_pushtraceback(L);
     HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &desc->server_cbs.handleUpdatedState) == LUA_TFUNCTION);
 
     lua_pushstring(L, lhap_server_state_strs[HAPAccessoryServerGetState(server)]);
@@ -2424,7 +2424,7 @@ static void lhap_server_handle_session_accept(
     lua_State *L = app_get_lua_main_thread();
 
     HAPAssert(lua_gettop(L) == 0);
-    lc_push_traceback(L);
+    lc_pushtraceback(L);
     HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &desc->server_cbs.handleSessionAccept) == LUA_TFUNCTION);
 
     lua_pushlightuserdata(L, session);
@@ -2446,7 +2446,7 @@ static void lhap_server_handle_session_invalidate(
     lua_State *L = app_get_lua_main_thread();
 
     HAPAssert(lua_gettop(L) == 0);
-    lc_push_traceback(L);
+    lc_pushtraceback(L);
     HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &desc->server_cbs.handleSessionInvalidate) == LUA_TFUNCTION);
 
     lua_pushlightuserdata(L, session);
@@ -2883,8 +2883,12 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
     luaL_newlib(L, haplib);
 
     /* set Error */
-    lc_create_enum_table(L, lhap_error_strs,
-        HAPArrayCount(lhap_error_strs));
+    int len = HAPArrayCount(lhap_error_strs);
+    lua_createtable(L, 0, len);
+    for (int i = 0; i < len; i++) {
+        lua_pushinteger(L, i);
+        lua_setfield(L, -2, lhap_error_strs[i]);
+    }
     lua_setfield(L, -2, "Error");
 
     /* set services */

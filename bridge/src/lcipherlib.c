@@ -113,8 +113,8 @@ static int lcipher_create(lua_State *L) {
     luaL_setmetatable(L, LCIPHER_CTX_NAME);
 
     ctx->ctx = pal_cipher_new(type);
-    if (!ctx->ctx)  {
-        luaL_error(L, "Failed to create a %s cipher.", lcipher_type_strs[type]);
+    if (luai_unlikely(!ctx->ctx)) {
+        luaL_error(L, "failed to create a %s cipher", lcipher_type_strs[type]);
     }
     return 1;
 }
@@ -146,8 +146,8 @@ static int lcipher_ctx_get_iv_len(lua_State *L) {
 static int lcipher_ctx_set_padding(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
     pal_cipher_padding padding = luaL_checkoption(L, 2, "NONE", lcipher_padding_strs);
-    if (!pal_cipher_set_padding(ctx->ctx, padding)) {
-        luaL_error(L, "Failed to set padding to the cipher.");
+    if (luai_unlikely(!pal_cipher_set_padding(ctx->ctx, padding))) {
+        luaL_error(L, "failed to set padding to the cipher");
     }
     return 1;
 }
@@ -171,9 +171,9 @@ static int lcipher_ctx_begin(lua_State *L) {
     }
 
 begin:
-    if (!pal_cipher_begin(ctx->ctx, op,
-        (const uint8_t *)key, (const uint8_t *)iv)) {
-        luaL_error(L, "Failed to begin a %s process.", lcipher_op_strs[op]);
+    if (luai_unlikely(!pal_cipher_begin(ctx->ctx, op,
+        (const uint8_t *)key, (const uint8_t *)iv))) {
+        luaL_error(L, "failed to begin a %s process", lcipher_op_strs[op]);
     }
     return 1;
 }
@@ -184,8 +184,8 @@ static int lcipher_ctx_update(lua_State *L) {
     const char *in = luaL_checklstring(L, 2, &inlen);
     size_t outlen = inlen + pal_cipher_get_block_size(ctx->ctx);
     char out[outlen];
-    if (!pal_cipher_update(ctx->ctx, in, inlen, out, &outlen)) {
-        luaL_error(L, "Failed to update data to the cipher.");
+    if (luai_unlikely(!pal_cipher_update(ctx->ctx, in, inlen, out, &outlen))) {
+        luaL_error(L, "failed to update data to the cipher");
     }
     lua_pushlstring(L, out, outlen);
     return 1;
@@ -195,8 +195,8 @@ static int lcipher_ctx_finsh(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
     size_t outlen = pal_cipher_get_block_size(ctx->ctx);
     char out[outlen];
-    if (!pal_cipher_finsh(ctx->ctx, out, &outlen)) {
-        luaL_error(L, "Failed to finsh the process.");
+    if (luai_unlikely(!pal_cipher_finsh(ctx->ctx, out, &outlen))) {
+        luaL_error(L, "failed to finsh the process");
     }
     lua_pushlstring(L, out, outlen);
     return 1;

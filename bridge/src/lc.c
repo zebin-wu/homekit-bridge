@@ -103,16 +103,6 @@ err:
     return false;
 }
 
-void lc_create_enum_table(lua_State *L, const char *enum_array[], int len) {
-    lua_createtable(L, len, 0);
-    for (int i = 0; i < len; i++) {
-        if (enum_array[i]) {
-            lua_pushinteger(L, i);
-            lua_setfield(L, -2, enum_array[i]);
-        }
-    }
-}
-
 void lc_collectgarbage(lua_State *L) {
     luaC_fullgc(L, 0);
 }
@@ -127,47 +117,42 @@ static int traceback(lua_State *L) {
     return 1;
 }
 
-void lc_push_traceback(lua_State *L) {
+void lc_pushtraceback(lua_State *L) {
     lua_pushcfunction(L, traceback);
 }
 
-static int lc_resetthread(lua_State *L) {
-    lua_pushnil(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, L);
-    return lua_resetthread(L);
-}
-
-int lc_startthread(lua_State *L, lua_State *from, int narg, int *nres) {
-    int status = lua_resume(L, from, narg, nres);
-    switch (status) {
-    case LUA_OK:
-        lua_xmove(L, from, *nres);
-        lua_resetthread(L);
-        break;
-    case LUA_YIELD:
-        lua_pushthread(L);
-        lua_rawsetp(L, LUA_REGISTRYINDEX, L);
-        break;
-    default:
-        luaL_traceback(from, L, lua_tostring(L, -1), 1);
-        lua_resetthread(L);
-        break;
+int lc_resume(lua_State *L, lua_State *from, int narg, int *nres) {
+    int before_status = lua_status(L);
+    if (luai_unlikely(before_status != LUA_OK && before_status != LUA_YIELD)) {
+        luaL_error(L, "invalid coroutine status");
     }
-    return status;
-}
 
-int lc_resumethread(lua_State *L, lua_State *from, int narg, int *nres) {
     int status = lua_resume(L, from, narg, nres);
     switch (status) {
     case LUA_OK:
+        if (luai_unlikely(!lua_checkstack(L, *nres))) {
+            luaL_error(L, "too many arguments to resume");
+        }
         lua_xmove(L, from, *nres);
-        lc_resetthread(L);
+        if (before_status == LUA_YIELD) {
+            lua_pushnil(L);
+            lua_rawsetp(L, LUA_REGISTRYINDEX, L);
+        }
+        lua_resetthread(L);
         break;
     case LUA_YIELD:
+        if (before_status == LUA_OK) {
+            lua_pushthread(L);
+            lua_rawsetp(L, LUA_REGISTRYINDEX, L);
+        }
         break;
     default:
         luaL_traceback(from, L, lua_tostring(L, -1), 1);
-        lc_resetthread(L);
+        if (before_status == LUA_YIELD) {
+            lua_pushnil(L);
+            lua_rawsetp(L, LUA_REGISTRYINDEX, L);
+        }
+        lua_resetthread(L);
         break;
     }
     return status;

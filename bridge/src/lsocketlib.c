@@ -114,7 +114,7 @@ static void lsocket_accepted_cb(pal_socket_obj *o, pal_socket_err err, pal_socke
     lua_pushlightuserdata(co, new_o);  // -3
     lua_pushstring(co, addr);  // -2
     lua_pushinteger(co, port);  // -1
-    status = lc_resumethread(co, L, 4, &nres);
+    status = lc_resume(co, L, 4, &nres);
     if (status != LUA_OK && status != LUA_YIELD) {
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
@@ -176,7 +176,7 @@ static void lsocket_connected_cb(pal_socket_obj *o, pal_socket_err err, void *ar
 
     HAPAssert(lua_gettop(L) == 0);
     lua_pushinteger(co, err);
-    status = lc_resumethread(co, L, 1, &nres);
+    status = lc_resume(co, L, 1, &nres);
     if (status != LUA_OK && status != LUA_YIELD) {
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
@@ -220,7 +220,7 @@ static void lsocket_sent_cb(pal_socket_obj *o, pal_socket_err err, size_t sent_l
     HAPAssert(lua_gettop(L) == 0);
     lua_pushinteger(co, err);
     lua_pushinteger(co, sent_len);
-    status = lc_resumethread(co, L, 2, &nres);
+    status = lc_resume(co, L, 2, &nres);
     if (status != LUA_OK && status != LUA_YIELD) {
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
@@ -292,7 +292,7 @@ static void lsocket_recved_cb(pal_socket_obj *o, pal_socket_err err,
     lua_pushinteger(co, port);
     lua_pushinteger(co, err);
 
-    status = lc_resumethread(co, L, 4, &nres);
+    status = lc_resume(co, L, 4, &nres);
     if (status != LUA_OK && status != LUA_YIELD) {
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
     }

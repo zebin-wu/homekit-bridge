@@ -56,12 +56,15 @@ static int lmq_obj_send(lua_State *L) {
             lua_State *co = lua_tothread(L, -1);
             lua_pop(L, 1);
             int max = 1 + narg;
+            if (luai_unlikely(!lua_checkstack(L, narg))) {
+                luaL_error(L, "stack overflow");
+            }
             for (int i = 2; i <= max; i++) {
                 lua_pushvalue(L, i);
             }
             lua_xmove(L, co, narg);
-            status = lc_resumethread(co, L, narg, &nres);
-            if (status != LUA_OK && status != LUA_YIELD) {
+            status = lc_resume(co, L, narg, &nres);
+            if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
                 HAPLogError(&lmq_log, "%s: %s", __func__, lua_tostring(L, -1));
             }
         }

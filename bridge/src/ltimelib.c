@@ -26,14 +26,29 @@ typedef struct {
     HAPPlatformTimerRef timer;  /* Timer ID. Start from 1. */
 } ltime_timer_ctx;
 
+static int ltime_resume(lua_State *L) {
+    lua_State *co = lua_touserdata(L, 1);
+    lua_pop(L, 1);
+
+    int status, nres;
+    status = lc_resume(co, L, 0, &nres);
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
+    }
+    return 0;
+}
+
 static void ltime_sleep_cb(HAPPlatformTimerRef timer, void *context) {
     lua_State *L = app_get_lua_main_thread();
     lua_State *co = context;
-    int status, nres;
 
     HAPAssert(lua_gettop(L) == 0);
-    status = lc_resumethread(co, L, 0, &nres);
-    if (status != LUA_OK && status != LUA_YIELD) {
+
+    lc_pushtraceback(L);
+    lua_pushcfunction(L, ltime_resume);
+    lua_pushlightuserdata(L, co);
+    int status = lua_pcall(L, 1, 0, 1);
+    if (luai_unlikely(status != LUA_OK)) {
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
 
@@ -51,8 +66,7 @@ static int ltime_sleep(lua_State *L) {
         ltime_sleep_cb, L) != kHAPError_None) {
         luaL_error(L, "failed to create a timer");
     }
-    lua_yield(L, 0);
-    return 0;
+    return lua_yield(L, 0);
 }
 
 static int ltime_createTimer(lua_State *L) {
@@ -70,6 +84,29 @@ static int ltime_createTimer(lua_State *L) {
     return 1;
 }
 
+static int ltime_timer_resume(lua_State *L) {
+    ltime_timer_ctx *ctx = lua_touserdata(L, -1);
+    lua_pop(L, 1);
+
+    int nres, status;
+    lua_State *co = lua_newthread(L);
+    HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, ctx) == LUA_TUSERDATA);
+    if (luai_unlikely(!lua_checkstack(L, ctx->nargs + 1))) {
+        luaL_error(L, "stack overflow");
+    }
+    for (int i = 1; i <= ctx->nargs + 1; i++) {
+        lua_getiuservalue(co, 1, i);
+    }
+    lua_remove(co, 1);
+    lua_pushnil(co);
+    lua_rawsetp(co, LUA_REGISTRYINDEX, ctx);
+    status = lc_resume(co, L, ctx->nargs, &nres);
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
+    }
+    return 0;
+}
+
 static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
     ltime_timer_ctx *ctx = context;
     lua_State *L = app_get_lua_main_thread();
@@ -78,17 +115,11 @@ static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
 
     HAPAssert(lua_gettop(L) == 0);
 
-    int nres, status;
-    lua_State *co = lua_newthread(L);
-    HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, ctx) == LUA_TUSERDATA);
-    for (int i = 1; i <= ctx->nargs + 1; i++) {
-        lua_getiuservalue(co, 1, i);
-    }
-    lua_remove(co, 1);
-    lua_pushnil(co);
-    lua_rawsetp(co, LUA_REGISTRYINDEX, ctx);
-    status = lc_startthread(co, L, ctx->nargs, &nres);
-    if (status != LUA_OK && status != LUA_YIELD) {
+    lc_pushtraceback(L);
+    lua_pushcfunction(L, ltime_timer_resume);
+    lua_pushlightuserdata(L, ctx);
+    int status = lua_pcall(L, 1, 0, 1);
+    if (luai_unlikely(status != LUA_OK)) {
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
 

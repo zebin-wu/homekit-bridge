@@ -63,11 +63,6 @@ bool lc_traverse_array(lua_State *L, int idx,
                         void *arg);
 
 /**
- * Create a enum table.
- */
-void lc_create_enum_table(lua_State *L, const char *enum_array[], int len);
-
-/**
  * Collect garbage.
  */
 void lc_collectgarbage(lua_State *L);
@@ -75,11 +70,12 @@ void lc_collectgarbage(lua_State *L);
 /**
  * Push traceback function to lua stack.
  */
-void lc_push_traceback(lua_State *L);
+void lc_pushtraceback(lua_State *L);
 
-int lc_startthread(lua_State *L, lua_State *from, int narg, int *nres);
-
-int lc_resumethread(lua_State *L, lua_State *from, int narg, int *nres);
+/**
+ * Resume a coroutine. Must call it in protected mode.
+ */
+int lc_resume(lua_State *L, lua_State *from, int narg, int *nres);
 
 #ifdef __cplusplus
 }
