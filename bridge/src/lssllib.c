@@ -129,7 +129,7 @@ static const luaL_Reg lssl_funcs[] = {
 };
 
 /*
- * metamethods for message queue context
+ * metamethods for SSL context
  */
 static const luaL_Reg lssl_ctx_metameth[] = {
     {"__index", NULL},  /* place holder */
