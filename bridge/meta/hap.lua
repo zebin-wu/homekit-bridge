@@ -23,11 +23,10 @@ local hap = {}
 ---@field hwVer string The hardware version of the accessory.
 ---@field services HapService[] Array of provided services.
 ---@field cbs HapAccessoryCallbacks Callbacks.
----@field context any Accessory context. Will be passed to callbacks.
 
 ---@class HapAccessoryCallbacks:table Accessory Callbacks.
 ---
----@field identify fun(request: HapAccessoryIdentifyRequest, context?: any):HapError The callback used to invoke the identify routine.
+---@field identify fun(request: HapAccessoryIdentifyRequest): HapError The callback used to invoke the identify routine.
 
 ---@class HapAccessoryIdentifyRequest:table Accessory identify request.
 ---
@@ -117,10 +116,10 @@ local hap = {}
 
 ---@class HapCharacteristicCallbacks:table Characteristic Callbacks.
 ---
----@field read async fun(request:HapCharacteristicReadRequest, context?:any): any, HapError The callback used to handle read requests, it returns value and error.
----@field write async fun(request:HapCharacteristicWriteRequest, value:any, context?:any): HapError The callback used to handle write requests, it return error.
----@field sub async fun(request:HapCharacteristicSubscriptionRequest, context?:any) The callback used to handle subscribe requests.
----@field unsub async fun(request:HapCharacteristicSubscriptionRequest, context?:any) The callback used to handle unsubscribe requests.
+---@field read async fun(request:HapCharacteristicReadRequest): any, HapError The callback used to handle read requests, it returns value and error.
+---@field write async fun(request:HapCharacteristicWriteRequest, value:any): HapError The callback used to handle write requests, it return error.
+---@field sub async fun(request:HapCharacteristicSubscriptionRequest) The callback used to handle subscribe requests.
+---@field unsub async fun(request:HapCharacteristicSubscriptionRequest) The callback used to handle unsubscribe requests.
 
 ---@class HapCharacteristicProperties:table Properties that HomeKit characteristics can have.
 ---

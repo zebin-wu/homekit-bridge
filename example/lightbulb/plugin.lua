@@ -22,12 +22,17 @@ local logger = log.getLogger("lightbulb.plugin")
 ---@param conf LightBulbAccessoryConf
 ---@return HapAccessory
 local function gen(conf)
-    local context = {
-        lightBulbOn = false,
+    local iids = {
+        acc = hap.getNewBridgedAccessoryID(),
+        lightBlub = hap.getNewInstanceID(),
+        srvSign = hap.getNewInstanceID(),
+        name = hap.getNewInstanceID(),
+        on = hap.getNewInstanceID()
     }
+    local lightBulbOn = false
     local name = conf.name or "Light Bulb"
     return {
-        aid = hap.getNewBridgedAccessoryID(),
+        aid = iids.acc,
         category = "BridgedAccessory",
         name = name,
         mfg = "Acme",
@@ -38,24 +43,23 @@ local function gen(conf)
         services = {
             hap.AccessoryInformationService,
             {
-                iid = hap.getNewInstanceID(),
+                iid = iids.lightBlub,
                 type = "LightBulb",
                 props = {
                     primaryService = true,
                     hidden = false
                 },
                 chars = {
-                    ServiceSignature.new(hap.getNewInstanceID()),
-                    Name.new(hap.getNewInstanceID(), name),
-                    On.new(hap.getNewInstanceID(),
-                        function (request, context)
-                            logger:info(("Read lightBulbOn: %s"):format(context.lightBulbOn))
-                            return context.lightBulbOn, hap.Error.None
+                    ServiceSignature.new(iids.srvSign),
+                    Name.new(iids.name, name),
+                    On.new(iids.on, function (request)
+                            logger:info(("Read lightBulbOn: %s"):format(lightBulbOn))
+                            return lightBulbOn, hap.Error.None
                         end,
-                        function (request, value, context)
+                        function (request, value)
                             logger:info(("Write lightBulbOn: %s"):format(value))
-                            if value ~= context.lightBulbOn then
-                                context.lightBulbOn = value
+                            if value ~= lightBulbOn then
+                                lightBulbOn = value
                                 hap.raiseEvent(request.aid, request.sid, request.cid)
                             end
                             return hap.Error.None
@@ -64,12 +68,11 @@ local function gen(conf)
             }
         },
         cbs = {
-            identify = function (request, context)
+            identify = function (request)
                 logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        },
-        context = context
+        }
     }
 end
 

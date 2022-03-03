@@ -35,7 +35,6 @@ local valMapping = {
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function acpartner.gen(device, info, conf)
-    ---@class AcpartnerIIDS:table Acpartner Instance ID table.
     local iids = {
         acc = conf.aid,
         heaterCooler = hap.getNewInstanceID(),
@@ -47,7 +46,6 @@ function acpartner.gen(device, info, conf)
         heatThrTemp = hap.getNewInstanceID(),
         swingMode = hap.getNewInstanceID()
     }
-    device.iids = iids
 
     return {
         aid = iids.acc,
@@ -68,30 +66,30 @@ function acpartner.gen(device, info, conf)
                     hidden = false
                 },
                 chars = {
-                    Active.new(iids.active, function (request, self)
-                        local value = valMapping.power[self:getProp("power")]
-                        self.logger:info("Read Active: " .. searchKey(Active.value, value))
+                    Active.new(iids.active, function (request)
+                        local value = valMapping.power[device:getProp("power")]
+                        device.logger:info("Read Active: " .. searchKey(Active.value, value))
                         return value, hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write Active: " .. searchKey(Active.value, value))
-                        self:setProp("power", searchKey(valMapping.power, value))
+                    end, function (request, value)
+                        device.logger:info("Write Active: " .. searchKey(Active.value, value))
+                        device:setProp("power", searchKey(valMapping.power, value))
                         raiseEvent(request.aid, request.sid, request.cid)
-                        time.createTimer(function (iids)
+                        time.createTimer(function ()
                             raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
                             raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
                             raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
                             raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
                             raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
-                        end, self.iids):start(500)
+                        end):start(500)
                         return hap.Error.None
                     end),
-                    CurTemp.new(iids.curTemp, function (request, self)
-                        local value = self:getProp("tar_temp")
-                        self.logger:info("Read CurrentTemperature: " .. value)
+                    CurTemp.new(iids.curTemp, function (request)
+                        local value = device:getProp("tar_temp")
+                        device.logger:info("Read CurrentTemperature: " .. value)
                         return value, hap.Error.None
                     end),
-                    CurHeatCoolState.new(iids.curState, function (request, self)
-                        local mode = self:getProp("mode")
+                    CurHeatCoolState.new(iids.curState, function (request)
+                        local mode = device:getProp("mode")
                         local value
                         if mode == "cool" then
                             value = CurHeatCoolState.value.Cooling
@@ -100,63 +98,63 @@ function acpartner.gen(device, info, conf)
                         else
                             value = CurHeatCoolState.value.Idle
                         end
-                        self.logger:info("Read CurrentHeaterCoolerState: " .. searchKey(CurHeatCoolState.value, value))
+                        device.logger:info("Read CurrentHeaterCoolerState: " .. searchKey(CurHeatCoolState.value, value))
                         return value, hap.Error.None
                     end),
-                    TgtHeatCoolState.new(iids.tgtState, function (request, self)
-                        local mode = self:getProp("mode")
+                    TgtHeatCoolState.new(iids.tgtState, function (request)
+                        local mode = device:getProp("mode")
                         local value
                         if mode == "unsupport" or mode == "dry" or mode == "wind" then
                             value = TgtHeatCoolState.value.HeatOrCool
                         else
                             value = valMapping.mode[mode]
                         end
-                        self.logger:info("Read TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
+                        device.logger:info("Read TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
                         return value, hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
-                        self:setProp("mode", searchKey(valMapping.mode, value))
+                    end, function (request, value)
+                        device.logger:info("Write TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
+                        device:setProp("mode", searchKey(valMapping.mode, value))
                         raiseEvent(request.aid, request.sid, request.cid)
-                        time.createTimer(function (iids)
+                        time.createTimer(function ()
                             raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
                             raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
                             raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
-                        end, self.iids):start(500)
+                        end):start(500)
                         return hap.Error.None
                     end),
-                    CoolThrholdTemp.new(iids.coolThrTemp, function (request, self)
-                        local value =  self:getProp("tar_temp")
-                        self.logger:info("Read CoolingThresholdTemperature: " .. value)
+                    CoolThrholdTemp.new(iids.coolThrTemp, function (request)
+                        local value =  device:getProp("tar_temp")
+                        device.logger:info("Read CoolingThresholdTemperature: " .. value)
                         return tonumber(value), hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write CoolingThresholdTemperature: " .. value)
-                        self:setProp("tar_temp", math.tointeger(value))
+                    end, function (request, value)
+                        device.logger:info("Write CoolingThresholdTemperature: " .. value)
+                        device:setProp("tar_temp", math.tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end, 16, 30, 1),
-                    HeatThrholdTemp.new(iids.heatThrTemp, function (request, self)
-                        local value = self:getProp("tar_temp")
-                        self.logger:info("Read HeatingThresholdTemperature: " .. value)
+                    HeatThrholdTemp.new(iids.heatThrTemp, function (request)
+                        local value = device:getProp("tar_temp")
+                        device.logger:info("Read HeatingThresholdTemperature: " .. value)
                         return tonumber(value), hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write HeatingThresholdTemperature: " .. value)
-                        self:setProp("tar_temp", math.tointeger(value))
+                    end, function (request, value)
+                        device.logger:info("Write HeatingThresholdTemperature: " .. value)
+                        device:setProp("tar_temp", math.tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end, 16, 30, 1),
-                    SwingMode.new(iids.swingMode, function (request, self)
-                        local ver_swing = self:getProp("ver_swing")
+                    SwingMode.new(iids.swingMode, function (request)
+                        local ver_swing = device:getProp("ver_swing")
                         local value
                         if ver_swing == "unsupport" then
                             value = SwingMode.value.Disabled
                         else
                             value = valMapping.ver_swing[ver_swing]
                         end
-                        self.logger:info("Read SwingMode: " .. searchKey(SwingMode.value, value))
+                        device.logger:info("Read SwingMode: " .. searchKey(SwingMode.value, value))
                         return value, hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write SwingMode: " .. searchKey(SwingMode.value, value))
-                        self:setProp("ver_swing", searchKey(valMapping.ver_swing, value))
+                    end, function (request, value)
+                        device.logger:info("Write SwingMode: " .. searchKey(SwingMode.value, value))
+                        device:setProp("ver_swing", searchKey(valMapping.ver_swing, value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end)
@@ -164,12 +162,11 @@ function acpartner.gen(device, info, conf)
             }
         },
         cbs = {
-            identify = function (request, self)
-                self.logger:info("Identify callback is called.")
+            identify = function (request)
+                device.logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        },
-        context = device
+        }
     }
 end
 

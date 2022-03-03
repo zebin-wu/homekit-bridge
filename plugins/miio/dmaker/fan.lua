@@ -13,7 +13,6 @@ local fan = {}
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function fan.gen(device, info, conf)
-    ---@class DmakerFanIIDs:table Dmaker Fan Instance ID table.
     local iids = {
         acc = conf.aid,
         fan = hap.getNewInstanceID(),
@@ -41,47 +40,47 @@ function fan.gen(device, info, conf)
                     hidden = false
                 },
                 chars = {
-                    Active.new(iids.active, function (request, self)
+                    Active.new(iids.active, function (request)
                         local activeVal = Active.value
                         local value
-                        if self:getProp("power") then
+                        if device:getProp("power") then
                             value = activeVal.Active
                         else
                             value = activeVal.Inactive
                         end
-                        self.logger:info("Read Active: " .. searchKey(activeVal, value))
+                        device.logger:info("Read Active: " .. searchKey(activeVal, value))
                         return value, hap.Error.None
-                    end, function (request, value, self)
+                    end, function (request, value)
                         local activeVal = Active.value
-                        self.logger:info("Write Active: " .. searchKey(activeVal, value))
-                        self:setProp("power", value == activeVal.Active)
+                        device.logger:info("Write Active: " .. searchKey(activeVal, value))
+                        device:setProp("power", value == activeVal.Active)
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end),
-                    RotationSpeed.new(iids.rotationSpeed, function (request, self)
-                        local value = self:getProp("fanSpeed")
-                        self.logger:info("Read RotationSpeed: " .. value)
+                    RotationSpeed.new(iids.rotationSpeed, function (request)
+                        local value = device:getProp("fanSpeed")
+                        device.logger:info("Read RotationSpeed: " .. value)
                         return tonumber(value), hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write RotationSpeed: " .. value)
-                        self:setProp("fanSpeed", math.tointeger(value))
+                    end, function (request, value)
+                        device.logger:info("Write RotationSpeed: " .. value)
+                        device:setProp("fanSpeed", math.tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end, 1, 100, 1),
-                    SwingMode.new(iids.swingMode, function (request, self)
+                    SwingMode.new(iids.swingMode, function (request)
                         local swingModeVal = SwingMode.value
                         local value
-                        if self:getProp("swingMode") then
+                        if device:getProp("swingMode") then
                             value = swingModeVal.Enabled
                         else
                             value = swingModeVal.Disabled
                         end
-                        self.logger:info("Read SwingMode: " .. searchKey(swingModeVal, value))
+                        device.logger:info("Read SwingMode: " .. searchKey(swingModeVal, value))
                         return value, hap.Error.None
-                    end, function (request, value, self)
+                    end, function (request, value)
                         local swingModeVal = SwingMode.value
-                        self.logger:info("Write SwingMode: " .. searchKey(swingModeVal, value))
-                        self:setProp("swingMode", value == swingModeVal.Enabled)
+                        device.logger:info("Write SwingMode: " .. searchKey(swingModeVal, value))
+                        device:setProp("swingMode", value == swingModeVal.Enabled)
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end)
@@ -89,12 +88,11 @@ function fan.gen(device, info, conf)
             }
         },
         cbs = {
-            identify = function (request, self)
-                self.logger:info("Identify callback is called.")
+            identify = function (request)
+                device.logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        },
-        context = device
+        }
     }
 end
 

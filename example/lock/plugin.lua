@@ -26,17 +26,23 @@ local logger = log.getLogger("lock.plugin")
 ---@param conf LockAccessoryConf
 ---@return HapAccessory
 local function gen(conf)
-    local context = {
-        aid = hap.getNewBridgedAccessoryID(),
-        mechanismIID = hap.getNewInstanceID(),
-        curStateIID = hap.getNewInstanceID(),
-        tgtStateIID = hap.getNewInstanceID(),
-        curState = LockCurrentState.value.Secured,
-        tgtState = LockTargetState.value.Secured
+    local iids = {
+        acc = hap.getNewBridgedAccessoryID(),
+        mechanism = hap.getNewInstanceID(),
+        mechanismSrvSign = hap.getNewInstanceID(),
+        mechanismName = hap.getNewInstanceID(),
+        curState = hap.getNewInstanceID(),
+        tgtState = hap.getNewInstanceID(),
+        manage = hap.getNewInstanceID(),
+        manageSrvSign = hap.getNewInstanceID(),
+        manageCtrlPoint = hap.getNewInstanceID(),
+        manageVersion = hap.getNewInstanceID()
     }
+    local curState = LockCurrentState.value.Secured
+    local tgtState = LockTargetState.value.Secured
     local name = conf.name or "Lock"
     return {
-        aid = context.aid,
+        aid = iids.acc,
         category = "BridgedAccessory",
         name = name,
         mfg = "Acme",
@@ -47,34 +53,34 @@ local function gen(conf)
         services = {
             hap.AccessoryInformationService,
             {
-                iid = context.mechanismIID,
+                iid = iids.mechanism,
                 type = "LockMechanism",
                 props = {
                     primaryService = true,
                     hidden = false
                 },
                 chars = {
-                    ServiceSignature.new(hap.getNewInstanceID()),
-                    Name.new(hap.getNewInstanceID(), name),
-                    LockCurrentState.new(context.curStateIID,
-                        function (request, context)
+                    ServiceSignature.new(iids.mechanismSrvSign),
+                    Name.new(iids.mechanismName, name),
+                    LockCurrentState.new(iids.curState,
+                        function (request)
                             logger:info(("Read currentState: %s"):format(
-                                util.searchKey(LockCurrentState.value, context.curState)))
-                            return context.curState, hap.Error.None
+                                util.searchKey(LockCurrentState.value, curState)))
+                            return curState, hap.Error.None
                         end),
-                    LockTargetState.new(context.tgtStateIID,
-                        function (request, context)
+                    LockTargetState.new(iids.tgtState,
+                        function (request)
                             logger:info(("Read targetState: %s"):format(
-                                util.searchKey(LockTargetState.value, context.tgtState)))
-                            return context.tgtState, hap.Error.None
+                                util.searchKey(LockTargetState.value, tgtState)))
+                            return tgtState, hap.Error.None
                         end,
-                        function (request, value, context)
+                        function (request, value)
                             logger:info(("Write targetState: %s"):format(
                                 util.searchKey(LockTargetState.value, value)))
-                            if value ~= context.tgtState then
-                                context.tgtState = value
-                                context.curState = value
-                                hap.raiseEvent(context.aid, context.mechanismIID, context.curStateIID)
+                            if value ~= tgtState then
+                                tgtState = value
+                                curState = value
+                                hap.raiseEvent(request.aid, iids.mechanism, iids.curState)
                                 hap.raiseEvent(request.aid, request.sid, request.cid)
                             end
                             return hap.Error.None
@@ -82,23 +88,18 @@ local function gen(conf)
                 }
             },
             {
-                iid = hap.getNewInstanceID(),
+                iid = iids.manage,
                 type = "LockManagement",
                 props = {
                     primaryService = false,
-                    hidden = false,
-                    ble = {
-                        supportsConfiguration = false,
-                    }
+                    hidden = false
                 },
                 chars = {
-                    ServiceSignature.new(hap.getNewInstanceID()),
-                    LockControlPoint.new(hap.getNewInstanceID(),
-                        function (request, value, context)
+                    ServiceSignature.new(iids.manageSrvSign),
+                    LockControlPoint.new(iids.manageCtrlPoint, function (request, value)
                             return hap.Error.None
                         end),
-                    Version.new(hap.getNewInstanceID(),
-                        function (request, context)
+                    Version.new(iids.manageVersion, function (request)
                             return "1.0", hap.Error.None
                         end)
                 }
@@ -109,8 +110,7 @@ local function gen(conf)
                 logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        },
-        context = context
+        }
     }
 end
 

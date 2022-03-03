@@ -7,7 +7,7 @@ return {
     },
     ---New a ``LockCurrentState`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HapCharacteristicReadRequest, context?:any): any, HapError
+    ---@param read fun(request:HapCharacteristicReadRequest): any, HapError
     ---@return HapCharacteristic characteristic
     new = function (iid, read)
         return {

@@ -4,13 +4,17 @@ local raiseEvent = hap.raiseEvent
 
 local plug = {}
 
+---@class PlugDevice:MiioDevice
+---
+---@field getOn fun(): boolean
+---@field setOn fun(value: boolean)
+
 ---Create a plug.
----@param device MiioDevice Device object.
+---@param device PlugDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function plug.gen(device, info, conf)
-    ---@class PlugIIDs:table Plug Instance ID table.
     local iids = {
         acc = conf.aid,
         outlet = hap.getNewInstanceID(),
@@ -36,13 +40,13 @@ function plug.gen(device, info, conf)
                     hidden = false
                 },
                 chars = {
-                    On.new(iids.on, function (request, self)
-                        local value = self:getOn()
-                        self.logger:info(("Read On: %s"):format(value))
+                    On.new(iids.on, function (request)
+                        local value = device:getOn()
+                        device.logger:info(("Read On: %s"):format(value))
                         return value, hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info(("Write On: %s"):format(value))
-                        self:setOn(value)
+                    end, function (request, value)
+                        device.logger:info(("Write On: %s"):format(value))
+                        device:setOn(value)
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end)
@@ -50,12 +54,11 @@ function plug.gen(device, info, conf)
             }
         },
         cbs = {
-            identify = function (request, self)
-                self.logger:info("Identify callback is called.")
+            identify = function (request)
+                device.logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        },
-        context = device
+        }
     }
 end
 

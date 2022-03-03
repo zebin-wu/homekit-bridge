@@ -1534,9 +1534,9 @@ int finsh_call_handle_read(lua_State *L, int status, lua_KContext _ctx) {
 }
 
 static int lhap_char_call_handle_read(lua_State *L) {
-    // 1. call_ctx, 2: traceback, 3: func, 4: request, 5: context
+    // stack: <call_ctx, traceback, func, request>
     lua_KContext call_ctx = (lua_KContext)lua_touserdata(L, 1);
-    return finsh_call_handle_read(L, lua_pcallk(L, 2, 2, 2, call_ctx, finsh_call_handle_read), call_ctx);
+    return finsh_call_handle_read(L, lua_pcallk(L, 1, 2, 2, call_ctx, finsh_call_handle_read), call_ctx);
 }
 
 static HAP_RESULT_USE_CHECK
@@ -1570,11 +1570,8 @@ HAPError lhap_char_base_handleRead(
     lhap_create_request_table(co, transportType, session, NULL,
         accessory, service, characteristic);
 
-    // push the context
-    lua_rawgetp(co, LUA_REGISTRYINDEX, accessory);
-
     int status, nres;
-    status = lc_resume(co, L, 5, &nres);
+    status = lc_resume(co, L, 4, &nres);
     switch (status) {
     case LUA_OK:
         HAPAssert(lua_isinteger(L, -1));
@@ -1800,9 +1797,9 @@ int finsh_call_handle_write(lua_State *L, int status, lua_KContext _ctx) {
 }
 
 static int lhap_char_call_handle_write(lua_State *L) {
-    // 1. call_ctx, 2: traceback, 3: func, 4: request, 5: value, 6: context
+    // stack: <call_ctx, traceback, func, request, value>
     lua_KContext call_ctx = (lua_KContext)lua_touserdata(L, 1);
-    return finsh_call_handle_write(L, lua_pcallk(L, 3, 1, 2, call_ctx, finsh_call_handle_write), call_ctx);
+    return finsh_call_handle_write(L, lua_pcallk(L, 2, 1, 2, call_ctx, finsh_call_handle_write), call_ctx);
 }
 
 static lua_State *lhap_char_base_handleWrite(
@@ -1842,11 +1839,8 @@ HAPError lhap_char_last_handleWrite(lua_State *L,
     // get call_ctx from index 2
     lhap_call_context *call_ctx = lua_touserdata(co, 2);
 
-    // push the context
-    lua_rawgetp(co, LUA_REGISTRYINDEX, accessory);
-
     int status, nres;
-    status = lc_resume(co, L, 6, &nres);
+    status = lc_resume(co, L, 5, &nres);
     switch (status) {
     case LUA_OK:
         HAPAssert(lua_isinteger(L, -1));
@@ -2302,11 +2296,8 @@ HAPError lhap_accessory_identify_cb(
     lhap_create_request_table(co, request->transportType,
         request->session, &request->remote, accessory, NULL, NULL);
 
-    // push the context
-    lua_rawgetp(co, LUA_REGISTRYINDEX, accessory);
-
     int status, nres;
-    status = lc_resume(co, L, 2, &nres);
+    status = lc_resume(co, L, 1, &nres);
     switch (status) {
     case LUA_OK:
         if (nres == 1) {

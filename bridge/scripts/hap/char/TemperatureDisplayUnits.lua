@@ -5,8 +5,8 @@ return {
     },
     ---New a ``TemperatureDisplayUnits`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HapCharacteristicReadRequest, context?:any): any, HapError
-    ---@param write fun(request:HapCharacteristicWriteRequest, value:any, context?:any): HapError
+    ---@param read fun(request:HapCharacteristicReadRequest): any, HapError
+    ---@param write fun(request:HapCharacteristicWriteRequest, value:any): HapError
     ---@return HapCharacteristic characteristic
     new = function (iid, read, write)
         return {

@@ -16,7 +16,7 @@ return {
             },
             constraints = { maxLen = 64 },
             cbs = {
-                read = function (request, context)
+                read = function (request)
                     return name, hap.Error.None
                 end
             }

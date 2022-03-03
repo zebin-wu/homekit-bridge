@@ -25,7 +25,6 @@ local valMapping = {
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function fan.gen(device, info, conf)
-    ---@class ZhimiFanIIDs:table Zhimi Fan Instance ID table.
     local iids = {
         acc = conf.aid,
         fan = hap.getNewInstanceID(),
@@ -53,33 +52,33 @@ function fan.gen(device, info, conf)
                     hidden = false
                 },
                 chars = {
-                    Active.new(iids.active, function (request, self)
-                        local value = valMapping.power[self:getProp("power")]
-                        self.logger:info("Read Active: " .. searchKey(Active.value, value))
+                    Active.new(iids.active, function (request)
+                        local value = valMapping.power[device:getProp("power")]
+                        device.logger:info("Read Active: " .. searchKey(Active.value, value))
                         return value, hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write Active: " .. searchKey(Active.value, value))
-                        self:setProp("power", searchKey(valMapping.power, value))
+                    end, function (request, value)
+                        device.logger:info("Write Active: " .. searchKey(Active.value, value))
+                        device:setProp("power", searchKey(valMapping.power, value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end),
-                    RotationSpeed.new(iids.rotationSpeed, function (request, self)
-                        local value = self:getProp("speed_level")
-                        self.logger:info("Read RotationSpeed: " .. value)
+                    RotationSpeed.new(iids.rotationSpeed, function (request)
+                        local value = device:getProp("speed_level")
+                        device.logger:info("Read RotationSpeed: " .. value)
                         return tonumber(value), hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write RotationSpeed: " .. value)
-                        self:setProp("speed_level", math.tointeger(value))
+                    end, function (request, value)
+                        device.logger:info("Write RotationSpeed: " .. value)
+                        device:setProp("speed_level", math.tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end, 1, 100, 1),
-                    SwingMode.new(iids.swingMode, function (request, self)
-                        local value = valMapping.angle_enable[self:getProp("angle_enable")]
-                        self.logger:info("Read SwingMode: " .. searchKey(SwingMode.value, value))
+                    SwingMode.new(iids.swingMode, function (request)
+                        local value = valMapping.angle_enable[device:getProp("angle_enable")]
+                        device.logger:info("Read SwingMode: " .. searchKey(SwingMode.value, value))
                         return value, hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write SwingMode: " .. searchKey(SwingMode.value, value))
-                        self:setProp("angle_enable", searchKey(valMapping.angle_enable, value))
+                    end, function (request, value)
+                        device.logger:info("Write SwingMode: " .. searchKey(SwingMode.value, value))
+                        device:setProp("angle_enable", searchKey(valMapping.angle_enable, value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end)
@@ -87,12 +86,11 @@ function fan.gen(device, info, conf)
             }
         },
         cbs = {
-            identify = function (request, self)
-                self.logger:info("Identify callback is called.")
+            identify = function (request)
+                device.logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        },
-        context = device
+        }
     }
 end
 

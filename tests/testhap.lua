@@ -193,8 +193,8 @@ local function testCharacteristic(expect, k, vals, format, constraints)
             },
             constraints = constraints or {},
             cbs = {
-                read = function (request, context) end,
-                write = function (request, value, context) end
+                read = function (request) end,
+                write = function (request, value) end
             }
         }
         logTestInfo("init", tab, k, v, expect)

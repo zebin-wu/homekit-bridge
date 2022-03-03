@@ -16,7 +16,6 @@ local derh = {}
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HapAccessory accessory HomeKit Accessory.
 function derh.gen(device, info, conf)
-    ---@class DmakerFanIIDs:table Dmaker Fan Instance ID table.
     local iids = {
         acc = conf.aid,
         derh = hap.getNewInstanceID(),
@@ -26,7 +25,6 @@ function derh.gen(device, info, conf)
         curHumidity = hap.getNewInstanceID(),
         tgtHumidity = hap.getNewInstanceID()
     }
-    device.iids = iids
 
     return {
         aid = iids.acc,
@@ -47,52 +45,52 @@ function derh.gen(device, info, conf)
                     hidden = false
                 },
                 chars = {
-                    Active.new(iids.active, function (request, self)
+                    Active.new(iids.active, function (request)
                         local value
-                        if self:getProp("power") then
+                        if device:getProp("power") then
                             value = Active.value.Active
                         else
                             value = Active.value.Inactive
                         end
-                        self.logger:info("Read Active: " .. searchKey(Active.value, value))
+                        device.logger:info("Read Active: " .. searchKey(Active.value, value))
                         return value, hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write Active: " .. searchKey(Active.value, value))
-                        self:setProp("power", value == Active.value.Active)
+                    end, function (request, value)
+                        device.logger:info("Write Active: " .. searchKey(Active.value, value))
+                        device:setProp("power", value == Active.value.Active)
                         raiseEvent(request.aid, request.sid, request.cid)
-                        raiseEvent(request.aid, request.sid, self.iids.curState)
+                        raiseEvent(request.aid, request.sid, iids.curState)
                         return hap.Error.None
                     end),
-                    CurrentState.new(iids.curState, function (request, self)
+                    CurrentState.new(iids.curState, function (request)
                         local value
-                        if self:getProp("power") then
+                        if device:getProp("power") then
                             value = CurrentState.value.Dehumidifying
                         else
                             value = CurrentState.value.Inactive
                         end
-                        self.logger:info("Read CurrentHumidifierDehumidifierState: " .. searchKey(CurrentState.value, value))
+                        device.logger:info("Read CurrentHumidifierDehumidifierState: " .. searchKey(CurrentState.value, value))
                         return value, hap.Error.None
                     end),
-                    TargetState.new(iids.tgtState, function (request, self)
+                    TargetState.new(iids.tgtState, function (request)
                         local value = TargetState.value.Dehumidifier
-                        self.logger:info("Read TargetHumidifierDehumidifierState: Dehumidifier")
+                        device.logger:info("Read TargetHumidifierDehumidifierState: Dehumidifier")
                         return value, hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write TargetHumidifierDehumidifierState: " .. searchKey(TargetState.value, value))
+                    end, function (request, value, device)
+                        device.logger:info("Write TargetHumidifierDehumidifierState: " .. searchKey(TargetState.value, value))
                         return hap.Error.None
                     end, TargetState.value.Dehumidifier, TargetState.value.Dehumidifier, 0),
-                    CurrentHumidity.new(iids.curHumidity, function (request, self)
-                        local value =  self:getProp("curHumidity")
-                        self.logger:info("Read CurrentRelativeHumidity: " .. tointeger(value))
+                    CurrentHumidity.new(iids.curHumidity, function (request)
+                        local value =  device:getProp("curHumidity")
+                        device.logger:info("Read CurrentRelativeHumidity: " .. tointeger(value))
                         return value, hap.Error.None
                     end),
-                    TargetHumidity.new(iids.tgtHumidity, function (request, self)
-                        local value = self:getProp("tgtHumidity")
-                        self.logger:info("Read RelativeHumidityDehumidifierThreshold: " .. tointeger(value))
+                    TargetHumidity.new(iids.tgtHumidity, function (request)
+                        local value = device:getProp("tgtHumidity")
+                        device.logger:info("Read RelativeHumidityDehumidifierThreshold: " .. tointeger(value))
                         return value, hap.Error.None
-                    end, function (request, value, self)
-                        self.logger:info("Write RelativeHumidityDehumidifierThreshold: " .. tointeger(value))
-                        self:setProp("tgtHumidity", tointeger(value))
+                    end, function (request, value, device)
+                        device.logger:info("Write RelativeHumidityDehumidifierThreshold: " .. tointeger(value))
+                        device:setProp("tgtHumidity", tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         return hap.Error.None
                     end)
@@ -100,12 +98,11 @@ function derh.gen(device, info, conf)
             }
         },
         cbs = {
-            identify = function (request, self)
-                self.logger:info("Identify callback is called.")
+            identify = function (request)
+                device.logger:info("Identify callback is called.")
                 return hap.Error.None
             end
-        },
-        context = device
+        }
     }
 end
 
