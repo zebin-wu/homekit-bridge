@@ -43,12 +43,11 @@ function plug.gen(device, info, conf)
                     On.new(iids.on, function (request)
                         local value = device:getOn()
                         device.logger:info(("Read On: %s"):format(value))
-                        return value, hap.Error.None
+                        return value
                     end, function (request, value)
                         device.logger:info(("Write On: %s"):format(value))
                         device:setOn(value)
                         raiseEvent(request.aid, request.sid, request.cid)
-                        return hap.Error.None
                     end)
                 }
             }
@@ -56,7 +55,6 @@ function plug.gen(device, info, conf)
         cbs = {
             identify = function (request)
                 device.logger:info("Identify callback is called.")
-                return hap.Error.None
             end
         }
     }

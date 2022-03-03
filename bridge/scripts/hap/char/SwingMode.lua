@@ -5,8 +5,8 @@ return {
     },
     ---New a ``SwingMode`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HapCharacteristicReadRequest): any, HapError
-    ---@param write fun(request:HapCharacteristicWriteRequest, value:any): HapError
+    ---@param read fun(request:HapCharacteristicReadRequest): any
+    ---@param write fun(request:HapCharacteristicWriteRequest, value:any)
     ---@return HapCharacteristic characteristic
     new = function (iid, read, write)
         return {

@@ -49,23 +49,21 @@ function fan.gen(device, info, conf)
                             value = activeVal.Inactive
                         end
                         device.logger:info("Read Active: " .. searchKey(activeVal, value))
-                        return value, hap.Error.None
+                        return value
                     end, function (request, value)
                         local activeVal = Active.value
                         device.logger:info("Write Active: " .. searchKey(activeVal, value))
                         device:setProp("power", value == activeVal.Active)
                         raiseEvent(request.aid, request.sid, request.cid)
-                        return hap.Error.None
                     end),
                     RotationSpeed.new(iids.rotationSpeed, function (request)
                         local value = device:getProp("fanSpeed")
                         device.logger:info("Read RotationSpeed: " .. value)
-                        return tonumber(value), hap.Error.None
+                        return value
                     end, function (request, value)
                         device.logger:info("Write RotationSpeed: " .. value)
                         device:setProp("fanSpeed", math.tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
-                        return hap.Error.None
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request)
                         local swingModeVal = SwingMode.value
@@ -76,13 +74,12 @@ function fan.gen(device, info, conf)
                             value = swingModeVal.Disabled
                         end
                         device.logger:info("Read SwingMode: " .. searchKey(swingModeVal, value))
-                        return value, hap.Error.None
+                        return value
                     end, function (request, value)
                         local swingModeVal = SwingMode.value
                         device.logger:info("Write SwingMode: " .. searchKey(swingModeVal, value))
                         device:setProp("swingMode", value == swingModeVal.Enabled)
                         raiseEvent(request.aid, request.sid, request.cid)
-                        return hap.Error.None
                     end)
                 }
             }
@@ -90,7 +87,6 @@ function fan.gen(device, info, conf)
         cbs = {
             identify = function (request)
                 device.logger:info("Identify callback is called.")
-                return hap.Error.None
             end
         }
     }

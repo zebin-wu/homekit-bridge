@@ -26,7 +26,7 @@ local hap = {}
 
 ---@class HapAccessoryCallbacks:table Accessory Callbacks.
 ---
----@field identify fun(request: HapAccessoryIdentifyRequest): HapError The callback used to invoke the identify routine.
+---@field identify fun(request: HapAccessoryIdentifyRequest) The callback used to invoke the identify routine.
 
 ---@class HapAccessoryIdentifyRequest:table Accessory identify request.
 ---
@@ -116,8 +116,8 @@ local hap = {}
 
 ---@class HapCharacteristicCallbacks:table Characteristic Callbacks.
 ---
----@field read async fun(request:HapCharacteristicReadRequest): any, HapError The callback used to handle read requests, it returns value and error.
----@field write async fun(request:HapCharacteristicWriteRequest, value:any): HapError The callback used to handle write requests, it return error.
+---@field read async fun(request:HapCharacteristicReadRequest): any The callback used to handle read requests, it returns value.
+---@field write async fun(request:HapCharacteristicWriteRequest, value:any) The callback used to handle write requests.
 ---@field sub async fun(request:HapCharacteristicSubscriptionRequest) The callback used to handle subscribe requests.
 ---@field unsub async fun(request:HapCharacteristicSubscriptionRequest) The callback used to handle unsubscribe requests.
 
@@ -359,19 +359,6 @@ local hap = {}
 ---| '"Percentage"' # A percentage %.
 ---| '"Lux"'        # Lux (that is, illuminance).
 ---| '"Seconds"'    # Seconds.
-
----@class HapError:integer Error type.
-
----``ENUM`` Error type.
-hap.Error = {
-    None = 0,               ---No error occurred.
-    Unknown = 1,            ---Unknown error.
-    InvalidState = 2,       ---Operation is not supported in current state.
-    InvalidData = 3,        ---Data has unexpected format.
-    OutOfResources = 4,     ---Out of resources.
-    NotAuthorized = 5,      ---Insufficient authorization.
-    Busy = 6,               ---Operation failed temporarily, retry later.
-}
 
 ---HomeKit Accessory Information service.
 ---@type lightuserdata

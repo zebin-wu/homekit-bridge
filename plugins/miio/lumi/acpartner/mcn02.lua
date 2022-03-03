@@ -69,7 +69,7 @@ function acpartner.gen(device, info, conf)
                     Active.new(iids.active, function (request)
                         local value = valMapping.power[device:getProp("power")]
                         device.logger:info("Read Active: " .. searchKey(Active.value, value))
-                        return value, hap.Error.None
+                        return value
                     end, function (request, value)
                         device.logger:info("Write Active: " .. searchKey(Active.value, value))
                         device:setProp("power", searchKey(valMapping.power, value))
@@ -81,12 +81,11 @@ function acpartner.gen(device, info, conf)
                             raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
                             raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
                         end):start(500)
-                        return hap.Error.None
                     end),
                     CurTemp.new(iids.curTemp, function (request)
                         local value = device:getProp("tar_temp")
                         device.logger:info("Read CurrentTemperature: " .. value)
-                        return value, hap.Error.None
+                        return value
                     end),
                     CurHeatCoolState.new(iids.curState, function (request)
                         local mode = device:getProp("mode")
@@ -99,7 +98,7 @@ function acpartner.gen(device, info, conf)
                             value = CurHeatCoolState.value.Idle
                         end
                         device.logger:info("Read CurrentHeaterCoolerState: " .. searchKey(CurHeatCoolState.value, value))
-                        return value, hap.Error.None
+                        return value
                     end),
                     TgtHeatCoolState.new(iids.tgtState, function (request)
                         local mode = device:getProp("mode")
@@ -110,7 +109,7 @@ function acpartner.gen(device, info, conf)
                             value = valMapping.mode[mode]
                         end
                         device.logger:info("Read TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
-                        return value, hap.Error.None
+                        return value
                     end, function (request, value)
                         device.logger:info("Write TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
                         device:setProp("mode", searchKey(valMapping.mode, value))
@@ -120,27 +119,24 @@ function acpartner.gen(device, info, conf)
                             raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
                             raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
                         end):start(500)
-                        return hap.Error.None
                     end),
                     CoolThrholdTemp.new(iids.coolThrTemp, function (request)
                         local value =  device:getProp("tar_temp")
                         device.logger:info("Read CoolingThresholdTemperature: " .. value)
-                        return tonumber(value), hap.Error.None
+                        return value
                     end, function (request, value)
                         device.logger:info("Write CoolingThresholdTemperature: " .. value)
                         device:setProp("tar_temp", math.tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
-                        return hap.Error.None
                     end, 16, 30, 1),
                     HeatThrholdTemp.new(iids.heatThrTemp, function (request)
                         local value = device:getProp("tar_temp")
                         device.logger:info("Read HeatingThresholdTemperature: " .. value)
-                        return tonumber(value), hap.Error.None
+                        return value
                     end, function (request, value)
                         device.logger:info("Write HeatingThresholdTemperature: " .. value)
                         device:setProp("tar_temp", math.tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
-                        return hap.Error.None
                     end, 16, 30, 1),
                     SwingMode.new(iids.swingMode, function (request)
                         local ver_swing = device:getProp("ver_swing")
@@ -151,12 +147,11 @@ function acpartner.gen(device, info, conf)
                             value = valMapping.ver_swing[ver_swing]
                         end
                         device.logger:info("Read SwingMode: " .. searchKey(SwingMode.value, value))
-                        return value, hap.Error.None
+                        return value
                     end, function (request, value)
                         device.logger:info("Write SwingMode: " .. searchKey(SwingMode.value, value))
                         device:setProp("ver_swing", searchKey(valMapping.ver_swing, value))
                         raiseEvent(request.aid, request.sid, request.cid)
-                        return hap.Error.None
                     end)
                 }
             }
@@ -164,7 +159,6 @@ function acpartner.gen(device, info, conf)
         cbs = {
             identify = function (request)
                 device.logger:info("Identify callback is called.")
-                return hap.Error.None
             end
         }
     }

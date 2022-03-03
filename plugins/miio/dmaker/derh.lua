@@ -53,13 +53,12 @@ function derh.gen(device, info, conf)
                             value = Active.value.Inactive
                         end
                         device.logger:info("Read Active: " .. searchKey(Active.value, value))
-                        return value, hap.Error.None
+                        return value
                     end, function (request, value)
                         device.logger:info("Write Active: " .. searchKey(Active.value, value))
                         device:setProp("power", value == Active.value.Active)
                         raiseEvent(request.aid, request.sid, request.cid)
                         raiseEvent(request.aid, request.sid, iids.curState)
-                        return hap.Error.None
                     end),
                     CurrentState.new(iids.curState, function (request)
                         local value
@@ -69,30 +68,28 @@ function derh.gen(device, info, conf)
                             value = CurrentState.value.Inactive
                         end
                         device.logger:info("Read CurrentHumidifierDehumidifierState: " .. searchKey(CurrentState.value, value))
-                        return value, hap.Error.None
+                        return value
                     end),
                     TargetState.new(iids.tgtState, function (request)
                         local value = TargetState.value.Dehumidifier
                         device.logger:info("Read TargetHumidifierDehumidifierState: Dehumidifier")
-                        return value, hap.Error.None
-                    end, function (request, value, device)
+                        return value
+                    end, function (request, value)
                         device.logger:info("Write TargetHumidifierDehumidifierState: " .. searchKey(TargetState.value, value))
-                        return hap.Error.None
                     end, TargetState.value.Dehumidifier, TargetState.value.Dehumidifier, 0),
                     CurrentHumidity.new(iids.curHumidity, function (request)
                         local value =  device:getProp("curHumidity")
                         device.logger:info("Read CurrentRelativeHumidity: " .. tointeger(value))
-                        return value, hap.Error.None
+                        return value
                     end),
                     TargetHumidity.new(iids.tgtHumidity, function (request)
                         local value = device:getProp("tgtHumidity")
                         device.logger:info("Read RelativeHumidityDehumidifierThreshold: " .. tointeger(value))
-                        return value, hap.Error.None
-                    end, function (request, value, device)
+                        return value
+                    end, function (request, value)
                         device.logger:info("Write RelativeHumidityDehumidifierThreshold: " .. tointeger(value))
                         device:setProp("tgtHumidity", tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
-                        return hap.Error.None
                     end)
                 }
             }
@@ -100,7 +97,6 @@ function derh.gen(device, info, conf)
         cbs = {
             identify = function (request)
                 device.logger:info("Identify callback is called.")
-                return hap.Error.None
             end
         }
     }

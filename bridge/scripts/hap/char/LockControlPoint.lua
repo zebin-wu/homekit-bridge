@@ -1,7 +1,7 @@
 return {
     ---New a ``LockControlPoint`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param write fun(request:HapCharacteristicWriteRequest, value:any): HapError
+    ---@param write fun(request:HapCharacteristicWriteRequest, value:any)
     ---@return HapCharacteristic characteristic
     new = function (iid, write)
         return {

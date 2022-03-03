@@ -54,7 +54,7 @@ local function gen(conf)
                     Name.new(iids.name, name),
                     On.new(iids.on, function (request)
                             logger:info(("Read lightBulbOn: %s"):format(lightBulbOn))
-                            return lightBulbOn, hap.Error.None
+                            return lightBulbOn
                         end,
                         function (request, value)
                             logger:info(("Write lightBulbOn: %s"):format(value))
@@ -62,7 +62,6 @@ local function gen(conf)
                                 lightBulbOn = value
                                 hap.raiseEvent(request.aid, request.sid, request.cid)
                             end
-                            return hap.Error.None
                         end)
                 }
             }
@@ -70,7 +69,6 @@ local function gen(conf)
         cbs = {
             identify = function (request)
                 logger:info("Identify callback is called.")
-                return hap.Error.None
             end
         }
     }

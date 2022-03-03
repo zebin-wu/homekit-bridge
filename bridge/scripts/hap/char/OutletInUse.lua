@@ -1,7 +1,7 @@
 return {
     ---New a ``OutletInUse`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HapCharacteristicReadRequest): any, HapError
+    ---@param read fun(request:HapCharacteristicReadRequest): any
     ---@return HapCharacteristic characteristic
     new = function (iid, read)
         return {

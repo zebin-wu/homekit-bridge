@@ -66,13 +66,13 @@ local function gen(conf)
                         function (request)
                             logger:info(("Read currentState: %s"):format(
                                 util.searchKey(LockCurrentState.value, curState)))
-                            return curState, hap.Error.None
+                            return curState
                         end),
                     LockTargetState.new(iids.tgtState,
                         function (request)
                             logger:info(("Read targetState: %s"):format(
                                 util.searchKey(LockTargetState.value, tgtState)))
-                            return tgtState, hap.Error.None
+                            return tgtState
                         end,
                         function (request, value)
                             logger:info(("Write targetState: %s"):format(
@@ -83,7 +83,6 @@ local function gen(conf)
                                 hap.raiseEvent(request.aid, iids.mechanism, iids.curState)
                                 hap.raiseEvent(request.aid, request.sid, request.cid)
                             end
-                            return hap.Error.None
                         end)
                 }
             },
@@ -96,19 +95,14 @@ local function gen(conf)
                 },
                 chars = {
                     ServiceSignature.new(iids.manageSrvSign),
-                    LockControlPoint.new(iids.manageCtrlPoint, function (request, value)
-                            return hap.Error.None
-                        end),
-                    Version.new(iids.manageVersion, function (request)
-                            return "1.0", hap.Error.None
-                        end)
+                    LockControlPoint.new(iids.manageCtrlPoint, function (request, value) end),
+                    Version.new(iids.manageVersion, function (request) return "1.0" end)
                 }
             }
         },
         cbs = {
             identify = function (request)
                 logger:info("Identify callback is called.")
-                return hap.Error.None
             end
         }
     }

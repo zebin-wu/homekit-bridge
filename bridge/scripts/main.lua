@@ -23,7 +23,6 @@ hap.init({
     cbs = {
         identify = function (request)
             logger:info("Identify callback is called.")
-            return hap.Error.None
         end
     }
 }, {
