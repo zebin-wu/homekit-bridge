@@ -1,12 +1,12 @@
 return {
     ---New a ``RelativeHumidityDehumidifierThreshold`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HapCharacteristicReadRequest): any
-    ---@param write fun(request:HapCharacteristicWriteRequest, value:any)
+    ---@param read fun(request:HAPCharacteristicReadRequest): any
+    ---@param write fun(request:HAPCharacteristicWriteRequest, value:any)
     ---@param minVal? number Minimum value.
     ---@param maxVal? number Maximum value.
     ---@param stepVal? number Step value.
-    ---@return HapCharacteristic characteristic
+    ---@return HAPCharacteristic characteristic
     new = function (iid, read, write, minVal, maxVal, stepVal)
         return {
             format = "Float",

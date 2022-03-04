@@ -17,7 +17,7 @@ hap.init({
     hwVer = chip.getInfo("hwver"),
     services = {
         hap.AccessoryInformationService,
-        hap.HapProtocolInformationService,
+        hap.HAPProtocolInformationService,
         hap.PairingService,
     },
     cbs = {

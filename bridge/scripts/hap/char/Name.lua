@@ -2,7 +2,7 @@ return {
     ---New a ``Name`` characteristic.
     ---@param iid integer Instance ID.
     ---@param name string Service name.
-    ---@return HapCharacteristic characteristic
+    ---@return HAPCharacteristic characteristic
     new = function (iid, name)
         local hap = require("hap")
         return {

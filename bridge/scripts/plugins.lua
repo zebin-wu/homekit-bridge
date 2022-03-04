@@ -10,8 +10,8 @@ local logger = log.getLogger("plugins")
 
 ---@class Plugin:table Plugin.
 ---
----@field init fun(conf: PluginConf): HapAccessory[] Initialize plugin and generate accessories in initialization.
----@field handleState fun(state: HapServerState) Handle HAP server state.
+---@field init fun(conf: PluginConf): HAPAccessory[] Initialize plugin and generate accessories in initialization.
+---@field handleState fun(state: HAPServerState) Handle HAP server state.
 
 local priv = {
     plugins = {},   ---@type table<string, Plugin>
@@ -60,7 +60,7 @@ function plugins.init(pluginConfs)
 end
 
 ---Handle HAP server state.
----@param state HapServerState
+---@param state HAPServerState
 function plugins.handleState(state)
     for _, plugin in pairs(priv.plugins) do
         plugin.handleState(state)

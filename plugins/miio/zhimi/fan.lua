@@ -23,7 +23,7 @@ local valMapping = {
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
----@return HapAccessory accessory HomeKit Accessory.
+---@return HAPAccessory accessory HomeKit Accessory.
 function fan.gen(device, info, conf)
     local iids = {
         acc = conf.aid,

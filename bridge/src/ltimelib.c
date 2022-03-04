@@ -44,10 +44,9 @@ static void ltime_sleep_cb(HAPPlatformTimerRef timer, void *context) {
 
     HAPAssert(lua_gettop(L) == 0);
 
-    lc_pushtraceback(L);
     lua_pushcfunction(L, ltime_resume);
     lua_pushlightuserdata(L, co);
-    int status = lua_pcall(L, 1, 0, 1);
+    int status = lua_pcall(L, 1, 0, 0);
     if (luai_unlikely(status != LUA_OK)) {
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
@@ -115,10 +114,9 @@ static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
 
     HAPAssert(lua_gettop(L) == 0);
 
-    lc_pushtraceback(L);
     lua_pushcfunction(L, ltime_timer_resume);
     lua_pushlightuserdata(L, ctx);
-    int status = lua_pcall(L, 1, 0, 1);
+    int status = lua_pcall(L, 1, 0, 0);
     if (luai_unlikely(status != LUA_OK)) {
         HAPLogError(&ltime_log, "%s: %s", __func__, lua_tostring(L, -1));
     }

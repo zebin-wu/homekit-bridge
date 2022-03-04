@@ -26,6 +26,29 @@ lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *key) {
     return NULL;
 }
 
+static char *lc_typename(lua_State *L, uint32_t lc_type, char *buf, size_t len) {
+    if (lc_type == 0) {
+        snprintf(buf, len, "no value");
+        return buf;
+    }
+
+    int offset = 0;
+    size_t tnum = 0;
+    offset += snprintf(buf + offset, len - offset, "[");
+    for (int i = 0; i <= 8; i++) {
+        if ((1 << i) & lc_type) {
+            offset += snprintf(buf + offset, len - offset, "%s|", lua_typename(L, i));
+            tnum++;
+        }
+    }
+    if (tnum == 1) {
+        buf[offset - 1] = '\0';
+        return buf + 1;
+    }
+    buf[offset - 1] = ']';
+    return buf;
+}
+
 bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg) {
     // Push another reference to the table on top of the stack (so we know
     // where it is, and this function can work for negative, positive and
@@ -46,7 +69,9 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
         // stack now contains: -1 => value; -2 => key; -3 => table
         if (kv) {
             if (!((1 << lua_type(L, -1)) & kv->type)) {
-                HAPLogError(&lc_log, "%s: Invalid type: %s", __func__, kv->key);
+                char buf[128];
+                HAPLogError(&lc_log, "%s: wrong type of field '%s' (%s expected, got %s)",
+                    __func__, kv->key, lc_typename(L, kv->type, buf, sizeof(buf)), luaL_typename(L, -1));
                 lua_pop(L, 2);
                 return false;
             }
@@ -57,7 +82,7 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
                 }
             }
         } else {
-            HAPLogError(&lc_log, "%s: Unknown key \"%s\".", __func__, key);
+            HAPLogError(&lc_log, "%s: unknown field '%s'", __func__, key);
             lua_pop(L, 2);
             return false;
         }

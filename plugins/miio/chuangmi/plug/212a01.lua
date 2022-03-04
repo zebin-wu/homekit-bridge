@@ -4,7 +4,7 @@ local plug = {}
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
----@return HapAccessory accessory HomeKit Accessory.
+---@return HAPAccessory accessory HomeKit Accessory.
 function plug.gen(device, info, conf)
     -- Source https://miot-spec.org/miot-spec-v2/instance?type=urn:miot-spec-v2:device:outlet:0000A002:chuangmi-212a01:1
     device:setMapping({

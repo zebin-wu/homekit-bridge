@@ -7,8 +7,8 @@ return {
     },
     ---New a ``CurrentHumidifierDehumidifierState`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HapCharacteristicReadRequest): any
-    ---@return HapCharacteristic characteristic
+    ---@param read fun(request:HAPCharacteristicReadRequest): any
+    ---@return HAPCharacteristic characteristic
     new = function (iid, read)
         return {
             format = "UInt8",

@@ -3,6 +3,29 @@ local util = require "util"
 
 local logger = log.getLogger("testhap")
 
+local format = {
+    UInt8 = {
+        min = 0,
+        max = 0xff
+    },
+    UInt16 = {
+        min = 0,
+        max = 0xffff
+    },
+    UInt32 = {
+        min = 0,
+        max = 0xffffffff
+    },
+    UInt64 = {
+        min = 0,
+        max = math.maxinteger
+    },
+    Int = {
+        min = -2147483648,
+        max = 2147483647
+    }
+}
+
 local function fillStr(n, fill)
     fill = fill or "0123456789"
     local s = ""
@@ -74,7 +97,7 @@ local function testAccessory(expect, primary, k, vals, log)
                 fwVer = "1",
                 services = {
                     hap.AccessoryInformationService,
-                    hap.HapProtocolInformationService,
+                    hap.HAPProtocolInformationService,
                     hap.PairingService,
                 },
                 cbs = {}
@@ -89,7 +112,7 @@ local function testAccessory(expect, primary, k, vals, log)
                 fwVer = "1",
                 services = {
                     hap.AccessoryInformationService,
-                    hap.HapProtocolInformationService,
+                    hap.HAPProtocolInformationService,
                     hap.PairingService,
                 },
                 cbs = {}
@@ -163,8 +186,8 @@ end
 ---@param expect boolean Success or failure.
 ---@param k string The key want to test.
 ---@param vals any[] Array of values.
----@param format? HapCharacteristicFormat Characteristic format.
----@param constraints? HapStringCharacteristiConstraints|HapNumberCharacteristiConstraints|HapUInt8CharacteristiConstraints Value constraints.
+---@param format? HAPCharacteristicFormat Characteristic format.
+---@param constraints? HAPStringCharacteristiConstraints|HAPNumberCharacteristiConstraints|HAPUInt8CharacteristiConstraints Value constraints.
 local function testCharacteristic(expect, k, vals, format, constraints)
     format = format or "Bool"
     local tab = "char"
@@ -386,6 +409,12 @@ for i, k in ipairs({ "primaryService", "hidden", "ble.supportsConfiguration" }) 
     testService(false, "props." .. k, { {}, 1, "test" })
 end
 
+---Configure with valid linkedServicess.
+testService(true, "linkedServices", { { format.UInt16.min, format.UInt16.max } })
+
+---Configure with invalid linkedServices.
+testService(false, "linkedServices", { { format.UInt16.min - 1, format.UInt16.max + 1 }, { true, "test" }, "test", true, 1 })
+
 ---Configure with invalid characteristic iid.
 testCharacteristic(false, "iid", { -1, 1.1, true, {} })
 
@@ -595,29 +624,6 @@ testCharacteristic(true, "constraints", { {} })
 
 ---Configure with invalid constraints.
 testCharacteristic(false, "constraints", { true, "test", 1 })
-
-local format = {
-    UInt8 = {
-        min = 0,
-        max = 0xff
-    },
-    UInt16 = {
-        min = 0,
-        max = 0xffff
-    },
-    UInt32 = {
-        min = 0,
-        max = 0xffffffff
-    },
-    UInt64 = {
-        min = 0,
-        max = math.maxinteger
-    },
-    Int = {
-        min = -2147483648,
-        max = 2147483647
-    }
-}
 
 ---Configure with valid constraints maxLen.
 for i, fmt in ipairs({ "String", "Data" }) do

@@ -4,7 +4,7 @@ local plug = {}
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
----@return HapAccessory accessory HomeKit Accessory.
+---@return HAPAccessory accessory HomeKit Accessory.
 function plug.gen(device, info, conf)
     function device:getOn()
         return self:getProp("power") == "on"

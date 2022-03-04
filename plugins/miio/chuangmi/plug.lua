@@ -13,7 +13,7 @@ local plug = {}
 ---@param device PlugDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
----@return HapAccessory accessory HomeKit Accessory.
+---@return HAPAccessory accessory HomeKit Accessory.
 function plug.gen(device, info, conf)
     local iids = {
         acc = conf.aid,

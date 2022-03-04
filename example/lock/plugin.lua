@@ -24,7 +24,7 @@ local logger = log.getLogger("lock.plugin")
 
 ---Generate accessory via configuration.
 ---@param conf LockAccessoryConf
----@return HapAccessory
+---@return HAPAccessory
 local function gen(conf)
     local iids = {
         acc = hap.getNewBridgedAccessoryID(),
@@ -59,6 +59,7 @@ local function gen(conf)
                     primaryService = true,
                     hidden = false
                 },
+                linkedServices = { iids.manage },
                 chars = {
                     ServiceSignature.new(iids.mechanismSrvSign),
                     Name.new(iids.mechanismName, name),
@@ -80,8 +81,8 @@ local function gen(conf)
                             if value ~= tgtState then
                                 tgtState = value
                                 curState = value
-                                hap.raiseEvent(request.aid, iids.mechanism, iids.curState)
                                 hap.raiseEvent(request.aid, request.sid, request.cid)
+                                hap.raiseEvent(request.aid, request.sid, iids.curState)
                             end
                         end)
                 }
@@ -93,6 +94,7 @@ local function gen(conf)
                     primaryService = false,
                     hidden = false
                 },
+                linkedServices = { iids.mechanism },
                 chars = {
                     ServiceSignature.new(iids.manageSrvSign),
                     LockControlPoint.new(iids.manageCtrlPoint, function (request, value) end),
@@ -119,7 +121,7 @@ function plugin.init(conf)
 end
 
 ---Handle HAP server state.
----@param state HapServerState
+---@param state HAPServerState
 function plugin.handleState(state)
     logger:info("HAP server state: " .. state .. ".")
 end

@@ -20,7 +20,7 @@ local logger = log.getLogger("lightbulb.plugin")
 
 ---Generate accessory via configuration.
 ---@param conf LightBulbAccessoryConf
----@return HapAccessory
+---@return HAPAccessory
 local function gen(conf)
     local iids = {
         acc = hap.getNewBridgedAccessoryID(),
@@ -85,7 +85,7 @@ function plugin.init(conf)
 end
 
 ---Handle HAP server state.
----@param state HapServerState
+---@param state HAPServerState
 function plugin.handleState(state)
     logger:info("HAP server state: " .. state .. ".")
 end

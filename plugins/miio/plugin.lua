@@ -21,7 +21,7 @@ local logger = log.getLogger("miio.plugin")
 
 ---Generate accessory via configuration.
 ---@param conf MiioAccessoryConf Accessory configuration.
----@return HapAccessory accessory
+---@return HAPAccessory accessory
 local function gen(conf)
     local obj = device.create(conf.addr, util.hex2bin(conf.token))
     local info = obj:getInfo()
@@ -46,7 +46,7 @@ function plugin.init(conf)
 end
 
 ---Handle HAP server state.
----@param state HapServerState
+---@param state HAPServerState
 function plugin.handleState(state)
     logger:info("HAP server state: " .. state .. ".")
 end

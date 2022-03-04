@@ -1,9 +1,9 @@
 return {
     ---New a ``On`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HapCharacteristicReadRequest): any
-    ---@param write fun(request:HapCharacteristicWriteRequest, value:any)
-    ---@return HapCharacteristic characteristic
+    ---@param read fun(request:HAPCharacteristicReadRequest): any
+    ---@param write fun(request:HAPCharacteristicWriteRequest, value:any)
+    ---@return HAPCharacteristic characteristic
     new = function (iid, read, write)
         return {
             format = "Bool",
