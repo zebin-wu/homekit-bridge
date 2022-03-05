@@ -99,6 +99,8 @@ static void pal_nvs_remove_all_items(pal_nvs_handle *handle) {
 pal_nvs_handle *pal_nvs_open(const char *name) {
     HAPPrecondition(ginited);
     HAPPrecondition(name);
+    size_t name_len = strlen(name);
+    HAPPrecondition(name_len > 0 && name_len <= PAL_NVS_KEY_MAX_LEN);
 
     pal_nvs_handle *handle;
     LIST_FOREACH(handle, &ghandle_list_head, list_entry) {
@@ -114,7 +116,6 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
         return NULL;
     }
 
-    size_t name_len = strlen(name);
     handle->name = pal_mem_alloc(name_len + 1);
     if (!handle->name) {
         NVS_LOG_ERR("Failed to alloc memory.");
@@ -263,6 +264,8 @@ static struct pal_nvs_item *pal_nvs_find_key(pal_nvs_handle *handle, const char 
 bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t len) {
     HAPPrecondition(handle);
     HAPPrecondition(key);
+    size_t key_len = strlen(key);
+    HAPPrecondition(key_len > 0 && key_len <= PAL_NVS_KEY_MAX_LEN);
     HAPPrecondition(buf);
     HAPPrecondition(len);
 
@@ -280,6 +283,8 @@ bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t len)
 size_t pal_nvs_get_len(pal_nvs_handle *handle, const char *key) {
     HAPPrecondition(handle);
     HAPPrecondition(key);
+    size_t key_len = strlen(key);
+    HAPPrecondition(key_len > 0 && key_len <= PAL_NVS_KEY_MAX_LEN);
 
     struct pal_nvs_item *item = pal_nvs_find_key(handle, key);
     if (item) {
@@ -291,6 +296,8 @@ size_t pal_nvs_get_len(pal_nvs_handle *handle, const char *key) {
 bool pal_nvs_set(pal_nvs_handle *handle, const char *key, const void *value, size_t len) {
     HAPPrecondition(handle);
     HAPPrecondition(key);
+    size_t key_len = strlen(key);
+    HAPPrecondition(key_len > 0 && key_len <= PAL_NVS_KEY_MAX_LEN);
     HAPPrecondition(value);
     HAPPrecondition(len);
 
@@ -334,6 +341,8 @@ bool pal_nvs_set(pal_nvs_handle *handle, const char *key, const void *value, siz
 bool pal_nvs_remove(pal_nvs_handle *handle, const char *key) {
     HAPPrecondition(handle);
     HAPPrecondition(key);
+    size_t key_len = strlen(key);
+    HAPPrecondition(key_len > 0 && key_len <= PAL_NVS_KEY_MAX_LEN);
 
     for (struct pal_nvs_item **t = &SLIST_FIRST(&handle->item_list_head); *t;
         t = &SLIST_NEXT(*t, list_entry)) {

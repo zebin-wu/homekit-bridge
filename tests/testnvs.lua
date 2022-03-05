@@ -1,13 +1,17 @@
 local nvs = require "nvs"
 
 -- Tests nvs.open() with valid parameters.
-do
-    local handle <close> = nvs.open("test")
+for _, name in ipairs({"test", "123456789012345"}) do
+    local handle <close> = nvs.open(name)
 end
 
 -- Tests nvs.open() with invalid namespace.
 do
     local success = pcall(nvs.open, nil)
+    assert(success == false)
+end
+for _, name in ipairs({"", "1234567890123456"}) do
+    local success = pcall(nvs.open, name)
     assert(success == false)
 end
 
@@ -20,7 +24,9 @@ end
 -- Tests nvs.get() with valid parameters.
 do
     local handle <close> = nvs.open("test")
-    handle:get("test")
+    for _, key in ipairs({"test", "123456789012345"}) do
+        handle:get(key)
+    end
 end
 
 -- Tests nvs.get() with invalid parameters.
@@ -28,11 +34,18 @@ do
     local handle <close> = nvs.open("test")
     local success = pcall(handle.get, handle, nil)
     assert(success == false)
+    for _, key in ipairs({"", "1234567890123456"}) do
+        success = pcall(handle.get, handle, key)
+        assert(success == false)
+    end
 end
 
 -- Tests nvs.set() with valid parameters.
 do
     local handle <close> = nvs.open("test")
+    for _, key in ipairs({"test", "123456789012345"}) do
+        handle:set(key, nil)
+    end
     for _, value in ipairs({true, 1, 1.1, "hello world", nil}) do
         handle:set("test", value)
         assert(handle:get("test") == value)
@@ -56,9 +69,12 @@ do
     local handle <close> = nvs.open("test")
     local success = pcall(handle.set, handle, nil)
     assert(success == false)
-
+    for _, key in ipairs({"", "1234567890123456"}) do
+        success = pcall(handle.set, handle, key, nil)
+        assert(success == false)
+    end
     for _, value in ipairs({function () end}) do
-        local success,result = pcall(handle.set, handle, "test", value)
+        success = pcall(handle.set, handle, "test", value)
         assert(success == false)
     end
 end

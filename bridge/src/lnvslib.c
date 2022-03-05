@@ -18,7 +18,9 @@ typedef struct {
 } lnvs_handle;
 
 static int lnvs_open(lua_State *L) {
-    const char *namespace = luaL_checkstring(L, 1);
+    size_t len;
+    const char *namespace = luaL_checklstring(L, 1, &len);
+    luaL_argcheck(L, len > 0 && len <= PAL_NVS_KEY_MAX_LEN, 1, "namespace out of range");
 
     lnvs_handle *handle = lua_newuserdata(L, sizeof(*handle));
     luaL_setmetatable(L, LUA_NVS_HANDLE_NAME);
@@ -39,9 +41,11 @@ static lnvs_handle *lnvs_get_handle(lua_State *L, int idx) {
 
 static int lnvs_handle_get(lua_State *L) {
     lnvs_handle *handle = lnvs_get_handle(L, 1);
-    const char *key = luaL_checkstring(L, 2);
+    size_t len;
+    const char *key = luaL_checklstring(L, 2, &len);
+    luaL_argcheck(L, len > 0 && len <= PAL_NVS_KEY_MAX_LEN, 2, "key out of range");
 
-    size_t len = pal_nvs_get_len(handle->handle, key);
+    len = pal_nvs_get_len(handle->handle, key);
     if (len == 0) {
         lua_pushnil(L);
         return 1;
@@ -64,7 +68,9 @@ static int lnvs_handle_get(lua_State *L) {
 
 static int lnvs_handle_set(lua_State *L) {
     lnvs_handle *handle = lnvs_get_handle(L, 1);
-    const char *key = luaL_checkstring(L, 2);
+    size_t len;
+    const char *key = luaL_checklstring(L, 2, &len);
+    luaL_argcheck(L, len > 0 && len <= PAL_NVS_KEY_MAX_LEN, 2, "key out of range");
 
     if (lua_type(L, 3) == LUA_TNIL) {
         pal_nvs_remove(handle->handle, key);
@@ -75,7 +81,6 @@ static int lnvs_handle_set(lua_State *L) {
     lua_insert(L, 3);
     lua_call(L, 1, 1);
 
-    size_t len;
     const char *value = luaL_checklstring(L, 3, &len);
 
     if (luai_unlikely(!pal_nvs_set(handle->handle, key, value, len))) {

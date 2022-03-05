@@ -14,13 +14,13 @@ function nvs.open(namespace) end
 
 ---Fetch the value of a key.
 ---@param key string
----@return boolean|number|table|string|nil value
+---@return any value
 ---@nodiscard
 function handle:get(key) end
 
 ---Set the value of a key.
 ---@param key string
----@param value boolean|number|table|string|nil
+---@param value any
 function handle:set(key, value) end
 
 ---Erase all key-value pairs.

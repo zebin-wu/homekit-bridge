@@ -15,7 +15,7 @@ extern "C" {
 #include <stdbool.h>
 
 /* The maximum length of the NVS key, not include '\0' */
-#define PAL_NVS_KEY_MAX_LEN 31
+#define PAL_NVS_KEY_MAX_LEN 15
 
 /**
  * Opaque structure for the NVS handle.
@@ -25,7 +25,7 @@ typedef struct pal_nvs_handle pal_nvs_handle;
 /**
  * Open a NVS(non-volatile storage) handle with a given namespace.
  *
- * @param name Name of the namespace.
+ * @param name Name of the namespace. Maximum length is PAL_NVS_KEY_MAX_LEN. Shouldn't be empty.
  * @returns a NVS handle or NULL if the open fails.
  */
 pal_nvs_handle *pal_nvs_open(const char *name);
