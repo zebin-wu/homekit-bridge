@@ -1,7 +1,10 @@
 local hap = require "hap"
+local hapUtil = require "hap.util"
+local nvs = require "nvs"
 local ServiceSignature = require "hap.char.ServiceSignature"
 local Name = require "hap.char.Name"
 local On = require "hap.char.On"
+local raiseEvent = hap.raiseEvent
 
 local plugin = {}
 
@@ -20,19 +23,16 @@ local logger = log.getLogger("lightbulb.plugin")
 
 ---Generate accessory via configuration.
 ---@param conf LightBulbAccessoryConf
+---@param handle NVSHandle
 ---@return HAPAccessory
-local function gen(conf)
-    local iids = {
-        acc = hap.getNewBridgedAccessoryID(),
-        lightBlub = hap.getNewInstanceID(),
-        srvSign = hap.getNewInstanceID(),
-        name = hap.getNewInstanceID(),
-        on = hap.getNewInstanceID()
-    }
-    local lightBulbOn = false
+local function gen(conf, handle)
+    local aid = hapUtil.getBridgedAccessoryIID(handle)
+    local iids = hapUtil.getInstanceIDs(handle)
+    local lightBulbOn = handle:get("on") or false
     local name = conf.name or "Light Bulb"
+
     return {
-        aid = iids.acc,
+        aid = aid,
         category = "BridgedAccessory",
         name = name,
         mfg = "Acme",
@@ -60,7 +60,9 @@ local function gen(conf)
                             logger:info(("Write lightBulbOn: %s"):format(value))
                             if value ~= lightBulbOn then
                                 lightBulbOn = value
-                                hap.raiseEvent(request.aid, request.sid, request.cid)
+                                handle:set("on", lightBulbOn)
+                                handle:commit()
+                                raiseEvent(request.aid, request.sid, request.cid)
                             end
                         end)
                 }
@@ -80,7 +82,7 @@ function plugin.init(conf)
     logger:info("Initialized.")
 
     for _, accessoryConf in ipairs(conf.accessories) do
-        hap.addBridgedAccessory(gen(accessoryConf))
+        hap.addBridgedAccessory(gen(accessoryConf, nvs.open(accessoryConf.sn)))
     end
 end
 

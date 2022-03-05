@@ -1,4 +1,6 @@
 local hap = require "hap"
+local nvs = require "nvs"
+local hapUtil = require "hap.util"
 local util = require "util"
 local LockCurrentState = require "hap.char.LockCurrentState"
 local LockTargetState = require "hap.char.LockTargetState"
@@ -6,6 +8,7 @@ local LockControlPoint = require "hap.char.LockControlPoint"
 local ServiceSignature = require "hap.char.ServiceSignature"
 local Version = require "hap.char.Version"
 local Name = require "hap.char.Name"
+local raiseEvent = hap.raiseEvent
 
 local plugin = {}
 
@@ -24,25 +27,17 @@ local logger = log.getLogger("lock.plugin")
 
 ---Generate accessory via configuration.
 ---@param conf LockAccessoryConf
+---@param handle NVSHandle
 ---@return HAPAccessory
-local function gen(conf)
-    local iids = {
-        acc = hap.getNewBridgedAccessoryID(),
-        mechanism = hap.getNewInstanceID(),
-        mechanismSrvSign = hap.getNewInstanceID(),
-        mechanismName = hap.getNewInstanceID(),
-        curState = hap.getNewInstanceID(),
-        tgtState = hap.getNewInstanceID(),
-        manage = hap.getNewInstanceID(),
-        manageSrvSign = hap.getNewInstanceID(),
-        manageCtrlPoint = hap.getNewInstanceID(),
-        manageVersion = hap.getNewInstanceID()
-    }
-    local curState = LockCurrentState.value.Secured
-    local tgtState = LockTargetState.value.Secured
+local function gen(conf, handle)
+    local aid = hapUtil.getBridgedAccessoryIID(handle)
+    local iids = hapUtil.getInstanceIDs(handle)
+    local curState = handle:get("curState") or LockCurrentState.value.Secured
+    local tgtState = handle:get("tgtState") or LockTargetState.value.Secured
     local name = conf.name or "Lock"
+
     return {
-        aid = iids.acc,
+        aid = aid,
         category = "BridgedAccessory",
         name = name,
         mfg = "Acme",
@@ -81,8 +76,11 @@ local function gen(conf)
                             if value ~= tgtState then
                                 tgtState = value
                                 curState = value
-                                hap.raiseEvent(request.aid, request.sid, request.cid)
-                                hap.raiseEvent(request.aid, request.sid, iids.curState)
+                                handle:set("tgtState", value)
+                                handle:set("curState", value)
+                                handle:commit()
+                                raiseEvent(request.aid, request.sid, request.cid)
+                                raiseEvent(request.aid, request.sid, iids.curState)
                             end
                         end)
                 }
@@ -116,7 +114,7 @@ function plugin.init(conf)
     logger:info("Initialized.")
 
     for _, accessoryConf in ipairs(conf.accessories) do
-        hap.addBridgedAccessory(gen(accessoryConf))
+        hap.addBridgedAccessory(gen(accessoryConf, nvs.open("lock::" .. accessoryConf.sn)))
     end
 end
 

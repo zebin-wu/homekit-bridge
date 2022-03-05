@@ -155,7 +155,7 @@ local function testService(expect, k, vals, log)
     end
     local function _test(v)
         local service = {
-            iid = hap.getNewInstanceID(),
+            iid = 20,
             type = "LightBulb",
             props = {
                 primaryService = true,
@@ -165,8 +165,8 @@ local function testService(expect, k, vals, log)
                 }
             },
             chars = {
-                require("hap.char.ServiceSignature").new(hap.getNewInstanceID()),
-                require("hap.char.Name").new(hap.getNewInstanceID())
+                require("hap.char.ServiceSignature").new(21),
+                require("hap.char.Name").new(22)
             }
         }
         if log then
@@ -197,7 +197,7 @@ local function testCharacteristic(expect, k, vals, format, constraints)
     local function _test(v)
         local c = {
             format = format,
-            iid = hap.getNewInstanceID(),
+            iid = 23,
             type = "On",
             props = {
                 readable = true,

@@ -15,14 +15,10 @@ local plug = {}
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
 function plug.gen(device, info, conf)
-    local iids = {
-        acc = conf.aid,
-        outlet = hap.getNewInstanceID(),
-        on = hap.getNewInstanceID()
-    }
+    local iids = conf.iids
 
     return {
-        aid = iids.acc,
+        aid = conf.aid,
         category = "BridgedAccessory",
         name = conf.name or "Chuangmi Plug",
         mfg = "chuangmi",

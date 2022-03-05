@@ -400,14 +400,10 @@ function hap.stop() end
 ---@param session? HAPSession The session on which to raise the event.
 function hap.raiseEvent(aid, sid, cid, session) end
 
----Get a new Instance ID for bridged accessory.
+---Get a new Instance ID for bridged accessory or service or characteristic.
+---@param bridgedAccessory? boolean Whether or not to get new IID for bridged accessory.
 ---@return integer iid Instance ID.
 ---@nodiscard
-function hap.getNewBridgedAccessoryID() end
-
----Get a new Instance ID for service or characteristic.
----@return integer iid Instance ID.
----@nodiscard
-function hap.getNewInstanceID() end
+function hap.getNewInstanceID(bridgedAccessory) end
 
 return hap

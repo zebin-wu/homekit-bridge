@@ -16,18 +16,10 @@ local derh = {}
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
 function derh.gen(device, info, conf)
-    local iids = {
-        acc = conf.aid,
-        derh = hap.getNewInstanceID(),
-        active = hap.getNewInstanceID(),
-        curState = hap.getNewInstanceID(),
-        tgtState = hap.getNewInstanceID(),
-        curHumidity = hap.getNewInstanceID(),
-        tgtHumidity = hap.getNewInstanceID()
-    }
+    local iids = conf.iids
 
     return {
-        aid = iids.acc,
+        aid = conf.aid,
         category = "BridgedAccessory",
         name = conf.name or "Dmaker Dehumidifier",
         mfg = "dmaker",

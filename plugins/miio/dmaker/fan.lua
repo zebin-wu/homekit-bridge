@@ -13,16 +13,10 @@ local fan = {}
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
 function fan.gen(device, info, conf)
-    local iids = {
-        acc = conf.aid,
-        fan = hap.getNewInstanceID(),
-        active = hap.getNewInstanceID(),
-        rotationSpeed = hap.getNewInstanceID(),
-        swingMode = hap.getNewInstanceID(),
-    }
+    local iids = conf.iids
 
     return {
-        aid = iids.acc,
+        aid = conf.aid,
         category = "BridgedAccessory",
         name = conf.name or "Dmaker Fan",
         mfg = "dmaker",

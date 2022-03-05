@@ -35,20 +35,10 @@ local valMapping = {
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
 function acpartner.gen(device, info, conf)
-    local iids = {
-        acc = conf.aid,
-        heaterCooler = hap.getNewInstanceID(),
-        active = hap.getNewInstanceID(),
-        curTemp = hap.getNewInstanceID(),
-        curState = hap.getNewInstanceID(),
-        tgtState = hap.getNewInstanceID(),
-        coolThrTemp = hap.getNewInstanceID(),
-        heatThrTemp = hap.getNewInstanceID(),
-        swingMode = hap.getNewInstanceID()
-    }
+    local iids = conf.iids
 
     return {
-        aid = iids.acc,
+        aid = conf.aid,
         category = "BridgedAccessory",
         name = conf.name or "Lumi Acpartner",
         mfg = "lumi",
@@ -75,11 +65,11 @@ function acpartner.gen(device, info, conf)
                         device:setProp("power", searchKey(valMapping.power, value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         time.createTimer(function ()
-                            raiseEvent(iids.acc, iids.heaterCooler, iids.curTemp)
-                            raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
-                            raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
-                            raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
-                            raiseEvent(iids.acc, iids.heaterCooler, iids.swingMode)
+                            raiseEvent(request.aid, iids.heaterCooler, iids.curTemp)
+                            raiseEvent(request.aid, iids.heaterCooler, iids.curState)
+                            raiseEvent(request.aid, iids.heaterCooler, iids.coolThrTemp)
+                            raiseEvent(request.aid, iids.heaterCooler, iids.heatThrTemp)
+                            raiseEvent(request.aid, iids.heaterCooler, iids.swingMode)
                         end):start(500)
                     end),
                     CurTemp.new(iids.curTemp, function (request)
@@ -115,9 +105,9 @@ function acpartner.gen(device, info, conf)
                         device:setProp("mode", searchKey(valMapping.mode, value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         time.createTimer(function ()
-                            raiseEvent(iids.acc, iids.heaterCooler, iids.curState)
-                            raiseEvent(iids.acc, iids.heaterCooler, iids.coolThrTemp)
-                            raiseEvent(iids.acc, iids.heaterCooler, iids.heatThrTemp)
+                            raiseEvent(request.aid, iids.heaterCooler, iids.curState)
+                            raiseEvent(request.aid, iids.heaterCooler, iids.coolThrTemp)
+                            raiseEvent(request.aid, iids.heaterCooler, iids.heatThrTemp)
                         end):start(500)
                     end),
                     CoolThrholdTemp.new(iids.coolThrTemp, function (request)

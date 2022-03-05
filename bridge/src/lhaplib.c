@@ -8,6 +8,7 @@
 #include <lauxlib.h>
 #include <pal/hap.h>
 #include <pal/memory.h>
+#include <pal/nvs.h>
 #include <HAP.h>
 #include <HAPCharacteristic.h>
 #include <HAPAccessorySetup.h>
@@ -17,10 +18,15 @@
 
 #define lhap_safe_free(p)     do { if (p) { pal_mem_free((void *)p); (p) = NULL; } } while (0)
 
+#define LHAP_NVS_NAMESPACE "bridge::lhaplib"
+
 /**
  * Default number of services and characteristics contained in the accessory.
  */
 #define LHAP_ATTR_CNT_DFT ((size_t) 17)
+#define LHAP_CHAR_READ_CNT_DFT ((size_t) 10)
+#define LHAP_CHAR_WRITE_CNT_DFT ((size_t) 2)
+#define LHAP_CHAR_NOTIFY_CNT_DFT ((size_t) 0)
 
 /**
  * Default maxium number of bridged accessories.
@@ -712,9 +718,6 @@ typedef struct lhap_desc {
     bool inited:1;
     bool is_started:1;
 
-    size_t attribute_cnt;
-    size_t bridged_aid;
-    size_t iid;
     HAPAccessory *primary_acc;
     HAPAccessory **bridged_accs;
     size_t bridged_accs_max;
@@ -727,9 +730,6 @@ typedef struct lhap_desc {
 } lhap_desc;
 
 static lhap_desc gv_lhap_desc = {
-    .attribute_cnt = LHAP_ATTR_CNT_DFT,
-    .bridged_aid = LHAP_BRIDGED_ACCESSORY_IID_DFT,
-    .iid = LHAP_ATTR_CNT_DFT + 1,
     .server_options = {
         .maxPairings = kHAPPairingStorage_MinElements
     }
@@ -878,7 +878,6 @@ lhap_service_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
         return false;
     }
     ((HAPService *)arg)->iid = iid;
-    gv_lhap_desc.attribute_cnt++;
     return true;
 }
 
@@ -991,7 +990,6 @@ lhap_char_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
         return false;
     }
     ((HAPBaseCharacteristic *)arg)->iid = iid;
-    gv_lhap_desc.attribute_cnt++;
     return true;
 }
 
@@ -2616,11 +2614,18 @@ static void lhap_reset_server_cb(lua_State *L, HAPAccessoryServerCallbacks *cbs)
 
 #if IP
 static void
-lhap_count_attr(const HAPAccessory *acc, size_t *readable, size_t *writable, size_t *notify) {
+lhap_count_attr(const HAPAccessory *acc, size_t *attr, size_t *readable, size_t *writable, size_t *notify) {
     for (const HAPService * const *pserv = acc->services; *pserv; pserv++) {
+        const HAPService *serv = *pserv;
+        if (serv == &accessoryInformationService || serv == &pairingService ||
+            serv == &hapProtocolInformationService) {
+            continue;
+        }
+        (*attr)++;
         for (const HAPBaseCharacteristic * const *pchar =
             (const HAPBaseCharacteristic * const *)(*pserv)->characteristics; *pchar; pchar++) {
             const HAPCharacteristicProperties *props = &(*pchar)->properties;
+            (*attr)++;
             if (props->readable) {
                 (*readable)++;
             }
@@ -2717,9 +2722,6 @@ int lhap_deinit(lua_State *L) {
         lhap_reset_accessory(L, desc->primary_acc);
         lhap_safe_free(desc->primary_acc);
     }
-    desc->attribute_cnt = LHAP_ATTR_CNT_DFT;
-    desc->bridged_aid = 1;
-    desc->iid = LHAP_ATTR_CNT_DFT + 1;
     desc->bridged_accs_cnt = 0;
     desc->bridged_accs_max = 0;
     desc->inited = false;
@@ -2798,17 +2800,17 @@ static int lhap_start(lua_State *L) {
         desc->bridged_accs_max = max;
     }
 
-#if IP
-    size_t readable_cnt = 0;
-    size_t writable_cnt = 0;
-    size_t notify_cnt = 0;
+    size_t attr_cnt = LHAP_ATTR_CNT_DFT;
+    size_t readable_cnt = LHAP_CHAR_READ_CNT_DFT;
+    size_t writable_cnt = LHAP_CHAR_WRITE_CNT_DFT;
+    size_t notify_cnt = LHAP_CHAR_NOTIFY_CNT_DFT;
 
-    lhap_count_attr(desc->primary_acc, &readable_cnt, &writable_cnt, &notify_cnt);
+    lhap_count_attr(desc->primary_acc, &attr_cnt, &readable_cnt, &writable_cnt, &notify_cnt);
 
     if (desc->bridged_accs) {
         for (const HAPAccessory * const *pacc =
             (const HAPAccessory * const *)desc->bridged_accs; *pacc; pacc++) {
-            lhap_count_attr(*pacc, &readable_cnt, &writable_cnt, &notify_cnt);
+            lhap_count_attr(*pacc, &attr_cnt, &readable_cnt, &writable_cnt, &notify_cnt);
         }
     }
 
@@ -2822,11 +2824,12 @@ static int lhap_start(lua_State *L) {
         notify_cnt = 1;
     }
 
+#if IP
     pal_hap_init_ip(&desc->server_options, readable_cnt, writable_cnt, notify_cnt);
 #endif
 
 #if BLE
-    pal_hap_init_ble(&desc->server_options, desc->attribute_cnt);
+    pal_hap_init_ble(&desc->server_options, attr_cnt);
 #endif
 
     // Generate setup code, setup info and setup ID.
@@ -2963,13 +2966,32 @@ service:
     return 0;
 }
 
-static int lhap_get_new_bridged_aid(lua_State *L) {
-    lua_pushinteger(L, gv_lhap_desc.bridged_aid++);
-    return 1;
-}
-
 static int lhap_get_new_iid(lua_State *L) {
-    lua_pushinteger(L, gv_lhap_desc.iid++);
+    bool bridgedAcc = false;
+    if (lua_gettop(L) == 1) {
+        luaL_checktype(L, 1, LUA_TBOOLEAN);
+        bridgedAcc = lua_toboolean(L, 1);
+    }
+    pal_nvs_handle *handle = pal_nvs_open(LHAP_NVS_NAMESPACE);
+    if (luai_unlikely(!handle)) {
+        luaL_error(L, "failed to open NVS handle");
+    }
+    const char *key = bridgedAcc ? "aid" : "iid";
+    size_t len = pal_nvs_get_len(handle, key);
+    uint64_t iid = bridgedAcc ? LHAP_BRIDGED_ACCESSORY_IID_DFT : (LHAP_ATTR_CNT_DFT + 1);
+    if (len) {
+        if (luai_unlikely(!pal_nvs_get(handle, key, &iid, sizeof(iid)))) {
+            pal_nvs_close(handle);
+            luaL_error(L, "failed to get iid from NVS");
+        }
+        iid += 1;
+    }
+    if (luai_unlikely(!pal_nvs_set(handle, key, &iid, sizeof(iid)))) {
+        pal_nvs_close(handle);
+        luaL_error(L, "failed to set iid to NVS");
+    }
+    pal_nvs_close(handle);
+    lua_pushinteger(L, iid);
     return 1;
 }
 
@@ -2980,10 +3002,8 @@ static const luaL_Reg haplib[] = {
     {"start", lhap_start},
     {"stop", lhap_stop},
     {"raiseEvent", lhap_raise_event},
-    {"getNewBridgedAccessoryID", lhap_get_new_bridged_aid},
     {"getNewInstanceID", lhap_get_new_iid},
     /* placeholders */
-    {"Error", NULL},
     {"AccessoryInformationService", NULL},
     {"HAPProtocolInformationService", NULL},
     {"PairingService", NULL},
