@@ -2682,6 +2682,9 @@ static int lhap_init(lua_State *L) {
     HAPLog(&lhap_log,
         "Primary accessory \"%s\" has been configured.", desc->primary_acc->name);
 
+    pal_hap_init();
+    desc->platform = pal_hap_get_platform();
+
     desc->inited = true;
 
     return 0;
@@ -2707,6 +2710,8 @@ int lhap_deinit(lua_State *L) {
     if (desc->is_started) {
         luaL_error(L, "HAP is started.");
     }
+
+    pal_hap_deinit();
 
     lhap_reset_server_cb(L, &desc->server_cbs);
 
@@ -3023,8 +3028,4 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
     }
 
     return 1;
-}
-
-void lhap_set_platform(HAPPlatform *platform) {
-    gv_lhap_desc.platform = platform;
 }

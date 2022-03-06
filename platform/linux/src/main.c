@@ -11,128 +11,18 @@
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <app.h>
-#include <pal/hap.h>
 #include <pal/crypto/ssl.h>
 #include <pal/net/dns.h>
 #include <pal/nvs_int.h>
 
-#include <HAPPlatform+Init.h>
-#include <HAPPlatformAccessorySetup+Init.h>
-#include <HAPPlatformBLEPeripheralManager+Init.h>
-#include <HAPPlatformKeyValueStore+Init.h>
-#include <HAPPlatformMFiTokenAuth+Init.h>
 #include <HAPPlatformRunLoop+Init.h>
-#if IP
-#include <HAPPlatformServiceDiscovery+Init.h>
-#include <HAPPlatformTCPStreamManager+Init.h>
-#endif
-
-#if HAVE_MFI_HW_AUTH
-#include <HAPPlatformMFiHWAuth+Init.h>
-#endif
 
 #ifndef BRIDGE_WORK_DIR
 #error Please set the macro "BRIDGE_WORK_DIR"
 #endif
-
-/**
- * Global platform objects.
- * Only tracks objects that will be released in deinit_platform.
- */
-static struct {
-    HAPPlatformKeyValueStore keyValueStore;
-    HAPPlatform hapPlatform;
-
-#if HAVE_NFC
-    HAPPlatformAccessorySetupNFC setupNFC;
-#endif
-
-#if IP
-    HAPPlatformTCPStreamManager tcpStreamManager;
-#endif
-
-#if HAVE_MFI_HW_AUTH
-    HAPPlatformMFiHWAuth mfiHWAuth;
-#endif
-    HAPPlatformMFiTokenAuth mfiTokenAuth;
-} platform;
-
-/**
- * Initialize global platform objects.
- */
-static void init_platform() {
-    // Key-value store.
-    HAPPlatformKeyValueStoreCreate(
-            &platform.keyValueStore, &(const HAPPlatformKeyValueStoreOptions) { .rootDirectory = ".HomeKitStore" });
-    platform.hapPlatform.keyValueStore = &platform.keyValueStore;
-
-    // Accessory setup manager. Depends on key-value store.
-    static HAPPlatformAccessorySetup accessorySetup;
-    HAPPlatformAccessorySetupCreate(
-            &accessorySetup, &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = &platform.keyValueStore });
-    platform.hapPlatform.accessorySetup = &accessorySetup;
-
-#if IP
-    // TCP stream manager.
-    HAPPlatformTCPStreamManagerCreate(
-            &platform.tcpStreamManager,
-            &(const HAPPlatformTCPStreamManagerOptions) {
-                    .interfaceName = NULL,        // Listen on all available network interfaces.
-                    .port = kHAPNetworkPort_Any,  // Listen on unused port number from the ephemeral port range.
-                    .maxConcurrentTCPStreams = PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS });
-    platform.hapPlatform.ip.tcpStreamManager = &platform.tcpStreamManager;
-
-    // Service discovery.
-    static HAPPlatformServiceDiscovery serviceDiscovery;
-    HAPPlatformServiceDiscoveryCreate(
-            &serviceDiscovery,
-            &(const HAPPlatformServiceDiscoveryOptions) {
-                    0 /* Register services on all available network interfaces. */
-            });
-    platform.hapPlatform.ip.serviceDiscovery = &serviceDiscovery;
-#endif
-
-#if (BLE)
-    // BLE peripheral manager. Depends on key-value store.
-    static HAPPlatformBLEPeripheralManagerOptions blePMOptions = { 0 };
-    blePMOptions.keyValueStore = &platform.keyValueStore;
-
-    static HAPPlatformBLEPeripheralManager blePeripheralManager;
-    HAPPlatformBLEPeripheralManagerCreate(&blePeripheralManager, &blePMOptions);
-    platform.hapPlatform.ble.blePeripheralManager = &blePeripheralManager;
-#endif
-
-#if HAVE_MFI_HW_AUTH
-    // Apple Authentication Coprocessor provider.
-    HAPPlatformMFiHWAuthCreate(&platform.mfiHWAuth);
-    platform.hapPlatform.authentication.mfiHWAuth = &platform.mfiHWAuth;
-#endif
-
-    // Software Token provider. Depends on key-value store.
-    HAPPlatformMFiTokenAuthCreate(
-            &platform.mfiTokenAuth,
-            &(const HAPPlatformMFiTokenAuthOptions) { .keyValueStore = &platform.keyValueStore });
-
-    platform.hapPlatform.authentication.mfiTokenAuth =
-            HAPPlatformMFiTokenAuthIsProvisioned(&platform.mfiTokenAuth) ? &platform.mfiTokenAuth : NULL;
-}
-
-/**
- * Deinitialize global platform objects.
- */
-static void deinit_platform() {
-#if HAVE_MFI_HW_AUTH
-    // Apple Authentication Coprocessor provider.
-    HAPPlatformMFiHWAuthRelease(&platform.mfiHWAuth);
-#endif
-
-#if IP
-    // TCP stream manager.
-    HAPPlatformTCPStreamManagerRelease(&platform.tcpStreamManager);
-#endif
-}
 
 static const char *help = \
     "usage: %s [options]\n"
@@ -196,18 +86,13 @@ int main(int argc, char *argv[]) {
     pal_dns_init();
     pal_nvs_init(".nvs");
 
-    // Initialize global platform objects.
-    init_platform();
-
-    app_init(&platform.hapPlatform, workdir, entry);
+    app_init(workdir, entry);
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
     // Run loop stopped explicitly by calling function HAPPlatformRunLoopStop.
 
     app_deinit();
-
-    deinit_platform();
 
     // De-initialize pal modules.
     pal_nvs_deinit();

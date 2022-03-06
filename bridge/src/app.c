@@ -184,12 +184,9 @@ static int panic(lua_State *L) {
     return 0;  /* return to Lua to abort */
 }
 
-void app_init(HAPPlatform *platform, const char *dir, const char *entry) {
-    HAPPrecondition(platform);
+void app_init(const char *dir, const char *entry) {
     HAPPrecondition(dir);
     HAPPrecondition(entry);
-
-    lhap_set_platform(platform);
 
     L = lua_newstate(app_lua_alloc, NULL);
     if (luai_unlikely(!L)) {
@@ -222,8 +219,6 @@ void app_deinit() {
         lua_close(L);
         L = NULL;
     }
-
-    lhap_set_platform(NULL);
 }
 
 lua_State *app_get_lua_main_thread() {

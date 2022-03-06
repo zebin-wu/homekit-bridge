@@ -53,11 +53,6 @@ LUAMOD_API int luaopen_dns(lua_State *L);
 LUAMOD_API int luaopen_nvs(lua_State *L);
 
 /**
- * Set HomeKit platform.
- */
-void lhap_set_platform(HAPPlatform *platform);
-
-/**
  * Get Lua main thread.
  */
 lua_State *app_get_lua_main_thread();

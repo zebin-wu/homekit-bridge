@@ -4,7 +4,7 @@ local util = {}
 
 ---Get bridged accessory Instance ID.
 ---@param handle NVSHandle
----@return any
+---@return integer
 function util.getBridgedAccessoryIID(handle)
     local aid = handle:get("aid")
     if aid == nil then

@@ -26,6 +26,21 @@ extern "C" {
 #define PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE ((size_t) 1500)
 
 /**
+ * Initialize HAP module.
+ */
+void pal_hap_init(void);
+
+/**
+ * De-initialize HAP module.
+ */
+void pal_hap_deinit(void);
+
+/**
+ * Get the pointer to the HomeKit platform structure.
+ */
+HAPPlatform *pal_hap_get_platform(void);
+
+/**
  * Generate setup code, setup info and setup ID, and put them in the key-value store.
  */
 void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store);
