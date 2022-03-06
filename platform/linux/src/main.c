@@ -115,9 +115,6 @@ static void init_platform() {
             &platform.mfiTokenAuth,
             &(const HAPPlatformMFiTokenAuthOptions) { .keyValueStore = &platform.keyValueStore });
 
-    // Run loop.
-    HAPPlatformRunLoopCreate(&(const HAPPlatformRunLoopOptions) { .keyValueStore = &platform.keyValueStore });
-
     platform.hapPlatform.authentication.mfiTokenAuth =
             HAPPlatformMFiTokenAuthIsProvisioned(&platform.mfiTokenAuth) ? &platform.mfiTokenAuth : NULL;
 }
@@ -135,9 +132,6 @@ static void deinit_platform() {
     // TCP stream manager.
     HAPPlatformTCPStreamManagerRelease(&platform.tcpStreamManager);
 #endif
-
-    // Run loop.
-    HAPPlatformRunLoopRelease();
 }
 
 static const char *help = \
@@ -195,6 +189,8 @@ int main(int argc, char *argv[]) {
     // Parse arguments.
     doargs(argc, argv);
 
+    HAPPlatformRunLoopCreate();
+
     // Initialize pal modules.
     pal_ssl_init();
     pal_dns_init();
@@ -217,6 +213,8 @@ int main(int argc, char *argv[]) {
     pal_nvs_deinit();
     pal_dns_deinit();
     pal_ssl_deinit();
+
+    HAPPlatformRunLoopRelease();
 
     return 0;
 }

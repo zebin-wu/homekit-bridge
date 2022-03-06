@@ -53,7 +53,7 @@ typedef struct {
 /**
  * Create run loop.
  */
-void HAPPlatformRunLoopCreate(const HAPPlatformRunLoopOptions* options);
+void HAPPlatformRunLoopCreate(void);
 
 /**
  * Release run loop.
