@@ -23,7 +23,7 @@ function plug.gen(device, info, conf)
         name = conf.name or "Chuangmi Plug",
         mfg = "chuangmi",
         model = info.model,
-        sn = info.mac,
+        sn = conf.sn,
         fwVer = info.fw_ver,
         hwVer = info.hw_ver,
         services = {

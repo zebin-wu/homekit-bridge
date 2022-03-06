@@ -1,5 +1,6 @@
 local protocol = require "miio.protocol"
 local time = require "time"
+local util = require "util"
 local mq = require "mq"
 local xpcall = xpcall
 local traceback = debug.traceback
@@ -110,7 +111,8 @@ function _device:getProp(name)
 ::recv::
     local success, result = self.mq:recv()
     if success == false then
-        error(result)
+        self.logger:error(result)
+        error("failed to get property")
     end
     if result[name] == nil then
         goto recv
@@ -151,14 +153,13 @@ end
 function device.create(addr, token)
     assert(type(addr) == "string")
     assert(type(token) == "string")
-    assert(#token == 16)
+    assert(#token == 32)
 
     ---@class MiioDevicePriv
     local o = {
         logger = log.getLogger("miio.device:" .. addr),
-        pcb = protocol.create(addr, token),
+        pcb = protocol.create(addr, util.hex2bin(token)),
         addr = addr,
-        token = token,
         timeout = 5000,
         mq = mq.create(1),
         names = {}, ---@type string[]

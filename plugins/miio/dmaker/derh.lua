@@ -24,7 +24,7 @@ function derh.gen(device, info, conf)
         name = conf.name or "Dmaker Dehumidifier",
         mfg = "dmaker",
         model = info.model,
-        sn = info.mac,
+        sn = conf.sn,
         fwVer = info.fw_ver,
         hwVer = info.hw_ver,
         services = {

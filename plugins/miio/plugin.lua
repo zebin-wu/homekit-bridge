@@ -2,7 +2,6 @@ local hap = require "hap"
 local hapUtil = require "hap.util"
 local nvs = require "nvs"
 local device = require "miio.device"
-local util = require "util"
 local traceback = debug.traceback
 
 local plugin = {}
@@ -15,6 +14,7 @@ local logger = log.getLogger("miio.plugin")
 ---@field iids table<string, integer> Instance IDs.
 ---@field addr string Device address.
 ---@field token string Device token.
+---@field sn string Accessory serial number.
 ---@field name string Accessory name.
 
 ---Miio plugin configuration.
@@ -26,10 +26,11 @@ local logger = log.getLogger("miio.plugin")
 ---@param conf MiioAccessoryConf Accessory configuration.
 ---@return HAPAccessory accessory
 local function gen(conf)
-    local obj = device.create(conf.addr, util.hex2bin(conf.token))
+    local obj = device.create(conf.addr, conf.token)
     local info = obj:getInfo()
     local product = require("miio." .. info.model)
-    local handle = nvs.open(info.mac:gsub(":", ""))
+    conf.sn = info.mac:gsub(":", "")
+    local handle = nvs.open(conf.sn)
     conf.aid = hapUtil.getBridgedAccessoryIID(handle)
     conf.iids = hapUtil.getInstanceIDs(handle)
     return product.gen(obj, info, conf)

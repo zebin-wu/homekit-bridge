@@ -33,7 +33,7 @@ function fan.gen(device, info, conf)
         name = conf.name or "Zhimi Fan",
         mfg = "zhimi",
         model = info.model,
-        sn = info.mac,
+        sn = conf.sn,
         fwVer = info.fw_ver,
         hwVer = info.hw_ver,
         services = {

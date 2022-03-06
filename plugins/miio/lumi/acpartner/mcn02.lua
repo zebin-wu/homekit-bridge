@@ -43,7 +43,7 @@ function acpartner.gen(device, info, conf)
         name = conf.name or "Lumi Acpartner",
         mfg = "lumi",
         model = info.model,
-        sn = info.mac,
+        sn = conf.sn,
         fwVer = info.fw_ver,
         hwVer = info.hw_ver,
         services = {
