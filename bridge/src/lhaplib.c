@@ -1537,9 +1537,11 @@ int lhap_char_handle_read_finsh(lua_State *L, int status, lua_KContext _ctx) {
         return 2;
     }
     union lhap_char_value val;
-    int valid = lhap_char_value_get(L, -1, format, &val);
-    if (!valid) {
-        err = kHAPError_InvalidData;
+    if (err == kHAPError_None) {
+        int valid = lhap_char_value_get(L, -1, format, &val);
+        if (!valid) {
+            err = kHAPError_InvalidData;
+        }
     }
     switch (format) {
     case kHAPCharacteristicFormat_Bool:
