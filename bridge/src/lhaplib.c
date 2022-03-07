@@ -716,14 +716,13 @@ static const struct lhap_char_integer_val_range {
 
 typedef struct lhap_desc {
     bool inited:1;
-    bool is_started:1;
+    bool started:1;
 
     HAPAccessory *primary_acc;
     HAPAccessory **bridged_accs;
     size_t bridged_accs_max;
     size_t bridged_accs_cnt;
 
-    HAPPlatform *platform;
     HAPAccessoryServerRef server;
     HAPAccessoryServerOptions server_options;
     HAPAccessoryServerCallbacks server_cbs;
@@ -2505,23 +2504,56 @@ static void lhap_reset_accessory(lua_State *L, HAPAccessory *accessory) {
     lua_rawsetp(L, LUA_REGISTRYINDEX, &(accessory->callbacks.identify));
 }
 
+static int lhap_server_handle_update_state_pcall(lua_State *L) {
+    lhap_desc *desc = lua_touserdata(L, 1);
+    lua_pop(L, 1);
+
+    lua_State *co = lua_newthread(L);
+    lua_rawgetp(co, LUA_REGISTRYINDEX, &desc->server_cbs.handleUpdatedState);
+    lua_pushstring(co, lhap_server_state_strs[HAPAccessoryServerGetState(&desc->server)]);
+    int status, nres;
+    status = lc_resume(co, L, 1, &nres);
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        lua_error(L);
+    }
+    return 0;
+}
+
 static void lhap_server_handle_update_state(HAPAccessoryServerRef *server, void *_Nullable context) {
     HAPPrecondition(context);
     HAPPrecondition(server);
 
     lhap_desc *desc = context;
+    HAPAssert(&desc->server == server);
     lua_State *L = app_get_lua_main_thread();
 
     HAPAssert(lua_gettop(L) == 0);
-    lc_pushtraceback(L);
-    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &desc->server_cbs.handleUpdatedState) == LUA_TFUNCTION);
 
-    lua_pushstring(L, lhap_server_state_strs[HAPAccessoryServerGetState(server)]);
-    if (lua_pcall(L, 1, 0, 1)) {
+    lua_pushcfunction(L, lhap_server_handle_update_state_pcall);
+    lua_pushlightuserdata(L, desc);
+    int status = lua_pcall(L, 1, 0, 0);
+    if (status != LUA_OK) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
+
     lua_settop(L, 0);
     lc_collectgarbage(L);
+}
+
+static int lhap_server_handle_session_pcall(lua_State *L) {
+    HAPSessionRef *session = lua_touserdata(L, 1);
+    const void *pfunc = lua_touserdata(L, 2);
+    lua_pop(L, 2);
+
+    lua_State *co = lua_newthread(L);
+    lua_rawgetp(co, LUA_REGISTRYINDEX, pfunc);
+    lua_pushlightuserdata(co, session);
+    int status, nres;
+    status = lc_resume(co, L, 1, &nres);
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        lua_error(L);
+    }
+    return 0;
 }
 
 static void lhap_server_handle_session_accept(
@@ -2532,16 +2564,19 @@ static void lhap_server_handle_session_accept(
     HAPPrecondition(server);
 
     lhap_desc *desc = context;
+    HAPAssert(&desc->server == server);
     lua_State *L = app_get_lua_main_thread();
 
     HAPAssert(lua_gettop(L) == 0);
-    lc_pushtraceback(L);
-    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &desc->server_cbs.handleSessionAccept) == LUA_TFUNCTION);
 
+    lua_pushcfunction(L, lhap_server_handle_session_pcall);
     lua_pushlightuserdata(L, session);
-    if (lua_pcall(L, 1, 0, 1)) {
+    lua_pushlightuserdata(L, &desc->server_cbs.handleSessionAccept);
+    int status = lua_pcall(L, 2, 0, 0);
+    if (status != LUA_OK) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
+
     lua_settop(L, 0);
     lc_collectgarbage(L);
 }
@@ -2554,16 +2589,19 @@ static void lhap_server_handle_session_invalidate(
     HAPPrecondition(server);
 
     lhap_desc *desc = context;
+    HAPAssert(&desc->server == server);
     lua_State *L = app_get_lua_main_thread();
 
     HAPAssert(lua_gettop(L) == 0);
-    lc_pushtraceback(L);
-    HAPAssert(lua_rawgetp(L, LUA_REGISTRYINDEX, &desc->server_cbs.handleSessionInvalidate) == LUA_TFUNCTION);
 
+    lua_pushcfunction(L, lhap_server_handle_session_pcall);
     lua_pushlightuserdata(L, session);
-    if (lua_pcall(L, 1, 0, 1)) {
+    lua_pushlightuserdata(L, &desc->server_cbs.handleSessionInvalidate);
+    int status = lua_pcall(L, 2, 0, 0);
+    if (status != LUA_OK) {
         HAPLogError(&lhap_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
+
     lua_settop(L, 0);
     lc_collectgarbage(L);
 }
@@ -2683,7 +2721,6 @@ static int lhap_init(lua_State *L) {
         "Primary accessory \"%s\" has been configured.", desc->primary_acc->name);
 
     pal_hap_init();
-    desc->platform = pal_hap_get_platform();
 
     desc->inited = true;
 
@@ -2707,7 +2744,7 @@ int lhap_deinit(lua_State *L) {
         luaL_error(L, "HAP is not initialized.");
     }
 
-    if (desc->is_started) {
+    if (desc->started) {
         luaL_error(L, "HAP is started.");
     }
 
@@ -2743,7 +2780,7 @@ static int lhap_add_bridged_accessory(lua_State *L) {
         luaL_error(L, "HAP is not initialized.");
     }
 
-    if (desc->is_started) {
+    if (desc->started) {
         luaL_error(L, "HAP is already started");
     }
 
@@ -2789,7 +2826,7 @@ static int lhap_start(lua_State *L) {
         luaL_error(L, "HAP is already initialized.");
     }
 
-    if (desc->is_started) {
+    if (desc->started) {
         luaL_error(L, "HAP is already started");
     }
 
@@ -2839,19 +2876,21 @@ static int lhap_start(lua_State *L) {
     pal_hap_init_ble(&desc->server_options, attr_cnt);
 #endif
 
+    HAPPlatform *platform = pal_hap_get_platform();
+
     // Generate setup code, setup info and setup ID.
-    pal_hap_acc_setup_gen(desc->platform->keyValueStore);
+    pal_hap_acc_setup_gen(platform->keyValueStore);
 
     // Display setup code.
     HAPSetupCode setupCode;
-    HAPPlatformAccessorySetupLoadSetupCode(desc->platform->accessorySetup, &setupCode);
+    HAPPlatformAccessorySetupLoadSetupCode(platform->accessorySetup, &setupCode);
     HAPLog(&lhap_log, "Setup code: %s", setupCode.stringValue);
 
     // Initialize accessory server.
     HAPAccessoryServerCreate(
             &desc->server,
             &desc->server_options,
-            desc->platform,
+            platform,
             &desc->server_cbs,
             desc);
 
@@ -2863,7 +2902,7 @@ static int lhap_start(lua_State *L) {
         HAPAccessoryServerStart(&desc->server, desc->primary_acc);
     }
 
-    desc->is_started = true;
+    desc->started = true;
     return 0;
 }
 
@@ -2871,7 +2910,7 @@ static int lhap_start(lua_State *L) {
 static int lhap_stop(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
 
-    if (!desc->is_started) {
+    if (!desc->started) {
         luaL_error(L, "HAP is not started.");
     }
 
@@ -2889,7 +2928,7 @@ static int lhap_stop(lua_State *L) {
     pal_hap_deinit_ble(&desc->server_options);
 #endif
 
-    desc->is_started = false;
+    desc->started = false;
 
     return 0;
 }
@@ -2902,7 +2941,7 @@ static int lhap_raise_event(lua_State *L) {
     HAPSessionRef *session = NULL;
     lhap_desc *desc = &gv_lhap_desc;
 
-    if (!desc->is_started) {
+    if (!desc->started) {
         luaL_error(L, "HAP is not started.");
     }
 
