@@ -58,8 +58,6 @@
 
 HAP_STATIC_ASSERT(LHAP_ATTR_CNT_DFT == 9 + 3 + 5, AttributeCount_mismatch);
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 const HAPBoolCharacteristic accessoryInformationIdentifyCharacteristic = {
     .format = kHAPCharacteristicFormat_Bool,
     .iid = kIID_AccessoryInformationIdentify,
@@ -404,8 +402,6 @@ const HAPService pairingService = {
                                                             NULL }
 };
 
-//----------------------------------------------------------------------------------------------------------------------
-
 #define LHAP_BRIDGED_ACCESSORY_IID_DFT 2
 
 #define LHAP_CASE_CHAR_FORMAT_CODE(format, ptr, code) \
@@ -723,6 +719,7 @@ typedef struct lhap_desc {
     size_t bridged_accs_max;
     size_t bridged_accs_cnt;
 
+    HAPPlatform platform;
     HAPAccessoryServerRef server;
     HAPAccessoryServerOptions server_options;
     HAPAccessoryServerCallbacks server_cbs;
@@ -733,6 +730,55 @@ static lhap_desc gv_lhap_desc = {
         .maxPairings = kHAPPairingStorage_MinElements
     }
 };
+
+static void
+lhap_init_ip(HAPAccessoryServerOptions *options, size_t num_contexts, size_t num_notify) {
+    HAPPrecondition(options);
+    HAPPrecondition(num_contexts);
+    HAPPrecondition(num_notify);
+
+    HAPIPSession *sessions = pal_mem_alloc(sizeof(HAPIPSession) * PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS);
+    for (size_t i = 0; i < PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS; i++) {
+        sessions[i].inboundBuffer.bytes = pal_mem_alloc(PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE);
+        HAPAssert(sessions[i].inboundBuffer.bytes);
+        sessions[i].inboundBuffer.numBytes = PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE;
+        sessions[i].outboundBuffer.bytes = pal_mem_alloc(PAL_HAP_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE);
+        HAPAssert(sessions[i].outboundBuffer.bytes);
+        sessions[i].outboundBuffer.numBytes = PAL_HAP_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE;
+        sessions[i].scratchBuffer.bytes = pal_mem_alloc(PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE);
+        HAPAssert(sessions[i].scratchBuffer.bytes);
+        sessions[i].scratchBuffer.numBytes = PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE;
+        sessions[i].contexts = pal_mem_alloc(sizeof(HAPIPCharacteristicContextRef) * num_contexts);
+        HAPAssert(sessions[i].contexts);
+        sessions[i].numContexts = num_contexts;
+        sessions[i].eventNotifications = pal_mem_alloc(sizeof(HAPIPEventNotificationRef) * num_notify);
+        HAPAssert(sessions[i].eventNotifications);
+        sessions[i].numEventNotifications = num_notify;
+    }
+
+    options->ip.transport = &kHAPAccessoryServerTransport_IP;
+    options->ip.accessoryServerStorage = pal_mem_alloc(sizeof(HAPIPAccessoryServerStorage));
+    HAPAssert(options->ip.accessoryServerStorage);
+    options->ip.accessoryServerStorage->sessions = sessions;
+    options->ip.accessoryServerStorage->numSessions = PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS;
+}
+
+static void
+lhap_deinit_ip(HAPAccessoryServerOptions *options) {
+    HAPPrecondition(options);
+
+    HAPIPAccessoryServerStorage *storage = options->ip.accessoryServerStorage;
+    for (size_t i = 0; i < storage->numSessions; i++) {
+        pal_mem_free(storage->sessions[i].inboundBuffer.bytes);
+        pal_mem_free(storage->sessions[i].outboundBuffer.bytes);
+        pal_mem_free(storage->sessions[i].scratchBuffer.bytes);
+        pal_mem_free(storage->sessions[i].contexts);
+        pal_mem_free(storage->sessions[i].eventNotifications);
+    }
+    pal_mem_free(storage->sessions);
+    pal_mem_free(storage);
+    HAPRawBufferZero(options, sizeof(*options));
+}
 
 static void lhap_rawsetp_reset(lua_State *L, int idx, const void *p) {
     lua_pushnil(L);
@@ -2720,7 +2766,12 @@ static int lhap_init(lua_State *L) {
     HAPLog(&lhap_log,
         "Primary accessory \"%s\" has been configured.", desc->primary_acc->name);
 
-    pal_hap_init();
+    pal_hap_init_platform(&desc->platform);
+
+    // Display setup code.
+    HAPSetupCode setupCode;
+    HAPPlatformAccessorySetupLoadSetupCode(desc->platform.accessorySetup, &setupCode);
+    HAPLog(&lhap_log, "Setup code: %s", setupCode.stringValue);
 
     desc->inited = true;
 
@@ -2748,11 +2799,9 @@ int lhap_deinit(lua_State *L) {
         luaL_error(L, "HAP is started.");
     }
 
-    pal_hap_deinit();
+    pal_hap_deinit_platform(&desc->platform);
 
     lhap_reset_server_cb(L, &desc->server_cbs);
-
-    HAPRawBufferZero(&desc->server, sizeof(desc->server));
     HAPRawBufferZero(&desc->server_cbs, sizeof(desc->server_cbs));
 
     if (desc->bridged_accs) {
@@ -2844,53 +2893,37 @@ static int lhap_start(lua_State *L) {
         desc->bridged_accs_max = max;
     }
 
-    size_t attr_cnt = LHAP_ATTR_CNT_DFT;
-    size_t readable_cnt = LHAP_CHAR_READ_CNT_DFT;
-    size_t writable_cnt = LHAP_CHAR_WRITE_CNT_DFT;
-    size_t notify_cnt = LHAP_CHAR_NOTIFY_CNT_DFT;
+    size_t num_attr = LHAP_ATTR_CNT_DFT;
+    size_t num_readable = LHAP_CHAR_READ_CNT_DFT;
+    size_t num_writable = LHAP_CHAR_WRITE_CNT_DFT;
+    size_t num_notify = LHAP_CHAR_NOTIFY_CNT_DFT;
 
-    lhap_count_attr(desc->primary_acc, &attr_cnt, &readable_cnt, &writable_cnt, &notify_cnt);
+    lhap_count_attr(desc->primary_acc, &num_attr, &num_readable, &num_writable, &num_notify);
 
     if (desc->bridged_accs) {
         for (const HAPAccessory * const *pacc =
             (const HAPAccessory * const *)desc->bridged_accs; *pacc; pacc++) {
-            lhap_count_attr(*pacc, &attr_cnt, &readable_cnt, &writable_cnt, &notify_cnt);
+            lhap_count_attr(*pacc, &num_attr, &num_readable, &num_writable, &num_notify);
         }
     }
 
-    if (readable_cnt == 0) {
-        readable_cnt = 1;
+    if (num_readable == 0) {
+        num_readable = 1;
     }
-    if (writable_cnt == 0) {
-        writable_cnt = 1;
+    if (num_writable == 0) {
+        num_writable = 1;
     }
-    if (notify_cnt == 0) {
-        notify_cnt = 1;
+    if (num_notify == 0) {
+        num_notify = 1;
     }
 
-#if IP
-    pal_hap_init_ip(&desc->server_options, readable_cnt, writable_cnt, notify_cnt);
-#endif
-
-#if BLE
-    pal_hap_init_ble(&desc->server_options, attr_cnt);
-#endif
-
-    HAPPlatform *platform = pal_hap_get_platform();
-
-    // Generate setup code, setup info and setup ID.
-    pal_hap_acc_setup_gen(platform->keyValueStore);
-
-    // Display setup code.
-    HAPSetupCode setupCode;
-    HAPPlatformAccessorySetupLoadSetupCode(platform->accessorySetup, &setupCode);
-    HAPLog(&lhap_log, "Setup code: %s", setupCode.stringValue);
+    lhap_init_ip(&desc->server_options, HAPMax(num_readable, num_writable), num_notify);
 
     // Initialize accessory server.
     HAPAccessoryServerCreate(
             &desc->server,
             &desc->server_options,
-            platform,
+            &desc->platform,
             &desc->server_cbs,
             desc);
 
@@ -2920,13 +2953,9 @@ static int lhap_stop(lua_State *L) {
     // Release accessory server.
     HAPAccessoryServerRelease(&desc->server);
 
-#if IP
-    pal_hap_deinit_ip(&desc->server_options);
-#endif
+    lhap_deinit_ip(&desc->server_options);
 
-#if BLE
-    pal_hap_deinit_ble(&desc->server_options);
-#endif
+    HAPRawBufferZero(&desc->server, sizeof(desc->server));
 
     desc->started = false;
 

@@ -26,48 +26,14 @@ extern "C" {
 #define PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE ((size_t) 1500)
 
 /**
- * Initialize HAP module.
+ * Initialize HAP platform structure.
  */
-void pal_hap_init(void);
+void pal_hap_init_platform(HAPPlatform *platform);
 
 /**
- * De-initialize HAP module.
+ * De-initialize HAP platform structure.
  */
-void pal_hap_deinit(void);
-
-/**
- * Get the pointer to the HomeKit platform structure.
- */
-HAPPlatform *pal_hap_get_platform(void);
-
-/**
- * Generate setup code, setup info and setup ID, and put them in the key-value store.
- */
-void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store);
-
-#if IP
-/**
- * Initialize IP.
- */
-void pal_hap_init_ip(HAPAccessoryServerOptions *options, size_t readable_cnt, size_t writable_cnt, size_t notify_cnt);
-
-/**
- * Deinitialize IP.
- */
-void pal_hap_deinit_ip(HAPAccessoryServerOptions *options);
-#endif  // IP
-
-#if BLE
-/**
- * Initialize BLE.
- */
-void pal_hap_init_ble(HAPAccessoryServerOptions *options, size_t attribute_cnt);
-
-/**
- * Deinitialize BLE.
- */
-void pal_hap_deinit_ble(HAPAccessoryServerOptions *options);
-#endif  // BLE
+void pal_hap_deinit_platform(HAPPlatform *platform);
 
 #ifdef __cplusplus
 }

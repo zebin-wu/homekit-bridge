@@ -5,109 +5,170 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <pal/hap.h>
+#include <pal/memory.h>
 
 #include <HAPPlatform+Init.h>
+#include <HAPAccessorySetup.h>
 #include <HAPPlatformAccessorySetup+Init.h>
+#include <HAPPlatformKeyValueStore+SDKDomains.h>
 #include <HAPPlatformBLEPeripheralManager+Init.h>
 #include <HAPPlatformKeyValueStore+Init.h>
 #include <HAPPlatformMFiTokenAuth+Init.h>
 #include <HAPPlatformLog+Init.h>
-#if IP
 #include <HAPPlatformServiceDiscovery+Init.h>
 #include <HAPPlatformTCPStreamManager+Init.h>
-#endif
+
 #if HAVE_MFI_HW_AUTH
 #include <HAPPlatformMFiHWAuth+Init.h>
 #endif
 
-static struct {
-    HAPPlatformKeyValueStore keyValueStore;
-    HAPPlatform hapPlatform;
+static bool ginited;
 
-#if HAVE_NFC
-    HAPPlatformAccessorySetupNFC setupNFC;
-#endif
+/**
+ * Generate setup code, setup info and setup ID, and put them in the key-value store.
+ */
+static void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store) {
+    bool found;
+    size_t numBytes;
 
-#if IP
-    HAPPlatformTCPStreamManager tcpStreamManager;
-#endif
+    // Setup code.
+    HAPSetupCode setupCode;
+    HAPAssert(HAPPlatformKeyValueStoreGet(kv_store,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupCode,
+            &setupCode, sizeof(setupCode), &numBytes,
+            &found) == kHAPError_None);
+    if (!found) {
+        HAPAccessorySetupGenerateRandomSetupCode(&setupCode);
+        HAPAssert(HAPPlatformKeyValueStoreSet(kv_store,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupCode,
+            &setupCode, sizeof(setupCode)) == kHAPError_None);
+    }
 
-#if HAVE_MFI_HW_AUTH
-    HAPPlatformMFiHWAuth mfiHWAuth;
-#endif
-    HAPPlatformMFiTokenAuth mfiTokenAuth;
-} platform;
+    // Setup info.
+    HAPSetupInfo setupInfo;
+    HAPAssert(HAPPlatformKeyValueStoreGet(kv_store,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupInfo,
+            &setupInfo, sizeof(setupInfo), &numBytes,
+            &found) == kHAPError_None);
+    if (!found) {
+        HAPPlatformRandomNumberFill(setupInfo.salt, sizeof setupInfo.salt);
+        const uint8_t srpUserName[] = "Pair-Setup";
+        HAP_srp_verifier(
+                setupInfo.verifier,
+                setupInfo.salt,
+                srpUserName,
+                sizeof srpUserName - 1,
+                (const uint8_t*) setupCode.stringValue,
+                sizeof setupCode.stringValue - 1);
+        HAPAssert(HAPPlatformKeyValueStoreSet(kv_store,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupInfo,
+            &setupInfo, sizeof(setupInfo)) == kHAPError_None);
+    }
 
-void pal_hap_init(void) {
+    // Setup ID.
+    HAPSetupID setupID;
+    HAPAssert(HAPPlatformKeyValueStoreGet(kv_store,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupID,
+            &setupID, sizeof(setupID), &numBytes,
+            &found) == kHAPError_None);
+    if (!found) {
+        HAPAccessorySetupGenerateRandomSetupID(&setupID);
+        HAPAssert(HAPPlatformKeyValueStoreSet(kv_store,
+            kSDKKeyValueStoreDomain_Provisioning,
+            kSDKKeyValueStoreKey_Provisioning_SetupID,
+            &setupID, sizeof(setupID)) == kHAPError_None);
+    }
+}
+
+void pal_hap_init_platform(HAPPlatform *platform) {
+    HAPPrecondition(!ginited);
+    HAPPrecondition(platform);
+
     // Key-value store.
-    HAPPlatformKeyValueStoreCreate(&platform.keyValueStore, &(const HAPPlatformKeyValueStoreOptions) {
+    platform->keyValueStore = pal_mem_alloc(sizeof(HAPPlatformKeyValueStore));
+    HAPAssert(platform->keyValueStore);
+    HAPPlatformKeyValueStoreCreate(platform->keyValueStore, &(const HAPPlatformKeyValueStoreOptions) {
         .part_name = "nvs",
         .namespace_prefix = "hap",
         .read_only = false
     });
-    platform.hapPlatform.keyValueStore = &platform.keyValueStore;
+
+    // Generate setup code, setup info and setup ID.
+    pal_hap_acc_setup_gen(platform->keyValueStore);
 
     // Accessory setup manager. Depends on key-value store.
-    static HAPPlatformAccessorySetup accessorySetup;
+    platform->accessorySetup = pal_mem_alloc(sizeof(HAPPlatformAccessorySetup));
+    HAPAssert(platform->accessorySetup);
     HAPPlatformAccessorySetupCreate(
-            &accessorySetup, &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = &platform.keyValueStore });
-    platform.hapPlatform.accessorySetup = &accessorySetup;
+            platform->accessorySetup,
+            &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = platform->keyValueStore });
 
-#if IP
     // TCP stream manager.
-    HAPPlatformTCPStreamManagerCreate(&platform.tcpStreamManager,
-        &(const HAPPlatformTCPStreamManagerOptions) {
-        /* Listen on all available network interfaces. */
-        .port = 0 /* Listen on unused port number from the ephemeral port range. */,
-        .maxConcurrentTCPStreams = PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS
-    });
-    platform.hapPlatform.ip.tcpStreamManager = &platform.tcpStreamManager;
+    platform->ip.tcpStreamManager = pal_mem_alloc(sizeof(HAPPlatformTCPStreamManager));
+    HAPAssert(platform->ip.tcpStreamManager);
+    HAPPlatformTCPStreamManagerCreate(
+            platform->ip.tcpStreamManager,
+            &(const HAPPlatformTCPStreamManagerOptions) {
+                    .port = kHAPNetworkPort_Any,  // Listen on unused port number from the ephemeral port range.
+                    .maxConcurrentTCPStreams = PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS });
 
     // Service discovery.
-    static HAPPlatformServiceDiscovery serviceDiscovery;
-    HAPPlatformServiceDiscoveryCreate(&serviceDiscovery, &(const HAPPlatformServiceDiscoveryOptions) {
-        NULL, /* Default host name is "homekit-bridge". */
-    });
-    platform.hapPlatform.ip.serviceDiscovery = &serviceDiscovery;
-#endif
-
-#if (BLE)
-    // BLE peripheral manager. Depends on key-value store.
-    static HAPPlatformBLEPeripheralManagerOptions blePMOptions = { 0 };
-    blePMOptions.keyValueStore = &platform.keyValueStore;
-
-    static HAPPlatformBLEPeripheralManager blePeripheralManager;
-    HAPPlatformBLEPeripheralManagerCreate(&blePeripheralManager, &blePMOptions);
-    platform.hapPlatform.ble.blePeripheralManager = &blePeripheralManager;
-#endif
+    platform->ip.serviceDiscovery = pal_mem_alloc(sizeof(HAPPlatformServiceDiscovery));
+    HAPAssert(platform->ip.serviceDiscovery);
+    HAPPlatformServiceDiscoveryCreate(
+            platform->ip.serviceDiscovery,
+            &(const HAPPlatformServiceDiscoveryOptions) {
+                    NULL, /* Default host name is "homekit-bridge". */
+            });
 
 #if HAVE_MFI_HW_AUTH
     // Apple Authentication Coprocessor provider.
-    HAPPlatformMFiHWAuthCreate(&platform.mfiHWAuth);
-    platform.hapPlatform.authentication.mfiHWAuth = &platform.mfiHWAuth;
+    platform->authentication.mfiHWAuth = pal_mem_alloc(sizeof(HAPPlatformMFiHWAuth));
+    HAPAssert(platform->authentication.mfiHWAuth);
+    HAPPlatformMFiHWAuthCreate(platform->authentication.mfiHWAuth);
 #endif
 
     // Software Token provider. Depends on key-value store.
+    platform->authentication.mfiTokenAuth = pal_mem_alloc(sizeof(HAPPlatformMFiTokenAuth));
+    HAPAssert(platform->authentication.mfiTokenAuth);
     HAPPlatformMFiTokenAuthCreate(
-            &platform.mfiTokenAuth,
-            &(const HAPPlatformMFiTokenAuthOptions) { .keyValueStore = &platform.keyValueStore });
+            platform->authentication.mfiTokenAuth,
+            &(const HAPPlatformMFiTokenAuthOptions) { .keyValueStore = platform->keyValueStore });
+    if (!HAPPlatformMFiTokenAuthIsProvisioned(platform->authentication.mfiTokenAuth)) {
+        pal_mem_free(platform->authentication.mfiTokenAuth);
+        platform->authentication.mfiTokenAuth = NULL;
+    }
 
-    platform.hapPlatform.authentication.mfiTokenAuth =
-            HAPPlatformMFiTokenAuthIsProvisioned(&platform.mfiTokenAuth) ? &platform.mfiTokenAuth : NULL;
+    ginited = true;
 }
 
-void pal_hap_deinit(void) {
+void pal_hap_deinit_platform(HAPPlatform *platform) {
+    HAPPrecondition(ginited);
+    HAPPrecondition(platform);
+
+    if (platform->authentication.mfiTokenAuth) {
+        pal_mem_free(platform->authentication.mfiTokenAuth);
+    }
 #if HAVE_MFI_HW_AUTH
     // Apple Authentication Coprocessor provider.
-    HAPPlatformMFiHWAuthRelease(&platform.mfiHWAuth);
+    HAPPlatformMFiHWAuthRelease(platform->authentication.mfiHWAuth);
+    pal_mem_free(platform->authentication.mfiHWAuth);
 #endif
 
-#if IP
+    pal_mem_free(platform->ip.serviceDiscovery);
+
     // TCP stream manager.
-    HAPPlatformTCPStreamManagerRelease(&platform.tcpStreamManager);
-#endif
-}
+    HAPPlatformTCPStreamManagerRelease(platform->ip.tcpStreamManager);
+    pal_mem_free(platform->ip.tcpStreamManager);
 
-HAPPlatform *pal_hap_get_platform(void) {
-    return &platform.hapPlatform;
+    pal_mem_free(platform->accessorySetup);
+    pal_mem_free(platform->keyValueStore);
+
+    HAPRawBufferZero(platform, sizeof(*platform));
+    ginited = false;
 }
