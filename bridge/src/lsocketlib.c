@@ -105,8 +105,8 @@ static int lsocket_obj_listen(lua_State *L) {
 
 static void lsocket_accepted_cb(pal_socket_obj *o, pal_socket_err err, pal_socket_obj *new_o,
     const char *addr, uint16_t port, void *arg) {
-    lua_State *L = app_get_lua_main_thread();
     lua_State *co = arg;
+    lua_State *L = lc_getmainthread(co);
     int status, nres;
 
     HAPAssert(lua_gettop(L) == 0);
@@ -170,8 +170,8 @@ static int lsocket_obj_accept(lua_State *L) {
 }
 
 static void lsocket_connected_cb(pal_socket_obj *o, pal_socket_err err, void *arg) {
-    lua_State *L = app_get_lua_main_thread();
     lua_State *co = arg;
+    lua_State *L = lc_getmainthread(co);
     int status, nres;
 
     HAPAssert(lua_gettop(L) == 0);
@@ -213,8 +213,8 @@ static int lsocket_obj_connect(lua_State *L) {
 }
 
 static void lsocket_sent_cb(pal_socket_obj *o, pal_socket_err err, size_t sent_len, void *arg) {
-    lua_State *L = app_get_lua_main_thread();
     lua_State *co = arg;
+    lua_State *L = lc_getmainthread(co);
     int status, nres;
 
     HAPAssert(lua_gettop(L) == 0);
@@ -282,8 +282,8 @@ static int lsocket_obj_sendto(lua_State *L) {
 
 static void lsocket_recved_cb(pal_socket_obj *o, pal_socket_err err,
     const char *addr, uint16_t port, void *data, size_t len, void *arg) {
-    lua_State *L = app_get_lua_main_thread();
     lua_State *co = arg;
+    lua_State *L = lc_getmainthread(co);
     int status, nres;
 
     HAPAssert(lua_gettop(L) == 0);

@@ -6,7 +6,6 @@
 
 #include <string.h>
 #include <lauxlib.h>
-#include <lgc.h>
 
 #include "app_int.h"
 #include "lc.h"
@@ -128,8 +127,16 @@ err:
     return false;
 }
 
+lua_State *lc_getmainthread(lua_State *L) {
+    HAPAssert(lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_MAINTHREAD) == LUA_TTHREAD);
+    lua_State *mL = lua_tothread(L, -1);
+    HAPAssert(mL);
+    lua_pop(L, 1);
+    return mL;
+}
+
 void lc_collectgarbage(lua_State *L) {
-    luaC_fullgc(L, 0);
+    lua_gc(L, LUA_GCCOLLECT);
 }
 
 static int traceback(lua_State *L) {

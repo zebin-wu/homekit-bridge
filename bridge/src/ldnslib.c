@@ -41,8 +41,8 @@ static int ldns_response(lua_State *L) {
 }
 
 void ldns_response_cb(const char *addr, void *arg) {
-    lua_State *L = app_get_lua_main_thread();
     lua_State *co = arg;
+    lua_State *L = lc_getmainthread(co);
 
     HAPAssert(lua_gettop(L) == 0);
 

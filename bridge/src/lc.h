@@ -63,6 +63,11 @@ bool lc_traverse_array(lua_State *L, int idx,
                         void *arg);
 
 /**
+ * Get Lua main thread.
+ */
+lua_State *lc_getmainthread(lua_State *L);
+
+/**
  * Collect garbage.
  */
 void lc_collectgarbage(lua_State *L);

@@ -719,6 +719,7 @@ typedef struct lhap_desc {
     size_t bridged_accs_max;
     size_t bridged_accs_cnt;
 
+    lua_State *mL;
     HAPPlatform platform;
     HAPAccessoryServerRef server;
     HAPAccessoryServerOptions server_options;
@@ -1733,7 +1734,7 @@ HAPError lhap_char_Data_handleRead(
         size_t maxValueBytes,
         size_t* numValueBytes,
         void* _Nullable context) {
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = ((lhap_desc *)context)->mL;
     HAPError err = lhap_char_base_handleRead(L, server, request->transportType,
         request->session, request->accessory, request->service,
         (const HAPBaseCharacteristic *)request->characteristic,
@@ -1767,7 +1768,7 @@ HAPError lhap_char_Bool_handleRead(
         const HAPBoolCharacteristicReadRequest* request,
         bool* value,
         void* _Nullable context) {
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = ((lhap_desc *)context)->mL;
     HAPError err = lhap_char_base_handleRead(L, server, request->transportType,
         request->session, request->accessory, request->service,
         (const HAPBaseCharacteristic *)request->characteristic,
@@ -1786,6 +1787,7 @@ end:
 
 static HAP_RESULT_USE_CHECK
 HAPError lhap_char_number_handleRead(
+        lua_State *L,
         HAPAccessoryServerRef* server,
         HAPTransportType transportType,
         HAPSessionRef *session,
@@ -1794,7 +1796,6 @@ HAPError lhap_char_number_handleRead(
         const HAPBaseCharacteristic *characteristic,
         void *value,
         const void *pfunc) {
-    lua_State *L = app_get_lua_main_thread();
     HAPError err = lhap_char_base_handleRead(L, server, transportType, session,
         accessory, service, characteristic, pfunc);
 
@@ -1844,7 +1845,7 @@ HAPError lhap_char_ ## format ## _handleRead( \
         const HAP ## format ##CharacteristicReadRequest* request, \
         vtype* value, \
         void* _Nullable context) { \
-    return lhap_char_number_handleRead(server, \
+    return lhap_char_number_handleRead(((lhap_desc *)context)->mL, server, \
         request->transportType, request->session, request->accessory, request->service, \
         (const HAPBaseCharacteristic *)request->characteristic, value, \
         &request->characteristic->callbacks.handleRead); \
@@ -1866,7 +1867,7 @@ HAPError lhap_char_String_handleRead(
         char* value,
         size_t maxValueBytes,
         void* _Nullable context) {
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = ((lhap_desc *)context)->mL;
     HAPError err = lhap_char_base_handleRead(L, server, request->transportType,
         request->session, request->accessory, request->service,
         (const HAPBaseCharacteristic *)request->characteristic,
@@ -1897,7 +1898,7 @@ HAPError lhap_char_TLV8_handleRead(
         const HAPTLV8CharacteristicReadRequest* request,
         HAPTLVWriterRef* responseWriter,
         void* _Nullable context) {
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = ((lhap_desc *)context)->mL;
     HAPError err = lhap_char_base_handleRead(L, server, request->transportType,
         request->session, request->accessory, request->service,
         (const HAPBaseCharacteristic *)request->characteristic,
@@ -2031,7 +2032,7 @@ HAPError lhap_char_Data_handleWrite(
         const void* valueBytes,
         size_t numValueBytes,
         void* _Nullable context) {
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = ((lhap_desc *)context)->mL;
     HAPAssert(lua_gettop(L) == 0);
 
     lua_pushlstring(L, valueBytes, numValueBytes);
@@ -2047,7 +2048,7 @@ HAPError lhap_char_Bool_handleWrite(
         const HAPBoolCharacteristicWriteRequest* request,
         bool value,
         void* _Nullable context) {
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = ((lhap_desc *)context)->mL;
     HAPAssert(lua_gettop(L) == 0);
 
     lua_pushboolean(L, value);
@@ -2059,6 +2060,7 @@ HAPError lhap_char_Bool_handleWrite(
 
 HAP_RESULT_USE_CHECK
 HAPError lhap_char_number_handleWrite(
+        lua_State *L,
         HAPAccessoryServerRef* server,
         HAPTransportType transportType,
         HAPSessionRef *session,
@@ -2068,7 +2070,6 @@ HAPError lhap_char_number_handleWrite(
         const HAPBaseCharacteristic *characteristic,
         void *value,
         const void *pfunc) {
-    lua_State *L = app_get_lua_main_thread();
     HAPAssert(lua_gettop(L) == 0);
 
     lua_Number num;
@@ -2107,7 +2108,7 @@ HAPError lhap_char_ ## format ## _handleWrite( \
         const HAP ## format ## CharacteristicWriteRequest* request, \
         vtype value, \
         void* _Nullable context) { \
-    return lhap_char_number_handleWrite( \
+    return lhap_char_number_handleWrite(((lhap_desc *)context)->mL, \
         server, request->transportType, request->session, \
         request->remote, request->accessory, request->service, \
         (const HAPBaseCharacteristic *)request->characteristic, &value, \
@@ -2129,7 +2130,7 @@ HAPError lhap_char_String_handleWrite(
         const HAPStringCharacteristicWriteRequest* request,
         const char* value,
         void* _Nullable context) {
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = ((lhap_desc *)context)->mL;
     HAPAssert(lua_gettop(L) == 0);
 
     lua_pushstring(L, value);
@@ -2145,7 +2146,7 @@ HAPError lhap_char_TLV8_handleWrite(
         const HAPTLV8CharacteristicWriteRequest* request,
         HAPTLVReaderRef* requestReader,
         void* _Nullable context) {
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = ((lhap_desc *)context)->mL;
     HAPAssert(lua_gettop(L) == 0);
 
     // TODO(Zebin Wu): Implement TLV8 in lua.
@@ -2471,7 +2472,7 @@ HAPError lhap_accessory_on_identify(
     HAPPrecondition(request);
     HAPPrecondition(context);
 
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = ((lhap_desc *)context)->mL;
     HAPAssert(lua_gettop(L) == 0);
 
     lua_pushcfunction(L, lhap_accessory_pcall_identify);
@@ -2571,7 +2572,7 @@ static void lhap_server_handle_update_state(HAPAccessoryServerRef *server, void 
 
     lhap_desc *desc = context;
     HAPAssert(&desc->server == server);
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = desc->mL;
 
     HAPAssert(lua_gettop(L) == 0);
 
@@ -2611,7 +2612,7 @@ static void lhap_server_handle_session_accept(
 
     lhap_desc *desc = context;
     HAPAssert(&desc->server == server);
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = desc->mL;
 
     HAPAssert(lua_gettop(L) == 0);
 
@@ -2636,7 +2637,7 @@ static void lhap_server_handle_session_invalidate(
 
     lhap_desc *desc = context;
     HAPAssert(&desc->server == server);
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = desc->mL;
 
     HAPAssert(lua_gettop(L) == 0);
 
@@ -2773,6 +2774,7 @@ static int lhap_init(lua_State *L) {
     HAPPlatformAccessorySetupLoadSetupCode(desc->platform.accessorySetup, &setupCode);
     HAPLog(&lhap_log, "Setup code: %s", setupCode.stringValue);
 
+    desc->mL = lc_getmainthread(L);
     desc->inited = true;
 
     return 0;
@@ -2817,6 +2819,7 @@ int lhap_deinit(lua_State *L) {
     }
     desc->bridged_accs_cnt = 0;
     desc->bridged_accs_max = 0;
+    desc->mL = NULL;
     desc->inited = false;
     return 0;
 }

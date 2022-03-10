@@ -23,6 +23,7 @@ static const HAPLogObject ltime_log = {
  */
 typedef struct {
     int nargs;
+    lua_State *mL;
     HAPPlatformTimerRef timer;  /* Timer ID. Start from 1. */
 } ltime_timer_ctx;
 
@@ -39,8 +40,8 @@ static int ltime_resume(lua_State *L) {
 }
 
 static void ltime_sleep_cb(HAPPlatformTimerRef timer, void *context) {
-    lua_State *L = app_get_lua_main_thread();
     lua_State *co = context;
+    lua_State *L = lc_getmainthread(co);
 
     HAPAssert(lua_gettop(L) == 0);
 
@@ -80,6 +81,7 @@ static int ltime_createTimer(lua_State *L) {
     }
     ctx->nargs = n - 1;
     ctx->timer = 0;
+    ctx->mL = lc_getmainthread(L);
     return 1;
 }
 
@@ -108,7 +110,7 @@ static int ltime_timer_resume(lua_State *L) {
 
 static void ltime_timer_cb(HAPPlatformTimerRef timer, void *context) {
     ltime_timer_ctx *ctx = context;
-    lua_State *L = app_get_lua_main_thread();
+    lua_State *L = ctx->mL;
 
     ctx->timer = 0;
 

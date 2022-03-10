@@ -52,11 +52,6 @@ LUAMOD_API int luaopen_dns(lua_State *L);
 #define LUA_NVS_NAME "nvs"
 LUAMOD_API int luaopen_nvs(lua_State *L);
 
-/**
- * Get Lua main thread.
- */
-lua_State *app_get_lua_main_thread();
-
 #ifdef __cplusplus
 }
 #endif

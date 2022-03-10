@@ -220,7 +220,3 @@ void app_deinit() {
         L = NULL;
     }
 }
-
-lua_State *app_get_lua_main_thread() {
-    return L;
-}
