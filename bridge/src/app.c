@@ -33,8 +33,6 @@ static const luaL_Reg globallibs[] = {
     {LUA_GNAME, luaopen_base},
     {LUA_LOADLIBNAME, luaopen_package},
     {LUA_TABLIBNAME, luaopen_table},
-    {LUA_IOLIBNAME, luaopen_io},
-    {LUA_OSLIBNAME, luaopen_os},
     {LUA_STRLIBNAME, luaopen_string},
     {LUA_MATHLIBNAME, luaopen_math},
     {LUA_UTF8LIBNAME, luaopen_utf8},
@@ -46,7 +44,7 @@ static const luaL_Reg globallibs[] = {
 static const luaL_Reg dynamiclibs[] = {
     {LUA_HAP_NAME, luaopen_hap},
     {LUA_CHIP_NAME, luaopen_chip},
-    {LUA_TIME_NAME, luaopen_time},
+    {LUA_CORE_NAME, luaopen_core},
     {LUA_HASH_NAME, luaopen_hash},
     {LUA_CIPHER_NAME, luaopen_cipher},
     {LUA_CJSON_NAME, luaopen_cjson},

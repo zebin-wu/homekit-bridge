@@ -1,6 +1,7 @@
 local socket = require "socket"
 local hash = require "hash"
 local json = require "cjson"
+local core = require "core"
 
 local assert = assert
 local type = type
@@ -274,7 +275,7 @@ function pcb:handshake(timeout)
     local result = results[1]
     logger:debug("Handshake done.")
     self.devid = result.devid
-    self.stampDiff = os.time() - result.stamp
+    self.stampDiff = core.time() - result.stamp
 end
 
 ---Start a request.
@@ -310,7 +311,7 @@ function pcb:request(timeout, method, params)
             params = params or nil
         })
 
-        sock:send(pack(0, self.devid, os.time() - self.stampDiff,
+        sock:send(pack(0, self.devid, core.time() - self.stampDiff,
             self.token, self.encryption:encrypt(data)))
 
         logger:debug(("%s => %s"):format(data, self.addr))

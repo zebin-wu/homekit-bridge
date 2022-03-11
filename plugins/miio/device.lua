@@ -1,5 +1,5 @@
 local protocol = require "miio.protocol"
-local time = require "time"
+local core = require "core"
 local util = require "util"
 local mq = require "mq"
 local xpcall = xpcall
@@ -86,7 +86,7 @@ end
 ---@param mapping table<string, MiotIID> Property name -> MIOT instance ID mapping.
 function _device:setMapping(mapping)
     self.mapping = mapping
-    self.timer = time.createTimer(getPropsMiot, self)
+    self.timer = core.createTimer(getPropsMiot, self)
 end
 
 ---Get property.
@@ -165,7 +165,7 @@ function device.create(addr, token)
         names = {}, ---@type string[]
     }
 
-    o.timer = time.createTimer(getProps, o)
+    o.timer = core.createTimer(getProps, o)
 
     setmetatable(o, {
         __index = _device

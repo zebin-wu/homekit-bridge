@@ -1,4 +1,5 @@
 local config = require "config"
+local core = require "core"
 local plugins = require "plugins"
 local hap = require "hap"
 local chip = require "chip"
@@ -30,11 +31,11 @@ hap.init({
         logger:default("Accessory Server State did update: " .. state .. ".")
         plugins.handleState(state)
     end,
-    sessionAccept = function ()
-        logger:default("Session is accepted")
+    sessionAccept = function (session)
+        logger:default("Session ".. session .. " is accepted")
     end,
-    sessionInvalidate = function ()
-        logger:default("Session is invalidated")
+    sessionInvalidate = function (session)
+        logger:default("Session ".. session .. " invalidated")
     end
 })
 

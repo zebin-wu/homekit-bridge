@@ -16,7 +16,7 @@ set(BRIDGE_SRCS
     ${BRIDGE_SRC_DIR}/lloglib.c
     ${BRIDGE_SRC_DIR}/lhaplib.c
     ${BRIDGE_SRC_DIR}/lchiplib.c
-    ${BRIDGE_SRC_DIR}/ltimelib.c
+    ${BRIDGE_SRC_DIR}/lcorelib.c
     ${BRIDGE_SRC_DIR}/lc.c
     ${BRIDGE_SRC_DIR}/lhashlib.c
     ${BRIDGE_SRC_DIR}/lcipherlib.c

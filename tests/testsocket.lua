@@ -1,6 +1,5 @@
 local socket = require "socket"
-local time = require "time"
-local logger = log.getLogger("testsocket")
+local core = require "core"
 
 local function fillStr(n, fill)
     fill = fill or "0123456789"
@@ -74,7 +73,7 @@ end
 do
     local server = socket.create("UDP", "IPV4")
     server:bind("127.0.0.1", 8888)
-    time.createTimer(function ()
+    core.createTimer(function ()
         while true do
             local msg, addr, port = server:recvfrom(1024)
             if #msg == 0 then
@@ -99,7 +98,7 @@ do
     local listener = socket.create("TCP", "IPV4")
     listener:bind("127.0.0.1", 8888)
     listener:listen(1024)
-    time.createTimer(function ()
+    core.createTimer(function ()
         while true do
             local server = listener:accept()
             while true do

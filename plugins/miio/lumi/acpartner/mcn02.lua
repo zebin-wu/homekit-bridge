@@ -1,5 +1,5 @@
 local hap = require "hap"
-local time = require "time"
+local core = require "core"
 local Active = require "hap.char.Active"
 local CurTemp = require "hap.char.CurrentTemperature"
 local CurHeatCoolState = require "hap.char.CurrentHeaterCoolerState"
@@ -64,7 +64,7 @@ function acpartner.gen(device, info, conf)
                         device.logger:info("Write Active: " .. searchKey(Active.value, value))
                         device:setProp("power", searchKey(valMapping.power, value))
                         raiseEvent(request.aid, request.sid, request.cid)
-                        time.createTimer(function ()
+                        core.createTimer(function ()
                             raiseEvent(request.aid, iids.heaterCooler, iids.curTemp)
                             raiseEvent(request.aid, iids.heaterCooler, iids.curState)
                             raiseEvent(request.aid, iids.heaterCooler, iids.coolThrTemp)
@@ -104,7 +104,7 @@ function acpartner.gen(device, info, conf)
                         device.logger:info("Write TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
                         device:setProp("mode", searchKey(valMapping.mode, value))
                         raiseEvent(request.aid, request.sid, request.cid)
-                        time.createTimer(function ()
+                        core.createTimer(function ()
                             raiseEvent(request.aid, iids.heaterCooler, iids.curState)
                             raiseEvent(request.aid, iids.heaterCooler, iids.coolThrTemp)
                             raiseEvent(request.aid, iids.heaterCooler, iids.heatThrTemp)
