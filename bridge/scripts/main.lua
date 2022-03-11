@@ -32,10 +32,10 @@ hap.init({
         plugins.handleState(state)
     end,
     sessionAccept = function (session)
-        logger:default("Session ".. session .. " is accepted")
+        logger:default(("Session %p is accepted."):format(session))
     end,
     sessionInvalidate = function (session)
-        logger:default("Session ".. session .. " invalidated")
+        logger:default(("Session %p is invalidated."):format(session))
     end
 })
 
