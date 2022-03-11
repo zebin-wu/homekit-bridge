@@ -66,24 +66,19 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
         // pop copy of key
         lua_pop(L, 1);
         // stack now contains: -1 => value; -2 => key; -3 => table
-        if (kv) {
-            if (!((1 << lua_type(L, -1)) & kv->type)) {
-                char buf[128];
-                HAPLogError(&lc_log, "%s: wrong type of field '%s' (%s expected, got %s)",
-                    __func__, kv->key, lc_typename(L, kv->type, buf, sizeof(buf)), luaL_typename(L, -1));
-                lua_pop(L, 2);
-                return false;
-            }
-            if (kv->cb) {
-                if (!kv->cb(L, kv, arg)) {
-                    lua_pop(L, 2);
-                    return false;
-                }
-            }
-        } else {
-            HAPLogError(&lc_log, "%s: unknown field '%s'", __func__, key);
-            lua_pop(L, 2);
-            return false;
+        if (!kv) {
+            HAPLogError(&lc_log, "%s: Unknown field '%s'.", __func__, key);
+            goto err;
+        }
+        if (!((1 << lua_type(L, -1)) & kv->type)) {
+            char buf[128];
+            HAPLogError(&lc_log, "%s: Wrong type of field '%s' (%s expected, got %s).",
+                __func__, kv->key, lc_typename(L, kv->type, buf, sizeof(buf)), luaL_typename(L, -1));
+            goto err;
+        }
+        if (kv->cb && !kv->cb(L, arg)) {
+            HAPLogError(&lc_log, "%s: Failed to parse field '%s'.", __func__, kv->key);
+            goto err;
         }
         // pop value, leaving original key
         lua_pop(L, 1);
@@ -95,6 +90,10 @@ bool lc_traverse_table(lua_State *L, int idx, const lc_table_kv *kvs, void *arg)
     lua_pop(L, 1);
     // Stack is now the same as it was on entry to this function
     return true;
+
+err:
+    lua_pop(L, 2);
+    return false;
 }
 
 bool lc_traverse_array(lua_State *L, int idx,

@@ -844,8 +844,7 @@ lhap_tointegerx(lua_State *L, int idx, int *isnum, HAPCharacteristicFormat forma
     return num;
 }
 
-static bool
-lhap_accessory_aid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_aid_cb(lua_State *L, void *arg) {
     int isnum;
     lua_Integer aid = lua_tointegerx(L, -1, &isnum);
     if (!isnum || aid <= 0) {
@@ -855,8 +854,7 @@ lhap_accessory_aid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     return true;
 }
 
-static bool
-lhap_accessory_category_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_category_cb(lua_State *L, void *arg) {
     int idx = lhap_lookup_by_name(lua_tostring(L, -1),
         lhap_accessory_category_strs,
         HAPArrayCount(lhap_accessory_category_strs));
@@ -867,56 +865,49 @@ lhap_accessory_category_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     return true;
 }
 
-static bool
-lhap_accessory_name_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_name_cb(lua_State *L, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->name) =
         lhap_new_str(L, -1)) ? true : false;
 }
 
-static bool
-lhap_accessory_mfg_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_mfg_cb(lua_State *L, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->manufacturer) =
         lhap_new_str(L, -1)) ? true : false;
 }
 
-static bool
-lhap_accessory_model_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_model_cb(lua_State *L, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->model) =
         lhap_new_str(L, -1)) ? true : false;
 }
 
-static bool
-lhap_accessory_sn_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_sn_cb(lua_State *L, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->serialNumber) =
         lhap_new_str(L, -1)) ? true : false;
 }
 
-static bool
-lhap_accessory_fw_ver_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_fw_ver_cb(lua_State *L, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->firmwareVersion) =
         lhap_new_str(L, -1)) ? true : false;
 }
 
-static bool
-lhap_accessory_hw_ver_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_hw_ver_cb(lua_State *L, void *arg) {
     HAPAccessory *accessory = arg;
 
     return (*((char **)&accessory->hardwareVersion) =
         lhap_new_str(L, -1)) ? true : false;
 }
 
-static bool
-lhap_service_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_service_iid_cb(lua_State *L, void *arg) {
     int isnum;
     lua_Integer iid = lua_tointegerx(L, -1, &isnum);
     if (!isnum || iid <= (lua_Integer)LHAP_ATTR_CNT_DFT) {
@@ -927,8 +918,7 @@ lhap_service_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     return true;
 }
 
-static bool
-lhap_service_type_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_service_type_cb(lua_State *L, void *arg) {
     HAPService *service = arg;
     const char *str = lua_tostring(L, -1);
     for (int i = 0; i < HAPArrayCount(lhap_service_type_tab);
@@ -942,20 +932,17 @@ lhap_service_type_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     return false;
 }
 
-static bool
-lhap_service_props_primary_service_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_service_props_primary_service_cb(lua_State *L, void *arg) {
     ((HAPServiceProperties *)arg)->primaryService = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_service_props_hidden_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_service_props_hidden_cb(lua_State *L, void *arg) {
     ((HAPServiceProperties *)arg)->hidden = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_service_props_supports_conf_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_service_props_supports_conf_cb(lua_State *L, void *arg) {
     ((HAPServiceProperties *)arg)->ble.supportsConfiguration = lua_toboolean(L, -1);
     return true;
 }
@@ -965,8 +952,7 @@ static const lc_table_kv lhap_service_props_ble_kvs[] = {
     {NULL, LUA_TNONE, NULL},
 };
 
-static bool
-lhap_service_props_ble_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_service_props_ble_cb(lua_State *L, void *arg) {
     return lc_traverse_table(L, -1, lhap_service_props_ble_kvs, arg);
 }
 
@@ -977,8 +963,7 @@ static const lc_table_kv lhap_service_props_kvs[] = {
     {NULL, LC_TNONE, NULL},
 };
 
-static bool
-lhap_service_props_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_service_props_cb(lua_State *L, void *arg) {
     HAPService *service = arg;
 
     return lc_traverse_table(L, -1, lhap_service_props_kvs, &service->properties);
@@ -1002,8 +987,7 @@ bool lhap_service_linked_services_arr_cb(lua_State *L, size_t i, void *arg) {
     return true;
 }
 
-static bool
-lhap_service_linked_services_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_service_linked_services_cb(lua_State *L, void *arg) {
     HAPService *service = arg;
 
     uint16_t **piids = (uint16_t **)&(service->linkedServices);
@@ -1020,15 +1004,14 @@ lhap_service_linked_services_cb(lua_State *L, const lc_table_kv *kv, void *arg) 
     iids[len] = 0;
     if (!lc_traverse_array(L, -1, lhap_service_linked_services_arr_cb,
         iids)) {
-        HAPLogError(&lhap_log, "%s: Failed to parse linkedServices.", __func__);
+        lhap_safe_free(iids);
         return false;
     }
     *piids = iids;
     return true;
 }
 
-static bool
-lhap_char_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_iid_cb(lua_State *L, void *arg) {
     int isnum;
     lua_Integer iid = lua_tointegerx(L, -1, &isnum);
     if (!isnum || iid <= (lua_Integer)LHAP_ATTR_CNT_DFT) {
@@ -1039,8 +1022,7 @@ lhap_char_iid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     return true;
 }
 
-static bool
-lhap_char_type_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_type_cb(lua_State *L, void *arg) {
     HAPBaseCharacteristic *c = arg;
     const char *str = lua_tostring(L, -1);
     for (int i = 0; i < HAPArrayCount(lhap_characteristic_type_tab);
@@ -1055,69 +1037,58 @@ lhap_char_type_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     return false;
 }
 
-static bool
-lhap_char_mfg_desc_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_mfg_desc_cb(lua_State *L, void *arg) {
     HAPBaseCharacteristic *ch = arg;
 
     return (*((char **)&ch->manufacturerDescription) = lhap_new_str(L, -1)) ? true : false;
 }
 
-static bool
-lhap_char_props_readable_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_readable_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->readable = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_writable_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_writable_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->writable = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_support_evt_notify_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_support_evt_notify_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->supportsEventNotification = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_hidden_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_hidden_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->hidden = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_read_req_admin_pms_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_read_req_admin_pms_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->readRequiresAdminPermissions = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_write_req_admin_pms_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_write_req_admin_pms_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->writeRequiresAdminPermissions = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_req_timed_write_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_req_timed_write_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->requiresTimedWrite = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_support_auth_data_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_support_auth_data_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->supportsAuthorizationData = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_ip_control_point_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_ip_control_point_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->ip.controlPoint = lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_ip_support_write_resp_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_ip_support_write_resp_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->ip.supportsWriteResponse = lua_toboolean(L, -1);
     return true;
 }
@@ -1128,34 +1099,29 @@ static const lc_table_kv lhap_char_props_ip_kvs[] = {
     {NULL, LC_TNONE, NULL},
 };
 
-static bool
-lhap_char_props_ip_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_ip_cb(lua_State *L, void *arg) {
     return lc_traverse_table(L, -1, lhap_char_props_ip_kvs, arg);
 }
 
-static bool
-lhap_char_props_ble_support_bc_notify_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_ble_support_bc_notify_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->ble.supportsBroadcastNotification =
         lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_ble_support_disconn_notify_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_ble_support_disconn_notify_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->ble.supportsDisconnectedNotification =
         lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_ble_read_without_sec_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_ble_read_without_sec_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->ble.readableWithoutSecurity =
         lua_toboolean(L, -1);
     return true;
 }
 
-static bool
-lhap_char_props_ble_write_without_sec_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_ble_write_without_sec_cb(lua_State *L, void *arg) {
     ((HAPCharacteristicProperties *)arg)->ble.writableWithoutSecurity =
         lua_toboolean(L, -1);
     return true;
@@ -1185,8 +1151,7 @@ static const lc_table_kv lhap_char_props_ble_kvs[] = {
     {NULL, LC_TNONE, NULL},
 };
 
-static bool
-lhap_char_props_ble_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_ble_cb(lua_State *L, void *arg) {
     return lc_traverse_table(L, -1, lhap_char_props_ble_kvs, arg);
 }
 
@@ -1204,15 +1169,13 @@ static const lc_table_kv lhap_char_props_kvs[] = {
     {NULL, LC_TNONE, NULL},
 };
 
-static bool
-lhap_char_props_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_props_cb(lua_State *L, void *arg) {
     HAPBaseCharacteristic *ch = arg;
 
     return lc_traverse_table(L, -1, lhap_char_props_kvs, &ch->properties);
 }
 
-static bool
-lhap_char_units_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_units_cb(lua_State *L, void *arg) {
     HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
     if (format < kHAPCharacteristicFormat_UInt8 ||
         format > kHAPCharacteristicFormat_Float) {
@@ -1243,8 +1206,7 @@ lhap_char_units_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     return true;
 }
 
-static bool
-lhap_char_constraints_max_len_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_constraints_max_len_cb(lua_State *L, void *arg) {
     int isnum;
     lua_Integer num;
     HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
@@ -1303,25 +1265,21 @@ lhap_char_constraints_max_len_cb(lua_State *L, const lc_table_kv *kv, void *arg)
     } \
     return true;
 
-static bool
-lhap_char_constraints_min_val_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_constraints_min_val_cb(lua_State *L, void *arg) {
     LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(minimumValue, false)
 }
 
-static bool
-lhap_char_constraints_max_val_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_constraints_max_val_cb(lua_State *L, void *arg) {
     LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(maximumValue, false)
 }
 
-static bool
-lhap_char_constraints_step_val_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_constraints_step_val_cb(lua_State *L, void *arg) {
     LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(stepValue, true)
 }
 
 #undef LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE
 
-static bool
-lhap_char_constraints_valid_vals_arr_cb(lua_State *L, size_t i, void *arg) {
+static bool lhap_char_constraints_valid_vals_arr_cb(lua_State *L, size_t i, void *arg) {
     uint8_t **vals = arg;
 
     if (!lua_isnumber(L, -1)) {
@@ -1339,8 +1297,7 @@ lhap_char_constraints_valid_vals_arr_cb(lua_State *L, size_t i, void *arg) {
     return true;
 }
 
-static bool
-lhap_char_constraints_valid_vals_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_constraints_valid_vals_cb(lua_State *L, void *arg) {
     HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
     switch (format) {
     LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
@@ -1362,7 +1319,7 @@ lhap_char_constraints_valid_vals_cb(lua_State *L, const lc_table_kv *kv, void *a
         vals[len] = NULL;
         if (!lc_traverse_array(L, -1, lhap_char_constraints_valid_vals_arr_cb,
             vals)) {
-            HAPLogError(&lhap_log, "%s: Failed to parse validValues.", __func__);
+            lhap_safe_free(vals);
             return false;
         }
         *pValidValues = vals;
@@ -1376,16 +1333,14 @@ lhap_char_constraints_valid_vals_cb(lua_State *L, const lc_table_kv *kv, void *a
     return true;
 }
 
-static bool
-lhap_char_constraints_valid_val_range_start_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_constraints_valid_val_range_start_cb(lua_State *L, void *arg) {
     int isnum;
     ((HAPUInt8CharacteristicValidValuesRange *)arg)->start = lhap_tointegerx(L, -1,
         &isnum, kHAPCharacteristicFormat_UInt8, true);
     return isnum;
 }
 
-static bool
-lhap_char_constraints_valid_val_range_end_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_constraints_valid_val_range_end_cb(lua_State *L, void *arg) {
     int isnum;
     ((HAPUInt8CharacteristicValidValuesRange *)arg)->end = lhap_tointegerx(L, -1,
         &isnum, kHAPCharacteristicFormat_UInt8, true);
@@ -1398,8 +1353,7 @@ static const lc_table_kv lhap_char_constraints_valid_val_range_kvs[] = {
     {NULL, LC_TNONE, NULL},
 };
 
-static bool
-lhap_char_constraints_valid_vals_ranges_arr_cb(lua_State *L, size_t i, void *arg) {
+static bool lhap_char_constraints_valid_vals_ranges_arr_cb(lua_State *L, size_t i, void *arg) {
     HAPUInt8CharacteristicValidValuesRange **ranges = arg;
 
     if (!lua_istable(L, -1)) {
@@ -1415,8 +1369,7 @@ lhap_char_constraints_valid_vals_ranges_arr_cb(lua_State *L, size_t i, void *arg
     return true;
 }
 
-static bool
-lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, void *arg) {
     HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
     switch (format) {
     LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
@@ -1441,7 +1394,7 @@ lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, const lc_table_kv *kv, 
         ranges[len] = NULL;
         if (!lc_traverse_array(L, -1, lhap_char_constraints_valid_vals_ranges_arr_cb,
             ranges)) {
-            HAPLogError(&lhap_log, "%s: Failed to parse validValues.", __func__);
+            lhap_safe_free(ranges);
             return false;
         }
         *pValidValuesRanges = ranges;
@@ -1465,8 +1418,7 @@ static const lc_table_kv lhap_char_constraints_kvs[] = {
     {NULL, LC_TNONE, NULL},
 };
 
-static bool
-lhap_char_constraints_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_constraints_cb(lua_State *L, void *arg) {
     return lc_traverse_table(L, -1, lhap_char_constraints_kvs, arg);
 }
 
@@ -2165,8 +2117,7 @@ LHAP_CASE_CHAR_FORMAT_CODE(format, arg, \
     lua_rawsetp(L, LUA_REGISTRYINDEX, &p->callbacks.cb); \
     p->callbacks.cb = lhap_char_ ## format ## _ ## cb)
 
-static bool
-lhap_char_cbs_handle_read_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_cbs_handle_read_cb(lua_State *L, void *arg) {
 #define LHAP_CASE_CHAR_REGISTER_READ_CB(format) \
     LHAP_CASE_CHAR_REGISTER_CB(format, handleRead)
 
@@ -2188,8 +2139,7 @@ lhap_char_cbs_handle_read_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     return true;
 }
 
-static bool
-lhap_char_cbs_handle_write_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_cbs_handle_write_cb(lua_State *L, void *arg) {
 #define LHAP_CASE_CHAR_REGISTER_WRITE_CB(format) \
     LHAP_CASE_CHAR_REGISTER_CB(format, handleWrite)
 
@@ -2211,13 +2161,11 @@ lhap_char_cbs_handle_write_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     return true;
 }
 
-static bool
-lhap_char_cbs_handle_sub_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_cbs_handle_sub_cb(lua_State *L, void *arg) {
     return false;
 }
 
-static bool
-lhap_char_cbs_handle_unsub_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_cbs_handle_unsub_cb(lua_State *L, void *arg) {
     return false;
 }
 
@@ -2231,8 +2179,7 @@ static const lc_table_kv lhap_char_cbs_kvs[] = {
     {NULL, LC_TNONE, NULL},
 };
 
-static bool
-lhap_char_cbs_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_char_cbs_cb(lua_State *L, void *arg) {
     return lc_traverse_table(L, -1, lhap_char_cbs_kvs, arg);
 }
 
@@ -2326,8 +2273,7 @@ static void lhap_reset_characteristic(lua_State *L, HAPCharacteristic *character
 #undef LHAP_RESET_CHAR_CBS
 }
 
-static bool
-lhap_service_chars_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_service_chars_cb(lua_State *L, void *arg) {
     HAPService *service = arg;
     HAPCharacteristic ***pcharacteristic = (HAPCharacteristic ***)&(service->characteristics);
     // Get the array length.
@@ -2376,8 +2322,7 @@ static void lhap_reset_service(lua_State *L, HAPService *service) {
     }
 }
 
-static bool
-lhap_accessory_services_arr_cb(lua_State *L, size_t i, void *arg) {
+static bool lhap_accessory_services_arr_cb(lua_State *L, size_t i, void *arg) {
     HAPService **services = arg;
 
     if (lua_islightuserdata(L, -1)) {
@@ -2405,8 +2350,7 @@ lhap_accessory_services_arr_cb(lua_State *L, size_t i, void *arg) {
     return true;
 }
 
-static bool
-lhap_accessory_services_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_services_cb(lua_State *L, void *arg) {
     HAPAccessory *accessory = arg;
     HAPService ***pservices = (HAPService ***)&(accessory->services);
 
@@ -2488,8 +2432,7 @@ HAPError lhap_accessory_on_identify(
     return kHAPError_None;
 }
 
-static bool
-lhap_accessory_cbs_identify_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_cbs_identify_cb(lua_State *L, void *arg) {
     HAPAccessory *acc = arg;
     lua_pushvalue(L, -1);
     lua_rawsetp(L, LUA_REGISTRYINDEX, &(acc->callbacks.identify));
@@ -2502,13 +2445,11 @@ static lc_table_kv lhap_accessory_cbs_kvs[] = {
     {NULL, LC_TNONE, NULL},
 };
 
-static bool
-lhap_accessory_cbs_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accessory_cbs_cb(lua_State *L, void *arg) {
     return lc_traverse_table(L, -1, lhap_accessory_cbs_kvs, arg);
 }
 
-static bool
-lhap_accesory_context_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_accesory_context_cb(lua_State *L, void *arg) {
     lua_pushvalue(L, -1);
     lua_rawsetp(L, LUA_REGISTRYINDEX, arg);
     return true;
@@ -2653,8 +2594,7 @@ static void lhap_server_handle_session_invalidate(
     lc_collectgarbage(L);
 }
 
-static bool
-lhap_server_cb_update_state_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_server_cb_update_state_cb(lua_State *L, void *arg) {
     HAPAccessoryServerCallbacks *cbs = arg;
 
     lua_pushvalue(L, -1);
@@ -2663,8 +2603,7 @@ lhap_server_cb_update_state_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
     return true;
 }
 
-static bool
-lhap_server_cb_session_accept_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_server_cb_session_accept_cb(lua_State *L, void *arg) {
     HAPAccessoryServerCallbacks *cbs = arg;
 
     lua_pushvalue(L, -1);
@@ -2673,8 +2612,7 @@ lhap_server_cb_session_accept_cb(lua_State *L, const lc_table_kv *kv, void *arg)
     return true;
 }
 
-static bool
-lhap_server_cb_session_invalid_cb(lua_State *L, const lc_table_kv *kv, void *arg) {
+static bool lhap_server_cb_session_invalid_cb(lua_State *L, void *arg) {
     HAPAccessoryServerCallbacks *cbs = arg;
 
     lua_pushvalue(L, -1);
@@ -2729,9 +2667,6 @@ lhap_count_attr(const HAPAccessory *acc, size_t *attr, size_t *readable, size_t 
 
 /**
  * init(primaryAccessory: table, serverCallbacks: table)
- *
- * If the category of the accessory is bridge, the parameters
- * bridgedAccessories is valid.
  */
 static int lhap_init(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;

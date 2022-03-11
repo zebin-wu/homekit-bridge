@@ -38,14 +38,13 @@ typedef struct lc_table_kv {
      */
     uint32_t type;
     /**
-     * This callbacktion will be called when the key is parsed,
+     * This function will be called when the key is parsed,
      * and the value is at the top of the stack.
      *
      * @param L 'per thread' state
-     * @param kv the point to current key-value
      * @param arg the extra argument
      */
-    bool (*cb)(lua_State *L, const struct lc_table_kv *kv, void *arg);
+    bool (*cb)(lua_State *L, void *arg);
 } lc_table_kv;
 
 /**
