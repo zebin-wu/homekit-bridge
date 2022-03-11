@@ -5,9 +5,9 @@ local hap = {}
 
 ---@class HAPSession:lightuserdata HomeKit Session.
 
----@class HAPServerCallbacks:table Accessory server callbacks.
+---@class HAPAccessoryServerCallbacks:table Accessory server callbacks.
 ---
----@field updatedState async fun(state: HAPServerState) Invoked when the accessory server state changes.
+---@field updatedState async fun(state: HAPAccessoryServerState) Invoked when the accessory server state changes.
 ---@field sessionAccept async fun(session: HAPSession) The callback used when a HomeKit Session is accepted.
 ---@field sessionInvalidate async fun(session: HAPSession) The callback used when a HomeKit Session is invalidated.
 
@@ -146,7 +146,7 @@ local hap = {}
 ---@field readableWithoutSecurity boolean The characteristic is always readable, even before a secured session is established.
 ---@field writableWithoutSecurity boolean The characteristic is always writable, even before a secured session is established.
 
----@alias HAPServerState
+---@alias HAPAccessoryServerState
 ---| '"Idle"'
 ---| '"Running"'
 ---| '"Stopping"'
@@ -374,7 +374,7 @@ hap.PairingService = {}
 
 ---Initialize HAP.
 ---@param primaryAccessory HAPAccessory Primary accessory to serve.
----@param serverCallbacks HAPServerCallbacks Accessory server callbacks.
+---@param serverCallbacks HAPAccessoryServerCallbacks Accessory server callbacks.
 function hap.init(primaryAccessory, serverCallbacks) end
 
 ---De-initialize then you can init() again.
