@@ -409,12 +409,6 @@ for i, k in ipairs({ "primaryService", "hidden", "ble.supportsConfiguration" }) 
     testService(false, "props." .. k, { {}, 1, "test" })
 end
 
----Configure with valid linkedServicess.
-testService(true, "linkedServices", { { format.UInt16.min, format.UInt16.max } })
-
----Configure with invalid linkedServices.
-testService(false, "linkedServices", { { format.UInt16.min - 1, format.UInt16.max + 1 }, { true, "test" }, "test", true, 1 })
-
 ---Configure with invalid characteristic iid.
 testCharacteristic(false, "iid", { -1, 1.1, true, {} })
 

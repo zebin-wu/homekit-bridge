@@ -980,7 +980,7 @@ bool lhap_service_linked_services_arr_cb(lua_State *L, size_t i, void *arg) {
     }
 
     int isnum;
-    iids[i] = lhap_tointegerx(L, -1, &isnum, kHAPCharacteristicFormat_UInt16, true);
+    iids[i] = lhap_tointegerx(L, -1, &isnum, kHAPCharacteristicFormat_UInt64, true);
     if (!isnum) {
         return false;
     }
@@ -990,13 +990,13 @@ bool lhap_service_linked_services_arr_cb(lua_State *L, size_t i, void *arg) {
 static bool lhap_service_linked_services_cb(lua_State *L, void *arg) {
     HAPService *service = arg;
 
-    uint16_t **piids = (uint16_t **)&(service->linkedServices);
+    uint64_t **piids = (uint64_t **)&(service->linkedServices);
     lua_Unsigned len = lua_rawlen(L, -1);
     if (!len) {
         HAPLogError(&lhap_log, "%s: Invalid array.", __func__);
         return false;
     }
-    uint16_t *iids = pal_mem_alloc(sizeof(uint16_t) * (len + 1));
+    uint64_t *iids = pal_mem_alloc(sizeof(uint64_t) * (len + 1));
     if (!iids) {
         HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
         return false;
