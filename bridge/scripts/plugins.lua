@@ -10,7 +10,6 @@ local logger = log.getLogger("plugins")
 ---@class Plugin:table Plugin.
 ---
 ---@field init fun(conf: PluginConf) Initialize plugin and generate accessories in initialization.
----@field handleState fun(state: HAPAccessoryServerState) Handle HAP accessory server state.
 
 local priv = {
     plugins = {},   ---@type table<string, Plugin>
@@ -56,19 +55,9 @@ function plugins.init(pluginConfs)
             end
         end
     end
-end
-
----Handle HAP accessory server state.
----@param state HAPAccessoryServerState
-function plugins.handleState(state)
-    for _, plugin in pairs(priv.plugins) do
-        plugin.handleState(state)
-    end
-    if state == "Running" then
-        local loaded = package.loaded
-        for name, _ in pairs(loaded) do
-            loaded[name] = nil
-        end
+    local loaded = package.loaded
+    for name, _ in pairs(loaded) do
+        loaded[name] = nil
     end
 end
 

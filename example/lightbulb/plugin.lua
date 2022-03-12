@@ -86,10 +86,4 @@ function plugin.init(conf)
     end
 end
 
----Handle HAP accessory server state.
----@param state HAPAccessoryServerState
-function plugin.handleState(state)
-    logger:info("HAP server state: " .. state .. ".")
-end
-
 return plugin

@@ -7,7 +7,6 @@ local hap = {}
 
 ---@class HAPAccessoryServerCallbacks:table Accessory server callbacks.
 ---
----@field updatedState async fun(state: HAPAccessoryServerState) Invoked when the accessory server state changes.
 ---@field sessionAccept async fun(session: HAPSession) The callback used when a HomeKit Session is accepted.
 ---@field sessionInvalidate async fun(session: HAPSession) The callback used when a HomeKit Session is invalidated.
 
@@ -145,11 +144,6 @@ local hap = {}
 ---@field supportsDisconnectedNotification boolean The characteristic supports disconnected notifications.
 ---@field readableWithoutSecurity boolean The characteristic is always readable, even before a secured session is established.
 ---@field writableWithoutSecurity boolean The characteristic is always writable, even before a secured session is established.
-
----@alias HAPAccessoryServerState
----| '"Idle"'
----| '"Running"'
----| '"Stopping"'
 
 ---@alias HAPTransportType
 ---| '"IP"'     # HAP over IP (Ethernet / Wi-Fi).

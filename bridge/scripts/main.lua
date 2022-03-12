@@ -26,10 +26,6 @@ hap.init({
         end
     }
 }, {
-    updatedState = function (state)
-        logger:default("Accessory Server State did update: " .. state .. ".")
-        plugins.handleState(state)
-    end,
     sessionAccept = function (session)
         logger:default(("Session %p is accepted."):format(session))
     end,
