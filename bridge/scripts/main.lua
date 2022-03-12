@@ -1,5 +1,4 @@
 local config = require "config"
-local core = require "core"
 local plugins = require "plugins"
 local hap = require "hap"
 local chip = require "chip"

@@ -1,5 +1,4 @@
 local socket = require "socket"
-local core = require "core"
 
 local function fillStr(n, fill)
     fill = fill or "0123456789"

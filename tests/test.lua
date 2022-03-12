@@ -1,5 +1,3 @@
-local core = require "core"
-
 local suites = {
     "testhap",
     "testsocket",

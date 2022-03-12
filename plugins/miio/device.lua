@@ -1,5 +1,4 @@
 local protocol = require "miio.protocol"
-local core = require "core"
 local util = require "util"
 local mq = require "mq"
 local xpcall = xpcall

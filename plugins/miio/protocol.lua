@@ -1,7 +1,6 @@
 local socket = require "socket"
 local hash = require "hash"
 local json = require "cjson"
-local core = require "core"
 
 local assert = assert
 local type = type

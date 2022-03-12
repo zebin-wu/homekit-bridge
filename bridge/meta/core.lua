@@ -1,7 +1,7 @@
 ---@meta
 
 ---@class corelib
-local core = {}
+core = {}
 
 ---@class Timer:userdata Timer.
 local timer = {}

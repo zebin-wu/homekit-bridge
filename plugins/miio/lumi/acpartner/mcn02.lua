@@ -1,5 +1,4 @@
 local hap = require "hap"
-local core = require "core"
 local Active = require "hap.char.Active"
 local CurTemp = require "hap.char.CurrentTemperature"
 local CurHeatCoolState = require "hap.char.CurrentHeaterCoolerState"
