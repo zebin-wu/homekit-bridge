@@ -126,9 +126,7 @@ local function testAccessory(expect, primary, k, vals, log)
         else
             setField(accs[t], k, v)
         end
-        local success, result = xpcall(hap.init, debug.traceback, accs.primary, {
-            updatedState = function (state) end
-        })
+        local success, result = xpcall(hap.init, debug.traceback, accs.primary, {})
         if success == false then
             logger:error(result)
         end

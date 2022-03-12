@@ -3,6 +3,11 @@
 ---@class corelib
 core = {}
 
+---Functions called in `core.exit`.
+---Add your `onExit` function using table.insert().
+---@type function[]
+core.onExits = {}
+
 ---@class Timer:userdata Timer.
 local timer = {}
 
@@ -10,6 +15,7 @@ local timer = {}
 function core.time() end
 
 ---Exit the host program.
+---`core.onExits` are called in this function.
 function core.exit() end
 
 ---Sleep for a specified number of milliseconds.

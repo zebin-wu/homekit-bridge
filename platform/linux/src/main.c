@@ -10,6 +10,7 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -73,8 +74,14 @@ static void doargs(int argc, char *argv[]) {
     }
 }
 
+void sigint(int signum) {
+    app_exit();
+}
+
 int main(int argc, char *argv[]) {
     HAPAssert(HAPGetCompatibilityVersion() == HAP_COMPATIBILITY_VERSION);
+
+    signal(SIGINT, sigint);
 
     // Parse arguments.
     doargs(argc, argv);

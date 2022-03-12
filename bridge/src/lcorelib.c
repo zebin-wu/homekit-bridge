@@ -32,9 +32,31 @@ static int lcore_time(lua_State *L) {
     return 1;
 }
 
-static int lcore_exit(lua_State *L) {
+static int lcore_exit_finsh(lua_State *L, int status, lua_KContext extra) {
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        HAPPlatformRunLoopStop();
+        lua_error(L);
+    }
+    for (int i = extra; ; i++) {
+        int type = lua_rawgeti(L, -1, i);
+        if (type == LUA_TNIL) {
+            break;
+        } else if (type != LUA_TFUNCTION) {
+            HAPPlatformRunLoopStop();
+            luaL_error(L, "'core.onExit[%d]' must be a function", i);
+        }
+        lua_callk(L, 0, 0, i + 1, lcore_exit_finsh);
+    }
     HAPPlatformRunLoopStop();
     return 0;
+}
+
+static int lcore_exit(lua_State *L) {
+    if (luai_unlikely(lua_getfield(L, lua_upvalueindex(1), "onExits") != LUA_TTABLE)) {
+        HAPPlatformRunLoopStop();
+        luaL_error(L, "'core.onExits' must be a table");
+    }
+    return lcore_exit_finsh(L, 0, 1);
 }
 
 static int lcore_sleep_resume(lua_State *L) {
@@ -185,6 +207,8 @@ static const luaL_Reg lcore_funcs[] = {
     {"exit", lcore_exit},
     {"sleep", lcore_sleep},
     {"createTimer", lcore_createTimer},
+    /* placeholders */
+    {"onExits", NULL},
     {NULL, NULL},
 };
 
@@ -217,7 +241,15 @@ static void lcore_createmeta(lua_State *L) {
 }
 
 LUAMOD_API int luaopen_core(lua_State *L) {
-    luaL_newlib(L, lcore_funcs);
+    luaL_checkversion(L);
+    luaL_newlibtable(L, lcore_funcs);
+    lua_pushvalue(L, -1);
+    luaL_setfuncs(L, lcore_funcs, 1);
+
+    /* set field 'onExits' */
+    lua_newtable(L);
+    lua_setfield(L, -2, "onExits");
+
     lcore_createmeta(L);
     return 1;
 }

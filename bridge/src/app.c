@@ -240,3 +240,28 @@ void app_deinit() {
         L = NULL;
     }
 }
+
+static int app_pexit(lua_State *L) {
+    int nres, status;
+    lua_State *co = lua_newthread(L);
+    lua_getglobal(co, "core");
+    lua_getfield(co, -1, "exit");
+    lua_remove(co, -2);
+    status = lc_resume(co, L, 0, &nres);
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        lua_error(L);
+    }
+    return 0;
+}
+
+static void app_exit_cb(void *context, size_t contextSize) {
+    lua_pushcfunction(L, app_pexit);
+    int status = lua_pcall(L, 0, 0, 0);
+    if (status != LUA_OK && status != LUA_YIELD) {
+        HAPLogError(&kHAPLog_Default, "%s", lua_tostring(L, -1));
+    }
+}
+
+void app_exit() {
+    HAPAssert(HAPPlatformRunLoopScheduleCallback(app_exit_cb, NULL, 0) == kHAPError_None);
+}

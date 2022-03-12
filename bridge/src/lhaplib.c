@@ -2893,7 +2893,7 @@ int lhap_deinit(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
 
     if (!desc->inited) {
-        luaL_error(L, "HAP is not initialized.");
+        return 0;
     }
 
     if (desc->started) {
@@ -3036,6 +3036,13 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
         lua_pushlightuserdata(L, ud->ptr);
         lua_setfield(L, -2, ud->name);
     }
+
+    /* add 'deinit' to core.onExits */
+    lua_getglobal(L, "core");
+    lua_getfield(L, -1, "onExits");
+    lua_pushcfunction(L, lhap_deinit);
+    lua_rawseti(L, -2, luaL_len(L, -2) + 1);
+    lua_pop(L, 2);
 
     return 1;
 }

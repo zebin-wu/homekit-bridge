@@ -33,6 +33,11 @@ void app_init(const char *dir, const char *entry);
  */
 void app_deinit();
 
+/**
+ * Exit App.
+ */
+void app_exit();
+
 #if __has_feature(nullability)
 #pragma clang assume_nonnull end
 #endif
