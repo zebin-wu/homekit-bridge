@@ -109,6 +109,27 @@ static void *app_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
     }
 }
 
+static int finshexit(lua_State *L, int status, lua_KContext extra) {
+    return 0;
+}
+
+static int finshentry(lua_State *L, int status, lua_KContext extra) {
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        HAPLogError(&kHAPLog_Default, "%s", lua_tostring(L, -1));
+        lua_getglobal(L, "core");
+        lua_getfield(L, -1, "exit");
+        lua_callk(L, 0, 0, 0, finshexit);
+    }
+    return 0;
+}
+
+// app_entry(traceback: function, entry: string)
+static int app_entry(lua_State *L) {
+    lua_getglobal(L, "require");
+    lua_insert(L, 2);
+    return finshentry(L, lua_pcallk(L, 1, 0, 1, 0, finshentry), 0);
+}
+
 // app_pinit(dir: lightuserdata, entry: lightuserdata)
 static int app_pinit(lua_State *L) {
     const char *dir = lua_touserdata(L, 1);
@@ -164,9 +185,10 @@ static int app_pinit(lua_State *L) {
     // run entry
     int nres, status;
     lua_State *co = lua_newthread(L);
-    lua_getglobal(co, "require");
+    lua_pushcfunction(co, app_entry);
+    lc_pushtraceback(co);
     lua_pushstring(co, entry);
-    status = lc_resume(co, L, 1, &nres);
+    status = lc_resume(co, L, 2, &nres);
     if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         lua_error(L);
     }
