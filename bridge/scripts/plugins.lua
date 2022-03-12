@@ -28,8 +28,7 @@ local function loadPlugin(name, conf)
         error(("No fields in plugin '%s'."):format(name))
     end
     local fields = {
-        init = "function",
-        handleState = "function"
+        init = "function"
     }
     for k, t in pairs(fields) do
         if not plugin[k] then
