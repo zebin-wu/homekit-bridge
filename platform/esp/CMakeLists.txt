@@ -23,17 +23,8 @@ include(${TOP_DIR}/cmake/project.cmake)
 include(${TOP_DIR}/cmake/bridge.cmake)
 include(${TOP_DIR}/cmake/extension.cmake)
 
-# get host platform
-get_host_platform(HOST_PLATFORM)
-
-# compile luac
-set(LUAC_BUILD_DIR ${CMAKE_BINARY_DIR}/luac)
-set(LUAC_BINARY ${LUAC_BUILD_DIR}/luac)
-compile_luac(${LUAC_BINARY}
-    ${TOP_DIR}/platform/${HOST_PLATFORM}/luac
-    ${LUAC_BUILD_DIR}
-    DEPENDS ${LUA_SRCS} ${LUAC_SRCS} ${LUA_HEADERS}
-)
+# find luac
+find_luac(LUAC)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 add_definitions(-DBRIDGE_EMBEDFS_ROOT=${BRIDGE_EMBEDFS_ROOT})
@@ -60,7 +51,7 @@ endif()
 
 target_add_lua_binary_embedfs(${PROJECT}.elf
     ${BRIDGE_EMBEDFS_ROOT}
-    ${LUAC_BINARY}
+    ${LUAC}
     DEBUG
     SRC_DIRS ${SCRIPTS_SRC_DIRS} ${PLUGINS_DIR}
 )

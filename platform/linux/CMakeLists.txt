@@ -36,32 +36,26 @@ set(TESTS_SCRIPTS_DIR ${CMAKE_BINARY_DIR}/tests_scripts)
 # set the embedfs root
 set(BRIDGE_EMBEDFS_ROOT bridge_embedfs_root)
 
-# compile luac
-set(LUAC_BUILD_DIR ${CMAKE_BINARY_DIR}/luac)
-set(LUAC_BINARY ${LUAC_BUILD_DIR}/luac)
-compile_luac(${LUAC_BINARY}
-    ${CMAKE_CURRENT_SOURCE_DIR}/luac
-    ${LUAC_BUILD_DIR}
-    DEPENDS ${LUA_SRCS} ${LUAC_SRCS} ${LUA_HEADERS}
-)
+# find luac
+find_luac(LUAC)
 
 target_add_lua_binary_embedfs(${PROJECT}
     ${BRIDGE_EMBEDFS_ROOT}
-    ${LUAC_BINARY}
+    ${LUAC}
     DEBUG
     SRC_DIRS ${BRIDGE_SCRIPTS_DIR} ${PLUGINS_DIR}
 )
 
 gen_lua_binary_from_dir(example_scripts
     ${EXAMPLE_SCRIPTS_DIR}
-    ${LUAC_BINARY}
+    ${LUAC}
     DEBUG
     SRC_DIRS ${TOP_DIR}/example
 )
 
 gen_lua_binary_from_dir(tests_scripts
     ${TESTS_SCRIPTS_DIR}
-    ${LUAC_BINARY}
+    ${LUAC}
     DEBUG
     SRC_DIRS ${TOP_DIR}/tests
 )

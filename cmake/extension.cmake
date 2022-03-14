@@ -56,33 +56,26 @@ function(gen_lua_binary_from_dir target dest_dir luac)
     )
 endfunction(gen_lua_binary_from_dir)
 
-# Compile luac.
+# Find luac.
 #
-# compile_luac(<bin> <src_dir> <build_dir>
-#              [DEPENDS depend depend depend ... ])
-function(compile_luac bin src_dir build_dir)
-    set(multi DEPENDS)
-    cmake_parse_arguments(arg "" "" "${multi}" "${ARGN}")
-    add_custom_command(OUTPUT ${bin}
-        COMMAND ${CMAKE_COMMAND} ${src_dir} -B${build_dir} -G Ninja
-        COMMAND cmake --build ${build_dir}
-        DEPENDS ${src_dir}/CMakeLists.txt ${arg_DEPENDS}
+# find_luac(<output>)
+function(find_luac output)
+    if (NOT LUA_DIR)
+        include (${TOP_DIR}/cmake/lua.cmake)
+    endif ()
+    find_program(MAKE NAMES "make")
+    if(NOT MAKE)
+        message(FATAL_ERROR "make not found")    
+    endif()
+    set(luac ${LUA_SRC_DIR}/luac)
+    add_custom_command(OUTPUT ${luac}
+        COMMAND ${MAKE} -C ${LUA_DIR}
+        DEPENDS ${LUA_SRCS} ${LUAC_SRCS} ${LUA_HEADERS}
         COMMENT "Compiling luac"
     )
-    add_custom_target(luac ALL DEPENDS ${bin})
-endfunction(compile_luac)
-
-# Get host platform.
-#
-# get_host_platform(<output>)
-macro(get_host_platform output)
-    execute_process(
-        COMMAND uname
-        OUTPUT_VARIABLE ${output}
-    )
-    string(REPLACE "\n" "" ${output} ${${output}})
-    string(TOLOWER ${${output}} ${output})
-endmacro(get_host_platform)
+    add_custom_target(luac ALL DEPENDS ${luac})
+    set(${output} ${luac} PARENT_SCOPE)
+endfunction(find_luac)
 
 # Check code style.
 #
@@ -90,7 +83,7 @@ endmacro(get_host_platform)
 function(check_style target top_dir)
     find_program(CPPLINT NAMES "cpplint")
     if(NOT CPPLINT)
-        message(FATAL_ERROR "Please install cpplint via \"pip3 install cpplint\".")    
+        message(FATAL_ERROR "cpplint not found")    
     endif()
 
     set(multi SRCS)
