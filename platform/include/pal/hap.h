@@ -35,6 +35,12 @@ void pal_hap_init_platform(HAPPlatform *platform);
  */
 void pal_hap_deinit_platform(HAPPlatform *platform);
 
+/**
+ * Restore factory settings.
+ * This function must be called before pal_hap_init_platform().
+ */
+bool pal_hap_restore_factory_settings();
+
 #ifdef __cplusplus
 }
 #endif

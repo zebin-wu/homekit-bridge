@@ -168,3 +168,13 @@ void pal_hap_deinit_platform(HAPPlatform *platform) {
     HAPRawBufferZero(platform, sizeof(*platform));
     ginited = false;
 }
+
+bool pal_hap_restore_factory_settings() {
+    HAPPrecondition(!ginited);
+
+    HAPPlatformKeyValueStore kv_store;
+    HAPPlatformKeyValueStoreCreate(
+            &kv_store, &(const HAPPlatformKeyValueStoreOptions) { .rootDirectory = ".HomeKitStore" });
+
+    return HAPRestoreFactorySettings(&kv_store) == kHAPError_None;
+}

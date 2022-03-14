@@ -2758,7 +2758,7 @@ static int lhap_start(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
 
     if (!desc->inited) {
-        luaL_error(L, "HAP is already initialized.");
+        luaL_error(L, "HAP is not initialized.");
     }
 
     if (desc->started) {
@@ -3012,6 +3012,29 @@ static int lhap_get_new_iid(lua_State *L) {
     return 1;
 }
 
+static int lhap_restore_factory_settings(lua_State *L) {
+    lhap_desc *desc = &gv_lhap_desc;
+
+    if (desc->inited) {
+        luaL_error(L, "HAP is already initialized");
+    }
+
+    if (luai_unlikely(!pal_hap_restore_factory_settings())) {
+        luaL_error(L, "failed to restore factory settings");
+    }
+
+    pal_nvs_handle *handle = pal_nvs_open(LHAP_NVS_NAMESPACE);
+    if (luai_unlikely(!handle)) {
+        luaL_error(L, "failed to open '%s'", LHAP_NVS_NAMESPACE);
+    }
+    if (luai_unlikely(!pal_nvs_erase(handle))) {
+        pal_nvs_close(handle);
+        luaL_error(L, "failed to erase '%s'", LHAP_NVS_NAMESPACE);
+    }
+    pal_nvs_close(handle);
+    return 0;
+}
+
 static const luaL_Reg haplib[] = {
     {"init", lhap_init},
     {"deinit", lhap_deinit},
@@ -3020,6 +3043,7 @@ static const luaL_Reg haplib[] = {
     {"stop", lhap_stop},
     {"raiseEvent", lhap_raise_event},
     {"getNewInstanceID", lhap_get_new_iid},
+    {"restoreFactorySettings", lhap_restore_factory_settings},
     /* placeholders */
     {"AccessoryInformationService", NULL},
     {"HAPProtocolInformationService", NULL},

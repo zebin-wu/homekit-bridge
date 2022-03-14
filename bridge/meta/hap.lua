@@ -400,4 +400,9 @@ function hap.raiseEvent(aid, sid, cid, session) end
 ---@nodiscard
 function hap.getNewInstanceID(bridgedAccessory) end
 
+---Restore factory settings.
+---
+---This function must be called before initialization.
+function hap.restoreFactorySettings() end
+
 return hap
