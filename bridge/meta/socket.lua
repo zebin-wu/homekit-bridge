@@ -8,10 +8,10 @@ local _socket = {}
 
 ---Create an endpoint for communication.
 ---@param type '"TCP"'|'"UDP"' Socket type.
----@param famliy '"IPV4"'|'"IPV6"' Address family.
+---@param family '"IPV4"'|'"IPV6"' Address family.
 ---@return Socket object Socket object.
 ---@nodiscard
-function socket.create(type, famliy) end
+function socket.create(type, family) end
 
 ---Set the timeout.
 ---@param ms integer Maximum time blocked in milliseconds.
