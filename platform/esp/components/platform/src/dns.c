@@ -48,8 +48,16 @@ static void pal_dns_response(void* _Nullable context, size_t contextSize) {
     }
 
     const char *addr = NULL;
+    pal_addr_family af = PAL_ADDR_FAMILY_UNSPEC;
     if (!ctx->found) {
         goto done;
+    }
+
+    switch (IP_GET_TYPE(&ctx->addr)) {
+    case IPADDR_TYPE_V4:
+        af = PAL_ADDR_FAMILY_IPV4;
+    case IPADDR_TYPE_V6:
+        af = PAL_ADDR_FAMILY_IPV6;
     }
 
     char buf[128];
@@ -57,7 +65,7 @@ static void pal_dns_response(void* _Nullable context, size_t contextSize) {
 
 done:
     ctx->iscancel = true;
-    ctx->cb(addr, ctx->arg);
+    ctx->cb(addr, af, ctx->arg);
 clean:
     pal_mem_free(ctx);
 }

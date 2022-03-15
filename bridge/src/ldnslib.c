@@ -22,27 +22,40 @@ static const HAPLogObject ldns_log = {
     .category = "ldns",
 };
 
+typedef struct ldns_resolve_context {
+    lua_State *co;
+    pal_dns_req_ctx *req;
+    HAPPlatformTimerRef timer;
+} ldns_resolve_context;
+
 static int ldns_response(lua_State *L) {
     lua_State *co = lua_touserdata(L, 1);
     const char *addr = lua_touserdata(L, 2);
-    lua_pop(L, 2);
+    pal_addr_family af = lua_tointeger(L, 3);
+    lua_pop(L, 3);
 
-    int narg = 0;
     if (addr) {
-        narg = 1;
         lua_pushstring(co, addr);
+    } else {
+        lua_pushnil(co);
     }
+    lua_pushstring(co, ldns_family_strs[af]);
     int status, nres;
-    status = lc_resume(co, L, narg, &nres);
+    status = lc_resume(co, L, 2, &nres);
     if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         HAPLogError(&ldns_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
     return 0;
 }
 
-void ldns_response_cb(const char *addr, void *arg) {
-    lua_State *co = arg;
+void ldns_response_cb(const char *addr, pal_addr_family af, void *arg) {
+    ldns_resolve_context *ctx = arg;
+    lua_State *co = ctx->co;
     lua_State *L = lc_getmainthread(co);
+
+    if (ctx->timer) {
+        HAPPlatformTimerDeregister(ctx->timer);
+    }
 
     HAPAssert(lua_gettop(L) == 0);
 
@@ -50,7 +63,8 @@ void ldns_response_cb(const char *addr, void *arg) {
     lua_pushcfunction(L, ldns_response);
     lua_pushlightuserdata(L, co);
     lua_pushlightuserdata(L, (void *)addr);
-    int status = lua_pcall(L, 2, 0, 1);
+    lua_pushinteger(L, af);
+    int status = lua_pcall(L, 3, 0, 1);
     if (luai_unlikely(status != LUA_OK)) {
         HAPLogError(&ldns_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
@@ -59,20 +73,38 @@ void ldns_response_cb(const char *addr, void *arg) {
     lc_collectgarbage(L);
 }
 
+static void ldns_timeout_timer_cb(HAPPlatformTimerRef timer, void *context) {
+    ldns_resolve_context *ctx = context;
+    ctx->timer = 0;
+    pal_dns_cancel_request(ctx->req);
+    ldns_response_cb(NULL, PAL_ADDR_FAMILY_UNSPEC, ctx);
+}
+
 static int finshresolve(lua_State *L, int status, lua_KContext extra) {
-    if (status != 1 || !lua_isstring(L, -1)) {
+    if (!lua_isstring(L, -1) || !lua_isstring(L, -2)) {
         luaL_error(L, "failed to resolve");
     }
-    return 1;
+    return 2;
 }
 
 static int ldns_resolve(lua_State *L) {
     const char *hostname = luaL_checkstring(L, 1);
-    pal_addr_family af = luaL_checkoption(L, 2, "", ldns_family_strs);
+    lua_Integer ms = luaL_checkinteger(L, 2);
+    luaL_argcheck(L, ms >= 0, 2, "timeout out of range");
+    pal_addr_family af = luaL_checkoption(L, 3, "", ldns_family_strs);
 
-    if (luai_unlikely(!pal_dns_start_request(hostname, af, ldns_response_cb, L))) {
+    ldns_resolve_context *ctx = lua_newuserdata(L, sizeof(*ctx));
+    if (luai_unlikely(HAPPlatformTimerRegister(&ctx->timer,
+        HAPPlatformClockGetCurrent() + ms,
+        ldns_timeout_timer_cb, ctx) != kHAPError_None)) {
+        luaL_error(L, "failed to create a timeout timer");
+    }
+    ctx->req = pal_dns_start_request(hostname, af, ldns_response_cb, ctx);
+    if (luai_unlikely(!ctx->req)) {
+        HAPPlatformTimerDeregister(ctx->timer);
         luaL_error(L, "failed to start DNS resolution request");
     }
+    ctx->co = L;
     return lua_yieldk(L, 0, 0, finshresolve);
 }
 

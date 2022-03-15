@@ -23,9 +23,10 @@ typedef struct pal_dns_req_ctx pal_dns_req_ctx;
  * A callback called when the response is received.
  *
  * @param addr The resolved address.
+ * @param af Address family.
  * @param arg The last paramter of pal_dns_start_request().
  */
-typedef void (*pal_dns_response_cb)(const char *addr, void *arg);
+typedef void (*pal_dns_response_cb)(const char *addr, pal_addr_family af, void *arg);
 
 /**
  * Initialize DNS module.
