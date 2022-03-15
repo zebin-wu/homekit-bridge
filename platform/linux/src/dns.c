@@ -53,10 +53,11 @@ static void pal_dns_req_ctx_schedule(void* _Nullable context, size_t contextSize
     pal_dns_response_cb cb = ctx->cb;
     void *arg = ctx->arg;
     const char *addr = NULL;
+    const char *err = NULL;
     pal_addr_family af = PAL_ADDR_FAMILY_UNSPEC;
 
     if (ctx->ret) {
-        HAPLogError(&dns_log_obj, "%s: resolve failed: %s.", __func__, gai_strerror(ctx->ret));
+        err = gai_strerror(ctx->ret);
         goto done;
     }
 
@@ -75,9 +76,13 @@ static void pal_dns_req_ctx_schedule(void* _Nullable context, size_t contextSize
     } break;
     }
 
+    if (!addr) {
+        err = "invalid address";
+    }
+
 done:
     pal_dns_destroy_resolve_ctx(ctx);
-    cb(addr, af, arg);
+    cb(err, addr, af, arg);
 }
 
 void pal_dns_init() {

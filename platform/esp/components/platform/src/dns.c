@@ -44,30 +44,38 @@ static void pal_dns_response(void* _Nullable context, size_t contextSize) {
     pal_dns_req_ctx *ctx = *(pal_dns_req_ctx **)context;
 
     if (ctx->iscancel) {
-        goto clean;
+        pal_mem_free(ctx);
+        return;
     }
 
+    pal_dns_response_cb cb = ctx->cb;
+    void *arg = ctx->arg;
     const char *addr = NULL;
+    const char *err = NULL;
     pal_addr_family af = PAL_ADDR_FAMILY_UNSPEC;
     if (!ctx->found) {
+        err = "hostname not found";
         goto done;
     }
 
     switch (IP_GET_TYPE(&ctx->addr)) {
     case IPADDR_TYPE_V4:
         af = PAL_ADDR_FAMILY_IPV4;
+        break;
     case IPADDR_TYPE_V6:
         af = PAL_ADDR_FAMILY_IPV6;
+        break;
     }
 
     char buf[128];
     addr = ipaddr_ntoa_r(&ctx->addr, buf, sizeof(buf));
+    if (!addr) {
+        err = "invalid address";
+    }
 
 done:
-    ctx->iscancel = true;
-    ctx->cb(addr, af, ctx->arg);
-clean:
     pal_mem_free(ctx);
+    cb(err, addr, af, arg);
 }
 
 void pal_dns_event_handler(void* event_handler_arg, esp_event_base_t event_base,

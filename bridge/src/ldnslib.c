@@ -30,25 +30,31 @@ typedef struct ldns_resolve_context {
 
 static int ldns_response(lua_State *L) {
     lua_State *co = lua_touserdata(L, 1);
-    const char *addr = lua_touserdata(L, 2);
-    pal_addr_family af = lua_tointeger(L, 3);
-    lua_pop(L, 3);
+    const char *err = lua_touserdata(L, 2);
+    const char *addr = lua_touserdata(L, 3);
+    pal_addr_family af = lua_tointeger(L, 4);
+    lua_pop(L, 4);
 
-    if (addr) {
-        lua_pushstring(co, addr);
+    int narg = 0;
+    if (err) {
+        narg = 1;
+        lua_pushstring(co, err);
     } else {
+        HAPAssert(addr);
+        narg = 3;
+        lua_pushstring(co, addr);
+        lua_pushstring(co, ldns_family_strs[af]);
         lua_pushnil(co);
     }
-    lua_pushstring(co, ldns_family_strs[af]);
     int status, nres;
-    status = lc_resume(co, L, 2, &nres);
+    status = lc_resume(co, L, narg, &nres);
     if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         HAPLogError(&ldns_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
     return 0;
 }
 
-void ldns_response_cb(const char *addr, pal_addr_family af, void *arg) {
+void ldns_response_cb(const char *err, const char *addr, pal_addr_family af, void *arg) {
     ldns_resolve_context *ctx = arg;
     lua_State *co = ctx->co;
     lua_State *L = lc_getmainthread(co);
@@ -62,9 +68,10 @@ void ldns_response_cb(const char *addr, pal_addr_family af, void *arg) {
     lc_pushtraceback(L);
     lua_pushcfunction(L, ldns_response);
     lua_pushlightuserdata(L, co);
+    lua_pushlightuserdata(L, (void *)err);
     lua_pushlightuserdata(L, (void *)addr);
     lua_pushinteger(L, af);
-    int status = lua_pcall(L, 3, 0, 1);
+    int status = lua_pcall(L, 4, 0, 1);
     if (luai_unlikely(status != LUA_OK)) {
         HAPLogError(&ldns_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
@@ -77,13 +84,14 @@ static void ldns_timeout_timer_cb(HAPPlatformTimerRef timer, void *context) {
     ldns_resolve_context *ctx = context;
     ctx->timer = 0;
     pal_dns_cancel_request(ctx->req);
-    ldns_response_cb(NULL, PAL_ADDR_FAMILY_UNSPEC, ctx);
+    ldns_response_cb("resolve timeout", NULL, PAL_ADDR_FAMILY_UNSPEC, ctx);
 }
 
 static int finshresolve(lua_State *L, int status, lua_KContext extra) {
-    if (!lua_isstring(L, -1) || !lua_isstring(L, -2)) {
-        luaL_error(L, "failed to resolve");
+    if (lua_isstring(L, -1)) {
+        lua_error(L);
     }
+    lua_pop(L, 1);
     return 2;
 }
 
