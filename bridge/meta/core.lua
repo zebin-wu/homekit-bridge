@@ -3,20 +3,18 @@
 ---@class corelib
 core = {}
 
----Functions called in `core.exit`.
----Add your `onExit` function using table.insert().
----@type function[]
-core.onExits = {}
-
 ---@class Timer:userdata Timer.
 local timer = {}
 
 ---Get current time stamp.
 function core.time() end
 
----Exit the host program.
----`core.onExits` are called in this function.
+---Cause normal program termination.
 function core.exit() end
+
+---Register a function to be called at normal program termination.
+---@param func fun()
+function core.atexit(func) end
 
 ---Sleep for a specified number of milliseconds.
 ---@param ms integer Milliseconds.

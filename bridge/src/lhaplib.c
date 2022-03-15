@@ -3061,12 +3061,11 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
         lua_setfield(L, -2, ud->name);
     }
 
-    /* add 'deinit' to core.onExits */
     lua_getglobal(L, "core");
-    lua_getfield(L, -1, "onExits");
+    lua_getfield(L, -1, "atexit");
+    lua_remove(L, -2);
     lua_pushcfunction(L, lhap_deinit);
-    lua_rawseti(L, -2, luaL_len(L, -2) + 1);
-    lua_pop(L, 2);
+    lua_call(L, 1, 0);
 
     return 1;
 }

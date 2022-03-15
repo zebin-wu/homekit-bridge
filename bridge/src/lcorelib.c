@@ -12,6 +12,7 @@
 #include "lc.h"
 
 #define LUA_TIMER_NAME "Timer*"
+#define LCORE_ATEXITS "_ATEXITS"
 
 static const HAPLogObject lcore_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
@@ -52,11 +53,20 @@ static int lcore_exit_finsh(lua_State *L, int status, lua_KContext extra) {
 }
 
 static int lcore_exit(lua_State *L) {
-    if (luai_unlikely(lua_getfield(L, lua_upvalueindex(1), "onExits") != LUA_TTABLE)) {
+    if (luai_unlikely(!luaL_getsubtable(L, LUA_REGISTRYINDEX, LCORE_ATEXITS))) {
         HAPPlatformRunLoopStop();
-        luaL_error(L, "'core.onExits' must be a table");
+        return 0;
     }
     return lcore_exit_finsh(L, 0, 1);
+}
+
+static int lcore_atexit(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+
+    luaL_getsubtable(L, LUA_REGISTRYINDEX, LCORE_ATEXITS);
+    lua_pushvalue(L, 1);
+    lua_rawseti(L, -2, luaL_len(L, -2) + 1);
+    return 0;
 }
 
 static int lcore_sleep_resume(lua_State *L) {
@@ -205,10 +215,9 @@ static int lcore_timer_tostring(lua_State *L) {
 static const luaL_Reg lcore_funcs[] = {
     {"time", lcore_time},
     {"exit", lcore_exit},
+    {"atexit", lcore_atexit},
     {"sleep", lcore_sleep},
     {"createTimer", lcore_createTimer},
-    /* placeholders */
-    {"onExits", NULL},
     {NULL, NULL},
 };
 
@@ -241,15 +250,7 @@ static void lcore_createmeta(lua_State *L) {
 }
 
 LUAMOD_API int luaopen_core(lua_State *L) {
-    luaL_checkversion(L);
-    luaL_newlibtable(L, lcore_funcs);
-    lua_pushvalue(L, -1);
-    luaL_setfuncs(L, lcore_funcs, 1);
-
-    /* set field 'onExits' */
-    lua_newtable(L);
-    lua_setfield(L, -2, "onExits");
-
+    luaL_newlib(L, lcore_funcs);
     lcore_createmeta(L);
     return 1;
 }
