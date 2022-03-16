@@ -140,6 +140,6 @@ pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
 }
 
 void pal_dns_cancel_request(pal_dns_req_ctx *ctx) {
-    HAPPrecondition(!ctx->iscancel);
+    HAPPrecondition(ctx);
     ctx->iscancel = true;
 }

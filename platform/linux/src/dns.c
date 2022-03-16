@@ -9,19 +9,22 @@
 #include <pthread.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <sys/queue.h>
 #include <pal/net/dns.h>
 #include <pal/memory.h>
 #include <HAPPlatform.h>
 
-typedef struct pal_dns_resolve_ctx {
+typedef struct pal_dns_req_ctx {
+    bool cancel;
     pal_dns_response_cb cb;
     void *arg;
     struct addrinfo hint;
     struct addrinfo *result;
     int ret;
     pthread_t tid;
+    LIST_ENTRY(pal_dns_req_ctx) list_entry;
     char hostname[0];
-} pal_dns_resolve_ctx;
+} pal_dns_req_ctx;
 
 static const HAPLogObject dns_log_obj = {
     .subsystem = kHAPPlatform_LogSubsystem,
@@ -34,21 +37,28 @@ static const int pal_dns_af_mapping[] = {
     [PAL_ADDR_FAMILY_IPV6] = AF_INET6
 };
 
-static void pal_dns_destroy_resolve_ctx(void *arg) {
-    struct pal_dns_resolve_ctx *ctx = arg;
+static bool ginited;
+static LIST_HEAD(, pal_dns_req_ctx) greq_ctx_list_head;
 
+static void pal_dns_destroy_resolve_ctx(struct pal_dns_req_ctx *ctx) {
     if (ctx->result) {
         freeaddrinfo(ctx->result);
         ctx->result = NULL;
     }
+    LIST_REMOVE(ctx, list_entry);
     pal_mem_free(ctx);
 }
 
 static void pal_dns_req_ctx_schedule(void* _Nullable context, size_t contextSize) {
     HAPPrecondition(context);
-    struct pal_dns_resolve_ctx *ctx = *(struct pal_dns_resolve_ctx **)context;
+    struct pal_dns_req_ctx *ctx = *(struct pal_dns_req_ctx **)context;
 
     pthread_join(ctx->tid, NULL);
+
+    if (ctx->cancel) {
+        pal_dns_destroy_resolve_ctx(ctx);
+        return;
+    }
 
     pal_dns_response_cb cb = ctx->cb;
     void *arg = ctx->arg;
@@ -86,33 +96,39 @@ done:
 }
 
 void pal_dns_init() {
+    HAPPrecondition(!ginited);
+    LIST_INIT(&greq_ctx_list_head);
+    ginited = true;
 }
 
 void pal_dns_deinit() {
+    HAPPrecondition(ginited);
+    for (struct pal_dns_req_ctx *t = LIST_FIRST(&greq_ctx_list_head); t;) {
+        struct pal_dns_req_ctx *cur = t;
+        t = LIST_NEXT(t, list_entry);
+        pthread_join(cur->tid, NULL);
+        pal_dns_destroy_resolve_ctx(cur);
+    }
+    ginited = false;
 }
 
 static void *pal_dns_resolve(void *arg) {
-    struct pal_dns_resolve_ctx *ctx = arg;
-
-    pthread_cleanup_push(pal_dns_destroy_resolve_ctx, ctx);
+    struct pal_dns_req_ctx *ctx = arg;
 
     ctx->ret = getaddrinfo(ctx->hostname, NULL, &ctx->hint, &ctx->result);
-    HAPAssert(HAPPlatformRunLoopScheduleCallback(pal_dns_req_ctx_schedule,
-        &ctx, sizeof(ctx)) == kHAPError_None);
-
-    pthread_cleanup_pop(0);
-
+    (void) HAPPlatformRunLoopScheduleCallback(pal_dns_req_ctx_schedule, &ctx, sizeof(ctx));
     return NULL;
 }
 
 pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
     pal_dns_response_cb response_cb, void *arg) {
+    HAPPrecondition(ginited);
     HAPPrecondition(hostname);
     HAPPrecondition(af >= PAL_ADDR_FAMILY_UNSPEC && af <= PAL_ADDR_FAMILY_IPV6);
     HAPPrecondition(response_cb);
 
     size_t namelen = strlen(hostname);
-    pal_dns_resolve_ctx *ctx = pal_mem_calloc(sizeof(*ctx) + namelen + 1);
+    pal_dns_req_ctx *ctx = pal_mem_alloc(sizeof(*ctx) + namelen + 1);
     if (!ctx) {
         HAPLogError(&dns_log_obj, "%s: Failed to alloc memory.", __func__);
         return NULL;
@@ -121,9 +137,11 @@ pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
     ctx->hostname[namelen] = '\0';
     ctx->cb = response_cb;
     ctx->arg = arg;
+    memset(&ctx->hint, 0, sizeof(ctx->hint));
     ctx->hint.ai_family = pal_dns_af_mapping[af];
     ctx->hint.ai_flags = AI_ADDRCONFIG;
     ctx->result = NULL;
+    ctx->cancel = false;
 
     int ret = pthread_create(&ctx->tid, NULL, pal_dns_resolve, ctx);
     if (ret) {
@@ -131,13 +149,13 @@ pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
         pal_mem_free(ctx);
         return NULL;
     }
-    return (pal_dns_req_ctx *)ctx->tid;
+
+    LIST_INSERT_HEAD(&greq_ctx_list_head, ctx, list_entry);
+    return ctx;
 }
 
 void pal_dns_cancel_request(pal_dns_req_ctx *ctx) {
-    pthread_t tid = (pthread_t)ctx;
-    if (pthread_kill(tid, 0) == 0) {
-        pthread_cancel(tid);
-    }
-    pthread_join(tid, NULL);
+    HAPPrecondition(ginited);
+    HAPPrecondition(ctx);
+    ctx->cancel = true;
 }
