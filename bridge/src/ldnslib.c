@@ -97,13 +97,13 @@ static int finshresolve(lua_State *L, int status, lua_KContext extra) {
 
 static int ldns_resolve(lua_State *L) {
     const char *hostname = luaL_checkstring(L, 1);
-    lua_Integer ms = luaL_checkinteger(L, 2);
-    luaL_argcheck(L, ms >= 0, 2, "timeout out of range");
+    lua_Integer timeout = luaL_checkinteger(L, 2);
+    luaL_argcheck(L, timeout > 0, 2, "timeout out of range");
     pal_addr_family af = luaL_checkoption(L, 3, "", ldns_family_strs);
 
     ldns_resolve_context *ctx = lua_newuserdata(L, sizeof(*ctx));
     if (luai_unlikely(HAPPlatformTimerRegister(&ctx->timer,
-        HAPPlatformClockGetCurrent() + ms,
+        HAPPlatformClockGetCurrent() + timeout,
         ldns_timeout_timer_cb, ctx) != kHAPError_None)) {
         luaL_error(L, "failed to create a timeout timer");
     }
