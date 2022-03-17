@@ -44,6 +44,11 @@ static const int ssl_endpoint_mapping[] = {
     [PAL_SSL_ENDPOINT_SERVER] = MBEDTLS_SSL_IS_SERVER
 };
 
+static const int ssl_transport_mapping[] = {
+    [PAL_SSL_TYPE_TLS] = MBEDTLS_SSL_TRANSPORT_STREAM,
+    [PAL_SSL_TYPE_DTLS] = MBEDTLS_SSL_TRANSPORT_DATAGRAM
+};
+
 static uint16_t gssl_count;
 
 static inline void pal_ssl_bio_init(pal_ssl_bio *bio, void *data, size_t len) {
@@ -111,7 +116,8 @@ static int pal_mbedtls_ssl_recv(void *arg, unsigned char *buf, size_t len) {
     return readbytes;
 }
 
-pal_ssl_ctx *pal_ssl_create(pal_ssl_endpoint ep, const char *hostname) {
+pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname) {
+    HAPPrecondition(type == PAL_SSL_TYPE_TLS || type == PAL_SSL_TYPE_DTLS);
     HAPPrecondition(ep == PAL_SSL_ENDPOINT_CLIENT || ep == PAL_SSL_ENDPOINT_SERVER);
 
     pal_ssl_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
@@ -124,7 +130,7 @@ pal_ssl_ctx *pal_ssl_create(pal_ssl_endpoint ep, const char *hostname) {
     mbedtls_ssl_config_init(&ctx->conf);
 
     int ret = mbedtls_ssl_config_defaults(&ctx->conf, ssl_endpoint_mapping[ep],
-        MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
+        ssl_transport_mapping[type], MBEDTLS_SSL_PRESET_DEFAULT);
     if (ret) {
         MBEDTLS_PRINT_ERROR(mbedtls_ssl_config_defaults, ret);
         goto err;

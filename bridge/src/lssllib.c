@@ -21,6 +21,12 @@ typedef struct {
 
 typedef pal_ssl_err (*lssl_func)(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
 
+const char *lssl_type_strs[] = {
+    "TLS",
+    "DTLS",
+    NULL,
+};
+
 const char *lssl_endpoint_strs[] = {
     "client",
     "server",
@@ -28,15 +34,13 @@ const char *lssl_endpoint_strs[] = {
 };
 
 static int lssl_create(lua_State *L) {
-    pal_ssl_endpoint ep = luaL_checkoption(L, 1, NULL, lssl_endpoint_strs);
-    const char *hostname = NULL;
-    if (!lua_isnoneornil(L, 2)) {
-        hostname = luaL_checkstring(L, 2);
-    }
+    pal_ssl_type type = luaL_checkoption(L, 1, NULL, lssl_type_strs);
+    pal_ssl_endpoint ep = luaL_checkoption(L, 2, NULL, lssl_endpoint_strs);
+    const char *hostname = luaL_optstring(L, 3, NULL);
 
     lssl_ctx *ctx = lua_newuserdata(L, sizeof(*ctx));
     luaL_setmetatable(L, LUA_SSL_CTX_NAME);
-    ctx->ctx = pal_ssl_create(ep, hostname);
+    ctx->ctx = pal_ssl_create(type, ep, hostname);
     if (!ctx) {
         luaL_error(L, "failed to create SSL context");
     }

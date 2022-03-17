@@ -6,10 +6,11 @@ local ssl = {}
 local ctx = {}
 
 ---Create a SSL context.
+---@param type '"TLS"'|'"DTLS"' SSL type.
 ---@param endpoint '"client"'|'"server"' SSL endpoint.
 ---@param hostname? string host name, only valid when the SSL endpoint is "client".
 ---@return SSLCtx context
-function ssl.create(endpoint, hostname) end
+function ssl.create(type, endpoint, hostname) end
 
 ---Whether the handshake is finshed.
 ---@return boolean finshed

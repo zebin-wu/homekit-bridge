@@ -36,7 +36,8 @@ void pal_ssl_init() {
 void pal_ssl_deinit() {
 }
 
-pal_ssl_ctx *pal_ssl_create(pal_ssl_endpoint ep, const char *hostname) {
+pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname) {
+    HAPPrecondition(type == PAL_SSL_TYPE_TLS || type == PAL_SSL_TYPE_DTLS);
     HAPPrecondition(ep == PAL_SSL_ENDPOINT_CLIENT || ep == PAL_SSL_ENDPOINT_SERVER);
 
     pal_ssl_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
@@ -48,10 +49,24 @@ pal_ssl_ctx *pal_ssl_create(pal_ssl_endpoint ep, const char *hostname) {
     const SSL_METHOD *method;
     switch (ep) {
     case PAL_SSL_ENDPOINT_CLIENT:
-        method = SSLv23_client_method();
+        switch (type) {
+        case PAL_SSL_TYPE_TLS:
+            method = TLS_client_method();
+            break;
+        case PAL_SSL_TYPE_DTLS:
+            method = DTLS_client_method();
+            break;
+        }
         break;
     case PAL_SSL_ENDPOINT_SERVER:
-        method = SSLv23_server_method();
+        switch (type) {
+        case PAL_SSL_TYPE_TLS:
+            method = TLS_server_method();
+            break;
+        case PAL_SSL_TYPE_DTLS:
+            method = DTLS_server_method();
+            break;
+        }
         break;
     }
 

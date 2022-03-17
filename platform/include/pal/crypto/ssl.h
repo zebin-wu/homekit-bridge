@@ -16,9 +16,17 @@ extern "C" {
 #include <stdbool.h>
 
 /**
- * SSL method.
+ * SSL type.
  */
-typedef enum {
+typedef enum pal_ssl_type {
+    PAL_SSL_TYPE_TLS,
+    PAL_SSL_TYPE_DTLS,
+} pal_ssl_type;
+
+/**
+ * SSL endpoint.
+ */
+typedef enum pal_ssl_endpoint {
     PAL_SSL_ENDPOINT_CLIENT,
     PAL_SSL_ENDPOINT_SERVER,
 } pal_ssl_endpoint;
@@ -51,12 +59,13 @@ void pal_ssl_deinit();
 /**
  * Create a SSL context.
  *
+ * @param type SSL type.
  * @param endpoint SSL endpoint.
  * @param hostname Server host name, only valid when the SSL endpoint is PAL_SSL_ENDPOINT_CLIENT.
  * @return the SSL context on success.
  * @return NULL on failure.
  */
-pal_ssl_ctx *pal_ssl_create(pal_ssl_endpoint ep, const char *hostname);
+pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname);
 
 /**
  * Free a SSL context.
