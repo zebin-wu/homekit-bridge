@@ -116,7 +116,7 @@ static void *pal_dns_resolve(void *arg) {
     struct pal_dns_req_ctx *ctx = arg;
 
     ctx->ret = getaddrinfo(ctx->hostname, NULL, &ctx->hint, &ctx->result);
-    (void) HAPPlatformRunLoopScheduleCallback(pal_dns_req_ctx_schedule, &ctx, sizeof(ctx));
+    HAPAssert(HAPPlatformRunLoopScheduleCallback(pal_dns_req_ctx_schedule, &ctx, sizeof(ctx)) == kHAPError_None);
     return NULL;
 }
 
