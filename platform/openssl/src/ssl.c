@@ -283,6 +283,7 @@ pal_ssl_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void 
             switch (err) {
             case SSL_ERROR_WANT_WRITE:
             case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_ZERO_RETURN:
                 *olen = buflen - *olen;
                 return PAL_SSL_ERR_OK;
                 break;
