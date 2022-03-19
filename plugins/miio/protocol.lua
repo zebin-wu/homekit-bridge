@@ -5,6 +5,7 @@ local json = require "cjson"
 local assert = assert
 local type = type
 local error = error
+local floor = math.floor
 
 local protocol = {}
 local logger = log.getLogger("miio.protocol")
@@ -274,7 +275,7 @@ function pcb:handshake(timeout)
     local result = results[1]
     logger:debug("Handshake done.")
     self.devid = result.devid
-    self.stampDiff = core.time() - result.stamp
+    self.stampDiff = floor(core.time() / 1000) - result.stamp
 end
 
 ---Start a request.
@@ -310,7 +311,7 @@ function pcb:request(timeout, method, params)
             params = params or nil
         })
 
-        sock:send(pack(0, self.devid, core.time() - self.stampDiff,
+        sock:send(pack(0, self.devid, floor(core.time() / 1000) - self.stampDiff,
             self.token, self.encryption:encrypt(data)))
 
         logger:debug(("%s => %s"):format(data, self.addr))

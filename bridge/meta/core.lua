@@ -6,7 +6,7 @@ core = {}
 ---@class Timer:userdata Timer.
 local timer = {}
 
----Get current time stamp.
+---Get current time in milliseconds.
 function core.time() end
 
 ---Cause normal program termination.

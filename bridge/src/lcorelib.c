@@ -29,7 +29,7 @@ typedef struct {
 } lcore_timer_ctx;
 
 static int lcore_time(lua_State *L) {
-    lua_pushinteger(L, HAPPlatformClockGetCurrent() / 1000);
+    lua_pushnumber(L, HAPPlatformClockGetCurrent());
     return 1;
 }
 
