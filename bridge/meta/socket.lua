@@ -61,11 +61,11 @@ function _socket:sendto(data, addr, port) end
 
 ---Receive data from a socket.
 ---@param maxlen integer The max length of the data.
----@return string message The received data.
+---@return string data The received data.
 ---@nodiscard
 function _socket:recv(maxlen) end
 
----Receive a message from a socket.
+---Receive data from a socket.
 ---@param maxlen integer The max length of the message.
 ---@return string data The received message.
 ---@return string addr The remote address.

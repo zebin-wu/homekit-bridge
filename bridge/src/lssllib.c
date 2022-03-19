@@ -63,10 +63,9 @@ static int lssl_ctx_common(lua_State *L, lssl_ctx *ctx,
         pal_ssl_err err = func(ctx->ctx, in, ilen, out, &olen);
         switch (err) {
         case PAL_SSL_ERR_OK:
-            if (olen == 0) {
-                return 0;
+            if (olen) {
+                luaL_addlstring(&B, out, olen);
             }
-            luaL_addlstring(&B, out, olen);
             luaL_pushresult(&B);
             return 1;
         case PAL_SSL_ERR_AGAIN:

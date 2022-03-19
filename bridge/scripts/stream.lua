@@ -13,44 +13,92 @@ function client:settimeout(ms)
     self.sock:settimeout(ms)
 end
 
----Send all the data.
----
----This function will return after all the data sent.
----@param data string The data to be sent.
-function client:sendall(data)
+---Write data.
+---@param data string The data to be write.
+function client:write(data)
     local sslctx = self.sslctx
-    if sslctx then
-        data = sslctx:encrypt(data)
-    end
-    self.sock:sendall(data)
+    self.sock:sendall(sslctx and sslctx:encrypt(data) or data)
 end
 
-local function recv(sock, sslctx)
-    local data = sock:recv(1024)
-    if #data ~= 0 and sslctx then
-        data = sslctx:decrypt(data)
-    end
-    return data
-end
-
----Receive all data.
----@return string data The received data.
+---Read data.
+---@param maxlen integer The max length of the data.
+---@return string data The read data.
 ---@nodiscard
-function client:recvall()
+function client:read(maxlen)
     local sock = self.sock
     local sslctx = self.sslctx
-    local output = recv(sock, sslctx)
-    while sock:readable() do
-        local data = recv(sock, sslctx)
-        if data == "" then
+    if not sslctx then
+        return sock:recv(maxlen)
+    end
+    local readbuf = self.readbuf
+    while #readbuf < maxlen do
+        local data = sock:recv(maxlen)
+        if #data == 0 then
             break
         end
-        output = output .. data
+        readbuf = readbuf .. sslctx:decrypt(data)
+        if not sock:readable() then
+            break
+        end
     end
-    return output
+
+    if #readbuf <= maxlen then
+        self.readbuf = ""
+        return readbuf
+    else
+        local out = readbuf:sub(1, maxlen)
+        self.readbuf = readbuf:sub(maxlen + 1)
+        return out
+    end
 end
 
----Create a stream.
+---Read a line.
+---@param sep? string Split string, default is "\n".
+---@param skip? boolean Whether to skip the split string, default is false.
+---@return string line
+function client:readline(sep, skip)
+    sep = sep or "\n"
+    local readbuf = self.readbuf
+    local data
+    if #readbuf > 0 then
+        self.readbuf = ""
+        data = readbuf
+    else
+        data = self:read(1024)
+        if #data == 0 then
+            error("read EOF")
+        end
+    end
+    local seplen = #sep
+    local init = 1
+    while true do
+        local s, e = data:find(sep, init, true)
+        if s then
+            local line = data:sub(1, skip and s - 1 or e)
+            if e < #data then
+                readbuf = self.readbuf
+                self.readbuf = readbuf .. data:sub(e + 1)
+            end
+            return line
+        else
+            if seplen < e then
+                init = e + 2 - seplen
+            end
+            local _data = self:read(1024)
+            if #_data == 0 then
+                error("read EOF")
+            end
+            data = data .. _data
+        end
+    end
+end
+
+---Close the connection.
+function client:close()
+    self.sock:destroy()
+end
+
+---Create a stream client and connect to the host.
 ---@param type '"TCP"'|'"TLS"'|'"DTLS"'
 ---@param host string Server host name or IP address.
 ---@param port integer Remote port number, in host order.
@@ -58,6 +106,7 @@ end
 ---@return StreamClient
 ---@nodiscard
 function stream.client(type, host, port, timeout)
+    local starttime = core.time()
     local addr, family = dns.resolve(host, timeout)
     local security = false
     local socktype
@@ -71,8 +120,9 @@ function stream.client(type, host, port, timeout)
         socktype = type
     end
     local sock = socket.create(socktype, family)
-    sock:settimeout(timeout)
+    sock:settimeout(timeout - core.time() + starttime)
     sock:connect(addr, port)
+    sock:settimeout(timeout)
 
     ---@class StreamClientPriv
     local o = {
@@ -94,13 +144,13 @@ function stream.client(type, host, port, timeout)
         end
 
         o.sslctx = sslctx
+        o.readbuf = ""
     end
 
-    setmetatable(o, {
+    return setmetatable(o, {
         __index = client,
+        __close = client.close
     })
-
-    return o
 end
 
 return stream
