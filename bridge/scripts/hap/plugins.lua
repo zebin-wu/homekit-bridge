@@ -3,7 +3,7 @@ local traceback = debug.traceback
 
 local M = {}
 
-local logger = log.getLogger("plugins")
+local logger = log.getLogger("hap.plugins")
 
 ---@class PluginConf:table Plugin configuration.
 

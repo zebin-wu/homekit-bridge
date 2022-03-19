@@ -1,5 +1,5 @@
 local config = require "config"
-local plugins = require "plugins"
+local plugins = require "hap.plugins"
 local hap = require "hap"
 local chip = require "chip"
 
