@@ -44,7 +44,7 @@ static int lsocket_create(lua_State *L) {
     luaL_setmetatable(L, LUA_SOCKET_OBJECT_NAME);
 
     obj->socket = pal_socket_create(type, af);
-    if (!obj->socket) {
+    if (luai_unlikely(!obj->socket)) {
         luaL_error(L, "failed to create socket object");
     }
 
@@ -53,7 +53,7 @@ static int lsocket_create(lua_State *L) {
 
 static lsocket_obj *lsocket_obj_get(lua_State *L, int idx) {
     lsocket_obj *obj = luaL_checkudata(L, idx, LUA_SOCKET_OBJECT_NAME);
-    if (!obj->socket) {
+    if (luai_unlikely(!obj->socket)) {
         luaL_error(L, "attemp to use a destroyed socket");
     }
     return obj;
@@ -72,7 +72,7 @@ static int lsocket_obj_settimeout(lua_State *L) {
 static int lsocket_obj_enablebroadcast(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
     pal_socket_err err = pal_socket_enable_broadcast(obj->socket);
-    if (err != PAL_SOCKET_ERR_OK) {
+    if (luai_unlikely(err != PAL_SOCKET_ERR_OK)) {
         luaL_error(L, pal_socket_get_error_str(err));
     }
     return 0;
@@ -85,7 +85,7 @@ static int lsocket_obj_bind(lua_State *L) {
     luaL_argcheck(L, (port >= 0) && (port <= 65535), 3, "port out of range");
 
     pal_socket_err err = pal_socket_bind(obj->socket, addr, port);
-    if (err != PAL_SOCKET_ERR_OK) {
+    if (luai_unlikely(err != PAL_SOCKET_ERR_OK)) {
         luaL_error(L, pal_socket_get_error_str(err));
     }
     return 0;
@@ -96,7 +96,7 @@ static int lsocket_obj_listen(lua_State *L) {
     lua_Integer backlog = luaL_checkinteger(L, 2);
 
     pal_socket_err err = pal_socket_listen(obj->socket, backlog);
-    if (err != PAL_SOCKET_ERR_OK) {
+    if (luai_unlikely(err != PAL_SOCKET_ERR_OK)) {
         luaL_error(L, pal_socket_get_error_str(err));
     }
 
@@ -110,12 +110,12 @@ static void lsocket_accepted_cb(pal_socket_obj *o, pal_socket_err err, pal_socke
     int status, nres;
 
     HAPAssert(lua_gettop(L) == 0);
-    lua_pushinteger(co, err);  // -4
-    lua_pushlightuserdata(co, new_o);  // -3
-    lua_pushstring(co, addr);  // -2
-    lua_pushinteger(co, port);  // -1
-    status = lc_resume(co, L, 4, &nres);
-    if (status != LUA_OK && status != LUA_YIELD) {
+    lua_pushinteger(co, port);
+    lua_pushlightuserdata(co, (void *)addr);
+    lua_pushlightuserdata(co, new_o);
+    lua_pushinteger(co, err);
+    status = lc_resume(co, L, 4, &nres);  // stack <..., port, addr, new_o, err>
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
 
@@ -124,16 +124,19 @@ static void lsocket_accepted_cb(pal_socket_obj *o, pal_socket_err err, pal_socke
 }
 
 static int finshaccept(lua_State *L, int status, lua_KContext extra) {
-    // lua_stack: [-1] = port, [-2] = addr, [-3] = new_o, [-4] = err
-    pal_socket_err err = lua_tointeger(L, -4);
-    pal_socket_obj *new_o = lua_touserdata(L, -3);
+    pal_socket_err err = lua_tointeger(L, -1);
+    pal_socket_obj *new_o = lua_touserdata(L, -2);
+    const char *addr = lua_touserdata(L, -3);
+    uint16_t port = lua_tointeger(L, -4);
+    lua_pop(L, 4);
 
     switch (err) {
     case PAL_SOCKET_ERR_OK: {
         lsocket_obj *obj = lua_newuserdata(L, sizeof(lsocket_obj));
         luaL_setmetatable(L, LUA_SOCKET_OBJECT_NAME);
         obj->socket = new_o;
-        lua_insert(L, -3);  // lua_stack: [-1] = port, [-2] = addr, [-3] = obj
+        lua_pushstring(L, addr);
+        lua_pushinteger(L, port);
         return 3;
     }
     default:
@@ -177,7 +180,7 @@ static void lsocket_connected_cb(pal_socket_obj *o, pal_socket_err err, void *ar
     HAPAssert(lua_gettop(L) == 0);
     lua_pushinteger(co, err);
     status = lc_resume(co, L, 1, &nres);
-    if (status != LUA_OK && status != LUA_YIELD) {
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
 
@@ -186,7 +189,6 @@ static void lsocket_connected_cb(pal_socket_obj *o, pal_socket_err err, void *ar
 }
 
 static int finshconnect(lua_State *L, int status, lua_KContext extra) {
-    // lua_stack: [-1] = err
     pal_socket_err err = lua_tointeger(L, -1);
 
     switch (err) {
@@ -220,8 +222,8 @@ static void lsocket_sent_cb(pal_socket_obj *o, pal_socket_err err, size_t sent_l
     HAPAssert(lua_gettop(L) == 0);
     lua_pushinteger(co, err);
     lua_pushinteger(co, sent_len);
-    status = lc_resume(co, L, 2, &nres);
-    if (status != LUA_OK && status != LUA_YIELD) {
+    status = lc_resume(co, L, 2, &nres);  // stack <..., sent_len, err>
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
 
@@ -230,7 +232,6 @@ static void lsocket_sent_cb(pal_socket_obj *o, pal_socket_err err, size_t sent_l
 }
 
 static int finshsend(lua_State *L, int status, lua_KContext extra) {
-    // lua_stack: [-1] = sent_len, [-2] = err
     bool all = (bool)extra;
     pal_socket_err err = lua_tointeger(L, -2);
 
@@ -287,13 +288,14 @@ static void lsocket_recved_cb(pal_socket_obj *o, pal_socket_err err,
     int status, nres;
 
     HAPAssert(lua_gettop(L) == 0);
-    lua_pushlstring(co, data, len);
-    lua_pushstring(co, addr);
+    lua_pushlightuserdata(co, data);
+    lua_pushinteger(co, len);
+    lua_pushlightuserdata(co, (void *)addr);
     lua_pushinteger(co, port);
     lua_pushinteger(co, err);
 
-    status = lc_resume(co, L, 4, &nres);
-    if (status != LUA_OK && status != LUA_YIELD) {
+    status = lc_resume(co, L, 4, &nres);  // stack <..., data, len, addr, port, err>
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
 
@@ -302,19 +304,25 @@ static void lsocket_recved_cb(pal_socket_obj *o, pal_socket_err err,
 }
 
 static int finshrecv(lua_State *L, int status, lua_KContext extra) {
-    // lua_stack: [-1] = err, [-2] = port, [-3] = addr, [-4] = data
     bool isrecvfrom = (bool)extra;
     pal_socket_err err = lua_tointeger(L, -1);
+    lua_pop(L, 1);
 
     switch (err) {
-    case PAL_SOCKET_ERR_OK:
-        lua_pop(L, 1);
-        if (isrecvfrom) {
-            return 3;
-        } else {
-            lua_pop(L, 2);
+    case PAL_SOCKET_ERR_OK: {
+        const char *data = lua_touserdata(L, -4);
+        size_t len = lua_tointeger(L, -3);
+        const char *addr = lua_touserdata(L, -2);
+        uint16_t port = lua_tointeger(L, -1);
+        lua_pop(L, 4);
+        lua_pushlstring(L, data, len);
+        if (!isrecvfrom) {
             return 1;
         }
+        lua_pushstring(L, addr);
+        lua_pushinteger(L, port);
+        return 3;
+    } break;
     case PAL_SOCKET_ERR_IN_PROGRESS:
         lua_yieldk(L, 0, extra, finshrecv);
         break;
