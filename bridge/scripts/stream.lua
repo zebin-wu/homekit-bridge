@@ -53,8 +53,8 @@ function client:read(maxlen)
 end
 
 ---Read a line.
----@param sep? string Split string, default is "\n".
----@param skip? boolean Whether to skip the split string, default is false.
+---@param sep? string Separator, default is "\n".
+---@param skip? boolean Whether to skip the separator, default is false.
 ---@return string line
 function client:readline(sep, skip)
     sep = sep or "\n"
