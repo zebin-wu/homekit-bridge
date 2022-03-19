@@ -1,69 +1,62 @@
 ---@meta
 
 ---@class socketlib
-local socket = {}
+local M = {}
 
 ---@class Socket:userdata
-local _socket = {}
-
----Create an endpoint for communication.
----@param type '"TCP"'|'"UDP"' Socket type.
----@param family '"IPV4"'|'"IPV6"' Address family.
----@return Socket object Socket object.
----@nodiscard
-function socket.create(type, family) end
+local socket = {}
 
 ---Set the timeout.
 ---@param ms integer Maximum time blocked in milliseconds.
-function _socket:settimeout(ms) end
+function socket:settimeout(ms) end
 
 ---Enable broadcast.
-function _socket:enablebroadcast() end
+function socket:enablebroadcast() end
 
 ---Bind a socket to a local IP address and port.
 ---@param addr string Local address to use.
 ---@param port integer Local port number, in host order.
-function _socket:bind(addr, port) end
+function socket:bind(addr, port) end
 
 ---Set the remote address and/or port.
 ---@param addr string Remote address to use.
 ---@param port integer Remote port number, in host order.
-function _socket:connect(addr, port) end
+function socket:connect(addr, port) end
 
 ---Listen for connections.
 ---@param backlog integer The maximum length to which the queue of pending connections for socket may grow.
-function _socket:listen(backlog) end
+function socket:listen(backlog) end
 
 ---Accept a connection on a socket.
 ---@return Socket object Socket object.
 ---@return string addr Remote address.
 ---@return integer port Remote port.
 ---@nodiscard
-function _socket:accept() end
+function socket:accept() end
 
 ---Send data.
 ---@param data string The data to be sent.
 ---@return integer len Sent length.
-function _socket:send(data) end
+function socket:send(data) end
 
 ---Send all the data.
 ---
 ---This function will return after all the data sent.
 ---@param data string The data to be sent.
-function _socket:sendall(data) end
+function socket:sendall(data) end
 
 ---Send data to remote addr and port.
 ---@param data string The data to be sent.
 ---@param addr string Remote address to use.
 ---@param port integer Remote port number, in host order.
 ---@return integer len Sent length.
-function _socket:sendto(data, addr, port) end
+function socket:sendto(data, addr, port) end
 
 ---Receive data from a socket.
 ---@param maxlen integer The max length of the data.
 ---@return string data The received data.
 ---@nodiscard
-function _socket:recv(maxlen) end
+function socket:recv(maxlen) end
 
 ---Receive data from a socket.
 ---@param maxlen integer The max length of the message.
@@ -71,13 +64,20 @@ function _socket:recv(maxlen) end
 ---@return string addr The remote address.
 ---@return integer port The remote port.
 ---@nodiscard
-function _socket:recvfrom(maxlen) end
+function socket:recvfrom(maxlen) end
 
 --Whether the socket is readable.
 ---@return boolean
-function _socket:readable() end
+function socket:readable() end
 
 ---Destroy the socket object.
-function _socket:destroy() end
+function socket:destroy() end
 
-return socket
+---Create an endpoint for communication.
+---@param type '"TCP"'|'"UDP"' Socket type.
+---@param family '"IPV4"'|'"IPV6"' Address family.
+---@return Socket object Socket object.
+---@nodiscard
+function M.create(type, family) end
+
+return M

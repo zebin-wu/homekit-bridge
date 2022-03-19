@@ -2,7 +2,7 @@ local dns = require "dns"
 local ssl = require "ssl"
 local socket = require "socket"
 
-local stream = {}
+local M = {}
 
 ---@class StreamClient:StreamClientPriv Stream client.
 local client = {}
@@ -105,7 +105,7 @@ end
 ---@param timeout integer Timeout period (in milliseconds).
 ---@return StreamClient
 ---@nodiscard
-function stream.client(type, host, port, timeout)
+function M.client(type, host, port, timeout)
     local starttime = core.time()
     local addr, family = dns.resolve(host, timeout)
     local security = false
@@ -153,4 +153,4 @@ function stream.client(type, host, port, timeout)
     })
 end
 
-return stream
+return M

@@ -1,16 +1,10 @@
 ---@meta
 
 ---@class nvslib:table non-volatile storage.
-local nvs = {}
+local M = {}
 
 ---@class NVSHandle:userdata non-volatile storage handle.
 local handle = {}
-
----Open a non-volatile storage handle with a given namespace.
----@param namespace string
----@return NVSHandle handle
----@nodiscard
-function nvs.open(namespace) end
 
 ---Fetch the value of a key.
 ---@param key string
@@ -32,4 +26,10 @@ function handle:commit() end
 ---Close the handle and free any allocated resources.
 function handle:close() end
 
-return nvs
+---Open a non-volatile storage handle with a given namespace.
+---@param namespace string
+---@return NVSHandle handle
+---@nodiscard
+function M.open(namespace) end
+
+return M

@@ -1,7 +1,7 @@
 ---@meta
 
 ---@class haplib
-local hap = {}
+local M = {}
 
 ---@class HAPSession:lightuserdata HomeKit Session.
 
@@ -356,34 +356,34 @@ local hap = {}
 
 ---HomeKit Accessory Information service.
 ---@type lightuserdata
-hap.AccessoryInformationService = {}
+M.AccessoryInformationService = {}
 
 ---HAP Protocol Information service.
 ---@type lightuserdata
-hap.HAPProtocolInformationService = {}
+M.HAPProtocolInformationService = {}
 
 ---Pairing service.
 ---@type lightuserdata
-hap.PairingService = {}
+M.PairingService = {}
 
 ---Initialize HAP.
 ---@param primaryAccessory HAPAccessory Primary accessory to serve.
 ---@param serverCallbacks HAPAccessoryServerCallbacks Accessory server callbacks.
-function hap.init(primaryAccessory, serverCallbacks) end
+function M.init(primaryAccessory, serverCallbacks) end
 
 ---De-initialize then you can init() again.
-function hap.deinit() end
+function M.deinit() end
 
 ---Add bridged accessory.
 ---@param accessory HAPAccessory Bridged accessory.
-function hap.addBridgedAccessory(accessory) end
+function M.addBridgedAccessory(accessory) end
 
 ---Start accessory server, you must init() first.
 ---@param confChanged boolean Whether or not the bridge configuration changed since the last start.
-function hap.start(confChanged) end
+function M.start(confChanged) end
 
 ---Stop accessory server.
-function hap.stop() end
+function M.stop() end
 
 ---Raises an event notification for a given characteristic in a given service provided by a given accessory.
 ---If has session, it raises event on a given session.
@@ -392,17 +392,17 @@ function hap.stop() end
 ---@param sid integer Service instance ID.
 ---@param cid integer Characteristic intstance ID.
 ---@param session? HAPSession The session on which to raise the event.
-function hap.raiseEvent(aid, sid, cid, session) end
+function M.raiseEvent(aid, sid, cid, session) end
 
 ---Get a new Instance ID for bridged accessory or service or characteristic.
 ---@param bridgedAccessory? boolean Whether or not to get new IID for bridged accessory.
 ---@return integer iid Instance ID.
 ---@nodiscard
-function hap.getNewInstanceID(bridgedAccessory) end
+function M.getNewInstanceID(bridgedAccessory) end
 
 ---Restore factory settings.
 ---
 ---This function must be called before initialization.
-function hap.restoreFactorySettings() end
+function M.restoreFactorySettings() end
 
-return hap
+return M

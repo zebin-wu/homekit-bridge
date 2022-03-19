@@ -1,7 +1,7 @@
 ---@meta
 
 ---@class cipherlib
-local cipher = {}
+local M = {}
 
 ---@alias CipherType
 ---| '"AES-128-ECB"'            # AES cipher with 128-bit ECB mode.
@@ -84,44 +84,44 @@ local cipher = {}
 ---| '"ANSI923"'        # ANSI X.923 padding.
 ---| '"ZERO"'           # Zero padding (not reversible).
 
----@class _cipher:userdata Cipher context.
-local _cipher = {}
-
----Create a cipher context.
----@param type CipherType Cipher type.
----@return _cipher context Cipher context.
----@nodiscard
-function cipher.create(type) end
+---@class ChiperContext:userdata Cipher context.
+local ctx = {}
 
 ---Return the length of the key in bytes.
 ---@return integer bytes The key length.
 ---@nodiscard
-function _cipher:getKeyLen() end
+function ctx:getKeyLen() end
 
 ---Return the length of the initialization vector (IV) in bytes.
 ---@return integer bytes The IV length.
 ---@nodiscard
-function _cipher:getIVLen() end
+function ctx:getIVLen() end
 
 ---Set the padding mode, for cipher modes that use padding.
 ---@param padding CipherPadding The padding mode.
-function _cipher:setPadding(padding) end
+function ctx:setPadding(padding) end
 
 ---Begin a encryption/decryption process.
 ---@param op '"encrypt"'|'"decrypt"'   Operation.
 ---@param key string The key to use.
 ---@param iv? string The initialization vector (IV).
-function _cipher:begin(op, key, iv) end
+function ctx:begin(op, key, iv) end
 
 ---The generic cipher update function.
 ---@param input string Input binary data.
 ---@return string output Output binary data.
 ---@nodiscard
-function _cipher:update(input) end
+function ctx:update(input) end
 
 ---Finsh the encryption/decryption process.
 ---@return string output Output binary data.
 ---@nodiscard
-function _cipher:finsh() end
+function ctx:finsh() end
 
-return cipher
+---Create a cipher context.
+---@param type CipherType Cipher type.
+---@return ChiperContext context Cipher context.
+---@nodiscard
+function M.create(type) end
+
+return M

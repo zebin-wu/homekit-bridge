@@ -1,11 +1,11 @@
 local hap = require "hap"
 
-local util = {}
+local M = {}
 
 ---Get bridged accessory Instance ID.
 ---@param handle NVSHandle
 ---@return integer
-function util.getBridgedAccessoryIID(handle)
+function M.getBridgedAccessoryIID(handle)
     local aid = handle:get("aid")
     if aid == nil then
         aid = hap.getNewInstanceID(true)
@@ -18,7 +18,7 @@ end
 ---Get Instance IDs for services or characteristics, excluding bridged accessories.
 ---@param handle NVSHandle
 ---@return table<string, integer>
-function util.getInstanceIDs(handle)
+function M.getInstanceIDs(handle)
     local iids = handle:get("iids")
     if iids == nil then
         iids = {}
@@ -40,4 +40,4 @@ function util.getInstanceIDs(handle)
     return setmetatable({}, mt)
 end
 
-return util
+return M

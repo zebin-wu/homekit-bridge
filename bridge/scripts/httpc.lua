@@ -1,6 +1,6 @@
 local stream = require "stream"
 
-local httpc = {}
+local M = {}
 
 ---@alias HTTPMethod
 ---| '"GET"'
@@ -108,23 +108,25 @@ function client:request(method, path, headers, content)
     end
 end
 
+---Close the connection.
 function client:close()
     self.sc:close()
 end
 
 ---Connect to HTTP server and return a client.
 ---@param host string Server host name or IP address.
+---@param port integer Remote port number, in host order.
 ---@param tls boolean Whether to enable SSL/TLS.
 ---@param timeout integer Timeout period (in milliseconds).
 ---@return HTTPClient client HTTP client.
 ---@nodiscard
-function httpc.connect(host, tls, timeout)
+function M.connect(host, port, tls, timeout)
     ---@class HTTPClientPriv:table
     local o = {
         host = host,
         timeout = timeout
     }
-    o.sc = stream.client(tls and "TLS" or "TCP", host, tls and 443 or 80, timeout)
+    o.sc = stream.client(tls and "TLS" or "TCP", host, port, timeout)
 
     return setmetatable(o, {
         __index = client,
@@ -132,4 +134,4 @@ function httpc.connect(host, tls, timeout)
     })
 end
 
-return httpc
+return M

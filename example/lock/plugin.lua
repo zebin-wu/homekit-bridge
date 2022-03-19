@@ -10,7 +10,7 @@ local Version = require "hap.char.Version"
 local Name = require "hap.char.Name"
 local raiseEvent = hap.raiseEvent
 
-local plugin = {}
+local M = {}
 
 local logger = log.getLogger("lock.plugin")
 
@@ -110,7 +110,7 @@ end
 
 ---Initialize plugin.
 ---@param conf LockPluginConf Plugin configuration.
-function plugin.init(conf)
+function M.init(conf)
     logger:info("Initialized.")
 
     for _, accessoryConf in ipairs(conf.accessories) do
@@ -118,4 +118,4 @@ function plugin.init(conf)
     end
 end
 
-return plugin
+return M

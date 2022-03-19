@@ -1,11 +1,11 @@
-local plug = {}
+local M = {}
 
 ---Create a plug.
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
-function plug.gen(device, info, conf)
+function M.gen(device, info, conf)
     -- Source https://miot-spec.org/miot-spec-v2/instance?type=urn:miot-spec-v2:device:outlet:0000A002:chuangmi-212a01:1
     device:setMapping({
         power = {siid = 2, piid = 1}
@@ -22,4 +22,4 @@ function plug.gen(device, info, conf)
     return require("miio.chuangmi.plug").gen(device, info, conf)
 end
 
-return plug
+return M

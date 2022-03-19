@@ -1,7 +1,7 @@
 local util = require "util"
 local traceback = debug.traceback
 
-local plugins = {}
+local M = {}
 
 local logger = log.getLogger("plugins")
 
@@ -45,7 +45,7 @@ end
 
 ---Load plugins and generate bridged accessories.
 ---@param pluginConfs table<string, PluginConf> Plugin configurations.
-function plugins.init(pluginConfs)
+function M.init(pluginConfs)
     if pluginConfs then
         for name, conf in pairs(pluginConfs) do
             local success, result = xpcall(loadPlugin, traceback, name, conf)
@@ -60,4 +60,4 @@ function plugins.init(pluginConfs)
     end
 end
 
-return plugins
+return M

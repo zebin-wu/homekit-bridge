@@ -1,7 +1,7 @@
 ---@meta
 
 ---@class chiplib
-local chip = {}
+local M = {}
 
 ---@alias ChipInfoType
 ---|'"mfg"'     # Manufacturer
@@ -13,6 +13,6 @@ local chip = {}
 ---@param type ChipInfoType
 ---@return string
 ---@nodiscard
-function chip.getInfo(type) end
+function M.getInfo(type) end
 
-return chip
+return M

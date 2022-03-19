@@ -7,7 +7,7 @@ local assert = assert
 local type = type
 local tinsert = table.insert
 
-local device = {}
+local M = {}
 
 ---@class MiotIID: table MIOT instance ID.
 ---
@@ -29,13 +29,13 @@ local device = {}
 ---@field netif MiioDeviceNetIf Network interface.
 
 ---@class MiioDevice:MiioDevicePriv Device object.
-local _device = {}
+local device = {}
 
 ---Start a request.
 ---@param method string The request method.
 ---@param params? table Array of parameters.
 ---@return any result
-function _device:request(method, params)
+function device:request(method, params)
     return self.pcb:request(self.timeout, method, params)
 end
 
@@ -83,7 +83,7 @@ end
 
 ---Set MIOT property mapping.
 ---@param mapping table<string, MiotIID> Property name -> MIOT instance ID mapping.
-function _device:setMapping(mapping)
+function device:setMapping(mapping)
     self.mapping = mapping
     self.timer = core.createTimer(getPropsMiot, self)
 end
@@ -92,7 +92,7 @@ end
 ---@param name string Property name.
 ---@return string|number|boolean value Property value.
 ---@nodiscard
-function _device:getProp(name)
+function device:getProp(name)
     assert(type(name) == "string")
 
     local names = self.names
@@ -122,7 +122,7 @@ end
 ---Set property.
 ---@param name string Property name.
 ---@param value string|number|boolean Property value.
-function _device:setProp(name, value)
+function device:setProp(name, value)
     assert(type(name) == "string")
 
     if self.mapping then
@@ -140,7 +140,7 @@ end
 ---Get device information.
 ---@return MiioDeviceInfo info
 ---@nodiscard
-function _device:getInfo()
+function device:getInfo()
     return self:request("miIO.info")
 end
 
@@ -149,7 +149,7 @@ end
 ---@param token string Device token.
 ---@return MiioDevice obj Device object.
 ---@nodiscard
-function device.create(addr, token)
+function M.create(addr, token)
     assert(type(addr) == "string")
     assert(type(token) == "string")
     assert(#token == 32)
@@ -167,10 +167,10 @@ function device.create(addr, token)
     o.timer = core.createTimer(getProps, o)
 
     setmetatable(o, {
-        __index = _device
+        __index = device
     })
 
     return o
 end
 
-return device
+return M

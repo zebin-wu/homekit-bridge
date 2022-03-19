@@ -5,14 +5,14 @@ local SwingMode = require "hap.char.SwingMode"
 local searchKey = require "util".searchKey
 local raiseEvent = hap.raiseEvent
 
-local fan = {}
+local M = {}
 
 ---Create a fan.
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
-function fan.gen(device, info, conf)
+function M.gen(device, info, conf)
     local iids = conf.iids
 
     return {
@@ -86,4 +86,4 @@ function fan.gen(device, info, conf)
     }
 end
 
-return fan
+return M

@@ -1,5 +1,6 @@
 local socket = require "socket"
 local hash = require "hash"
+local cipher = require "cipher"
 local json = require "cjson"
 
 local assert = assert
@@ -7,7 +8,7 @@ local type = type
 local error = error
 local floor = math.floor
 
-local protocol = {}
+local M = {}
 local logger = log.getLogger("miio.protocol")
 
 ---
@@ -87,18 +88,18 @@ local encryption = {}
 ---@param input string
 ---@return string output
 function encryption:encrypt(input)
-    local cipher = self.cipher
-    cipher:begin("encrypt", self.key, self.iv)
-    return cipher:update(input) .. cipher:finsh()
+    local ctx = self.ctx
+    ctx:begin("encrypt", self.key, self.iv)
+    return ctx:update(input) .. ctx:finsh()
 end
 
 ---Decrypt data.
 ---@param input string
 ---@return string output
 function encryption:decrypt(input)
-    local cipher = self.cipher
-    cipher:begin("decrypt", self.key, self.iv)
-    return cipher:update(input) .. cipher:finsh()
+    local ctx = self.ctx
+    ctx:begin("decrypt", self.key, self.iv)
+    return ctx:update(input) .. ctx:finsh()
 end
 
 ---Calculates a MD5 checksum for the given data.
@@ -115,15 +116,15 @@ end
 ---@return MiioEncryption encryption A new encryption.
 ---@nodiscard
 local function createEncryption(token)
-    local cipher = require("cipher").create("AES-128-CBC")
-    cipher:setPadding("PKCS7")
+    local ctx = cipher.create("AES-128-CBC")
+    ctx:setPadding("PKCS7")
 
     local key = md5(token)
     local iv = md5(key .. token)
 
     ---@class MiioEncryptionPriv
     local o = {
-        cipher = cipher,
+        ctx = ctx,
         key = key,
         iv = iv,
     }
@@ -214,7 +215,7 @@ end
 ---@param addr? string Target Address.
 ---@return ScanResult[] results A array of scan results.
 ---@nodiscard
-function protocol.scan(timeout, addr)
+function M.scan(timeout, addr)
     assert(timeout > 0, "timeout must be greater then 0")
 
     local sock <close> = socket.create("UDP", "IPV4")
@@ -271,7 +272,7 @@ local pcb = {}
 ---@param timeout integer Timeout period (in milliseconds).
 function pcb:handshake(timeout)
     logger:debug("Handshake ...")
-    local results = protocol.scan(timeout, self.addr)
+    local results = M.scan(timeout, self.addr)
     local result = results[1]
     logger:debug("Handshake done.")
     self.devid = result.devid
@@ -356,7 +357,7 @@ end
 ---@param token string Device token: 128-bit.
 ---@return MiioPcb pcb Protocol control block.
 ---@nodiscard
-function protocol.create(addr, token)
+function M.create(addr, token)
     assert(type(addr) == "string")
     assert(type(token) == "string")
     assert(#token == 16)
@@ -377,4 +378,4 @@ function protocol.create(addr, token)
     return o
 end
 
-return protocol
+return M

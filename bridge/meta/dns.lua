@@ -1,7 +1,7 @@
 ---@meta
 
 ---@class dnslib
-local dns = {}
+local M = {}
 
 ---Resolve host name.
 ---@param hostname string Host name.
@@ -9,6 +9,6 @@ local dns = {}
 ---@param family? '"IPV4"'|'"IPV6"' Address family.
 ---@return string addr The resolved address.
 ---@return '"IPV4"'|'"IPV6"' family Address family.
-function dns.resolve(hostname, timeout, family) end
+function M.resolve(hostname, timeout, family) end
 
-return dns
+return M

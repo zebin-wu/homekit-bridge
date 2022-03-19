@@ -1,11 +1,11 @@
-local plug = {}
+local M = {}
 
 ---Create a plug.
 ---@param device MiioDevice Device object.
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
-function plug.gen(device, info, conf)
+function M.gen(device, info, conf)
     function device:getOn()
         return self:getProp("power") == "on"
     end
@@ -23,4 +23,4 @@ function plug.gen(device, info, conf)
     return require("miio.chuangmi.plug").gen(device, info, conf)
 end
 
-return plug
+return M

@@ -1,10 +1,10 @@
-local util = {}
+local M = {}
 
 ---Check if table ``t`` is empty.
 ---@param t table table
 ---@return boolean
 ---@nodiscard
-function util.isEmptyTable(t)
+function M.isEmptyTable(t)
     return next(t) == nil
 end
 
@@ -13,7 +13,7 @@ end
 ---@param v any value
 ---@return any key
 ---@nodiscard
-function util.searchKey(t, v)
+function M.searchKey(t, v)
     for _k, _v in pairs(t) do
         if v == _v then
             return _k
@@ -27,7 +27,7 @@ end
 ---@param c string
 ---@return table results
 ---@nodiscard
-function util.split(s, c)
+function M.split(s, c)
     local rl = {}
     local tinsert = table.insert
     for w in s:gmatch("[^" .. c .. "]+") do
@@ -40,7 +40,7 @@ end
 ---@param s string Hex string.
 ---@return string # Binary string.
 ---@nodiscard
-function util.hex2bin(s)
+function M.hex2bin(s)
     return s:gsub("..", function (cc)
         return string.char(tonumber(cc, 16))
     end)
@@ -50,7 +50,7 @@ end
 ---@param s string Binary string.
 ---@return string # Hex string.
 ---@nodiscard
-function util.bin2hex(s)
+function M.bin2hex(s)
     return s:gsub(".", function (c)
         return ("%02X"):format(string.byte(c))
     end)
@@ -79,6 +79,6 @@ local function serialize(v)
     end
 end
 
-util.serialize = serialize
+M.serialize = serialize
 
-return util
+return M

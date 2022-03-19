@@ -9,7 +9,7 @@ local SwingMode = require "hap.char.SwingMode"
 local searchKey = require "util".searchKey
 local raiseEvent = hap.raiseEvent
 
-local acpartner = {}
+local M = {}
 
 --- Property value -> Characteristic value.
 local valMapping = {
@@ -33,7 +33,7 @@ local valMapping = {
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
-function acpartner.gen(device, info, conf)
+function M.gen(device, info, conf)
     local iids = conf.iids
 
     return {
@@ -153,4 +153,4 @@ function acpartner.gen(device, info, conf)
     }
 end
 
-return acpartner
+return M

@@ -4,7 +4,7 @@ local nvs = require "nvs"
 local device = require "miio.device"
 local traceback = debug.traceback
 
-local plugin = {}
+local M = {}
 local logger = log.getLogger("miio.plugin")
 
 ---Miio accessory configuration.
@@ -38,7 +38,7 @@ end
 
 ---Initialize plugin.
 ---@param conf MiioPluginConf Plugin configuration.
-function plugin.init(conf)
+function M.init(conf)
     logger:info("Initialized.")
 
     for _, accessoryConf in ipairs(conf.accessories) do
@@ -51,4 +51,4 @@ function plugin.init(conf)
     end
 end
 
-return plugin
+return M

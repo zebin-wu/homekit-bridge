@@ -1,10 +1,10 @@
 ---@meta
 
 ---@class hashlib
-local hash = {}
+local M = {}
 
 ---@class HashContext:userdata Hash context.
-local ctx = {}
+local hash = {}
 
 ---@alias HashType
 ---|'"MD4"'
@@ -18,17 +18,17 @@ local ctx = {}
 
 ---Update hash context with binary data.
 ---@param data string Binary data.
-function ctx:update(data) end
+function hash:update(data) end
 
 ---Return the digest of the data passed to the update() method so far.
 ---@return string digest
 ---@nodiscard
-function ctx:digest() end
+function hash:digest() end
 
 ---Create a hash context.
 ---@param type HashType
 ---@return HashContext ctx
 ---@nodiscard
-function hash.create(type) end
+function M.create(type) end
 
-return hash
+return M

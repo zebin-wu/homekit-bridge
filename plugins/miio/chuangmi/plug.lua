@@ -2,7 +2,7 @@ local hap = require "hap"
 local On = require "hap.char.On"
 local raiseEvent = hap.raiseEvent
 
-local plug = {}
+local M = {}
 
 ---@class PlugDevice:MiioDevice
 ---
@@ -14,7 +14,7 @@ local plug = {}
 ---@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
-function plug.gen(device, info, conf)
+function M.gen(device, info, conf)
     local iids = conf.iids
 
     return {
@@ -56,4 +56,4 @@ function plug.gen(device, info, conf)
     }
 end
 
-return plug
+return M
