@@ -27,16 +27,21 @@ end
 function client:read(maxlen)
     local sock = self.sock
     local sslctx = self.sslctx
-    if not sslctx then
-        return sock:recv(maxlen)
-    end
     local readbuf = self.readbuf
+
+    if #readbuf > 0 and not sock:readable() then
+        self.readbuf = ""
+        return readbuf
+    end
     while #readbuf < maxlen do
         local data = sock:recv(maxlen)
         if #data == 0 then
             break
         end
-        readbuf = readbuf .. sslctx:decrypt(data)
+        if sslctx then
+            data = sslctx:decrypt(data)
+        end
+        readbuf = readbuf .. data
         if not sock:readable() then
             break
         end
@@ -52,6 +57,44 @@ function client:read(maxlen)
     end
 end
 
+---Read all data.
+---
+---The function will block until all the data is read or a timeout or ``EOF`` is received.
+---
+---Timeout does not raise error when ``len`` is not specified.
+---@param len? integer Length of data.
+---@return string data The read data.
+function client:readall(len)
+    local data = ""
+
+    if len then
+        while len > 0 do
+            local _data = self:read(len > 1024 and 1024 or len)
+            if #_data == 0 then
+                break
+            end
+            len = len - #_data
+            data = data .. _data
+        end
+    else
+        while true do
+            local success, result = pcall(self.read, self, 1024)
+            if success == false then
+                if result:find("timeout") then
+                    break
+                end
+                error(result)
+            end
+            if #result == 0 then
+                break
+            end
+            data = data .. result
+        end
+    end
+
+    return data
+end
+
 ---Read a line.
 ---@param sep? string Separator, default is "\n".
 ---@param skip? boolean Whether to skip the separator, default is false.
@@ -64,7 +107,7 @@ function client:readline(sep, skip)
         self.readbuf = ""
         data = readbuf
     else
-        data = self:read(1024)
+        data = self:read(256)
         if #data == 0 then
             error("read EOF")
         end
@@ -81,10 +124,10 @@ function client:readline(sep, skip)
             end
             return line
         else
-            if seplen < e then
-                init = e + 2 - seplen
+            if seplen < #data then
+                init = #data + 2 - seplen
             end
-            local _data = self:read(1024)
+            local _data = self:read(256)
             if #_data == 0 then
                 error("read EOF")
             end

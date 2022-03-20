@@ -90,20 +90,22 @@ function client:request(method, path, headers, content)
         local mode = headers["transfer-encoding"]
         if mode then
             if mode ~= "identity" and mode ~= "chunked" then
-                error("unsupport transfer-encoding")
+                error("unsupport transfer-encoding: " .. mode)
             end
         end
         if mode == "chunked" then
             return code, headers, function ()
                 local size = tonumber(sc:readline("\r\n", true), 16)
-                return sc:read(size)
+                return sc:readall(size)
             end
         end
 
         if length then
-            return code, headers, sc:read(length)
-        else
+            return code, headers, sc:readall(length)
+        elseif code == 204 or code == 304 or code < 200 then
             return code, headers
+        else
+            return code, headers, sc:readall()
         end
     end
 end
