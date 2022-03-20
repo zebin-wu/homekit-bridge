@@ -2857,10 +2857,6 @@ static int lhap_stop(lua_State *L) {
 }
 
 static int lhap_deinit_finsh(lua_State *L, int status, lua_KContext extra) {
-    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
-        return lua_error(L);
-    }
-
     lhap_desc *desc = (lhap_desc *)extra;
 
     pal_hap_deinit_platform(&desc->platform);

@@ -44,20 +44,26 @@ static int lcore_exit_finsh(lua_State *L, int status, lua_KContext extra) {
             break;
         } else if (type != LUA_TFUNCTION) {
             HAPPlatformRunLoopStop();
-            luaL_error(L, "'core.onExit[%d]' must be a function", i);
+            luaL_error(L, "'registry." LCORE_ATEXITS "[%d]' must be a function", i);
         }
-        lua_callk(L, 0, 0, i + 1, lcore_exit_finsh);
+        int status = lua_pcallk(L, 0, 0, 1, i + 1, lcore_exit_finsh);
+        if (luai_unlikely(status != LUA_OK)) {
+            HAPPlatformRunLoopStop();
+            lua_error(L);
+        }
     }
     HAPPlatformRunLoopStop();
     return 0;
 }
 
 static int lcore_exit(lua_State *L) {
+    lua_settop(L, 0);
+    lc_pushtraceback(L);
     if (luai_unlikely(!luaL_getsubtable(L, LUA_REGISTRYINDEX, LCORE_ATEXITS))) {
         HAPPlatformRunLoopStop();
         return 0;
     }
-    return lcore_exit_finsh(L, 0, 1);
+    return lcore_exit_finsh(L, LUA_OK, 1);
 }
 
 static int lcore_atexit(lua_State *L) {
