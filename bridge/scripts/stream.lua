@@ -127,6 +127,7 @@ function M.client(type, host, port, timeout)
     ---@class StreamClientPriv
     local o = {
         sock = sock,
+        readbuf = ""
     }
 
     if security then
@@ -144,7 +145,6 @@ function M.client(type, host, port, timeout)
         end
 
         o.sslctx = sslctx
-        o.readbuf = ""
     end
 
     return setmetatable(o, {
