@@ -115,7 +115,10 @@ typedef void (*pal_socket_accepted_cb)(pal_socket_obj *o, pal_socket_err err,
  * @param addrlen The length of the buffer.
  * @param accepted_cb A callback called when the socket accepted a new connection.
  * @param arg The value to be passed as the last argument to accept_cb.
- * @returns zero on success, error number on error.
+ * @return PAL_SOCKET_ERR_OK on success
+ * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to accept,
+ *         @p accepted_cb will be called when accepting the connection.
+ * @return other error number on failure.
  */
 pal_socket_err pal_socket_accept(pal_socket_obj *o, pal_socket_obj **new_o, char *addr, size_t addrlen, uint16_t *port,
     pal_socket_accepted_cb accepted_cb, void *arg);
@@ -137,10 +140,10 @@ typedef void (*pal_socket_connected_cb)(pal_socket_obj *o, pal_socket_err err, v
  * @param port Remote port number, in host order.
  * @param connected_cb A callback called when the connection is done.
  * @param arg The value to be passed as the last argument to connected_cb.
- * @returns zero on success, error number on error.
  * @return PAL_SOCKET_ERR_OK on success
  * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to connect,
- *     the connected_cb will be called when the connection is done.
+ *         @p connected_cb will be called when the connection is established.
+ * @return other error number on failure.
  */
 pal_socket_err pal_socket_connect(pal_socket_obj *o, const char *addr, uint16_t port,
     pal_socket_connected_cb connected_cb, void *arg);
@@ -163,10 +166,10 @@ typedef void (*pal_socket_sent_cb)(pal_socket_obj *o, pal_socket_err err, size_t
  * @param all Whether @p data is completely sent.
  * @param sent_cb A callback called when @p data is sent.
  * @param arg The value to be passed as the last argument to @p sent_cb.
- * @returns zero on success, error number on error.
  * @return PAL_SOCKET_ERR_OK on success.
  * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to send,
  *         @p sent_cb will be called when @p data is sent.
+ * @return other error number on failure.
  */
 pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data, size_t *len, bool all,
     pal_socket_sent_cb sent_cb, void *arg);
@@ -182,10 +185,10 @@ pal_socket_err pal_socket_send(pal_socket_obj *o, const void *data, size_t *len,
  * @param all Whether @p data is completely sent.
  * @param sent_cb A callback called when the data is sent.
  * @param arg The value to be passed as the last argument to @p sent_cb.
- * @returns zero on success, error number on error.
  * @return PAL_SOCKET_ERR_OK on success.
  * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to send,
  *         @p sent_cb will be called when @p data is sent.
+ * @return other error number on failure.
  */
 pal_socket_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t *len,
     const char *addr, uint16_t port, bool all, pal_socket_sent_cb sent_cb, void *arg);
@@ -211,7 +214,9 @@ typedef void (*pal_socket_recved_cb)(pal_socket_obj *o, pal_socket_err err,
  * @param maxlen The max length of the data.
  * @param recved_cb A callback called when a socket received data.
  * @param arg The value to be passed as the last argument to recved_cb.
- * @returns zero on success, error number on error.
+ * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to recv,
+ *         @p recved_cb will be called when the data is received.
+ * @return other error number on failure.
  */
 pal_socket_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recved_cb recved_cb, void *arg);
 
