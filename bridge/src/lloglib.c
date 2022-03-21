@@ -18,10 +18,7 @@ typedef struct {
 
 static int llog_get_logger(lua_State *L) {
     size_t len = 0;
-    const char *str = NULL;
-    if (!lua_isnoneornil(L, 1)) {
-        str = luaL_checklstring(L, 1, &len);
-    }
+    const char *str = luaL_optlstring(L, 1, NULL, &len);
     llog_logger *logger = lua_newuserdata(L, sizeof(llog_logger) + (len ? (len + 1) : 0));
     luaL_setmetatable(L, LUA_LOGGER_NAME);
     if (len) {

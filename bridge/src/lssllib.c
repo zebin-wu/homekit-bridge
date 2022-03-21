@@ -83,10 +83,7 @@ static int lssl_ctx_common(lua_State *L, lssl_ctx *ctx,
 static int lssl_ctx_handshake(lua_State *L) {
     lssl_ctx *ctx = luaL_checkudata(L, 1, LUA_SSL_CTX_NAME);
     size_t ilen = 0;
-    const char *in = NULL;
-    if (!lua_isnoneornil(L, 2)) {
-        in = luaL_checklstring(L, 2, &ilen);
-    }
+    const char *in = luaL_optlstring(L, 2, NULL, &ilen);
     if (pal_ssl_finshed(ctx->ctx)) {
         luaL_error(L, "handshake is finshed");
     }
