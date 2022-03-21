@@ -1191,8 +1191,7 @@ static bool lhap_char_units_cb(lua_State *L, void *arg) {
     LHAP_CASE_CHAR_FORMAT_CODE(Int, arg, p->units = idx)
     LHAP_CASE_CHAR_FORMAT_CODE(Float, arg, p->units = idx)
     default:
-        HAPAssertionFailure();
-        break;
+        HAPFatalError();
     }
     return true;
 }
@@ -1505,7 +1504,7 @@ lhap_char_value_get(lua_State *L, int idx, HAPCharacteristicFormat format, union
             value->str.data = lua_tolstring(L, idx, &value->str.len);
             break;
         default:
-            HAPAssertionFailure();
+            HAPFatalError();
         }
     }
     return valid;
@@ -1580,7 +1579,7 @@ int lhap_char_handle_read_finsh(lua_State *L, int status, lua_KContext _ctx) {
         break;
     case kHAPCharacteristicFormat_TLV8:
         // TODO(Zebin Wu): Implement TLV8 in lua.
-        HAPAssertionFailure();
+        HAPFatalError();
     }
     if (err != kHAPError_None) {
         HAPLogError(&lhap_log, "%s: Failed to response read request, error code: %d.", __func__, err);
@@ -1771,7 +1770,7 @@ HAPError lhap_char_number_handleRead(
         *((float *)value) = val.number;
         break;
     default:
-        HAPAssertionFailure();
+        HAPFatalError();
         break;
     }
 
@@ -1852,7 +1851,7 @@ HAPError lhap_char_TLV8_handleRead(
     }
 
     // TODO(Zebin Wu): Implement TLV8 in lua.
-    HAPAssertionFailure();
+    HAPFatalError();
 
 end:
     lua_settop(L, 0);
@@ -2036,8 +2035,7 @@ HAPError lhap_char_number_handleWrite(
         num = *((float *)value);
         break;
     default:
-        HAPAssertionFailure();
-        break;
+        HAPFatalError();
     }
     lua_pushnumber(L, num);
     return lhap_char_base_handleWrite(L, server, transportType, session,
@@ -2093,7 +2091,7 @@ HAPError lhap_char_TLV8_handleWrite(
     HAPAssert(lua_gettop(L) == 0);
 
     // TODO(Zebin Wu): Implement TLV8 in lua.
-    HAPAssertionFailure();
+    HAPFatalError();
 
     return lhap_char_base_handleWrite(L, server, request->transportType,
         request->session, request->remote, request->accessory, request->service,

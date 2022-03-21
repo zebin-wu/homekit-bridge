@@ -124,8 +124,7 @@ pal_socket_addr_set(pal_socket_addr *addr, pal_addr_family af, const char *str_a
         break;
     }
     default:
-        HAPAssertionFailure();
-        break;
+        HAPFatalError();
     }
 
     return true;
@@ -139,8 +138,7 @@ pal_socket_addr_set_len(pal_socket_addr *addr) {
     case AF_INET6:
         return sizeof(struct sockaddr_in6);
     default:
-        HAPAssertionFailure();
-        break;
+        HAPFatalError();
     }
     return 0;
 }
@@ -153,8 +151,7 @@ pal_socket_addr_get_port(pal_socket_addr *addr) {
     case AF_INET6:
         return ntohs(addr->in6.sin6_port);
     default:
-        HAPAssertionFailure();
-        break;
+        HAPFatalError();
     }
     return 0;
 }
@@ -167,8 +164,7 @@ pal_socket_addr_get_str_addr(pal_socket_addr *addr, char *buf, size_t buflen) {
     case AF_INET6:
         return inet_ntop(AF_INET6, &addr->in6.sin6_addr, buf, buflen);
     default:
-        HAPAssertionFailure();
-        break;
+        HAPFatalError();
     }
     return NULL;
 }
@@ -471,8 +467,7 @@ static void pal_socket_handle_send_cb(
         break;
     }
     case PAL_SOCKET_ERR_IN_PROGRESS:
-        HAPAssertionFailure();
-        break;
+        HAPFatalError();
     default:
         break;
     }
@@ -594,7 +589,7 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_addr_family af) {
         _af = AF_INET6;
         break;
     default:
-        HAPAssertionFailure();
+        HAPFatalError();
     }
     switch (type) {
     case PAL_SOCKET_TYPE_TCP:
@@ -608,7 +603,7 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_addr_family af) {
         o->handle_cb = pal_socket_udp_handle_event_cb;
         break;
     default:
-        HAPAssertionFailure();
+        HAPFatalError();
     }
 
     o->fd = socket(_af, _type, _protocol);

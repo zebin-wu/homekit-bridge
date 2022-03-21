@@ -212,7 +212,7 @@ void app_init(const char *dir, const char *entry) {
     if (luai_unlikely(!L)) {
         HAPLogError(&kHAPLog_Default,
             "%s: Cannot create state: not enough memory", __func__);
-        HAPAssertionFailure();
+        HAPFatalError();
     }
 
     lua_atpanic(L, &panic);
@@ -227,7 +227,7 @@ void app_init(const char *dir, const char *entry) {
     if (luai_unlikely(status != LUA_OK)) {
         const char *msg = lua_tostring(L, -1);
         HAPLogError(&kHAPLog_Default, "%s", msg);
-        HAPAssertionFailure();
+        HAPFatalError();
     }
 
     lua_settop(L, 0);
