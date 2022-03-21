@@ -162,7 +162,7 @@ err:
     return NULL;
 }
 
-void pal_ssl_free(pal_ssl_ctx *ctx) {
+void pal_ssl_destroy(pal_ssl_ctx *ctx) {
     if (!ctx) {
         return;
     }

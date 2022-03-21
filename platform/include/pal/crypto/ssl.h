@@ -68,12 +68,12 @@ void pal_ssl_deinit();
 pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname);
 
 /**
- * Free a SSL context.
+ * Destroy a SSL context.
  *
- * @param ctx The SSL context to be freed.
+ * @param ctx The SSL context to be destroyed.
  *            If this is NULL, the function has no effect.
  */
-void pal_ssl_free(pal_ssl_ctx *ctx);
+void pal_ssl_destroy(pal_ssl_ctx *ctx);
 
 /**
  * Whether the handshake is finshed.

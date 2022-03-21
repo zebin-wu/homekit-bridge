@@ -107,7 +107,7 @@ static int lssl_ctx_decrypt(lua_State *L) {
 static int lssl_ctx_gc(lua_State *L) {
     lssl_ctx *ctx = luaL_checkudata(L, 1, LUA_SSL_CTX_NAME);
     if (ctx->ctx) {
-        pal_ssl_free(ctx->ctx);
+        pal_ssl_destroy(ctx->ctx);
         ctx->ctx = NULL;
     }
     return 0;
