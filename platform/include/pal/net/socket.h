@@ -211,20 +211,42 @@ typedef void (*pal_socket_recved_cb)(pal_socket_obj *o, pal_socket_err err,
  * Receive data.
  *
  * @param o The pointer to the socket object.
- * @param maxlen The max length of the data.
+ * @param[out] buf The buf to hold data.
+ * @param[inout] len The length of @p buf, to be updated with the actual number of Bytes received.
  * @param recved_cb A callback called when a socket received data.
  * @param arg The value to be passed as the last argument to recved_cb.
+ * @return PAL_SOCKET_ERR_OK on success.
  * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to recv,
  *         @p recved_cb will be called when the data is received.
  * @return other error number on failure.
  */
-pal_socket_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recved_cb recved_cb, void *arg);
+pal_socket_err pal_socket_recv(pal_socket_obj *o, void *buf, size_t *len,
+    pal_socket_recved_cb recved_cb, void *arg);
+
+/**
+ * Receive data and get remote address and port.
+ *
+ * @param o The pointer to the socket object.
+ * @param[out] buf The buf to hold data.
+ * @param[inout] len The length of @p buf, to be updated with the actual number of Bytes received.
+ * @param[out] addr A buffer to hold remote address.
+ * @param addrlen The length of @p addr.
+ * @param[out] port Remote port.
+ * @param recved_cb A callback called when a socket received data.
+ * @param arg The value to be passed as the last argument to recved_cb.
+ * @return PAL_SOCKET_ERR_OK on success.
+ * @return PAL_SOCKET_ERR_IN_PROGRESS means it will take a while to recv,
+ *         @p recved_cb will be called when the data is received.
+ * @return other error number on failure.
+ */
+pal_socket_err pal_socket_recvfrom(pal_socket_obj *o, void *buf, size_t *len, char *addr,
+    size_t addrlen, uint16_t *port, pal_socket_recved_cb recved_cb, void *arg);
 
 /**
  * Whether the socket is readable.
  *
  * @param o The pointer to the socket object.
- * @returns 1 if there is buffered record data in the socket and 0 otherwise.
+ * @returns true if there is buffered record data in the socket and false otherwise.
  */
 bool pal_socket_readable(pal_socket_obj *o);
 

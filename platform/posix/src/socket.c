@@ -71,7 +71,7 @@ struct pal_socket_obj {
     int fd;
     uint32_t timeout;
     HAPPlatformTimerRef timer;
-    size_t recv_maxlen;
+    size_t recv_buflen;
 
     pal_socket_addr remote_addr;
 
@@ -220,6 +220,11 @@ static bool pal_socket_set_nonblock(pal_socket_obj *o) {
     return true;
 }
 
+static void pal_socket_enable_read(pal_socket_obj *o, bool flag) {
+    o->interests.isReadyForReading = flag;
+    HAPPlatformFileHandleUpdateInterests(o->handle, o->interests, o->handle_cb, o);
+}
+
 static void pal_socket_enable_write(pal_socket_obj *o, bool flag) {
     o->interests.isReadyForWriting = flag;
     HAPPlatformFileHandleUpdateInterests(o->handle, o->interests, o->handle_cb, o);
@@ -260,7 +265,6 @@ static pal_socket_err pal_socket_accept_async(pal_socket_obj *o, pal_socket_obj 
         return PAL_SOCKET_ERR_UNKNOWN;
     }
 
-    _new->interests.isReadyForReading = true;
     if (HAPPlatformFileHandleRegister(&_new->handle, _new->fd, _new->interests,
         _new->handle_cb, _new) != kHAPError_None) {
         SOCKET_LOG(Error, o, "%s: Failed to register handle callback", __func__);
@@ -349,9 +353,7 @@ static void pal_socket_handle_accept_cb(
         return;
     }
 
-    pal_socket_addr sa;
     pal_socket_obj *o = context;
-    pal_socket_obj *new_o = NULL;
 
     if (o->state != PAL_SOCKET_ST_ACCEPTING) {
         return;
@@ -362,27 +364,31 @@ static void pal_socket_handle_accept_cb(
         o->timer = 0;
     }
 
+    char buf[64];
+    uint16_t port = 0;
+    pal_socket_addr sa;
+    pal_socket_obj *new_o = NULL;
+    const char *addr = NULL;
+
     pal_socket_err err = pal_socket_accept_async(o, &new_o, &sa);
     switch (err) {
     case PAL_SOCKET_ERR_IN_PROGRESS:
-        break;
+        return;
     case PAL_SOCKET_ERR_OK: {
-        char addr[64];
-        uint16_t port = pal_socket_addr_get_port(&new_o->remote_addr);
-        pal_socket_addr_get_str_addr(&new_o->remote_addr, addr, sizeof(addr));
+        port = pal_socket_addr_get_port(&new_o->remote_addr);
+        addr = pal_socket_addr_get_str_addr(&new_o->remote_addr, buf, sizeof(buf));
         SOCKET_LOG(Debug, o, "Accept a connection from %s:%d", addr, port);
-        o->state = PAL_SOCKET_ST_LISTENED;
-        if (o->accepted_cb) {
-            o->accepted_cb(o, err, new_o, addr, port, o->cb_arg);
-        }
         break;
     }
     default:
-        o->state = PAL_SOCKET_ST_LISTENED;
-        if (o->accepted_cb) {
-            o->accepted_cb(o, err, new_o, NULL, 0, o->cb_arg);
-        }
         break;
+    }
+
+    o->state = PAL_SOCKET_ST_LISTENED;
+    pal_socket_enable_read(o, false);
+
+    if (o->accepted_cb) {
+        o->accepted_cb(o, err, new_o, addr, port, o->cb_arg);
     }
 }
 
@@ -502,32 +508,35 @@ static void pal_socket_handle_recv_cb(
         o->timer = 0;
     }
 
-    size_t len = o->recv_maxlen;
-    char buf[o->recv_maxlen];
+    uint16_t port = 0;
+    const char *addr = NULL;
+    void *data = NULL;
+    size_t len = o->recv_buflen;
+    char addrbuf[64];
+    char databuf[o->recv_buflen];
     pal_socket_addr sa;
-    pal_socket_err err = pal_socket_recv_async(o, buf, &len,
+    pal_socket_err err = pal_socket_recv_async(o, databuf, &len,
         o->state == PAL_SOCKET_ST_CONNECTED ? NULL : &sa);
     switch (err) {
     case PAL_SOCKET_ERR_IN_PROGRESS:
         return;
     case PAL_SOCKET_ERR_OK: {
-        char addr[64];
+        data = databuf;
         pal_socket_addr *_sa = o->state == PAL_SOCKET_ST_CONNECTED ? &o->remote_addr : &sa;
-        uint16_t port = pal_socket_addr_get_port(_sa);
-        pal_socket_addr_get_str_addr(_sa, addr, sizeof(addr));
-        o->receiving = false;
+        port = pal_socket_addr_get_port(_sa);
+        addr = pal_socket_addr_get_str_addr(_sa, addrbuf, sizeof(addrbuf));
         SOCKET_LOG(Debug, o, "Received message(len=%zu) from %s:%u", len, addr, port);
-        if (o->recved_cb) {
-            o->recved_cb(o, err, addr, port, buf, len, o->cb_arg);
-        }
         break;
     }
     default:
-        o->receiving = false;
-        if (o->recved_cb) {
-            o->recved_cb(o, err, NULL, 0, NULL, 0, o->cb_arg);
-        }
         break;
+    }
+
+    o->receiving = false;
+    pal_socket_enable_read(o, false);
+
+    if (o->recved_cb) {
+        o->recved_cb(o, err, addr, port, data, len, o->cb_arg);
     }
 }
 
@@ -616,7 +625,6 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_addr_family af) {
         goto err1;
     }
 
-    o->interests.isReadyForReading = true;
     if (HAPPlatformFileHandleRegister(&o->handle, o->fd, o->interests,
         o->handle_cb, o) != kHAPError_None) {
         SOCKET_LOG(Error, o, "%s: Failed to register handle callback", __func__);
@@ -756,6 +764,7 @@ pal_socket_accept(pal_socket_obj *o, pal_socket_obj **new_o, char *addr, size_t 
         o->state = PAL_SOCKET_ST_ACCEPTING;
         o->accepted_cb = accepted_cb;
         o->cb_arg = arg;
+        pal_socket_enable_read(o, true);
         SOCKET_LOG(Debug, o, "Accepting ...");
         break;
     case PAL_SOCKET_ERR_OK: {
@@ -915,12 +924,24 @@ static void pal_socket_recv_timeout_cb(HAPPlatformTimerRef timer, void *context)
     }
 }
 
-pal_socket_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recved_cb recved_cb, void *arg) {
-    HAPPrecondition(o);
-    HAPPrecondition(maxlen > 0);
-    HAPPrecondition(recved_cb);
+pal_socket_err pal_socket_recv(pal_socket_obj *o, void *buf, size_t *len,
+    pal_socket_recved_cb recved_cb, void *arg) {
+    return pal_socket_recvfrom(o, buf, len, NULL, 0, NULL, recved_cb, arg);
+}
 
-    SOCKET_LOG(Debug, o, "%s(maxlen = %zu)", __func__, maxlen);
+pal_socket_err pal_socket_recvfrom(pal_socket_obj *o, void *buf, size_t *len, char *addr,
+    size_t addrlen, uint16_t *port, pal_socket_recved_cb recved_cb, void *arg) {
+    HAPPrecondition(o);
+    HAPPrecondition(buf);
+    HAPPrecondition(len);
+    HAPPrecondition(*len > 0);
+    HAPPrecondition(recved_cb);
+    if (addr) {
+        HAPPrecondition(addrlen > 0);
+        HAPPrecondition(port);
+    }
+
+    SOCKET_LOG(Debug, o, "%s(len = %zu)", addr ? __func__ : "pal_socket_recv", *len);
 
     if (o->type == PAL_SOCKET_TYPE_TCP && o->state != PAL_SOCKET_ST_CONNECTED) {
         return PAL_SOCKET_ERR_INVALID_STATE;
@@ -930,21 +951,42 @@ pal_socket_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recv
         return PAL_SOCKET_ERR_BUSY;
     }
 
-    if (o->timeout != 0 && HAPPlatformTimerRegister(&o->timer,
-        HAPPlatformClockGetCurrent() + o->timeout,
-        pal_socket_recv_timeout_cb, o) != kHAPError_None) {
-        SOCKET_LOG(Error, o, "Failed to create timeout timer.");
-        return PAL_SOCKET_ERR_UNKNOWN;
+    pal_socket_addr sa;
+    size_t recvlen = *len;
+    pal_socket_err err = pal_socket_recv_async(o, buf, &recvlen,
+        o->state == PAL_SOCKET_ST_CONNECTED ? NULL : &sa);
+    switch (err) {
+    case PAL_SOCKET_ERR_IN_PROGRESS:
+        if (o->timeout != 0 && HAPPlatformTimerRegister(&o->timer,
+            HAPPlatformClockGetCurrent() + o->timeout,
+            pal_socket_recv_timeout_cb, o) != kHAPError_None) {
+            SOCKET_LOG(Error, o, "Failed to create timeout timer.");
+            return PAL_SOCKET_ERR_UNKNOWN;
+        }
+        o->recv_buflen = *len;
+        o->recved_cb = recved_cb;
+        o->cb_arg = arg;
+        o->receiving = true;
+        pal_socket_enable_read(o, true);
+        SOCKET_LOG(Debug, o, "Receiving ...");
+        break;
+    case PAL_SOCKET_ERR_OK: {
+        *len = recvlen;
+        if (addr) {
+            pal_socket_addr *_sa = o->state == PAL_SOCKET_ST_CONNECTED ? &o->remote_addr : &sa;
+            *port = pal_socket_addr_get_port(_sa);
+            pal_socket_addr_get_str_addr(_sa, addr, addrlen);
+            SOCKET_LOG(Debug, o, "Received message(len=%zu) from %s:%u", *len, addr, *port);
+        } else {
+            SOCKET_LOG(Debug, o, "Received message(len=%zu)", *len);
+        }
+        break;
+    }
+    default:
+        break;
     }
 
-    o->recv_maxlen = maxlen;
-    o->recved_cb = recved_cb;
-    o->cb_arg = arg;
-    o->receiving = true;
-
-    SOCKET_LOG(Debug, o, "Receiving ...");
-
-    return PAL_SOCKET_ERR_IN_PROGRESS;
+    return err;
 }
 
 bool pal_socket_readable(pal_socket_obj *o) {
