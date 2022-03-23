@@ -19,7 +19,7 @@ typedef struct {
     pal_ssl_ctx *ctx;
 } lssl_ctx;
 
-typedef pal_ssl_err (*lssl_func)(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
+typedef pal_err (*lssl_func)(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
 
 const char *lssl_type_strs[] = {
     "TLS",
@@ -60,15 +60,15 @@ static int lssl_ctx_common(lua_State *L, lssl_ctx *ctx,
     luaL_buffinit(L, &B);
     while (1) {
         size_t olen = sizeof(out);
-        pal_ssl_err err = func(ctx->ctx, in, ilen, out, &olen);
+        pal_err err = func(ctx->ctx, in, ilen, out, &olen);
         switch (err) {
-        case PAL_SSL_ERR_OK:
+        case PAL_ERR_OK:
             if (olen) {
                 luaL_addlstring(&B, out, olen);
             }
             luaL_pushresult(&B);
             return 1;
-        case PAL_SSL_ERR_AGAIN:
+        case PAL_ERR_AGAIN:
             in = NULL;
             ilen = 0;
             luaL_addlstring(&B, out, olen);

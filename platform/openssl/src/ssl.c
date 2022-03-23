@@ -180,7 +180,7 @@ static bool pal_ssl_bio_write(pal_ssl_ctx *ctx, const void *data, size_t len) {
     return true;
 }
 
-pal_ssl_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+pal_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
     HAPPrecondition(ctx);
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
@@ -190,24 +190,24 @@ pal_ssl_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, voi
     if (pal_ssl_finshed(ctx)) {
         HAPLogError(&ssl_log_obj, "%s: Handshake is already finshed.", __func__);
         *olen = 0;
-        return PAL_SSL_ERR_INVALID_STATE;
+        return PAL_ERR_INVALID_STATE;
     }
 
     if (ilen && in) {
         if (!pal_ssl_bio_write(ctx, in, ilen)) {
             *olen = 0;
-            return PAL_SSL_ERR_UNKNOWN;
+            return PAL_ERR_UNKNOWN;
         }
     }
 
     if (pal_ssl_finshed(ctx)) {
         *olen = 0;
-        return PAL_SSL_ERR_OK;
+        return PAL_ERR_OK;
     }
     int ret = SSL_do_handshake(ctx->ssl);
     if (ret == 1) {
         *olen = 0;
-        return PAL_SSL_ERR_OK;
+        return PAL_ERR_OK;
     } else if (ret < 0) {
         int err = SSL_get_error(ctx->ssl, ret);
         ERR_clear_error();
@@ -216,9 +216,9 @@ pal_ssl_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, voi
         case SSL_ERROR_WANT_WRITE:
             if (pal_ssl_bio_read(ctx, out, olen)) {
                 if (pal_ssl_bio_pending(ctx)) {
-                    return PAL_SSL_ERR_AGAIN;
+                    return PAL_ERR_AGAIN;
                 } else {
-                    return PAL_SSL_ERR_OK;
+                    return PAL_ERR_OK;
                 }
             }
             break;
@@ -228,10 +228,10 @@ pal_ssl_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, voi
             break;
         }
     }
-    return PAL_SSL_ERR_UNKNOWN;
+    return PAL_ERR_UNKNOWN;
 }
 
-pal_ssl_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+pal_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
     HAPPrecondition(ctx);
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
@@ -244,22 +244,22 @@ pal_ssl_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void 
             int err = SSL_get_error(ctx->ssl, written);
             ERR_clear_error();
             HAPLogError(&ssl_log_obj, "%s: Failed to write SSL: %d", __func__, err);
-            return PAL_SSL_ERR_UNKNOWN;
+            return PAL_ERR_UNKNOWN;
         }
         ilen -= written;
         in += written;
     }
     if (!pal_ssl_bio_read(ctx, out, olen)) {
-        return PAL_SSL_ERR_UNKNOWN;
+        return PAL_ERR_UNKNOWN;
     }
     if (pal_ssl_bio_pending(ctx)) {
-        return PAL_SSL_ERR_AGAIN;
+        return PAL_ERR_AGAIN;
     }
 
-    return PAL_SSL_ERR_OK;
+    return PAL_ERR_OK;
 }
 
-pal_ssl_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+pal_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
     HAPPrecondition(ctx);
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
@@ -269,7 +269,7 @@ pal_ssl_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void 
     if (ilen && in) {
         if (!pal_ssl_bio_write(ctx, in, ilen)) {
             *olen = 0;
-            return PAL_SSL_ERR_UNKNOWN;
+            return PAL_ERR_UNKNOWN;
         }
     }
 
@@ -285,17 +285,17 @@ pal_ssl_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void 
             case SSL_ERROR_WANT_READ:
             case SSL_ERROR_ZERO_RETURN:
                 *olen = buflen - *olen;
-                return PAL_SSL_ERR_OK;
+                return PAL_ERR_OK;
                 break;
             default:
                 HAPLogError(&ssl_log_obj, "%s: Failed to read SSL: %d", __func__, err);
                 *olen = 0;
-                return PAL_SSL_ERR_UNKNOWN;
+                return PAL_ERR_UNKNOWN;
             }
         }
         out += readbytes;
         *olen -= readbytes;
     }
     *olen = buflen - *olen;
-    return SSL_pending(ctx->ssl) ? PAL_SSL_ERR_AGAIN : PAL_SSL_ERR_OK;
+    return SSL_pending(ctx->ssl) ? PAL_ERR_AGAIN : PAL_ERR_OK;
 }

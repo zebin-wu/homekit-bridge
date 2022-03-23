@@ -176,7 +176,7 @@ bool pal_ssl_finshed(pal_ssl_ctx *ctx) {
     return ctx->finshed;
 }
 
-pal_ssl_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+pal_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
     HAPPrecondition(ctx);
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
@@ -186,25 +186,25 @@ pal_ssl_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, voi
     if (ctx->finshed) {
         HAPLogError(&ssl_log_obj, "%s: Handshake is already finshed.", __func__);
         *olen = 0;
-        return PAL_SSL_ERR_INVALID_STATE;
+        return PAL_ERR_INVALID_STATE;
     }
 
     pal_ssl_bio_init(&ctx->out_bio, (void *)in, ilen);
     pal_ssl_bio_init(&ctx->in_bio, out, *olen);
 
-    pal_ssl_err err = PAL_SSL_ERR_UNKNOWN;
+    pal_err err = PAL_ERR_UNKNOWN;
     int ret = mbedtls_ssl_handshake(&ctx->ssl);
     switch (ret) {
     case 0:
         ctx->finshed = true;
     case MBEDTLS_ERR_SSL_WANT_READ:
         HAPAssert(ctx->out_bio.len == 0);
-        err = PAL_SSL_ERR_OK;
+        err = PAL_ERR_OK;
         *olen = *olen - ctx->in_bio.len;
         break;
     case MBEDTLS_ERR_SSL_WANT_WRITE:
         HAPAssert(ctx->out_bio.len == 0);
-        err = PAL_SSL_ERR_AGAIN;
+        err = PAL_ERR_AGAIN;
         *olen = *olen - ctx->in_bio.len;
         break;
     default:
@@ -217,7 +217,7 @@ pal_ssl_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, voi
     return err;
 }
 
-pal_ssl_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+pal_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
     HAPPrecondition(ctx);
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
@@ -226,13 +226,13 @@ pal_ssl_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void 
 
     pal_ssl_bio_init(&ctx->in_bio, out, *olen);
 
-    pal_ssl_err err = PAL_SSL_ERR_UNKNOWN;
+    pal_err err = PAL_ERR_UNKNOWN;
     int ret = mbedtls_ssl_write(&ctx->ssl, in, ilen);
     if (ret == ilen) {
-        err = PAL_SSL_ERR_OK;
+        err = PAL_ERR_OK;
         *olen = *olen - ctx->in_bio.len;
     } else if (ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
-        err = PAL_SSL_ERR_AGAIN;
+        err = PAL_ERR_AGAIN;
         *olen = *olen - ctx->in_bio.len;
     } else {
         MBEDTLS_PRINT_ERROR(mbedtls_ssl_write, ret);
@@ -243,7 +243,7 @@ pal_ssl_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void 
     return err;
 }
 
-pal_ssl_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+pal_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
     HAPPrecondition(ctx);
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
@@ -252,11 +252,11 @@ pal_ssl_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void 
 
     pal_ssl_bio_init(&ctx->out_bio, (void *)in, ilen);
 
-    pal_ssl_err err = PAL_SSL_ERR_UNKNOWN;
+    pal_err err = PAL_ERR_UNKNOWN;
     int ret = mbedtls_ssl_read(&ctx->ssl, out, *olen);
     if (ret > 0) {
         HAPAssert(ctx->out_bio.len == 0);
-        err = mbedtls_ssl_check_pending(&ctx->ssl) ? PAL_SSL_ERR_AGAIN : PAL_SSL_ERR_OK;
+        err = mbedtls_ssl_check_pending(&ctx->ssl) ? PAL_ERR_AGAIN : PAL_ERR_OK;
         *olen = ret;
     } else {
         MBEDTLS_PRINT_ERROR(mbedtls_ssl_read, ret);

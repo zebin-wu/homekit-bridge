@@ -14,6 +14,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <pal/err.h>
 
 /**
  * SSL type.
@@ -30,16 +31,6 @@ typedef enum pal_ssl_endpoint {
     PAL_SSL_ENDPOINT_CLIENT,
     PAL_SSL_ENDPOINT_SERVER,
 } pal_ssl_endpoint;
-
-/**
- * SSL error numbers.
- */
-typedef enum {
-    PAL_SSL_ERR_OK,
-    PAL_SSL_ERR_AGAIN,
-    PAL_SSL_ERR_INVALID_STATE,
-    PAL_SSL_ERR_UNKNOWN,
-} pal_ssl_err;
 
 /**
  * SSL context.
@@ -92,12 +83,12 @@ bool pal_ssl_finshed(pal_ssl_ctx *ctx);
  * @param ilen Length of @p in.
  * @param out Output data.
  * @param olen Length of @p out.
- * @return PAL_SSL_ERR_OK on success.
- * @return PAL_SSL_ERR_AGAIN means you need to call this function again,
+ * @return PAL_ERR_OK on success.
+ * @return PAL_ERR_AGAIN means you need to call this function again,
  *         to get the remaining output data.
  * @return Other error numbers on failure.
  */
-pal_ssl_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
+pal_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
 
 /**
  * Encrypt data to be output. 
@@ -107,12 +98,12 @@ pal_ssl_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, voi
  * @param ilen Length of @p in.
  * @param out Output data.
  * @param olen Length of @p out.
- * @return PAL_SSL_ERR_OK on success.
- * @return PAL_SSL_ERR_AGAIN means you need to call this function again,
+ * @return PAL_ERR_OK on success.
+ * @return PAL_ERR_AGAIN means you need to call this function again,
  *         to get the remaining output data.
  * @return Other error numbers on failure.
  */
-pal_ssl_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
+pal_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
 
 /**
  * Decrypt input data.
@@ -122,12 +113,12 @@ pal_ssl_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void 
  * @param ilen Length of @p in.
  * @param out Output data.
  * @param olen Length of @p out.
- * @return PAL_SSL_ERR_OK on success.
- * @return PAL_SSL_ERR_AGAIN means you need to call this function again,
+ * @return PAL_ERR_OK on success.
+ * @return PAL_ERR_AGAIN means you need to call this function again,
  *         to get the remaining output data.
  * @return Other error numbers on failure.
  */
-pal_ssl_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
+pal_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
 
 #ifdef __cplusplus
 }

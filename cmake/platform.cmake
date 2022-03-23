@@ -7,6 +7,8 @@
 # directory
 set(PLATFORM_DIR ${TOP_DIR}/platform)
 set(PLATFORM_INC_DIR ${PLATFORM_DIR}/include)
+set(PLATFORM_COMMON_DIR ${PLATFORM_DIR}/common)
+set(PLATFORM_COMMON_SRC_DIR ${PLATFORM_COMMON_DIR}/src)
 set(PLATFORM_POSIX_DIR ${PLATFORM_DIR}/posix)
 set(PLATFORM_POSIX_INC_DIR ${PLATFORM_POSIX_DIR}/include)
 set(PLATFORM_POSIX_SRC_DIR ${PLATFORM_POSIX_DIR}/src)
@@ -32,6 +34,7 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/net/addr.h
     ${PLATFORM_INC_DIR}/pal/net/dns.h
     ${PLATFORM_INC_DIR}/pal/nvs.h
+    ${PLATFORM_INC_DIR}/pal/err.h
 )
 
 # collect platform Linux include directories
@@ -52,6 +55,7 @@ set(PLATFORM_LINUX_SRCS
     ${PLATFORM_LINUX_SRC_DIR}/main.c
     ${PLATFORM_LINUX_SRC_DIR}/dns.c
     ${PLATFORM_POSIX_SRC_DIR}/nvs.c
+    ${PLATFORM_COMMON_SRC_DIR}/err.c
 )
 
 # collect platform ESP include directories
@@ -72,4 +76,5 @@ set(PLATFORM_ESP_SRCS
     ${PLATFORM_ESP_SRC_DIR}/memory.c
     ${PLATFORM_ESP_SRC_DIR}/dns.c
     ${PLATFORM_ESP_SRC_DIR}/nvs.cpp
+    ${PLATFORM_COMMON_SRC_DIR}/err.c
 )
