@@ -730,6 +730,8 @@ static void pal_socket_accept_timeout_cb(HAPPlatformTimerRef timer, void *contex
 
     o->timer = 0;
     o->state = PAL_SOCKET_ST_LISTENED;
+    pal_socket_enable_read(o, false);
+
     if (o->accepted_cb) {
         o->accepted_cb(o, PAL_ERR_TIMEOUT, NULL, NULL, 0, o->cb_arg);
     }
@@ -918,30 +920,19 @@ static void pal_socket_recv_timeout_cb(HAPPlatformTimerRef timer, void *context)
 
     o->timer = 0;
     o->receiving = false;
+    pal_socket_enable_read(o, false);
 
     if (o->recved_cb) {
         o->recved_cb(o, PAL_ERR_TIMEOUT, NULL, 0, NULL, 0, o->cb_arg);
     }
 }
 
-pal_err pal_socket_recv(pal_socket_obj *o, void *buf, size_t *len,
-    pal_socket_recved_cb recved_cb, void *arg) {
-    return pal_socket_recvfrom(o, buf, len, NULL, 0, NULL, recved_cb, arg);
-}
-
-pal_err pal_socket_recvfrom(pal_socket_obj *o, void *buf, size_t *len, char *addr,
-    size_t addrlen, uint16_t *port, pal_socket_recved_cb recved_cb, void *arg) {
+pal_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recved_cb recved_cb, void *arg) {
     HAPPrecondition(o);
-    HAPPrecondition(buf);
-    HAPPrecondition(len);
-    HAPPrecondition(*len > 0);
+    HAPPrecondition(maxlen);
     HAPPrecondition(recved_cb);
-    if (addr) {
-        HAPPrecondition(addrlen > 0);
-        HAPPrecondition(port);
-    }
 
-    SOCKET_LOG(Debug, o, "%s(len = %zu)", addr ? __func__ : "pal_socket_recv", *len);
+    SOCKET_LOG(Debug, o, "%s(maxlen = %zu)", __func__, maxlen);
 
     if (o->type == PAL_SOCKET_TYPE_TCP && o->state != PAL_SOCKET_ST_CONNECTED) {
         return PAL_ERR_INVALID_STATE;
@@ -951,42 +942,20 @@ pal_err pal_socket_recvfrom(pal_socket_obj *o, void *buf, size_t *len, char *add
         return PAL_ERR_BUSY;
     }
 
-    pal_socket_addr sa;
-    size_t recvlen = *len;
-    pal_err err = pal_socket_recv_async(o, buf, &recvlen,
-        o->state == PAL_SOCKET_ST_CONNECTED ? NULL : &sa);
-    switch (err) {
-    case PAL_ERR_IN_PROGRESS:
-        if (o->timeout != 0 && HAPPlatformTimerRegister(&o->timer,
-            HAPPlatformClockGetCurrent() + o->timeout,
-            pal_socket_recv_timeout_cb, o) != kHAPError_None) {
-            SOCKET_LOG(Error, o, "Failed to create timeout timer.");
-            return PAL_ERR_UNKNOWN;
-        }
-        o->recv_buflen = *len;
-        o->recved_cb = recved_cb;
-        o->cb_arg = arg;
-        o->receiving = true;
-        pal_socket_enable_read(o, true);
-        SOCKET_LOG(Debug, o, "Receiving ...");
-        break;
-    case PAL_ERR_OK: {
-        *len = recvlen;
-        if (addr) {
-            pal_socket_addr *_sa = o->state == PAL_SOCKET_ST_CONNECTED ? &o->remote_addr : &sa;
-            *port = pal_socket_addr_get_port(_sa);
-            pal_socket_addr_get_str_addr(_sa, addr, addrlen);
-            SOCKET_LOG(Debug, o, "Received message(len=%zu) from %s:%u", *len, addr, *port);
-        } else {
-            SOCKET_LOG(Debug, o, "Received message(len=%zu)", *len);
-        }
-        break;
-    }
-    default:
-        break;
+    if (o->timeout != 0 && HAPPlatformTimerRegister(&o->timer,
+        HAPPlatformClockGetCurrent() + o->timeout,
+        pal_socket_recv_timeout_cb, o) != kHAPError_None) {
+        SOCKET_LOG(Error, o, "Failed to create timeout timer.");
+        return PAL_ERR_UNKNOWN;
     }
 
-    return err;
+    o->recv_buflen = maxlen;
+    o->recved_cb = recved_cb;
+    o->cb_arg = arg;
+    o->receiving = true;
+    pal_socket_enable_read(o, true);
+    SOCKET_LOG(Debug, o, "Receiving ...");
+    return PAL_ERR_IN_PROGRESS;
 }
 
 bool pal_socket_readable(pal_socket_obj *o) {

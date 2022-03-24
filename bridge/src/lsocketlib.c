@@ -342,15 +342,10 @@ static int finshrecv(lua_State *L, int status, lua_KContext extra) {
 static int lsocket_obj_recv(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
     lua_Integer maxlen = luaL_checkinteger(L, 2);
-    luaL_argcheck(L, maxlen >= 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
+    luaL_argcheck(L, maxlen > 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
 
-    char buf[maxlen];
-    size_t len = maxlen;
-    pal_err err = pal_socket_recv(obj->socket, buf, &len, lsocket_recved_cb, L);
+    pal_err err = pal_socket_recv(obj->socket, maxlen, lsocket_recved_cb, L);
     switch (err) {
-    case PAL_ERR_OK:
-        lua_pushlstring(L, buf, len);
-        return 1;
     case PAL_ERR_IN_PROGRESS:
         return lua_yieldk(L, 0, (lua_KContext)false, finshrecv);
     default:
@@ -362,20 +357,10 @@ static int lsocket_obj_recv(lua_State *L) {
 static int lsocket_obj_recvfrom(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
     lua_Integer maxlen = luaL_checkinteger(L, 2);
-    luaL_argcheck(L, maxlen >= 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
+    luaL_argcheck(L, maxlen > 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
 
-    char addr[64];
-    uint16_t port;
-    char buf[maxlen];
-    size_t len = maxlen;
-    pal_err err = pal_socket_recvfrom(obj->socket, buf, &len, addr, sizeof(addr),
-        &port, lsocket_recved_cb, L);
+    pal_err err = pal_socket_recv(obj->socket, maxlen, lsocket_recved_cb, L);
     switch (err) {
-    case PAL_ERR_OK:
-        lua_pushlstring(L, buf, len);
-        lua_pushstring(L, addr);
-        lua_pushinteger(L, port);
-        return 3;
     case PAL_ERR_IN_PROGRESS:
         return lua_yieldk(L, 0, (lua_KContext)true, finshrecv);
     default:
