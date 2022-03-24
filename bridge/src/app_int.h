@@ -52,6 +52,9 @@ LUAMOD_API int luaopen_dns(lua_State *L);
 #define LUA_NVS_NAME "nvs"
 LUAMOD_API int luaopen_nvs(lua_State *L);
 
+#define LUA_STREAM_NAME "stream"
+LUAMOD_API int luaopen_stream(lua_State *L);
+
 #ifdef __cplusplus
 }
 #endif

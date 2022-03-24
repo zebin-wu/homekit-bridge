@@ -96,12 +96,12 @@ function client:request(method, path, headers, content)
         if mode == "chunked" then
             return code, headers, function ()
                 local size = tonumber(sc:readline("\r\n", true), 16)
-                return sc:readall(size)
+                return sc:read(size, true)
             end
         end
 
         if length then
-            return code, headers, sc:readall(length)
+            return code, headers, sc:read(length, true)
         elseif code == 204 or code == 304 or code < 200 then
             return code, headers
         else
@@ -128,7 +128,9 @@ function M.connect(host, port, tls, timeout)
         host = host,
         timeout = timeout
     }
-    o.sc = stream.client(tls and "TLS" or "TCP", host, port, timeout)
+    local sc = stream.client(tls and "TLS" or "TCP", host, port, timeout)
+    sc:settimeout(timeout)
+    o.sc = sc
 
     return setmetatable(o, {
         __index = client,
