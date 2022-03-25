@@ -604,24 +604,31 @@ static void lstream_client_read_recved_cb(pal_socket_obj *o, pal_err err,
     lc_collectgarbage(L);
 }
 
-static pal_err lstream_client_decrypt(lstream_client *client, luaL_Buffer *B, void *data, size_t len) {
+static pal_err lstream_client_decrypt(lstream_client *client, bool all,
+    luaL_Buffer *B, void *data, size_t len) {
     HAPPrecondition(B->size > B->n);
 
     pal_err err;
-    void *out;
     size_t olen;
 
+    if (all) {
+        luaL_prepbuffsize(B, len);
+    }
+
 decrypt:
-    out = luaL_buffaddr(B) + luaL_bufflen(B);
     olen = B->size - luaL_bufflen(B);
-    err = pal_ssl_decrypt(client->sslctx, data, len, out, &olen);
+    err = pal_ssl_decrypt(client->sslctx, data, len, luaL_buffaddr(B) + luaL_bufflen(B), &olen);
     switch (err) {
     case PAL_ERR_OK:
         luaL_addsize(B, olen);
         return PAL_ERR_OK;
     case PAL_ERR_AGAIN:
         luaL_addsize(B, olen);
-        if (B->size == luaL_bufflen(B)) {
+        if (all) {
+            if (B->size == luaL_bufflen(B)) {
+                luaL_prepbuffsize(B, LSTREAM_FRAME_LEN);
+            }
+        } else {
             return PAL_ERR_OK;
         }
         data = NULL;
@@ -639,12 +646,15 @@ static size_t lstream_client_readlen(lstream_client *client, size_t len) {
 
 static int finshread(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
+    luaL_Buffer *B = &client->B;
     client->co = NULL;
 
     pal_err err = lua_tointeger(L, -1);
     lua_pop(L, 1);
 
     if (luai_unlikely(err != PAL_ERR_OK)) {
+        luaL_pushresult(B);
+        lua_setiuservalue(L, 1, 2);
         lua_pushstring(L, pal_err_string(err));
         return lua_error(L);
     }
@@ -654,28 +664,30 @@ static int finshread(lua_State *L, int status, lua_KContext extra) {
     lua_pop(L, 2);
 
     if (len == 0) {
-        goto done;
+        goto success;
     }
 
     size_t maxlen = client->B.size;
 
     if (client->sslctx) {
-        if (luai_unlikely(lstream_client_decrypt(client, &client->B, data, len) != PAL_ERR_OK)) {
+        if (luai_unlikely(lstream_client_decrypt(client, false, B, data, len) != PAL_ERR_OK)) {
+            luaL_pushresult(B);
+            lua_setiuservalue(L, 1, 2);
             return luaL_error(L, "failed to decrypt received data");
         }
     } else {
-        luaL_addlstring(&client->B, data, len);
+        luaL_addlstring(B, data, len);
     }
 
-    len = luaL_bufflen(&client->B);
-    if (maxlen == len || (!lua_toboolean(L, 3) && len != 0 && !pal_socket_readable(client->sock))) {
-        goto done;
+    len = luaL_bufflen(B);
+    if (len == maxlen || (!lua_toboolean(L, 3) && len != 0 && !pal_socket_readable(client->sock))) {
+        goto success;
     }
 
     return lstream_client_async_read(L, client, lstream_client_readlen(client, maxlen - len), finshread);
 
-done:
-    luaL_pushresult(&client->B);
+success:
+    luaL_pushresult(B);
     lua_pushstring(L, "");
     lua_setiuservalue(L, 1, 2);
     return 1;
@@ -720,13 +732,15 @@ static int lstream_client_read(lua_State *L) {
     }
 
     lua_pop(L, 1);
-    luaL_buffinitsize(L, &client->B, maxlen);
-    luaL_addlstring(&client->B, readbuf, len);
+    luaL_Buffer *B = &client->B;
+    luaL_buffinitsize(L, B, maxlen);
+    luaL_addlstring(B, readbuf, len);
     return lstream_client_async_read(L, client, lstream_client_readlen(client, maxlen - len), finshread);
 }
 
 static int finshreadall(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
+    luaL_Buffer *B = &client->B;
     client->co = NULL;
 
     pal_err err = lua_tointeger(L, -1);
@@ -734,8 +748,10 @@ static int finshreadall(lua_State *L, int status, lua_KContext extra) {
 
     if (luai_unlikely(err != PAL_ERR_OK)) {
         if (err == PAL_ERR_TIMEOUT) {
-            goto done;
+            goto success;
         }
+        luaL_pushresult(B);
+        lua_setiuservalue(L, 1, 2);
         lua_pushstring(L, pal_err_string(err));
         return lua_error(L);
     }
@@ -745,24 +761,23 @@ static int finshreadall(lua_State *L, int status, lua_KContext extra) {
     lua_pop(L, 2);
 
     if (len == 0) {
-        goto done;
+        goto success;
     }
 
-    luaL_Buffer *B = &client->B;
-
-    luaL_prepbuffsize(B, luaL_bufflen(B) + len);
     if (client->sslctx) {
-        if (luai_unlikely(lstream_client_decrypt(client, &client->B, data, len) != PAL_ERR_OK)) {
+        if (luai_unlikely(lstream_client_decrypt(client, true, B, data, len) != PAL_ERR_OK)) {
+            luaL_pushresult(B);
+            lua_setiuservalue(L, 1, 2);
             return luaL_error(L, "failed to decrypt received data");
         }
     } else {
-        luaL_addlstring(&client->B, data, len);
+        luaL_addlstring(B, data, len);
     }
 
     return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finshreadall);
 
-done:
-    luaL_pushresult(&client->B);
+success:
+    luaL_pushresult(B);
     lua_pushstring(L, "");
     lua_setiuservalue(L, 1, 2);
     return 1;
@@ -779,8 +794,9 @@ static int lstream_client_readall(lua_State *L) {
     const char *readbuf = lua_tolstring(L, -1, &len);
 
     lua_pop(L, 1);
-    luaL_buffinit(L, &client->B);
-    luaL_addlstring(&client->B, readbuf, len);
+    luaL_Buffer *B = &client->B;
+    luaL_buffinit(L, B);
+    luaL_addlstring(B, readbuf, len);
     return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finshreadall);
 }
 
@@ -807,47 +823,71 @@ static const char *memfind(const char *s1, size_t l1, const char *s2, size_t l2)
 }
 
 static bool lstream_client_getline(lua_State *L, bool skip, const char *data, size_t len,
-    const char *sep, size_t seplen, size_t *init) {
-    const char *s = memfind(data + *init, len - *init, sep, seplen);
+    const char *sep, size_t seplen, size_t init) {
+    const char *s = memfind(data + init, len - init, sep, seplen);
     if (s) {
         lua_pushlstring(L, s + seplen, len - (s + seplen - data));
         lua_setiuservalue(L, 1, 2);
         lua_pushlstring(L, data, skip ? s - data : s - data + seplen);
         return true;
     }
-    if (seplen < len) {
-        *init = len + 1 - seplen;
-    }
     return false;
 }
 
 static int finshreadline(lua_State *L, int status, lua_KContext extra) {
+    lstream_client *client = (lstream_client *)extra;
+    luaL_Buffer *B = &client->B;
+    client->co = NULL;
+
+    pal_err err = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    if (luai_unlikely(err != PAL_ERR_OK)) {
+        luaL_pushresult(B);
+        lua_setiuservalue(L, 1, 2);
+        lua_pushstring(L, pal_err_string(err));
+        return lua_error(L);
+    }
+
+    void *data = lua_touserdata(L, -2);
+    size_t len = lua_tointeger(L, -1);
+    lua_pop(L, 2);
+
+    if (len == 0) {
+        luaL_pushresult(B);
+        lua_setiuservalue(L, 1, 2);
+        lua_pushstring(L, "read EOF");
+        return lua_error(L);
+    }
+
     size_t seplen;
     const char *sep = luaL_optlstring(L, 2, "\n", &seplen);
     bool skip = lua_toboolean(L, 3);
-
-    size_t init = extra;
-    while (1) {
-        if (lua_rawlen(L, -1) == 0) {
-            lua_pushstring(L, "read EOF");
-        }
-        lua_concat(L, 2);
-
-        size_t len;
-        const char *data = lua_tolstring(L, -1, &len);
-        if (lstream_client_getline(L, skip, data, len, sep, seplen, &init)) {
-            return 1;
-        }
-
-        lua_pushcfunction(L, lstream_client_read);
-        lua_pushvalue(L, 1);
-        lua_pushinteger(L, 256);
-        lua_callk(L, 2, 1, init, finshreadline);
+    size_t init = 0;
+    if (seplen < luaL_bufflen(B)) {
+        init = luaL_bufflen(B) + 1 - seplen;
     }
+
+    if (client->sslctx) {
+        if (luai_unlikely(lstream_client_decrypt(client, true, B, data, len) != PAL_ERR_OK)) {
+            luaL_pushresult(B);
+            lua_setiuservalue(L, 1, 2);
+            return luaL_error(L, "failed to decrypt received data");
+        }
+    } else {
+        luaL_addlstring(B, data, len);
+    }
+
+    if (lstream_client_getline(L, skip, luaL_buffaddr(B),
+        luaL_bufflen(B), sep, seplen, init)) {
+        return 1;
+    }
+
+    return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finshreadline);
 }
 
 static int lstream_client_readline(lua_State *L) {
-    lstream_client_get(L, 1);
+    lstream_client *client = lstream_client_get(L, 1);
     size_t seplen;
     const char *sep = luaL_optlstring(L, 2, "\n", &seplen);
     bool skip = lua_toboolean(L, 3);
@@ -858,15 +898,16 @@ static int lstream_client_readline(lua_State *L) {
 
     size_t init = 0;
     size_t len;
-    const char *data = lua_tolstring(L, -1, &len);
-    if (len > 0 && lstream_client_getline(L, skip, data, len, sep, seplen, &init)) {
+    const char *readbuf = lua_tolstring(L, -1, &len);
+    if (len > 0 && lstream_client_getline(L, skip, readbuf, len, sep, seplen, init)) {
         return 1;
     }
-    lua_pushcfunction(L, lstream_client_read);
-    lua_pushvalue(L, 1);
-    lua_pushinteger(L, 256);
-    lua_callk(L, 2, 1, init, finshreadline);
-    return finshreadline(L, 0, init);
+
+    lua_pop(L, 1);
+    luaL_Buffer *B = &client->B;
+    luaL_buffinit(L, B);
+    luaL_addlstring(B, readbuf, len);
+    return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finshreadline);
 }
 
 static int lstream_client_close(lua_State *L) {
