@@ -258,6 +258,9 @@ pal_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out
         HAPAssert(ctx->out_bio.len == 0);
         err = mbedtls_ssl_check_pending(&ctx->ssl) ? PAL_ERR_AGAIN : PAL_ERR_OK;
         *olen = ret;
+    } else if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
+        *olen = 0;
+        return PAL_ERR_OK;
     } else {
         MBEDTLS_PRINT_ERROR(mbedtls_ssl_read, ret);
         *olen = 0;

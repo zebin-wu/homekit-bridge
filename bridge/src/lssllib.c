@@ -11,6 +11,8 @@
 #include "app_int.h"
 #include "lc.h"
 
+#define LSSL_BLOCK_SIZE 512
+
 #define LUA_SSL_CTX_NAME "SSL*"
 #define LSSL_CTX_COMMON(L, ctx, in, ilen, method) \
     lssl_ctx_common(L, ctx, in, ilen, #method, pal_ssl_##method)
@@ -55,23 +57,23 @@ static int lssl_ctx_finshed(lua_State *L) {
 
 static int lssl_ctx_common(lua_State *L, lssl_ctx *ctx,
     const void *in, size_t ilen, const char *method, lssl_func func) {
-    char out[512];
     luaL_Buffer B;
-    luaL_buffinit(L, &B);
+    luaL_buffinitsize(L, &B, ilen);
     while (1) {
-        size_t olen = sizeof(out);
-        pal_err err = func(ctx->ctx, in, ilen, out, &olen);
+        size_t olen = B.size - luaL_bufflen(&B);
+        pal_err err = func(ctx->ctx, in, ilen, luaL_buffaddr(&B) + luaL_bufflen(&B), &olen);
         switch (err) {
         case PAL_ERR_OK:
-            if (olen) {
-                luaL_addlstring(&B, out, olen);
-            }
+            luaL_addsize(&B, olen);
             luaL_pushresult(&B);
             return 1;
         case PAL_ERR_AGAIN:
+            luaL_addsize(&B, olen);
+            if (B.size == luaL_bufflen(&B)) {
+                luaL_prepbuffsize(&B, LSSL_BLOCK_SIZE);
+            }
             in = NULL;
             ilen = 0;
-            luaL_addlstring(&B, out, olen);
             break;
         default:
             luaL_error(L, "failed to %s", method);
