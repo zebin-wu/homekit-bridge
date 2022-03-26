@@ -252,20 +252,25 @@ pal_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out
 
     pal_ssl_bio_init(&ctx->out_bio, (void *)in, ilen);
 
-    pal_err err = PAL_ERR_UNKNOWN;
-    int ret = mbedtls_ssl_read(&ctx->ssl, out, *olen);
-    if (ret > 0) {
-        HAPAssert(ctx->out_bio.len == 0);
-        err = mbedtls_ssl_check_pending(&ctx->ssl) ? PAL_ERR_AGAIN : PAL_ERR_OK;
-        *olen = ret;
-    } else if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
-        *olen = 0;
-        return PAL_ERR_OK;
-    } else {
-        MBEDTLS_PRINT_ERROR(mbedtls_ssl_read, ret);
-        *olen = 0;
+    size_t len = *olen;
+    while (len > 0) {
+        int ret = mbedtls_ssl_read(&ctx->ssl, out, len);
+        if (ret > 0) {
+            out += ret;
+            len -= ret;
+        } else if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
+            *olen = *olen - len;
+            pal_ssl_bio_reset(&ctx->out_bio);
+            return PAL_ERR_OK;
+        } else {
+            MBEDTLS_PRINT_ERROR(mbedtls_ssl_read, ret);
+            *olen = 0;
+            pal_ssl_bio_reset(&ctx->out_bio);
+            return PAL_ERR_UNKNOWN;
+        }
     }
 
+    HAPAssert(ctx->out_bio.len == 0);
     pal_ssl_bio_reset(&ctx->out_bio);
-    return err;
+    return mbedtls_ssl_check_pending(&ctx->ssl) ? PAL_ERR_AGAIN : PAL_ERR_OK;
 }
