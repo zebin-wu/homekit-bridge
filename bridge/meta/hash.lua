@@ -17,7 +17,8 @@ local hash = {}
 ---|'"RIPEMD160"'
 
 ---Update hash context with binary data.
----@param data string Binary data.
+---@param data string
+---@return HashContext ctx
 function hash:update(data) end
 
 ---Return the digest of the data passed to the update() method so far.

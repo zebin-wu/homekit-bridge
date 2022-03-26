@@ -54,7 +54,8 @@ static int lhash_obj_update(lua_State *L) {
     if (luai_unlikely(!pal_md_update(obj->ctx, s, len))) {
         luaL_error(L, "failed to update data");
     }
-    return 0;
+    lua_pushvalue(L, 1);
+    return 1;
 }
 
 static int lhash_obj_digest(lua_State *L) {
