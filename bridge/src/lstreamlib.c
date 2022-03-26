@@ -44,6 +44,7 @@ const char *lstream_client_type_strs[] = {
 
 typedef struct lstream_client {
     bool host_is_addr;
+    bool sslctx_pending;
     uint16_t port;
     lstream_client_state state;
     lstream_client_type type;
@@ -424,6 +425,7 @@ static int lstream_client_create(lua_State *L) {
     client->port = port;
     client->host = host;
     client->host_is_addr = false;
+    client->sslctx_pending = false;
     client->sslctx = NULL;
     client->sock = NULL;
     client->co = NULL;
@@ -629,6 +631,7 @@ decrypt:
                 luaL_prepbuffsize(B, LSTREAM_FRAME_LEN);
             }
         } else {
+            client->sslctx_pending = true;
             return PAL_ERR_OK;
         }
         data = NULL;
@@ -735,6 +738,18 @@ static int lstream_client_read(lua_State *L) {
     luaL_Buffer *B = &client->B;
     luaL_buffinitsize(L, B, maxlen);
     luaL_addlstring(B, readbuf, len);
+    if (client->sslctx_pending) {
+        client->sslctx_pending = false;
+        if (lstream_client_decrypt(client, false, B, NULL, 0) != PAL_ERR_OK) {
+            return luaL_error(L, "failed to decrypt received data");
+        }
+        if (luaL_bufflen(B) == maxlen) {
+            lua_pushstring(L, "");
+            lua_setiuservalue(L, 1, 2);
+            luaL_pushresult(B);
+            return 1;
+        }
+    }
     return lstream_client_async_read(L, client, lstream_client_readlen(client, maxlen - len), finshread);
 }
 
@@ -797,6 +812,12 @@ static int lstream_client_readall(lua_State *L) {
     luaL_Buffer *B = &client->B;
     luaL_buffinit(L, B);
     luaL_addlstring(B, readbuf, len);
+    if (client->sslctx_pending) {
+        client->sslctx_pending = false;
+        if (lstream_client_decrypt(client, true, B, NULL, 0) != PAL_ERR_OK) {
+            return luaL_error(L, "failed to decrypt received data");
+        }
+    }
     return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finshreadall);
 }
 
@@ -907,6 +928,19 @@ static int lstream_client_readline(lua_State *L) {
     luaL_Buffer *B = &client->B;
     luaL_buffinit(L, B);
     luaL_addlstring(B, readbuf, len);
+    if (client->sslctx_pending) {
+        client->sslctx_pending = false;
+        if (lstream_client_decrypt(client, true, B, NULL, 0) != PAL_ERR_OK) {
+            return luaL_error(L, "failed to decrypt received data");
+        }
+        if (seplen < luaL_bufflen(B)) {
+            init = luaL_bufflen(B) + 1 - seplen;
+        }
+        if (lstream_client_getline(L, skip, luaL_buffaddr(B),
+            luaL_bufflen(B), sep, seplen, init)) {
+            return 1;
+        }
+    }
     return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finshreadline);
 }
 
