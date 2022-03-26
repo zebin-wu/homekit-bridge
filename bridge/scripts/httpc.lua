@@ -1,5 +1,6 @@
 local stream = require "stream"
 local urlparser = require "url"
+local tonumber = tonumber
 
 ---@class httpclib HTTP client library.
 local M = {}
@@ -20,12 +21,12 @@ local client = {}
 ---@param method HTTPMethod The request method.
 ---@param path string The request path.
 ---@param headers? table<string, string> The request headers.
----@param content? string|fun():string The request content.
+---@param body? string|fun():string The request body.
 ---@return integer code The response status code.
 ---@return table<string, string> headers The response headers.
----@return string|fun():string|nil content The response content.
+---@return string|fun():string|nil body The response body.
 ---@nodiscard
-function client:request(method, path, headers, content)
+function client:request(method, path, headers, body)
     local sc = self.sc
 
     local chunked = false
@@ -34,12 +35,12 @@ function client:request(method, path, headers, content)
         if not headers.host then
             headers.host = self.host
         end
-        if content then
-            if type(content) == "function" then
+        if body then
+            if type(body) == "function" then
                 chunked = true
                 headers["transfer-encoding"] = "chunked"
             else
-                headers["content-length"] = #content
+                headers["content-length"] = #body
             end
         else
             headers["content-length"] = 0
@@ -51,10 +52,10 @@ function client:request(method, path, headers, content)
         sc:write("\r\n")
     end
 
-    if content then
+    if body then
         if chunked then
             while true do
-                local chunk = content()
+                local chunk = body()
                 if #chunk > 0 then
                     sc:write(("%X\r\n%s\r\n"):format(#chunk, chunk))
                 else
@@ -63,7 +64,7 @@ function client:request(method, path, headers, content)
                 end
             end
         else
-            sc:write(content)
+            sc:write(body)
         end
     end
 
@@ -95,7 +96,11 @@ function client:request(method, path, headers, content)
         end
         if mode == "chunked" then
             return code, headers, function ()
-                local size = tonumber(sc:readline("\r\n", true), 16)
+                local line = sc:readline("\r\n", true)
+                if #line == 0 then
+                    return ""
+                end
+                local size = tonumber(line, 16)
                 return sc:read(size, true)
             end
         end
@@ -143,12 +148,12 @@ end
 ---@param url string URL string.
 ---@param timeout? integer Timeout period (in milliseconds).
 ---@param headers? table<string, string> The request headers.
----@param content? string|fun():string The request content.
+---@param body? string|fun():string The request body.
 ---@return integer code The response status code.
 ---@return table<string, string> headers The response headers.
----@return string|fun():string|nil content The response content.
+---@return string|fun():string|nil body The response body.
 ---@nodiscard
-function M.request(method, url, timeout, headers, content)
+function M.request(method, url, timeout, headers, body)
     local u = urlparser.parse(url)
     local host = u.host
     assert(type(host) == "string", "missing host in url")
@@ -175,7 +180,7 @@ function M.request(method, url, timeout, headers, content)
     end
 
     local hc <close> = M.connect(host, port, port == 443, timeout or 5000)
-    return hc:request(method, path, headers, content)
+    return hc:request(method, path, headers, body)
 end
 
 return M
