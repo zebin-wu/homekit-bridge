@@ -151,7 +151,7 @@ end
 ---@param body? string|fun():string The request body.
 ---@return integer code The response status code.
 ---@return table<string, string> headers The response headers.
----@return string|fun():string|nil body The response body.
+---@return string|nil body The response body.
 ---@nodiscard
 function M.request(method, url, timeout, headers, body)
     local u = urlparser.parse(url)
@@ -180,7 +180,20 @@ function M.request(method, url, timeout, headers, body)
     end
 
     local hc <close> = M.connect(host, port, port == 443, timeout or 5000)
-    return hc:request(method, path, headers, body)
+    local code
+    code, headers, body = hc:request(method, path, headers, body)
+    if type(body) == "function" then
+        local content = ""
+        while true do
+            local bytes = body()
+            if #bytes == 0 then
+                break
+            end
+            content = content .. bytes
+        end
+        return code, headers, content
+    end
+    return code, headers, body
 end
 
 return M
