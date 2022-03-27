@@ -1,5 +1,5 @@
 local stream = require "stream"
-local urlparser = require "url"
+local urllib = require "url"
 local tonumber = tonumber
 
 ---@class httpclib HTTP client library.
@@ -16,6 +16,12 @@ local M = {}
 
 ---@class HTTPClient:HTTPClientPriv HTTP client.
 local client = {}
+
+---Set the timeout.
+---@param ms integer Maximum time blocked in milliseconds.
+function client:settimeout(ms)
+    self.sc:settimeout(ms)
+end
 
 ---Start a HTTP request.
 ---@param method HTTPMethod The request method.
@@ -96,12 +102,15 @@ function client:request(method, path, headers, body)
         end
         if mode == "chunked" then
             return code, headers, function ()
-                local line = sc:readline("\r\n", true)
-                if #line == 0 then
-                    return ""
+                local size = tonumber(sc:readline("\r\n", true), 16)
+                local chunk
+                if size > 0 then
+                    chunk = sc:read(size, true)
+                else
+                    chunk = ""
                 end
-                local size = tonumber(line, 16)
-                return sc:read(size, true)
+                sc:readline("\r\n", true)
+                return chunk
             end
         end
 
@@ -134,7 +143,6 @@ function M.connect(host, port, tls, timeout)
         timeout = timeout
     }
     local sc = stream.client(tls and "TLS" or "TCP", host, port, timeout)
-    sc:settimeout(timeout)
     o.sc = sc
 
     return setmetatable(o, {
@@ -143,18 +151,13 @@ function M.connect(host, port, tls, timeout)
     })
 end
 
----Start a HTTP request and wait for the response back.
----@param method HTTPMethod The request method.
----@param url string URL string.
----@param timeout? integer Timeout period (in milliseconds).
----@param headers? table<string, string> The request headers.
----@param body? string|fun():string The request body.
----@return integer code The response status code.
----@return table<string, string> headers The response headers.
----@return string|nil body The response body.
----@nodiscard
-function M.request(method, url, timeout, headers, body)
-    local u = urlparser.parse(url)
+---Parse a URL.
+---@param url string
+---@return string host
+---@return integer port
+---@return string path
+local function parseURL(url)
+    local u = urllib.parse(url)
     local host = u.host
     assert(type(host) == "string", "missing host in url")
 
@@ -179,21 +182,99 @@ function M.request(method, url, timeout, headers, body)
         end
     end
 
-    local hc <close> = M.connect(host, port, port == 443, timeout or 5000)
+    return host, port, path
+end
+
+---Get chunk.
+---@param body fun():string
+---@return string
+local function getChunk(body)
+    local chunk = ""
+    while true do
+        local bytes = body()
+        if bytes == "" then
+            break
+        end
+        chunk = chunk .. bytes
+    end
+    return chunk
+end
+
+---Start a HTTP request and wait for the response back.
+---@param method HTTPMethod The request method.
+---@param url string URL string.
+---@param timeout? integer Timeout period (in milliseconds).
+---@param headers? table<string, string> The request headers.
+---@param body? string|fun():string The request body.
+---@return integer code The response status code.
+---@return table<string, string> headers The response headers.
+---@return string|nil body The response body.
+---@nodiscard
+function M.request(method, url, timeout, headers, body)
+    local host, port, path = parseURL(url)
+    timeout = timeout or 5000
+    local hc <close> = M.connect(host, port, port == 443, timeout)
+    hc:settimeout(timeout)
     local code
     code, headers, body = hc:request(method, path, headers, body)
     if type(body) == "function" then
-        local content = ""
-        while true do
-            local bytes = body()
-            if #bytes == 0 then
-                break
-            end
-            content = content .. bytes
-        end
-        return code, headers, content
+        body = getChunk(body)
     end
     return code, headers, body
+end
+
+---@class HTTPClientSession
+local session = {}
+
+---Start a HTTP request and wait for the response back.
+---@param method HTTPMethod The request method.
+---@param url string URL string.
+---@param timeout? integer Timeout period (in milliseconds).
+---@param headers? table<string, string> The request headers.
+---@param body? string|fun():string The request body.
+---@return integer code The response status code.
+---@return table<string, string> headers The response headers.
+---@return string|nil body The response body.
+---@nodiscard
+function session:request(method, url, timeout, headers, body)
+    local host, port, path = parseURL(url)
+    timeout = timeout or 5000
+
+    local hc = self.hc
+    if hc == nil or host ~= self.host or port ~= self.port then
+        if hc then
+            hc:close()
+        end
+        hc = M.connect(host, port, port == 443, timeout)
+        hc:settimeout(timeout)
+        self.hc = hc
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+    elseif self.timeout ~= timeout then
+        hc:settimeout(timeout)
+        self.timeout = timeout
+    end
+    local code
+    code, headers, body = hc:request(method, path, headers, body)
+    if type(body) == "function" then
+        body = getChunk(body)
+    end
+    if headers.connection == "close" then
+        hc:close()
+        self.hc = nil
+        self.host = nil
+        self.port = nil
+    end
+    return code, headers, body
+end
+
+---Create a HTTP Client session.
+---@return HTTPClientSession
+function M.session()
+    return setmetatable({}, {
+        __index = session
+    })
 end
 
 return M
