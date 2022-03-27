@@ -41,9 +41,10 @@ end
 ---@return string # Binary string.
 ---@nodiscard
 function M.hex2bin(s)
-    return s:gsub("..", function (cc)
+    local out = s:gsub("..", function (cc)
         return string.char(tonumber(cc, 16))
     end)
+    return out
 end
 
 ---Binary to hex.
@@ -51,9 +52,10 @@ end
 ---@return string # Hex string.
 ---@nodiscard
 function M.bin2hex(s)
-    return s:gsub(".", function (c)
+    local out = s:gsub(".", function (c)
         return ("%02X"):format(string.byte(c))
     end)
+    return out
 end
 
 ---Serialize a Lua value.
