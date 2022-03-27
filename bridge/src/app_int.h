@@ -55,6 +55,9 @@ LUAMOD_API int luaopen_nvs(lua_State *L);
 #define LUA_STREAM_NAME "stream"
 LUAMOD_API int luaopen_stream(lua_State *L);
 
+#define LUA_BASE64_NAME "base64"
+LUAMOD_API int luaopen_base64(lua_State *L);
+
 #ifdef __cplusplus
 }
 #endif

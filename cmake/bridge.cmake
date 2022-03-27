@@ -26,6 +26,7 @@ set(BRIDGE_SRCS
     ${BRIDGE_SRC_DIR}/ldnslib.c
     ${BRIDGE_SRC_DIR}/lnvslib.c
     ${BRIDGE_SRC_DIR}/lstreamlib.c
+    ${BRIDGE_SRC_DIR}/lbase64lib.c
     ${BRIDGE_SRC_DIR}/embedfs.c
 )
 
