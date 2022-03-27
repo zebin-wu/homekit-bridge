@@ -99,12 +99,14 @@ function ctx:getIVLen() end
 
 ---Set the padding mode, for cipher modes that use padding.
 ---@param padding CipherPadding The padding mode.
+---@return ChiperContext context Cipher context.
 function ctx:setPadding(padding) end
 
 ---Begin a encryption/decryption process.
 ---@param op '"encrypt"'|'"decrypt"'   Operation.
 ---@param key string The key to use.
 ---@param iv? string The initialization vector (IV).
+---@return ChiperContext context Cipher context.
 function ctx:begin(op, key, iv) end
 
 ---The generic cipher update function.

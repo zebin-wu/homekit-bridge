@@ -149,6 +149,7 @@ static int lcipher_ctx_set_padding(lua_State *L) {
     if (luai_unlikely(!pal_cipher_set_padding(ctx->ctx, padding))) {
         luaL_error(L, "failed to set padding to the cipher");
     }
+    lua_pushvalue(L, 1);
     return 1;
 }
 
@@ -175,6 +176,7 @@ begin:
         (const uint8_t *)key, (const uint8_t *)iv))) {
         luaL_error(L, "failed to begin a %s process", lcipher_op_strs[op]);
     }
+    lua_pushvalue(L, 1);
     return 1;
 }
 
