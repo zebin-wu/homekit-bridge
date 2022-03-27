@@ -27,7 +27,7 @@ M.options = {
     query = {
         separator = "&",
         cumulativeParams = false,
-        plusIsSpace = true,
+        plusIsSpace = false,
         legal = {
             [":"] = true, ["-"] = true, ["_"] = true, ["."] = true,
             [","] = true, ["!"] = true, ["~"] = true, ["*"] = true,
@@ -221,7 +221,7 @@ function M.buildQuery(tab, sep, key)
             tinsert(query, M.buildQuery(value, sep, name))
         else
             value = encode(tostring(value), legal)
-            tinsert(query, value ~= "" and ("%s=%s"):format(name, value) or tinsert(query, name))
+            tinsert(query, value ~= "" and ("%s=%s"):format(name, value) or name)
         end
     end
 
