@@ -187,6 +187,21 @@ function url:build()
     return s
 end
 
+---Sort query keys and return the sorted keys.
+---@param tab table
+---@return table keys
+function M.sortQueryKeys(tab)
+    local keys = {}
+    for k in pairs(tab) do
+        tinsert(keys, k)
+    end
+    tsort(keys, function (a, b)
+          local function padnum(n, rest) return ("%03d"..rest):format(tonumber(n)) end
+          return tostring(a):gsub("(%d+)(%.)", padnum) < tostring(b):gsub("(%d+)(%.)", padnum)
+    end)
+    return keys
+end
+
 ---Build the query string.
 ---@param tab table
 ---@param sep? string
@@ -196,18 +211,9 @@ function M.buildQuery(tab, sep, key)
     local opt = M.options.query
     sep = sep or opt.separator or "&"
 
-    local keys = {}
-    for k in pairs(tab) do
-        tinsert(keys, k)
-    end
-    tsort(keys, function (a, b)
-          local function padnum(n, rest) return ("%03d"..rest):format(tonumber(n)) end
-          return tostring(a):gsub("(%d+)(%.)", padnum) < tostring(b):gsub("(%d+)(%.)", padnum)
-    end)
-
     local query = {}
     local legal = M.options.query.legal
-    for _, name in ipairs(keys) do
+    for _, name in ipairs(M.sortQueryKeys(tab)) do
         local value = tab[name]
         name = encode(tostring(name), {["-"] = true, ["_"] = true, ["."] = true})
         if key then
