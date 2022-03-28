@@ -55,6 +55,7 @@ static const luaL_Reg dynamiclibs[] = {
     {LUA_NVS_NAME, luaopen_nvs},
     {LUA_STREAM_NAME, luaopen_stream},
     {LUA_BASE64_NAME, luaopen_base64},
+    {LUA_ARC4_NAME, luaopen_arc4},
     {NULL, NULL}
 };
 
