@@ -4,6 +4,7 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
+#include <string.h>
 #include <pal/nvs.h>
 #include <pal/memory.h>
 #include <esp_err.h>
@@ -15,18 +16,34 @@ static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, 
 #define NVS_LOG_ERR(fmt, arg...) \
     HAPLogError(&logObject, "%s: " fmt, __func__, ##arg);
 
+struct pal_nvs_handle {
+    nvs::NVSHandle *handle;
+    char name[0];
+};
+
 extern "C" pal_nvs_handle *pal_nvs_open(const char *name) {
     HAPPrecondition(name);
+    size_t name_len = strlen(name);
+    HAPPrecondition(name_len > 0 && name_len <= PAL_NVS_KEY_MAX_LEN);
+
+    pal_nvs_handle *handle = (pal_nvs_handle *)pal_mem_alloc(sizeof(*handle) + name_len + 1);
+    if (!handle) {
+        NVS_LOG_ERR("Failed to alloc nvs handle.");
+        return NULL;
+    }
+    memcpy(handle->name, name, name_len);
+    handle->name[name_len] = '\0';
 
     esp_err_t err;
-    nvs::NVSHandle *handle = nvs::open_nvs_handle(name, NVS_READWRITE, &err).release();
+    handle->handle = nvs::open_nvs_handle(name, NVS_READWRITE, &err).release();
     if (err != ESP_OK) {
         HAPLogDebug(&logObject, "nvs::open_nvs_handle() returned %s", esp_err_to_name(err));
-        delete handle;
+        delete handle->handle;
+        pal_mem_free(handle);
         return NULL;
     }
 
-    return (pal_nvs_handle *)static_cast<void *>(handle);
+    return handle;
 }
 
 extern "C" bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, size_t len) {
@@ -35,7 +52,7 @@ extern "C" bool pal_nvs_get(pal_nvs_handle *handle, const char *key, void *buf, 
     HAPPrecondition(buf);
     HAPPrecondition(len);
 
-    esp_err_t err = static_cast<nvs::NVSHandle *>((void *)handle)->get_blob(key, buf, len);
+    esp_err_t err = handle->handle->get_blob(key, buf, len);
     if (err != ESP_OK) {
         HAPLogDebug(&logObject, "nvs::get_blob() returned %s", esp_err_to_name(err));
         return false;
@@ -48,7 +65,7 @@ extern "C" size_t pal_nvs_get_len(pal_nvs_handle *handle, const char *key) {
     HAPPrecondition(key);
 
     size_t len;
-    esp_err_t err = static_cast<nvs::NVSHandle *>((void *)handle)->get_item_size(nvs::ItemType::BLOB, key, len);
+    esp_err_t err = handle->handle->get_item_size(nvs::ItemType::BLOB, key, len);
     if (err != ESP_OK) {
         HAPLogDebug(&logObject, "nvs::get_item_size() returned %s", esp_err_to_name(err));
         return 0;
@@ -62,7 +79,7 @@ extern "C" bool pal_nvs_set(pal_nvs_handle *handle, const char *key, const void 
     HAPPrecondition(value);
     HAPPrecondition(len);
 
-    esp_err_t err = static_cast<nvs::NVSHandle *>((void *)handle)->set_blob(key, value, len);
+    esp_err_t err = handle->handle->set_blob(key, value, len);
     if (err != ESP_OK) {
         HAPLogDebug(&logObject, "nvs::set_blob() returned %s", esp_err_to_name(err));
         return false;
@@ -74,7 +91,7 @@ extern "C" bool pal_nvs_remove(pal_nvs_handle * handle, const char *key) {
     HAPPrecondition(handle);
     HAPPrecondition(key);
 
-    esp_err_t err = static_cast<nvs::NVSHandle *>((void *)handle)->erase_item(key);
+    esp_err_t err = handle->handle->erase_item(key);
     if (err != ESP_OK) {
         HAPLogDebug(&logObject, "nvs::erase_item() returned %s", esp_err_to_name(err));
         return false;
@@ -85,7 +102,7 @@ extern "C" bool pal_nvs_remove(pal_nvs_handle * handle, const char *key) {
 extern "C" bool pal_nvs_erase(pal_nvs_handle *handle) {
     HAPPrecondition(handle);
 
-    esp_err_t err = static_cast<nvs::NVSHandle *>((void *)handle)->erase_all();
+    esp_err_t err = handle->handle->erase_all();
     if (err != ESP_OK) {
         HAPLogDebug(&logObject, "nvs::erase_all() returned %s", esp_err_to_name(err));
         return false;
@@ -96,7 +113,7 @@ extern "C" bool pal_nvs_erase(pal_nvs_handle *handle) {
 extern "C" bool pal_nvs_commit(pal_nvs_handle *handle) {
     HAPPrecondition(handle);
 
-    esp_err_t err = static_cast<nvs::NVSHandle *>((void *)handle)->commit();
+    esp_err_t err = handle->handle->commit();
     if (err != ESP_OK) {
         HAPLogDebug(&logObject, "nvs::commit() returned %s", esp_err_to_name(err));
         return false;
@@ -106,7 +123,8 @@ extern "C" bool pal_nvs_commit(pal_nvs_handle *handle) {
 
 extern "C" void pal_nvs_close(pal_nvs_handle *handle) {
     if (handle) {
-        static_cast<nvs::NVSHandle *>((void *)handle)->commit();
-        delete static_cast<nvs::NVSHandle *>((void *)handle);
+        handle->handle->commit();
+        delete handle->handle;
+        pal_mem_free(handle);
     }
 }

@@ -37,9 +37,9 @@ struct pal_nvs_item {
 struct pal_nvs_handle {
     uint32_t using_count;
     bool changed;
-    char *name;
     SLIST_HEAD(pal_nvs_item_list_head, pal_nvs_item) item_list_head;
     LIST_ENTRY(pal_nvs_handle) list_entry;
+    char name[0];
 };
 
 static bool ginited;
@@ -110,16 +110,10 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
         }
     }
 
-    handle = pal_mem_alloc(sizeof(*handle));
+    handle = pal_mem_alloc(sizeof(*handle) + name_len + 1);
     if (!handle) {
-        NVS_LOG_ERR("Failed to alloc memory.");
+        NVS_LOG_ERR("Failed to alloc NVS handle.");
         return NULL;
-    }
-
-    handle->name = pal_mem_alloc(name_len + 1);
-    if (!handle->name) {
-        NVS_LOG_ERR("Failed to alloc memory.");
-        goto err;
     }
     memcpy(handle->name, name, name_len);
     handle->name[name_len] = '\0';
@@ -132,7 +126,7 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
     int len = snprintf(path, sizeof(path), "%s/%s", gnvs_dir, name);
     if (len < 0 || path[len - 1] != name[name_len - 1]) {
         NVS_LOG_ERR("Namespace '%s' too long.", name);
-        goto err1;
+        goto err;
     }
 
     int fd;
@@ -147,7 +141,7 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
         }
         HAPAssert(fd == -1);
         NVS_LOG_ERR("open %s failed: %d.", path, _errno);
-        goto err1;
+        goto err;
     }
 
     ssize_t rc;
@@ -158,12 +152,12 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
         int _errno = errno;
         HAPAssert(rc == -1);
         NVS_LOG_ERR("read %s failed: %d.", path, _errno);
-        goto err2;
+        goto err1;
     }
 
     if (rc != sizeof(magic) || memcmp(magic, PAL_NVS_MAGIC, sizeof(magic))) {
         NVS_LOG_ERR("Invalid data format.");
-        goto err2;
+        goto err1;
     }
 
     while (1) {
@@ -173,13 +167,13 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
             int _errno = errno;
             HAPAssert(rc == -1);
             NVS_LOG_ERR("read %s failed: %d.", path, _errno);
-            goto err3;
+            goto err2;
         } else if (rc == 0) {
             break;
         }
         if (rc != sizeof(len) || len == 0 || len > PAL_NVS_KEY_MAX_LEN) {
             NVS_LOG_ERR("Invalid data format.");
-            goto err3;
+            goto err2;
         }
 
         char key[len + 1];
@@ -188,11 +182,11 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
             int _errno = errno;
             HAPAssert(rc == -1);
             NVS_LOG_ERR("read %s failed: %d.", path, _errno);
-            goto err3;
+            goto err2;
         }
         if (rc != len) {
             NVS_LOG_ERR("Invalid data format.");
-            goto err3;
+            goto err2;
         }
         key[len] = '\0';
 
@@ -201,21 +195,21 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
             int _errno = errno;
             HAPAssert(rc == -1);
             NVS_LOG_ERR("read %s failed: %d.", path, _errno);
-            goto err3;
+            goto err2;
         } else if (rc == 0) {
             NVS_LOG_ERR("Invalid data format.");
-            goto err3;
+            goto err2;
         }
 
         if (len == 0) {
             NVS_LOG_ERR("Invalid data format.");
-            goto err3;
+            goto err2;
         }
 
         struct pal_nvs_item *item = pal_mem_alloc(sizeof(*item) + len);
         if (!item) {
             NVS_LOG_ERR("Failed to alloc memory.");
-            goto err3;
+            goto err2;
         }
 
         rc = read_all(fd, item->value, len);
@@ -224,12 +218,12 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
             HAPAssert(rc == -1);
             NVS_LOG_ERR("read %s failed: %d.", path, _errno);
             pal_mem_free(item);
-            goto err3;
+            goto err2;
         }
         if (rc != len) {
             NVS_LOG_ERR("Invalid data format.");
             pal_mem_free(item);
-            goto err3;
+            goto err2;
         }
         item->len = len;
         SLIST_INSERT_HEAD(&handle->item_list_head, item, list_entry);
@@ -240,12 +234,10 @@ done:
     LIST_INSERT_HEAD(&ghandle_list_head, handle, list_entry);
     return handle;
 
-err3:
-    pal_nvs_remove_all_items(handle);
 err2:
-    close(fd);
+    pal_nvs_remove_all_items(handle);
 err1:
-    pal_mem_free(handle->name);
+    close(fd);
 err:
     pal_mem_free(handle);
     return NULL;
@@ -557,6 +549,5 @@ void pal_nvs_close(pal_nvs_handle *handle) {
     pal_nvs_commit(handle);
     LIST_REMOVE(handle, list_entry);
     pal_nvs_remove_all_items(handle);
-    pal_mem_free(handle->name);
     pal_mem_free(handle);
 }
