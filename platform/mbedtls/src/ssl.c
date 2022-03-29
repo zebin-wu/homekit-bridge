@@ -7,6 +7,7 @@
 #include <string.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/error.h>
+#include <sys/queue.h>
 #include <pal/memory.h>
 #include <pal/crypto/ssl.h>
 #include <pal/crypto/ssl_int.h>
@@ -25,11 +26,18 @@ typedef struct {
     size_t len;
 } pal_ssl_bio;
 
+struct pal_ssl_buf {
+    STAILQ_ENTRY(pal_ssl_buf) entry;
+    pal_ssl_bio bio;
+    char buf[0];
+};
+
 struct pal_ssl_ctx {
     bool finshed;
     uint16_t id;
     pal_ssl_bio in_bio;
     pal_ssl_bio out_bio;
+    STAILQ_HEAD(, pal_ssl_buf) outbuf_list_head;
     mbedtls_ssl_context ssl;
     mbedtls_ssl_config conf;
 };
@@ -104,15 +112,25 @@ static int pal_mbedtls_ssl_send(void *arg, const unsigned char *buf, size_t len)
 
 static int pal_mbedtls_ssl_recv(void *arg, unsigned char *buf, size_t len) {
     pal_ssl_ctx *ctx = arg;
-    pal_ssl_bio *bio = &ctx->out_bio;
-
-    if (bio->len == 0) {
-        return MBEDTLS_ERR_SSL_WANT_READ;
+    struct pal_ssl_buf *outbuf = STAILQ_FIRST(&ctx->outbuf_list_head);
+    pal_ssl_bio *bio = NULL;
+    if (outbuf) {
+        bio = &outbuf->bio;
+    } else {
+        bio = &ctx->out_bio;
+        if (bio->len == 0) {
+            return MBEDTLS_ERR_SSL_WANT_READ;
+        }
     }
     size_t readbytes = HAPMin(len, bio->len);
     memcpy(buf, bio->data, readbytes);
     bio->data += readbytes;
     bio->len -= readbytes;
+
+    if (outbuf && bio->len == 0) {
+        STAILQ_REMOVE_HEAD(&ctx->outbuf_list_head, entry);
+        pal_mem_free(outbuf);
+    }
     return readbytes;
 }
 
@@ -122,7 +140,7 @@ pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *
 
     pal_ssl_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
     if (!ctx) {
-        HAPLogError(&ssl_log_obj, "%s: Failed to alloc memory.", __func__);
+        HAPLogError(&ssl_log_obj, "%s: Failed to alloc SSL context.", __func__);
         return NULL;
     }
 
@@ -135,9 +153,6 @@ pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *
         MBEDTLS_PRINT_ERROR(mbedtls_ssl_config_defaults, ret);
         goto err;
     }
-
-    ctx->finshed = false;
-    ctx->id = ++gssl_count;
 
     mbedtls_ssl_set_bio(&ctx->ssl, ctx, pal_mbedtls_ssl_send, pal_mbedtls_ssl_recv, NULL);
     if (hostname) {
@@ -155,6 +170,10 @@ pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *
         goto err;
     }
 
+    ctx->finshed = false;
+    ctx->id = ++gssl_count;
+    STAILQ_INIT(&ctx->outbuf_list_head);
+
     return ctx;
 
 err:
@@ -165,6 +184,11 @@ err:
 void pal_ssl_destroy(pal_ssl_ctx *ctx) {
     if (!ctx) {
         return;
+    }
+    for (struct pal_ssl_buf *t = STAILQ_FIRST(&ctx->outbuf_list_head); t;) {
+        struct pal_ssl_buf *cur = t;
+        t = STAILQ_NEXT(t, entry);
+        pal_mem_free(cur);
     }
     mbedtls_ssl_free(&ctx->ssl);
     mbedtls_ssl_config_free(&ctx->conf);
@@ -270,7 +294,18 @@ pal_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out
         }
     }
 
-    HAPAssert(ctx->out_bio.len == 0);
+    if (ctx->out_bio.len) {
+        size_t len = ctx->out_bio.len;
+        struct pal_ssl_buf *buf = pal_mem_alloc(sizeof(*buf) + len);
+        if (!buf) {
+            HAPLogError(&ssl_log_obj, "%s: Failed to alloc SSL context.", __func__);
+            return PAL_ERR_ALLOC;
+        }
+        STAILQ_INSERT_TAIL(&ctx->outbuf_list_head, buf, entry);
+        buf->bio.len = len;
+        memcpy(buf->buf, ctx->out_bio.data, len);
+        buf->bio.data = buf->buf;
+    }
     pal_ssl_bio_reset(&ctx->out_bio);
     return mbedtls_ssl_check_pending(&ctx->ssl) ? PAL_ERR_AGAIN : PAL_ERR_OK;
 }
