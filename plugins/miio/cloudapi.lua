@@ -16,7 +16,7 @@ local error = error
 
 local M = {}
 
----@class CloudSession:CloudSessionPriv Cloud API session.
+---@class MiCloudSession:MiCloudSessionPriv Xiaomi Cloud API session.
 local session = {}
 
 local function buildCookie(tab)
@@ -111,10 +111,12 @@ function session:loginStep3()
 end
 
 ---Login.
+---@return MiCloudSession
 function session:login()
     self:loginStep1()
     self:loginStep2()
     self:loginStep3()
+    return self
 end
 
 ---Call cloud API.
@@ -122,7 +124,9 @@ end
 ---@param params table
 ---@return table result
 function session:call(path, params)
-    print(params.data)
+    if self.serviceToken == nil then
+        error("attemp to call api before login")
+    end
     local cookie = {
         userId = self.userId,
         yetAnotherServiceToken = self.serviceToken,
@@ -143,11 +147,10 @@ function session:call(path, params)
     params.ssecurity = base64.encode(self.ssecurity)
     params._nonce = base64.encode(nonce)
     local url = ("https://%sapi.io.mi.com/app%s?%s"):format(
-        self.server == "cn" and "" or self.server .. ".",
+        self.region == "cn" and "" or self.region .. ".",
         path, urllib.buildQuery(params))
     local code, headers, body = self.session:request(
         "POST", url, 5000, {
-        ["Accept-Encoding"] = "identity",
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
         ["Cookie"] = buildCookie(self.cookie) .. ";" .. buildCookie(cookie),
@@ -169,8 +172,8 @@ end
 ---@return table
 function session:getDevices()
     return self:call("/home/device_list", {
-        data = '{"getVirtualModel":true,"getHuamiDevices":1,"get_split_device":false,"support_smart_home":true}'
-    })
+        data = '{"getVirtualModel":false,"getHuamiDevices":1,"get_split_device":false,"support_smart_home":true}'
+    }).list
 end
 
 ---Get BlueTooth beacon key.
@@ -178,26 +181,18 @@ end
 function session:getBeaconKey(did)
     return self:call("/v2/device/blt_get_beaconkey", {
         data = '{"did":"' .. did .. '","pdid":1}'
-    })
-end
-
----Get device.
----@param did string Device ID.
-function session:getDevice(did)
-    return self:call("/v2/device", {
-        data = '{"did":"' .. did .. '","pdid":1}'
-    })
+    }).beaconkey
 end
 
 ---New a session.
----@param server '"cn"'|'"de"'|'"us"'|'"ru"'|'"tw"'|'"sg"'|'"in"'|'"i2"'
----@param username string
----@param password string
----@return CloudSession session
-function M.session(server, username, password)
-    ---@class CloudSessionPriv
+---@param region '"cn"'|'"de"'|'"us"'|'"ru"'|'"tw"'|'"sg"'|'"in"'|'"i2"' Server region.
+---@param username string User ID or email.
+---@param password string User password.
+---@return MiCloudSession session
+function M.session(region, username, password)
+    ---@class MiCloudSessionPriv
     local o = {
-        server = server,
+        region = region,
         username = username,
         password = password,
         agent = ("Android-7.1.1-1.0.0-ONEPLUS A3010-136-%s APP/xiaomi.smarthome APPV/62830"):format(randomBytes(65, 69, 13)),
