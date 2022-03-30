@@ -26,6 +26,12 @@ function hash:update(data) end
 ---@nodiscard
 function hash:digest() end
 
+---Like ``digest()`` except the digest is returned as a string object of
+---double length, containing only hexadecimal digits.
+---@return string hexdigest
+---@nodiscard
+function hash:hexdigest() end
+
 ---Create a hash context.
 ---@param type HashType
 ---@return HashContext ctx

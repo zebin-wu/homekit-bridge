@@ -69,6 +69,23 @@ static int lhash_obj_digest(lua_State *L) {
     return 1;
 }
 
+static int lhash_obj_hexdigest(lua_State *L) {
+    lhash_obj *obj = LHASH_GET_OBJ(L, 1);
+    size_t len = pal_md_get_size(obj->ctx);
+    char digest[len];
+    if (luai_unlikely(!pal_md_digest(obj->ctx, (uint8_t *)digest))) {
+        luaL_error(L, "failed to finishes the digest operation");
+    }
+    size_t olen = len * 2;
+    char out[olen];
+    for (size_t i = 0; i < len; i++) {
+        out[i * 2] = "0123456789abcdef"[(unsigned char)digest[i] >> 4];
+        out[i * 2 + 1] = "0123456789abcdef"[(unsigned char)digest[i] & 0x0F];
+    }
+    lua_pushlstring(L, out, olen);
+    return 1;
+}
+
 static int lhash_obj_gc(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
     pal_md_free(obj->ctx);
@@ -97,6 +114,7 @@ static const luaL_Reg lhash_obj_metameth[] = {
 static const luaL_Reg lhash_obj_meth[] = {
     {"update", lhash_obj_update},
     {"digest", lhash_obj_digest},
+    {"hexdigest", lhash_obj_hexdigest},
     {NULL, NULL},
 };
 
