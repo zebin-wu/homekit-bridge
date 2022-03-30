@@ -4,8 +4,8 @@ local hash = require "hash"
 local cjson = require "cjson"
 local base64 = require "base64"
 local arc4 = require "arc4"
-local bin2hex = require "util".bin2hex
 local random = math.random
+local tointeger = math.tointeger
 local tinsert = table.insert
 local tunpack = table.unpack
 local tconcat = table.concat
@@ -35,7 +35,7 @@ local function randomBytes(m, n, count)
     return schar(tunpack(bytes))
 end
 
-local function genSignature(method, path, signed_nonce, query)
+local function genSignatureARC4(method, path, signed_nonce, query)
     local strs = {method, path}
     local keys = urllib.sortQueryKeys(query)
     for _, key in pairs(keys) do
@@ -44,6 +44,16 @@ local function genSignature(method, path, signed_nonce, query)
     tinsert(strs, base64.encode(signed_nonce))
     local s = tconcat(strs, "&")
     return base64.encode(hash.create("SHA1"):update(s):digest())
+end
+
+local function genSignature(path, nonce, signNonce, query)
+    local strs = {path, base64.encode(signNonce), base64.encode(nonce)}
+    local keys = urllib.sortQueryKeys(query)
+    for _, key in pairs(keys) do
+        tinsert(strs, ("%s=%s"):format(key, query[key]))
+    end
+    local s = tconcat(strs, "&")
+    return base64.encode(hash.create("SHA256", signNonce):update(s):digest())
 end
 
 local function genNonce()
@@ -59,7 +69,7 @@ function session:loginStep1()
         "GET", "https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true", 5000, {
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
-        ["Cookie"] = buildCookie(self.cookie) .. ";userId=" .. self.username,
+        ["Cookie"] = self.cookie .. ";userId=" .. self.username,
     })
     if code ~= 200 or body:find("_sign", 1, true) == nil then
         error("invalid username")
@@ -71,7 +81,7 @@ function session:loginStep2()
     local code, _, body = self.session:request(
         "POST", "https://account.xiaomi.com/pass/serviceLoginAuth2?" .. urllib.buildQuery({
             sid = "xiaomiio",
-            hash = bin2hex(hash.create("MD5"):update(self.password):digest()):upper(),
+            hash = self.password,
             callback = "https://sts.api.io.mi.com/sts",
             qs = "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
             user = self.username,
@@ -80,7 +90,7 @@ function session:loginStep2()
         }), 5000, {
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
-        ["Cookie"] = buildCookie(self.cookie),
+        ["Cookie"] = self.cookie,
     })
     body = body:gsub("&&&START&&&", "")
     local resp = cjson.decode(body)
@@ -88,7 +98,7 @@ function session:loginStep2()
         error("invalid login or password")
     end
     self.ssecurity = base64.decode(resp.ssecurity)
-    self.userId = math.tointeger(resp.userId)
+    self.userId = tointeger(resp.userId)
     self.cUserId = resp.cUserId
     self.passToken = resp.passToken
     self.location = resp.location
@@ -99,7 +109,7 @@ function session:loginStep3()
         "GET", self.location, 5000, {
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
-        ["Cookie"] = buildCookie(self.cookie) .. ";userId=" .. self.username,
+        ["Cookie"] = self.cookie,
     })
     if code ~= 200 then
         error("unable to get service token")
@@ -122,8 +132,9 @@ end
 ---Call cloud API.
 ---@param path string
 ---@param params table
+---@param encrypt? boolean
 ---@return table result
-function session:call(path, params)
+function session:call(path, params, encrypt)
     if self.serviceToken == nil then
         error("attemp to call api before login")
     end
@@ -139,28 +150,37 @@ function session:call(path, params)
     }
     local nonce = genNonce()
     local signedNonce = signNonce(self.ssecurity, nonce)
-    params.rc4_hash__ = genSignature("POST", path, signedNonce, params)
-    for k, v in pairs(params) do
-        params[k] = base64.encode(arc4.create(signedNonce, 1024):crypt(v))
+    if encrypt then
+        params.rc4_hash__ = genSignatureARC4("POST", path, signedNonce, params)
+        local rc4ctx = arc4.create(signedNonce, 1024)
+        for k, v in pairs(params) do
+            params[k] = base64.encode(rc4ctx:crypt(v))
+            rc4ctx:reset()
+        end
+        params.signature = genSignatureARC4("POST", path, signedNonce, params)
+        params.ssecurity = base64.encode(self.ssecurity)
+    else
+        params.signature = genSignature(path, nonce, signedNonce, params)
     end
-    params.signature = genSignature("POST", path, signedNonce, params)
-    params.ssecurity = base64.encode(self.ssecurity)
     params._nonce = base64.encode(nonce)
     local url = ("https://%sapi.io.mi.com/app%s?%s"):format(
         self.region == "cn" and "" or self.region .. ".",
         path, urllib.buildQuery(params))
     local code, headers, body = self.session:request(
         "POST", url, 5000, {
+        ["Accept-Encoding"] = encrypt and nil or "chunk",
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
-        ["Cookie"] = buildCookie(self.cookie) .. ";" .. buildCookie(cookie),
+        ["Cookie"] = self.cookie .. ";" .. buildCookie(cookie),
         ["x-xiaomi-protocal-flag-cli"] = "PROTOCAL-HTTP2",
-        ["MIOT-ENCRYPT-ALGORITHM"] = "ENCRYPT-RC4",
+        ["MIOT-ENCRYPT-ALGORITHM"] = encrypt and "ENCRYPT-RC4" or nil,
     })
     if code ~= 200 then
         error(cjson.decode(body).message)
     end
-    body = arc4.create(signedNonce, 1024):crypt(base64.decode(body))
+    if encrypt then
+        body = arc4.create(signedNonce, 1024):crypt(base64.decode(body))
+    end
     local resp = cjson.decode(body)
     if resp.code ~= 0 then
         error(resp.message)
@@ -184,6 +204,10 @@ function session:getBeaconKey(did)
     }).beaconkey
 end
 
+function session:close()
+    self.session:close()
+end
+
 ---New a session.
 ---@param region '"cn"'|'"de"'|'"us"'|'"ru"'|'"tw"'|'"sg"'|'"in"'|'"i2"' Server region.
 ---@param username string User ID or email.
@@ -194,17 +218,18 @@ function M.session(region, username, password)
     local o = {
         region = region,
         username = username,
-        password = password,
+        password = hash.create("MD5"):update(password):hexdigest():upper(),
         agent = ("Android-7.1.1-1.0.0-ONEPLUS A3010-136-%s APP/xiaomi.smarthome APPV/62830"):format(randomBytes(65, 69, 13)),
-        cookie = {
+        cookie = buildCookie({
             sdkVersion = "accountsdk-18.8.15",
             deviceId = randomBytes(97, 122, 6)
-        },
+        }),
         session = httpc.session()
     }
 
     return setmetatable(o, {
-        __index = session
+        __index = session,
+        __close = session.close
     })
 end
 
