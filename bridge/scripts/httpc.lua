@@ -74,54 +74,52 @@ function client:request(method, path, headers, body)
         end
     end
 
-    do
-        local line = sc:readline("\r\n", true)
-        local code, _ = line:match("HTTP/[%d%.]+%s+([%d]+)%s+(.*)$")
-        code = assert(tonumber(code))
+    local line = sc:readline("\r\n", true)
+    local code, _ = line:match("HTTP/[%d%.]+%s+([%d]+)%s+(.*)$")
+    code = assert(tonumber(code))
 
-        headers = {}
-        while true do
-            line = sc:readline("\r\n", true)
-            if #line == 0 then
-                break
-            end
-            local k, v = line:match("^(.-):%s*(.*)")
-            headers[k:lower()] = v
+    headers = {}
+    while true do
+        line = sc:readline("\r\n", true)
+        if #line == 0 then
+            break
         end
+        local k, v = line:match("^(.-):%s*(.*)")
+        headers[k:lower()] = v
+    end
 
-        local length = headers["content-length"]
-        if length then
-            length = tonumber(length)
-        end
+    local length = headers["content-length"]
+    if length then
+        length = tonumber(length)
+    end
 
-        local mode = headers["transfer-encoding"]
-        if mode then
-            if mode ~= "identity" and mode ~= "chunked" then
-                error("unsupport transfer-encoding: " .. mode)
-            end
-        end
-        if mode == "chunked" then
-            return code, headers, function ()
-                local size = tonumber(sc:readline("\r\n", true), 16)
-                local chunk
-                if size > 0 then
-                    chunk = sc:read(size, true)
-                else
-                    chunk = ""
-                end
-                sc:readline("\r\n", true)
-                return chunk
-            end
-        end
-
-        if length then
-            return code, headers, sc:read(length, true)
-        elseif code == 204 or code == 304 or code < 200 then
-            return code, headers
-        else
-            return code, headers, sc:readall()
+    local mode = headers["transfer-encoding"]
+    if mode then
+        if mode ~= "identity" and mode ~= "chunked" then
+            error("unsupport transfer-encoding: " .. mode)
         end
     end
+    if mode == "chunked" then
+        body = function ()
+            local size = tonumber(sc:readline("\r\n", true), 16)
+            local chunk
+            if size > 0 then
+                chunk = sc:read(size, true)
+            else
+                chunk = ""
+            end
+            sc:readline("\r\n", true)
+            return chunk
+        end
+    elseif length then
+        body = sc:read(length, true)
+    elseif code == 204 or code == 304 or code < 200 then
+        body = nil
+    else
+        return code, headers, sc:readall()
+    end
+
+    return code, headers, body
 end
 
 ---Close the connection.
@@ -269,11 +267,18 @@ function session:request(method, url, timeout, headers, body)
     return code, headers, body
 end
 
+function session:close()
+    if self.hc then
+        self.hc:close()
+    end
+end
+
 ---Create a HTTP Client session.
 ---@return HTTPClientSession
 function M.session()
     return setmetatable({}, {
-        __index = session
+        __index = session,
+        __close = session.close
     })
 end
 
