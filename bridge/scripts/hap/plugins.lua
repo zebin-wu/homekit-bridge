@@ -48,6 +48,7 @@ end
 function M.init(pluginConfs)
     if pluginConfs then
         for name, conf in pairs(pluginConfs) do
+            logger:info(("Loading plugin '%s' ..."):format(name))
             local success, result = xpcall(loadPlugin, traceback, name, conf)
             if success == false then
                 logger:error(result)
