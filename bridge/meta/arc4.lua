@@ -11,6 +11,9 @@ local ctx = {}
 ---@return string output
 function ctx:crypt(input) end
 
+---Reset the context.
+function ctx:reset() end
+
 ---Create a ARC4 context.
 ---@param key string Secret key, the key length is in range ``(5, 255)``.
 ---@param ndrop? integer Number bytes to drop.

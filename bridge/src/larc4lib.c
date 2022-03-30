@@ -12,6 +12,7 @@
 typedef struct {
     int x;
     int y;
+    size_t ndrop;
     uint8_t m[256];
 } larc4_context;
 
@@ -42,14 +43,16 @@ static void larc4_raw_setup(larc4_context *ctx, const uint8_t *key, size_t keyle
     }
 }
 
-static void  larc4_raw_drop(larc4_context *ctx, size_t len) {
+static void  larc4_raw_drop(larc4_context *ctx) {
     int x, y, a, b;
     size_t i;
+    size_t len;
     uint8_t *m;
 
     x = ctx->x;
     y = ctx->y;
     m = ctx->m;
+    len = ctx->ndrop;
 
     for (i = 0; i < len; i++) {
         x = (x + 1) & 0xFF; a = m[x];
@@ -94,11 +97,13 @@ static int larc4_create(lua_State *L) {
 
     larc4_context *ctx = lua_newuserdata(L, sizeof(*ctx));
     luaL_setmetatable(L, LARC4_CTX_NAME);
-    memset(ctx, 0, sizeof(*ctx));
+    lua_pushvalue(L, 1);
+    lua_setuservalue(L, -2);
 
+    ctx->ndrop = ndrop;
     larc4_raw_setup(ctx, (const uint8_t *)key, keylen);
     if (ndrop > 0) {
-        larc4_raw_drop(ctx, ndrop);
+        larc4_raw_drop(ctx);
     }
     return 1;
 }
@@ -114,6 +119,18 @@ static int larc4_ctx_crypt(lua_State *L) {
     luaL_addsize(&B, ilen);
     luaL_pushresult(&B);
     return 1;
+}
+
+static int larc4_ctx_reset(lua_State *L) {
+    larc4_context *ctx = luaL_checkudata(L, 1, LARC4_CTX_NAME);
+    lua_getuservalue(L, 1);
+    size_t keylen;
+    const char *key = lua_tolstring(L, -1, &keylen);
+    larc4_raw_setup(ctx, (const uint8_t *)key, keylen);
+    if (ctx->ndrop > 0) {
+        larc4_raw_drop(ctx);
+    }
+    return 0;
 }
 
 static int larc4_ctx_tostring(lua_State *L) {
@@ -141,6 +158,7 @@ static const luaL_Reg larc4_ctx_metameth[] = {
  */
 static const luaL_Reg larc4_ctx_meth[] = {
     {"crypt", larc4_ctx_crypt},
+    {"reset", larc4_ctx_reset},
     {NULL, NULL},
 };
 
