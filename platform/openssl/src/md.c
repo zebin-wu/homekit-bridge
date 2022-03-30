@@ -5,13 +5,14 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include <pal/memory.h>
 #include <pal/crypto/md.h>
 #include <HAPBase.h>
 
 struct pal_md_ctx {
-    EVP_MD_CTX *ctx;
-    const EVP_MD *md;
+    bool hmac;
+    void *ctx;
 };
 
 static const EVP_MD *pal_md_get_md(pal_md_type type) {
@@ -33,26 +34,46 @@ static const EVP_MD *pal_md_get_md(pal_md_type type) {
     return pal_cipher_md_funcs[type]();
 }
 
-pal_md_ctx *pal_md_new(pal_md_type type) {
+pal_md_ctx *pal_md_new(pal_md_type type, const void *key, size_t len) {
+    if (key) {
+        HAPPrecondition(len > 0);
+    }
+    bool hmac = key != NULL;
     pal_md_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
     if (!ctx) {
         return NULL;
     }
-    ctx->ctx = EVP_MD_CTX_new();
+    ctx->hmac = hmac;
+    if (hmac) {
+        ctx->ctx = HMAC_CTX_new();
+    } else {
+        ctx->ctx = EVP_MD_CTX_new();
+    }
     if (!ctx->ctx) {
         goto err;
     }
-    ctx->md = pal_md_get_md(type);
-    if (!ctx->md) {
+    const EVP_MD *md = pal_md_get_md(type);
+    if (!md) {
         goto err1;
     }
-    if (!EVP_DigestInit(ctx->ctx, ctx->md)) {
+
+    int ret;
+    if (hmac) {
+        ret = HMAC_Init_ex(ctx->ctx, key, len, md, NULL);
+    } else {
+        ret = EVP_DigestInit(ctx->ctx, md);
+    }
+    if (!ret) {
         goto err1;
     }
     return ctx;
 
 err1:
-    EVP_MD_CTX_free(ctx->ctx);
+    if (hmac) {
+        HMAC_CTX_free(ctx->ctx);
+    } else {
+        EVP_MD_CTX_free(ctx->ctx);
+    }
 err:
     pal_mem_free(ctx);
     return NULL;
@@ -60,7 +81,11 @@ err:
 
 void pal_md_free(pal_md_ctx *ctx) {
     if (ctx) {
-        EVP_MD_CTX_free(ctx->ctx);
+        if (ctx->hmac) {
+            HMAC_CTX_free(ctx->ctx);
+        } else {
+            EVP_MD_CTX_free(ctx->ctx);
+        }
         pal_mem_free(ctx);
     }
 }
@@ -68,7 +93,7 @@ void pal_md_free(pal_md_ctx *ctx) {
 size_t pal_md_get_size(pal_md_ctx *ctx) {
     HAPPrecondition(ctx);
 
-    return EVP_MD_size(ctx->md);
+    return EVP_MD_size(ctx->hmac ? HMAC_CTX_get_md(ctx->ctx) : EVP_MD_CTX_md(ctx->ctx));
 }
 
 bool pal_md_update(pal_md_ctx *ctx, const void *data, size_t len) {
@@ -76,12 +101,20 @@ bool pal_md_update(pal_md_ctx *ctx, const void *data, size_t len) {
     HAPPrecondition(data);
     HAPPrecondition(len > 0);
 
-    return EVP_DigestUpdate(ctx->ctx, data, len);
+    if (ctx->hmac) {
+        return HMAC_Update(ctx->ctx, data, len);
+    } else {
+        return EVP_DigestUpdate(ctx->ctx, data, len);
+    }
 }
 
 bool pal_md_digest(pal_md_ctx *ctx, uint8_t *output) {
     HAPPrecondition(ctx);
     HAPPrecondition(output);
 
-    return EVP_DigestFinal(ctx->ctx, output, NULL);
+    if (ctx->hmac) {
+        return HMAC_Final(ctx->ctx, output, NULL);
+    } else {
+        return EVP_DigestFinal(ctx->ctx, output, NULL);
+    }
 }

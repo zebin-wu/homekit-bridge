@@ -42,10 +42,12 @@ typedef struct pal_md_ctx pal_md_ctx;
  * New a message-digest context.
  *
  * @param type Type of digest.
+ * @param key If key is set, HMAC will be used.
+ * @param len Length of @p key.
  * @return message-digest context on success.
  * @return NULL on failure.
  */
-pal_md_ctx *pal_md_new(pal_md_type type);
+pal_md_ctx *pal_md_new(pal_md_type type, const void *key, size_t len);
 
 /**
  * Free a message-digest context.

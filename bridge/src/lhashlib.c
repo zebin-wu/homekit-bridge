@@ -33,9 +33,11 @@ const char *lhash_type_strs[] = {
 
 static int lhash_create(lua_State *L) {
     pal_md_type type = luaL_checkoption(L, 1, NULL, lhash_type_strs);
+    size_t keylen = 0;
+    const char *key = luaL_optlstring(L, 2, NULL, &keylen);
     lhash_obj *obj = lua_newuserdata(L, sizeof(lhash_obj));
     luaL_setmetatable(L, LUA_HASH_OBJ_NAME);
-    obj->ctx = pal_md_new(type);
+    obj->ctx = pal_md_new(type, key, keylen);
     if (luai_unlikely(!obj->ctx)) {
         luaL_error(L, "failed to create a %s context", lhash_type_strs[type]);
     }

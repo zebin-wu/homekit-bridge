@@ -10,6 +10,7 @@
 #include <HAPBase.h>
 
 struct pal_md_ctx {
+    bool hmac;
     mbedtls_md_context_t ctx;
 };
 
@@ -24,17 +25,28 @@ static const mbedtls_md_type_t pal_md_type_mapping[] = {
     [PAL_MD_RIPEMD160] = MBEDTLS_MD_RIPEMD160
 };
 
-pal_md_ctx *pal_md_new(pal_md_type type) {
+pal_md_ctx *pal_md_new(pal_md_type type, const void *key, size_t len) {
+    bool hmac = key != NULL;
     pal_md_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
     if (!ctx) {
         return NULL;
     }
+    ctx->hmac = hmac;
     mbedtls_md_init(&ctx->ctx);
     const mbedtls_md_info_t *info = mbedtls_md_info_from_type(pal_md_type_mapping[type]);
     if (!info) {
         goto err;
     }
-    if (mbedtls_md_setup(&ctx->ctx, info, 0)) {
+    if (mbedtls_md_setup(&ctx->ctx, info, hmac)) {
+        goto err;
+    }
+    int ret;
+    if (hmac) {
+        ret = mbedtls_md_hmac_starts(&ctx->ctx, key, len);
+    } else {
+        ret = mbedtls_md_starts(&ctx->ctx);
+    }
+    if (ret) {
         goto err;
     }
     return ctx;
@@ -62,12 +74,20 @@ bool pal_md_update(pal_md_ctx *ctx, const void *data, size_t len) {
     HAPPrecondition(data);
     HAPPrecondition(len > 0);
 
-    return mbedtls_md_update(&ctx->ctx, data, len) == 0;
+    if (ctx->hmac) {
+        return mbedtls_md_hmac_update(&ctx->ctx, data, len) == 0;
+    } else {
+        return mbedtls_md_update(&ctx->ctx, data, len) == 0;
+    }
 }
 
 bool pal_md_digest(pal_md_ctx *ctx, uint8_t *output) {
     HAPPrecondition(ctx);
     HAPPrecondition(output);
 
-    return mbedtls_md_finish(&ctx->ctx, output) == 0;
+    if (ctx->hmac) {
+        return mbedtls_md_hmac_finish(&ctx->ctx, output) == 0;
+    } else {
+        return mbedtls_md_finish(&ctx->ctx, output) == 0;
+    }
 }

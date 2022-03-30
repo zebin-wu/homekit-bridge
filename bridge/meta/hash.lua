@@ -34,8 +34,9 @@ function hash:hexdigest() end
 
 ---Create a hash context.
 ---@param type HashType
+---@param key? string If key is set, HMAC will be used.
 ---@return HashContext ctx
 ---@nodiscard
-function M.create(type) end
+function M.create(type, key) end
 
 return M
