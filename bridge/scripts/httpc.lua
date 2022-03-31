@@ -102,12 +102,7 @@ function client:request(method, path, headers, body)
     if mode == "chunked" then
         body = function ()
             local size = tonumber(sc:readline("\r\n", true), 16)
-            local chunk
-            if size > 0 then
-                chunk = sc:read(size, true)
-            else
-                chunk = ""
-            end
+            local chunk = size > 0 and sc:read(size, true) or ""
             sc:readline("\r\n", true)
             return chunk
         end
@@ -116,7 +111,7 @@ function client:request(method, path, headers, body)
     elseif code == 204 or code == 304 or code < 200 then
         body = nil
     else
-        return code, headers, sc:readall()
+        body = sc:readall()
     end
 
     return code, headers, body
