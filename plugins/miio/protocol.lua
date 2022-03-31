@@ -89,8 +89,7 @@ local encryption = {}
 ---@return string output
 function encryption:encrypt(input)
     local ctx = self.ctx
-    ctx:begin("encrypt", self.key, self.iv)
-    return ctx:update(input) .. ctx:finsh()
+    return ctx:begin("encrypt", self.key, self.iv):update(input) .. ctx:finsh()
 end
 
 ---Decrypt data.
@@ -98,17 +97,14 @@ end
 ---@return string output
 function encryption:decrypt(input)
     local ctx = self.ctx
-    ctx:begin("decrypt", self.key, self.iv)
-    return ctx:update(input) .. ctx:finsh()
+    return ctx:begin("decrypt", self.key, self.iv):begin(input) .. ctx:finsh()
 end
 
 ---Calculates a MD5 checksum for the given data.
 ---@param data string
 ---@return string digest
 local function md5(data)
-    local m = hash.create("MD5")
-    m:update(data)
-    return m:digest()
+    return hash.create("MD5"):update(data):digest()
 end
 
 ---Create an encryption.
@@ -156,8 +152,7 @@ local function pack(unknown, did, stamp, token, data)
     if token then
         checksum = md5(header .. token .. (data or ""))
     else
-        checksum = string.pack(">I4>I4>I4>I4",
-            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff)
+        checksum = string.pack("c16", string.char(0xff))
     end
     assert(#checksum == 16)
 
