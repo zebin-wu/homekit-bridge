@@ -129,30 +129,24 @@ function session:login()
     return self
 end
 
----Call cloud API.
+---Request.
 ---@param path string
----@param params table
+---@param data any
 ---@param encrypt? boolean
 ---@return table result
-function session:call(path, params, encrypt)
+function session:request(path, data, encrypt)
     if self.serviceToken == nil then
         error("attemp to call api before login")
     end
-    local cookie = {
-        userId = self.userId,
-        yetAnotherServiceToken = self.serviceToken,
-        serviceToken = self.serviceToken,
-        locale = "en_GB",
-        timezone = "GMT+02:00",
-        is_daylight = "1",
-        dst_offset = "3600000",
-        channel = "MI_APP_STORE"
-    }
     local nonce = genNonce()
     local signedNonce = signNonce(self.ssecurity, nonce)
+    local rc4ctx
+    local params = {
+        data = cjson.encode(data)
+    }
     if encrypt then
         params.rc4_hash__ = genSignatureARC4("POST", path, signedNonce, params)
-        local rc4ctx = arc4.create(signedNonce, 1024)
+        rc4ctx = arc4.create(signedNonce, 1024)
         for k, v in pairs(params) do
             params[k] = base64.encode(rc4ctx:crypt(v))
             rc4ctx:reset()
@@ -168,10 +162,18 @@ function session:call(path, params, encrypt)
         path, urllib.buildQuery(params))
     local code, headers, body = self.session:request(
         "POST", url, 5000, {
-        ["Accept-Encoding"] = encrypt and nil or "chunk",
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
-        ["Cookie"] = self.cookie .. ";" .. buildCookie(cookie),
+        ["Cookie"] = self.cookie .. ";" .. buildCookie({
+            userId = self.userId,
+            yetAnotherServiceToken = self.serviceToken,
+            serviceToken = self.serviceToken,
+            locale = "en_GB",
+            timezone = "GMT+02:00",
+            is_daylight = "1",
+            dst_offset = "3600000",
+            channel = "MI_APP_STORE"
+        }),
         ["x-xiaomi-protocal-flag-cli"] = "PROTOCAL-HTTP2",
         ["MIOT-ENCRYPT-ALGORITHM"] = encrypt and "ENCRYPT-RC4" or nil,
     })
@@ -179,7 +181,7 @@ function session:call(path, params, encrypt)
         error(cjson.decode(body).message)
     end
     if encrypt then
-        body = arc4.create(signedNonce, 1024):crypt(base64.decode(body))
+        body = rc4ctx:crypt(base64.decode(body))
     end
     local resp = cjson.decode(body)
     if resp.code ~= 0 then
@@ -189,18 +191,23 @@ function session:call(path, params, encrypt)
 end
 
 ---Get miIO devices.
+---@param dids? string[]
 ---@return table
-function session:getDevices()
-    return self:call("/home/device_list", {
-        data = '{"getVirtualModel":false,"getHuamiDevices":1,"get_split_device":false,"support_smart_home":true}'
+function session:getDevices(dids)
+    return self:request("/home/device_list", dids and {
+        dids = dids
+    } or {
+        getVirtualModel = false,
+        getHuamiDevices = 1
     }).list
 end
 
 ---Get BlueTooth beacon key.
 ---@param did string Device ID.
 function session:getBeaconKey(did)
-    return self:call("/v2/device/blt_get_beaconkey", {
-        data = '{"did":"' .. did .. '","pdid":1}'
+    return self:request("/v2/device/blt_get_beaconkey",     {
+        did = did,
+        pdid = 1,
     }).beaconkey
 end
 
