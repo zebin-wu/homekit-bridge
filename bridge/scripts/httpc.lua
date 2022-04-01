@@ -1,6 +1,12 @@
 local stream = require "stream"
 local urllib = require "url"
 local tonumber = tonumber
+local tinsert = table.insert
+local ipairs = ipairs
+local pairs = pairs
+local assert = assert
+local type = type
+local error = error
 
 ---@class httpclib HTTP client library.
 local M = {}
@@ -38,22 +44,28 @@ function client:request(method, path, headers, body)
     local chunked = false
     do
         headers = headers or {}
-        if not headers.host then
-            headers.host = self.host
+        if not headers["Host"] then
+            headers["Host"] = self.host
         end
         if body then
             if type(body) == "function" then
                 chunked = true
-                headers["transfer-encoding"] = "chunked"
+                headers["Transfer-Encoding"] = "chunked"
             else
-                headers["content-length"] = #body
+                headers["Content-Length"] = #body
             end
         else
-            headers["content-length"] = 0
+            headers["Content-Length"] = 0
         end
         sc:write(("%s %s HTTP/1.1\r\n"):format(method, path))
         for k, v in pairs(headers) do
-            sc:write(("%s:%s\r\n"):format(k, v))
+            if type(v) == "table" then
+                for _, v in ipairs(v) do
+                    sc:write(("%s:%s\r\n"):format(k, v))
+                end
+            else
+                sc:write(("%s:%s\r\n"):format(k, v))
+            end
         end
         sc:write("\r\n")
     end
@@ -85,18 +97,25 @@ function client:request(method, path, headers, body)
             break
         end
         local k, v = line:match("^(.-):%s*(.*)")
-        headers[k:lower()] = v
+        local t = type(headers[k])
+        if t == "table" then
+            tinsert(headers[k], v)
+        elseif t == "string" then
+            headers[k] = { headers[k], v }
+        else
+            headers[k] = v
+        end
     end
 
-    local length = headers["content-length"]
+    local length = headers["Content-Length"]
     if length then
         length = tonumber(length)
     end
 
-    local mode = headers["transfer-encoding"]
+    local mode = headers["Transfer-Encoding"]
     if mode then
         if mode ~= "identity" and mode ~= "chunked" then
-            error("unsupport transfer-encoding: " .. mode)
+            error("unsupport Transfer-Encoding: " .. mode)
         end
     end
     if mode == "chunked" then
