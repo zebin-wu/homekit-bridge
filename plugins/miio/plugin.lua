@@ -2,7 +2,9 @@ local hap = require "hap"
 local hapUtil = require "hap.util"
 local nvs = require "nvs"
 local device = require "miio.device"
+local cloudapi = require "miio.cloudapi"
 local traceback = debug.traceback
+local tinsert = table.insert
 
 local M = {}
 local logger = log.getLogger("miio.plugin")
@@ -20,7 +22,10 @@ local logger = log.getLogger("miio.plugin")
 ---Miio plugin configuration.
 ---@class MiioPluginConf:PluginConf
 ---
----@field accessories MiioAccessoryConf[] Accessory configurations.
+---@field region '"cn"'|'"de"'|'"us"'|'"ru"'|'"tw"'|'"sg"'|'"in"'|'"i2"' Server region.
+---@field username string User ID or email.
+---@field password string User password.
+---@field ssid string Wi-Fi SSID.
 
 ---Generate accessory via configuration.
 ---@param conf MiioAccessoryConf Accessory configuration.
@@ -39,16 +44,39 @@ end
 ---Initialize plugin.
 ---@param conf MiioPluginConf Plugin configuration.
 function M.init(conf)
-    logger:info("Initialized.")
+    logger:info("Initialing ...")
 
-    for _, accessoryConf in ipairs(conf.accessories) do
-        local success, result = xpcall(gen, traceback, accessoryConf)
+    local confs = {}
+    do
+        local devices
+        do
+            local session <close> = cloudapi.session(conf.region, conf.username, conf.password)
+            devices = session:getDevices("wifi")
+        end
+        collectgarbage()
+        local ssid = conf.ssid
+        for _, device in ipairs(devices) do
+            if device.ssid == ssid then
+                tinsert(confs, {
+                    addr = device.localip,
+                    token = device.token,
+                    name = device.name
+                })
+            end
+        end
+    end
+    collectgarbage()
+
+    for _, conf in ipairs(confs) do
+        local success, result = xpcall(gen, traceback, conf)
         if success == false then
             logger:error(result)
         else
             hap.addBridgedAccessory(result)
         end
     end
+
+    logger:info("Initialized.")
 end
 
 return M

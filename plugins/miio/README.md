@@ -2,28 +2,26 @@
 
 ## Introduction
 
-This plugin implement the [miio protocol](https://github.com/OpenMiHome/mihome-binary-protocol/blob/master/doc/PROTOCOL.md), and encapsulate the class `MiioDevice`, provide features:
+**miio** implement the [miio protocol](https://github.com/OpenMiHome/mihome-binary-protocol/blob/master/doc/PROTOCOL.md), and encapsulate the class `MiioDevice`, provide features:
 
 - Create a device object.
-- Start a request and receive the response asynchronously.
-- Automatically sync properties.
+- Start a request and get the response synchronously.
 - Get/Set properties.
 
 After the device is created, the plugin will search for the corresponding product module according to the device model to generate the specific accessory.
 
-## Configure your device
+**miio** also can get the devices information from xiaomi cloud `cloudapi`. As long as you provide your xiaomi account information and your home SSID, you can get all the device information in your home.
 
-### Get device token
+## Configure miio
 
-Refer to the following link: <https://www.home-assistant.io/integrations/xiaomi_miio#retrieving-the-access-token>
-
-### Write configuration
+### Configuration field description
 
 Name | Type | Description | Required | Example
 -|-|-|-|-
-`addr` | `string` | Device address | Yes | `"192.168.1.10"`
-`token` | `string` | Device token | Yes | `"d1abcd1230238cf1f123a142962afdd1"`
-`name` | `string` | Accessory name | No | `"My device"`
+`region` | `string` | Server region | Yes | `"cn"`,`"de"`,`"us"`,`"ru"`,`"tw"`,`"sg"`,`"in"`,`"i2"`
+`username` | `string` | User ID or email | YES | `"xxx@xxx.com"`,`"12345678"`
+`password` | `string` | User password | YES | `12345678`
+`ssid` | `string` | The SSID of the Wi-Fi | Yes | `"HUAWEI-A1"`
 
 Example: config.lua
 
@@ -34,18 +32,10 @@ return {
     },
     plugins = {
         miio = {
-            accessories = {
-                {
-                    addr = "192.168.1.10",
-                    token = "d1abcd1230238cf1f123a142962afdd1",
-                    name = "My device"
-                },
-                {
-                    addr = "192.168.1.11",
-                    token = "ababcd1230238cf1fde3a1429da7918f",
-                    name = "My device 2"
-                }
-            }
+            ssid = "HUAWEI-A1",
+            region = "cn",
+            username = "xxxxxx@xxxx.com",
+            password = "12345678",
         }
     }
 }

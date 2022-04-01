@@ -59,6 +59,7 @@ function M.init(pluginConfs)
     for name, _ in pairs(loaded) do
         loaded[name] = nil
     end
+    collectgarbage()
 end
 
 return M
