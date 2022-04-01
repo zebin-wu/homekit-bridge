@@ -7,6 +7,10 @@ local assert = assert
 local type = type
 local error = error
 local floor = math.floor
+local spack = string.pack
+local sunpack = string.unpack
+local schar = string.char
+local srep = string.rep
 
 local M = {}
 local logger = log.getLogger("miio.protocol")
@@ -125,11 +129,9 @@ local function createEncryption(token)
         iv = iv,
     }
 
-    setmetatable(o, {
+    return setmetatable(o, {
         __index = encryption
     })
-
-    return o
 end
 
 ---Pack a message to a binary package.
@@ -146,13 +148,13 @@ local function pack(unknown, did, stamp, token, data)
         len = len + #data
     end
 
-    local header = string.pack(">I2>I2>I4>I4>I4",
+    local header = spack(">I2>I2>I4>I4>I4",
         0x2131, len, unknown, did, stamp)
     local checksum = nil
     if token then
         checksum = md5(header .. token .. (data or ""))
     else
-        checksum = string.pack("c16", string.char(0xff))
+        checksum = srep(schar(0xff), 16)
     end
     assert(#checksum == 16)
 
@@ -165,32 +167,32 @@ end
 ---@return MiioMessage message
 ---@nodiscard
 local function unpack(package, token)
-    if string.unpack(">I2", package, 1) ~= 0x2131 then
+    if sunpack(">I2", package, 1) ~= 0x2131 then
         error("Invalid magic number.")
     end
 
-    local len = string.unpack(">I2", package, 3)
+    local len = sunpack(">I2", package, 3)
     if len < 32 or len ~= #package then
         error("Invalid package length.")
     end
 
     local data = nil
     if len > 32 then
-        data = string.unpack("c" .. len - 32, package, 33)
+        data = sunpack("c" .. len - 32, package, 33)
     end
 
     if token then
-        local checksum = md5(string.unpack("c16", package, 1) .. token .. (data or ""))
+        local checksum = md5(sunpack("c16", package, 1) .. token .. (data or ""))
         assert(#checksum == 16)
-        if checksum ~= string.unpack("c16", package, 17) then
+        if checksum ~= sunpack("c16", package, 17) then
             error("Got checksum error which indicates use of an invalid token.")
         end
     end
 
     return {
-        unknown = string.unpack(">I4", package, 5),
-        did = string.unpack(">I4", package, 9),
-        stamp = string.unpack(">I4", package, 13),
+        unknown = sunpack(">I4", package, 5),
+        did = sunpack(">I4", package, 9),
+        stamp = sunpack(">I4", package, 13),
         data = data
     }
 end
@@ -222,7 +224,7 @@ function M.scan(timeout, addr)
 
     local hello = pack(0xffffffff, 0xffffffff, 0xffffffff)
     for i = 1, 3, 1 do
-        assert(sock:sendto(hello, addr or "255.255.255.255", 54321), "Failed to send hello message.")
+        assert(sock:sendto(hello, addr or "255.255.255.255", 54321), "failed to send hello message")
     end
 
     local seen = {}
