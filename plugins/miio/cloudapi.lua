@@ -4,8 +4,8 @@ local hash = require "hash"
 local cjson = require "cjson"
 local base64 = require "base64"
 local arc4 = require "arc4"
+local nvs = require "nvs"
 local random = math.random
-local tointeger = math.tointeger
 local tinsert = table.insert
 local tunpack = table.unpack
 local tconcat = table.concat
@@ -18,6 +18,19 @@ local M = {}
 
 ---@class MiCloudSession:MiCloudSessionPriv Xiaomi Cloud API session.
 local session = {}
+
+---Get miIO devices.
+---@param type? '"wifi"'|'"zigbee"'|'"blueTooth"'
+---@return integer pid
+local function getPidByType(type)
+    if type == "wifi" then
+        return 0
+    elseif type == "zigbee" then
+        return 3
+    elseif type == "blueTooth" then
+        return 6
+    end
+end
 
 local function buildCookie(tab)
     local strs = {}
@@ -64,6 +77,8 @@ local function signNonce(ssecurity, nonce)
     return hash.create("SHA256"):update(ssecurity .. nonce):digest()
 end
 
+---Login step 1.
+---@return string sign
 function session:loginStep1()
     local code, _, body = self.session:request(
         "GET", "https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true", 5000, {
@@ -74,10 +89,13 @@ function session:loginStep1()
     if code ~= 200 or body:find("_sign", 1, true) == nil then
         error("invalid username")
     end
-    self.sign = body:match("\"_sign\":\"(.-)\"")
+    return body:match("\"_sign\":\"(.-)\"")
 end
 
-function session:loginStep2()
+---Login step 2.
+---@param sign string
+---@return string location
+function session:loginStep2(sign)
     local code, _, body = self.session:request(
         "POST", "https://account.xiaomi.com/pass/serviceLoginAuth2?" .. urllib.buildQuery({
             sid = "xiaomiio",
@@ -85,28 +103,27 @@ function session:loginStep2()
             callback = "https://sts.api.io.mi.com/sts",
             qs = "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
             user = self.username,
-            _sign = self.sign,
+            _sign = sign,
             _json = true
         }), 5000, {
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
         ["Cookie"] = self.cookie,
     })
-    body = body:gsub("&&&START&&&", "")
-    local resp = cjson.decode(body)
-    if code ~= 200 or resp.ssecurity == nil or #resp.ssecurity < 4 then
+    local ssecurity = body:match("\"ssecurity\":\"(.-)\"")
+    if code ~= 200 or ssecurity == nil or #ssecurity < 4 then
         error("invalid login or password")
     end
-    self.ssecurity = base64.decode(resp.ssecurity)
-    self.userId = tointeger(resp.userId)
-    self.cUserId = resp.cUserId
-    self.passToken = resp.passToken
-    self.location = resp.location
+    self.ssecurity = ssecurity
+    self.userId = body:match("\"userId\":(%d+)")
+    return body:match("\"location\":\"(.-)\"")
 end
 
-function session:loginStep3()
-    local code, headers, body = self.session:request(
-        "GET", self.location, 5000, {
+---Loigin step 3.
+---@param location string
+function session:loginStep3(location)
+    local code, headers = self.session:request(
+        "GET", location, 5000, {
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
         ["Cookie"] = self.cookie,
@@ -114,19 +131,45 @@ function session:loginStep3()
     if code ~= 200 then
         error("unable to get service token")
     end
-    self.serviceToken = headers["set-cookie"]:match("serviceToken=(.-);")
-    base64.decode(self.serviceToken)
-    self.location = nil
-    self.sign = nil
+    for _, setcookie in ipairs(headers["Set-Cookie"]) do
+        local serviceToken = setcookie:match("serviceToken=(.-);")
+        if serviceToken then
+            self.serviceToken = serviceToken
+            return
+        end
+    end
+    error("no service token in response")
 end
 
 ---Login.
 ---@return MiCloudSession
 function session:login()
-    self:loginStep1()
-    self:loginStep2()
-    self:loginStep3()
+    self:loginStep3(self:loginStep2(self:loginStep1()))
+    local handle <close> = nvs.open("miio.cloudapi")
+    handle:set(self.username:sub(1, 15), {
+        agentId = self.agentId,
+        deviceId = self.deviceId,
+        serviceToken = self.serviceToken,
+        ssecurity = self.ssecurity,
+        userId = self.userId
+    })
+    handle:commit()
     return self
+end
+
+function session:logout()
+    self.serviceToken = nil
+    self.ssecurity = nil
+    self.userId = nil
+    local handle <close> = nvs.open("miio.cloudapi")
+    handle:set(self.username:sub(1, 15), nil)
+    handle:commit()
+end
+
+---Is login.
+---@return boolean
+function session:isLogin()
+    return self.serviceToken ~= nil
 end
 
 ---Request.
@@ -138,8 +181,9 @@ function session:request(path, data, encrypt)
     if self.serviceToken == nil then
         error("attemp to call api before login")
     end
+    local ssecurity = base64.decode(self.ssecurity)
     local nonce = genNonce()
-    local signedNonce = signNonce(self.ssecurity, nonce)
+    local signedNonce = signNonce(ssecurity, nonce)
     local rc4ctx
     local params = {
         data = cjson.encode(data)
@@ -152,7 +196,7 @@ function session:request(path, data, encrypt)
             rc4ctx:reset()
         end
         params.signature = genSignatureARC4("POST", path, signedNonce, params)
-        params.ssecurity = base64.encode(self.ssecurity)
+        params.ssecurity = base64.encode(ssecurity)
     else
         params.signature = genSignature(path, nonce, signedNonce, params)
     end
@@ -160,7 +204,7 @@ function session:request(path, data, encrypt)
     local url = ("https://%sapi.io.mi.com/app%s?%s"):format(
         self.region == "cn" and "" or self.region .. ".",
         path, urllib.buildQuery(params))
-    local code, headers, body = self.session:request(
+    local code, _, body = self.session:request(
         "POST", url, 5000, {
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
@@ -168,8 +212,8 @@ function session:request(path, data, encrypt)
             userId = self.userId,
             yetAnotherServiceToken = self.serviceToken,
             serviceToken = self.serviceToken,
-            locale = "en_GB",
-            timezone = "GMT+02:00",
+            locale = "zn_CN",
+            timezone = "GMT+08:00",
             is_daylight = "1",
             dst_offset = "3600000",
             channel = "MI_APP_STORE"
@@ -191,21 +235,28 @@ function session:request(path, data, encrypt)
 end
 
 ---Get miIO devices.
+---@param type? '"wifi"'|'"zigbee"'|'"blueTooth"'
+---@return table
+function session:getDevices(type)
+    local pid = type and getPidByType(type) or nil
+    return self:request("/home/device_list", pid and {
+        pid = { pid },
+    } or {}).list
+end
+
+---Get miIO devices by device ID.
 ---@param dids? string[]
 ---@return table
-function session:getDevices(dids)
-    return self:request("/home/device_list", dids and {
+function session:getDevicesByID(dids)
+    return self:request("/home/device_list", {
         dids = dids
-    } or {
-        getVirtualModel = false,
-        getHuamiDevices = 1
     }).list
 end
 
 ---Get BlueTooth beacon key.
 ---@param did string Device ID.
 function session:getBeaconKey(did)
-    return self:request("/v2/device/blt_get_beaconkey",     {
+    return self:request("/v2/device/blt_get_beaconkey", {
         did = did,
         pdid = 1,
     }).beaconkey
@@ -221,23 +272,38 @@ end
 ---@param password string User password.
 ---@return MiCloudSession session
 function M.session(region, username, password)
+    local cache
+    do
+        local handle <close> = nvs.open("miio.cloudapi")
+        cache = handle:get(username:sub(1, 15)) or {}
+    end
+    local agentId = cache.agentid or randomBytes(65, 69, 13)
+    local deviceId = cache.agentid or randomBytes(97, 122, 6)
+
     ---@class MiCloudSessionPriv
     local o = {
         region = region,
         username = username,
+        agentId = agentId,
+        deviceId = deviceId,
         password = hash.create("MD5"):update(password):hexdigest():upper(),
-        agent = ("Android-7.1.1-1.0.0-ONEPLUS A3010-136-%s APP/xiaomi.smarthome APPV/62830"):format(randomBytes(65, 69, 13)),
+        agent = ("Android-7.1.1-1.0.0-ONEPLUS A3010-136-%s APP/xiaomi.smarthome APPV/62830"):format(agentId),
         cookie = buildCookie({
             sdkVersion = "accountsdk-18.8.15",
-            deviceId = randomBytes(97, 122, 6)
+            deviceId = deviceId,
         }),
+        ssecurity = cache.ssecurity,
+        userId = cache.userId,
+        serviceToken = cache.serviceToken,
         session = httpc.session()
     }
 
-    return setmetatable(o, {
+    setmetatable(o, {
         __index = session,
         __close = session.close
     })
+
+    return o:isLogin() and o or o:login()
 end
 
 return M
