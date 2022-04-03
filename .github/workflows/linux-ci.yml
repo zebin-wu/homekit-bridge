@@ -24,9 +24,17 @@ jobs:
             libssl-dev python3-pip
           sudo pip3 install cpplint
 
-      - name: Linux build
+      - name: Build & Install
         run: |
           mkdir build
           cd build
           cmake -G Ninja ..
           ninja
+          sudo ninja install
+
+      - name: Run unit tests
+        run: |
+          cd build
+          ./platform/linux/homekit-bridge \
+            -d tests_scripts \
+            -e test
