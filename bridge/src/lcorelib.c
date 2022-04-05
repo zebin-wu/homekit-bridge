@@ -12,6 +12,7 @@
 #include "lc.h"
 
 #define LUA_TIMER_NAME "Timer*"
+#define LUA_MQ_OBJ_NAME "MQ*"
 #define LCORE_ATEXITS "_ATEXITS"
 
 static const HAPLogObject lcore_log = {
@@ -27,6 +28,12 @@ typedef struct {
     lua_State *mL;
     HAPPlatformTimerRef timer;  /* Timer ID. Start from 1. */
 } lcore_timer_ctx;
+
+typedef struct {
+    size_t first;
+    size_t last;
+    size_t size;
+} lcore_mq;
 
 static int lcore_time(lua_State *L) {
     lua_pushnumber(L, HAPPlatformClockGetCurrent());
@@ -117,7 +124,7 @@ static int lcore_sleep(lua_State *L) {
     return lua_yield(L, 0);
 }
 
-static int lcore_createTimer(lua_State *L) {
+static int lcore_create_timer(lua_State *L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
 
     int n = lua_gettop(L);
@@ -130,6 +137,19 @@ static int lcore_createTimer(lua_State *L) {
     ctx->nargs = n - 1;
     ctx->timer = 0;
     ctx->mL = lc_getmainthread(L);
+    return 1;
+}
+
+static int lcore_create_mq(lua_State *L) {
+    size_t size = luaL_checkinteger(L, 1);
+    luaL_argcheck(L, size > 0, 1, "size out of range");
+    lcore_mq *obj = lua_newuserdatauv(L, sizeof(*obj), 1);
+    luaL_setmetatable(L, LUA_MQ_OBJ_NAME);
+    obj->first = 1;
+    obj->last = 1;
+    obj->size = size;
+    lua_createtable(L, 0, 1);
+    lua_setuservalue(L, -2);
     return 1;
 }
 
@@ -218,15 +238,6 @@ static int lcore_timer_tostring(lua_State *L) {
     return 1;
 }
 
-static const luaL_Reg lcore_funcs[] = {
-    {"time", lcore_time},
-    {"exit", lcore_exit},
-    {"atexit", lcore_atexit},
-    {"sleep", lcore_sleep},
-    {"createTimer", lcore_createTimer},
-    {NULL, NULL},
-};
-
 /*
  * metamethods for timer object
  */
@@ -246,7 +257,7 @@ static const luaL_Reg lcore_timer_meth[] = {
     {NULL, NULL},
 };
 
-static void lcore_createmeta(lua_State *L) {
+static void lcore_timer_createmeta(lua_State *L) {
     luaL_newmetatable(L, LUA_TIMER_NAME);  /* metatable for timer object */
     luaL_setfuncs(L, lcore_timer_metameth, 0);  /* add metamethods to new metatable */
     luaL_newlibtable(L, lcore_timer_meth);  /* create method table */
@@ -255,8 +266,142 @@ static void lcore_createmeta(lua_State *L) {
     lua_pop(L, 1);  /* pop metatable */
 }
 
+static size_t lcore_mq_size(lcore_mq *obj) {
+    return obj->first > obj->last ? obj->size - obj->first + obj->last : obj->last - obj->first;
+}
+
+static int lcore_mq_send(lua_State *L) {
+    lcore_mq *obj = luaL_checkudata(L, 1, LUA_MQ_OBJ_NAME);
+    int narg = lua_gettop(L) - 1;
+    int status, nres;
+
+    lua_getuservalue(L, 1);
+
+    if (lua_getfield(L, -1, "wait") == LUA_TTABLE) {
+        lua_pushnil(L);
+        lua_setfield(L, -3, "wait");  // que.wait = nil
+        int waiting = luaL_len(L, -1);
+        for (int i = 1; i <= waiting; i++) {
+            HAPAssert(lua_geti(L, -1, i) == LUA_TTHREAD);
+            lua_State *co = lua_tothread(L, -1);
+            lua_pop(L, 1);
+            int max = 1 + narg;
+            if (luai_unlikely(!lua_checkstack(L, narg))) {
+                luaL_error(L, "stack overflow");
+            }
+            for (int i = 2; i <= max; i++) {
+                lua_pushvalue(L, i);
+            }
+            lua_xmove(L, co, narg);
+            status = lc_resume(co, L, narg, &nres);
+            if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+                HAPLogError(&lcore_log, "%s: %s", __func__, lua_tostring(L, -1));
+            }
+        }
+    } else {
+        if (lcore_mq_size(obj) == obj->size) {
+            luaL_error(L, "the message queue is full");
+        }
+        lua_pop(L, 1);
+        lua_insert(L, 2);
+        lua_createtable(L, narg, 0);
+        lua_insert(L, 3);
+        for (int i = narg; i >= 1; i--) {
+            lua_seti(L, 3, i);
+        }
+        lua_seti(L, 2, obj->last);
+        obj->last++;
+        if (obj->last > obj->size + 1) {
+            obj->last = 1;
+        }
+    }
+    return 0;
+}
+
+static int lcore_mq_recv(lua_State *L) {
+    lcore_mq *obj = luaL_checkudata(L, 1, LUA_MQ_OBJ_NAME);
+    if (lua_gettop(L) != 1) {
+        luaL_error(L, "invalid arguements");
+    }
+    lua_getuservalue(L, 1);
+    if (obj->last == obj->first) {
+        int type = lua_getfield(L, 2, "wait");
+        if (type == LUA_TNIL) {
+            lua_pop(L, 1);
+            lua_createtable(L, 1, 0);
+            lua_pushthread(L);
+            lua_seti(L, 3, 1);
+            lua_setfield(L, 2, "wait");
+        } else {
+            HAPAssert(type == LUA_TTABLE);
+            lua_pushthread(L);
+            lua_seti(L, 3, luaL_len(L, 3) + 1);
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 1);
+        return lua_yield(L, 0);
+    } else {
+        lua_geti(L, 2, obj->first);
+        lua_pushnil(L);
+        lua_seti(L, 2, obj->first);
+        obj->first++;
+        if (obj->first > obj->size + 1) {
+            obj->first = 1;
+        }
+        int nargs = luaL_len(L, 3);
+        for (int i = 1; i <= nargs; i++) {
+            lua_geti(L, 3, i);
+        }
+        return nargs;
+    }
+}
+
+static int lcore_mq_tostring(lua_State *L) {
+    lcore_mq *obj = luaL_checkudata(L, 1, LUA_MQ_OBJ_NAME);
+    lua_pushfstring(L, "message queue (%p)", obj);
+    return 1;
+}
+
+/*
+ * metamethods for message queue object
+ */
+static const luaL_Reg lcore_mq_metameth[] = {
+    {"__index", NULL},  /* place holder */
+    {"__tostring", lcore_mq_tostring},
+    {NULL, NULL}
+};
+
+/*
+ * methods for MQ object
+ */
+static const luaL_Reg lcore_mq_meth[] = {
+    {"send", lcore_mq_send},
+    {"recv", lcore_mq_recv},
+    {NULL, NULL},
+};
+
+static void lcore_mq_createmeta(lua_State *L) {
+    luaL_newmetatable(L, LUA_MQ_OBJ_NAME);  /* metatable for MQ object */
+    luaL_setfuncs(L, lcore_mq_metameth, 0);  /* add metamethods to new metatable */
+    luaL_newlibtable(L, lcore_mq_meth);  /* create method table */
+    luaL_setfuncs(L, lcore_mq_meth, 0);  /* add MQ object methods to method table */
+    lua_setfield(L, -2, "__index");  /* metatable.__index = method table */
+    lua_pop(L, 1);  /* pop metatable */
+}
+
+static const luaL_Reg lcore_funcs[] = {
+    {"time", lcore_time},
+    {"exit", lcore_exit},
+    {"atexit", lcore_atexit},
+    {"sleep", lcore_sleep},
+    {"createTimer", lcore_create_timer},
+    {"createMQ", lcore_create_mq},
+    {NULL, NULL},
+};
+
 LUAMOD_API int luaopen_core(lua_State *L) {
     luaL_newlib(L, lcore_funcs);
-    lcore_createmeta(L);
+    lcore_timer_createmeta(L);
+    lcore_mq_createmeta(L);
     return 1;
 }

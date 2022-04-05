@@ -6,6 +6,9 @@ core = {}
 ---@class Timer:userdata Timer.
 local timer = {}
 
+---@class MessageQueue:userdata Message queue.
+local mq = {}
+
 ---Get current time in milliseconds.
 function core.time() end
 
@@ -35,5 +38,21 @@ function timer:start(ms) end
 ---Stop the timer before trigger.
 ---If the timer has not started, nothing will happen.
 function timer:stop() end
+
+---Send message.
+---@param ... any
+function mq:send(...) end
+
+---Receive message.
+---
+---When the message queue is empty, the current coroutine
+---waits here until a message is received.
+---@return ...
+function mq:recv() end
+
+---Create a message queue.
+---@param size integer Queue size.
+---@return MessageQueue
+function core.createMQ(size) end
 
 return core

@@ -1,6 +1,5 @@
 local protocol = require "miio.protocol"
 local util = require "util"
-local mq = require "mq"
 local xpcall = xpcall
 local traceback = debug.traceback
 local assert = assert
@@ -160,7 +159,7 @@ function M.create(addr, token)
         pcb = protocol.create(addr, util.hex2bin(token)),
         addr = addr,
         timeout = 5000,
-        mq = mq.create(1),
+        mq = core.createMQ(1),
         names = {}, ---@type string[]
     }
 
