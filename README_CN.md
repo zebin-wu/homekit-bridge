@@ -20,7 +20,7 @@
 
 ## 支持的设备
 
-### 米家 - [miio](plugins/miio/README.md)
+### 米家 - [miio](plugins/miio/README_CN.md)
 
 产品名称 | 型号
 -|-

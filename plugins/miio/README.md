@@ -8,20 +8,20 @@
 - Start a request and get the response synchronously.
 - Get/Set properties.
 
-After the device is created, the plugin will search for the corresponding product module according to the device model to generate the specific accessory.
+**miio** also implements a protocol for communicating with the xiaomi cloud, allowing to automatically get device information (including device token) from the cloud after configuring the user name and password, so as to establish a connection with the miio device later.
 
-**miio** also can get the devices information from xiaomi cloud `cloudapi`. As long as you provide your xiaomi account information and your home SSID, you can get all the device information in your home.
+When the device is created, the plugin will look for the adapted product script based on the device's model `{mfg}.{product}.{submodel}`, and if it can find it, it will generate a HomeKit accessory.
 
-## Configure miio
+## Configure
 
-### Configuration field description
+### Configuration field
 
 Name | Type | Description | Required | Example
 -|-|-|-|-
-`region` | `string` | Server region | Yes | `"cn"`,`"de"`,`"us"`,`"ru"`,`"tw"`,`"sg"`,`"in"`,`"i2"`
-`username` | `string` | User ID or email | YES | `"xxx@xxx.com"`,`"12345678"`
+`region` | `string` | Server region | YES | `cn`,`de`,`us`,`ru`,`tw`,`sg`,`in`,`i2`
+`username` | `string` | User ID or email | YES | `xxx@xxx.com`,`12345678`
 `password` | `string` | User password | YES | `12345678`
-`ssid` | `string` | The SSID of the Wi-Fi | Yes | `"HUAWEI-A1"`
+`ssid` | `string` | The SSID of the Wi-Fi | YES | `HUAWEI-A1`
 
 Example: config.lua
 
