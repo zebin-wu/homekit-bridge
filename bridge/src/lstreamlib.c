@@ -18,13 +18,13 @@
 #define LSTREAM_LINE_LEN 256
 #define LSTREAM_CLIENT_NAME "StreamClient*"
 
-typedef enum lstream_client_type {
+HAP_ENUM_BEGIN(uint8_t, lstream_client_type) {
     LSTREAM_CLIENT_TCP,
     LSTREAM_CLIENT_TLS,
     LSTREAM_CLIENT_DTLS
-} lstream_client_type;
+} HAP_ENUM_END(uint8_t, lstream_client_type);
 
-typedef enum lstream_client_state {
+HAP_ENUM_BEGIN(uint8_t, lstream_client_state) {
     LSTREAM_CLIENT_NONE,
     LSTREAM_CLIENT_DNS_RESOLVING,
     LSTREAM_CLIENT_CONNECTING,
@@ -34,7 +34,7 @@ typedef enum lstream_client_state {
     LSTREAM_CLIENT_HANDSHAKE_STEP2_WRITE,
     LSTREAM_CLIENT_HANDSHAKED,
     LSTREAM_CLIENT_ENCRYPTING,
-} lstream_client_state;
+} HAP_ENUM_END(uint8_t, lstream_client_state);
 
 const char *lstream_client_type_strs[] = {
     "TCP",
@@ -46,9 +46,9 @@ const char *lstream_client_type_strs[] = {
 typedef struct lstream_client {
     bool host_is_addr;
     bool sslctx_pending;
-    uint16_t port;
     lstream_client_state state;
     lstream_client_type type;
+    uint16_t port;
     HAPPlatformTimerRef timer;
     lua_State *co;
     const char *host;
