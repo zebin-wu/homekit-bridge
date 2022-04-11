@@ -9,18 +9,11 @@
 
 #include "app_int.h"
 
-typedef enum {
-    LCHIP_MFG,
-    LCHIP_MODEL,
-    LCHIP_SN,
-    LCHIP_HW_VER,
-} lchip_info_type;
-
 static const char *(*lchip_get_info_funcs[])() = {
-    [LCHIP_MFG] = pal_chip_get_manufacturer,
-    [LCHIP_MODEL] = pal_chip_get_model,
-    [LCHIP_SN] = pal_chip_get_serial_number,
-    [LCHIP_HW_VER] = pal_chip_get_hardware_version,
+    pal_chip_get_manufacturer,
+    pal_chip_get_model,
+    pal_chip_get_serial_number,
+    pal_chip_get_hardware_version,
 };
 
 const char *lchip_info_strs[] = {
