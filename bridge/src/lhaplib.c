@@ -2612,7 +2612,9 @@ static void lhap_server_handle_update_state(HAPAccessoryServerRef *server, void 
     HAPAssert(&desc->server == server);
     lua_State *L = desc->mL;
     lua_State *co = desc->co;
-    HAPAssert(co);
+    if (co == NULL) {
+        return;
+    }
     switch (HAPAccessoryServerGetState(&desc->server)) {
     case kHAPAccessoryServerState_Idle:
         HAPLog(&kHAPLog_Default, "Accessory Server State did update: Idle.");
