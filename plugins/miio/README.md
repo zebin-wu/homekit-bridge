@@ -23,19 +23,19 @@ Name | Type | Description | Required | Example
 `password` | `string` | User password | YES | `12345678`
 `ssid` | `string` | The SSID of the Wi-Fi | YES | `HUAWEI-A1`
 
-Example: config.lua
+Example: config.json
 
-```lua
-return {
-    bridge = {
-        name = "HomeKit Bridge"
+```json
+{
+    "bridge": {
+        "name": "HomeKit Bridge"
     },
-    plugins = {
-        miio = {
-            ssid = "HUAWEI-A1",
-            region = "cn",
-            username = "xxxxxx@xxxx.com",
-            password = "12345678",
+    "plugins": {
+        "miio": {
+            "region": "cn",
+            "username": "xxx@xxx.com",
+            "password": "12345678",
+            "ssid": "HUAWEI-A1"
         }
     }
 }

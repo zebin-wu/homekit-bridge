@@ -84,7 +84,7 @@ $ homekit-bridge
 
 #### 配置
 
-配置文件`config.lua`默认位于`/usr/local/lib/homekit-bridge`，可以在运行homekit-bridge之前修改它。如果你指定了工作目录，homekit-bridge将会到指定目录中寻找`config.lua`。
+配置文件`config.json`默认位于`/usr/local/lib/homekit-bridge`，可以在运行homekit-bridge之前修改它。如果你指定了工作目录，homekit-bridge将会到指定目录中寻找`config.json`。
 
 ### ESP-IDF
 

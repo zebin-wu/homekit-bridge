@@ -82,7 +82,7 @@ Option | Description
 
 #### Configure
 
-The configuration script `config.lua` is placed in `/usr/local/lib/homekit-bridge` by default, you can edit it before running homekit-bridge. If you specified the working directory, homekit-bridge will find `config.lua` in the specified directory.
+The configuration file `config.json` is placed in `/usr/local/lib/homekit-bridge` by default, you can edit it before running homekit-bridge. If you specified the working directory, homekit-bridge will find `config.json` in the specified directory.
 
 ### ESP-IDF
 
