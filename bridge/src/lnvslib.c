@@ -162,9 +162,7 @@ static void lnvs_createmeta(lua_State *L) {
     luaL_newmetatable(L, LUA_NVS_HANDLE_NAME);  /* metatable for NVS handle */
     luaL_setfuncs(L, lnvs_handle_metameth, 0);  /* add metamethods to new metatable */
     luaL_newlibtable(L, lnvs_handle_meth);  /* create method table */
-    lua_getglobal(L, "require");
-    lua_pushstring(L, "cjson");
-    lua_call(L, 1, 1);  /* require "cjson" */
+    lua_getglobal(L, "cjson");
     luaL_setfuncs(L, lnvs_handle_meth, 1);  /* add NVS handle methods to method table */
     lua_setfield(L, -2, "__index");  /* metatable.__index = method table */
     lua_pop(L, 1);  /* pop metatable */

@@ -39,6 +39,7 @@ static const luaL_Reg globallibs[] = {
     {LUA_DBLIBNAME, luaopen_debug},
     {LUA_CORE_NAME, luaopen_core},
     {LUA_LOG_NAME, luaopen_log},
+    {LUA_CJSON_NAME, luaopen_cjson},
     {NULL, NULL}
 };
 
@@ -47,7 +48,6 @@ static const luaL_Reg dynamiclibs[] = {
     {LUA_CHIP_NAME, luaopen_chip},
     {LUA_HASH_NAME, luaopen_hash},
     {LUA_CIPHER_NAME, luaopen_cipher},
-    {LUA_CJSON_NAME, luaopen_cjson},
     {LUA_SOCKET_NAME, luaopen_socket},
     {LUA_SSL_NAME, luaopen_ssl},
     {LUA_DNS_NAME, luaopen_dns},
@@ -101,6 +101,57 @@ static int searcher_embedfs(lua_State *L) {
     return 1;
 }
 
+static int readable(const char *filename) {
+    FILE *f = fopen(filename, "r");
+    if (f == NULL) return 0;
+    fclose(f);
+    return 1;
+}
+
+static int openjson(lua_State *L) {
+    const char *filename = lua_tostring(L, lua_upvalueindex(1));
+    FILE *f = fopen(filename, "r");
+    if (f == NULL) {
+        lua_pushfstring(L, "no file '%s'", filename);
+        lua_error(L);
+    }
+    lua_pushvalue(L, lua_upvalueindex(2));
+    char buf[512];
+    luaL_Buffer B;
+    luaL_buffinit(L, &B);
+    while (!feof(f)) {
+        size_t rc = fread(buf, 1, sizeof(buf), f);
+        luaL_addlstring(&B, buf, rc);
+    }
+    fclose(f);
+    luaL_pushresult(&B);
+    int status = lua_pcall(L, 1, 1, 0);
+    if (luai_unlikely(status != LUA_OK)) {
+        luaL_error(L, "decode '%s' failed: %s", filename, lua_tostring(L, -1));
+    }
+    return 1;
+}
+
+static int searcher_json(lua_State *L) {
+    size_t len;
+    const char *name = luaL_checklstring(L, 1, &len);
+    lua_getfield(L, lua_upvalueindex(1), "workdir");
+    const char *workdir = lua_tostring(L, -1);
+    if (luai_unlikely(workdir == NULL)) {
+        lua_pushstring(L, "'package.workdir' must be a string");
+        return 1;
+    }
+    lua_pushfstring(L, "%s/%s.json", workdir, name);
+    const char *filename = lua_tostring(L, -1);
+    if (readable(filename)) {
+        lua_getfield(L, lua_upvalueindex(2), "decode");
+        lua_pushcclosure(L, openjson, 2);
+    } else {
+        lua_pushfstring(L, "no file '%s'", filename);
+    }
+    return 1;
+}
+
 static void *app_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
     (void)ud; (void)osize; /* not used */
     if (nsize == 0) {
@@ -148,21 +199,22 @@ static int app_pinit(lua_State *L) {
     // GC in generational mode
     lua_gc(L, LUA_GCGEN, 0, 0);
 
-    // set file path
+    // package.path = "${dir}/?.lua;${dir}/?.luac"
     lua_getglobal(L, "package");
     lua_pushfstring(L, "%s/?.lua;%s/?.luac", dir, dir);
     lua_setfield(L, -2, "path");
 
-    // set C path
-    lua_pushstring(L, "");
+    // package.cpath = nil
+    lua_pushnil(L);
     lua_setfield(L, -2, "cpath");
-    lua_pop(L, 1);
+
+    // package.workdir = "${dir}"
+    lua_pushstring(L, dir);
+    lua_setfield(L, -2, "workdir");
 
     // push package.searchers to the stack
     // package.searchers = {searcher_preload, searcher_Lua, searcher_C, searcher_Croot}
-    lua_getglobal(L, "package");
     lua_getfield(L, -1, "searchers");
-    lua_remove(L, -2);
 
     // Get the length of the table 'searchers'
     int len = luaL_len(L, -1);
@@ -171,14 +223,17 @@ static int app_pinit(lua_State *L) {
     len -= 2;
 
     static const lua_CFunction searchers[] = {
-        searcher_dl, searcher_embedfs, NULL
+        searcher_dl, searcher_embedfs, searcher_json, NULL
     };
 
     // add searchers to package.searchers
     for (int i = 0; searchers[i] != NULL; i++) {
-        lua_pushcfunction(L, searchers[i]);
+        lua_pushvalue(L, -2);
+        lua_getglobal(L, "cjson");
+        lua_pushcclosure(L, searchers[i], 2);
         lua_rawseti(L, -2, len + i + 1);
     }
+    lua_pop(L, 2);
 
     // set _BRIDGE_VERSION
     lua_pushstring(L, BRIDGE_VERSION);
