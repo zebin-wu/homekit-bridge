@@ -114,7 +114,7 @@ function M.init(conf)
     logger:info("Initialized.")
 
     for _, accessoryConf in ipairs(conf.accessories) do
-        hap.addBridgedAccessory(gen(accessoryConf, nvs.open("lock::" .. accessoryConf.sn)))
+        hap.addBridgedAccessory(gen(accessoryConf, nvs.open(accessoryConf.sn)))
     end
 end
 
