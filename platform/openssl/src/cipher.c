@@ -12,6 +12,7 @@
 struct pal_cipher_ctx {
     EVP_CIPHER_CTX *ctx;
     const EVP_CIPHER *cipher;
+    pal_cipher_padding padding;
     pal_cipher_operation op;
 };
 
@@ -133,7 +134,7 @@ pal_cipher_ctx *pal_cipher_new(pal_cipher_type type) {
     if (!ctx->cipher) {
         goto err;
     }
-    pal_cipher_set_padding(ctx, PAL_CIPHER_PADDING_NONE);
+    ctx->padding = PAL_CIPHER_PADDING_NONE;
     return ctx;
 
 err:
@@ -172,7 +173,8 @@ bool pal_cipher_set_padding(pal_cipher_ctx *ctx, pal_cipher_padding padding) {
     HAPPrecondition(padding >= PAL_CIPHER_PADDING_NONE &&
         padding < PAL_CIPHER_PADDING_MAX);
 
-    return EVP_CIPHER_CTX_set_padding(ctx->ctx, pal_cipher_openssl_paddings[padding]);
+    ctx->padding = padding;
+    return true;
 }
 
 bool pal_cipher_begin(pal_cipher_ctx *ctx, pal_cipher_operation op, const uint8_t *key, const uint8_t *iv) {
@@ -183,6 +185,7 @@ bool pal_cipher_begin(pal_cipher_ctx *ctx, pal_cipher_operation op, const uint8_
     bool status = pal_cipher_crypt_funcs[op].init(ctx->ctx, ctx->cipher, NULL, key, iv);
     if (status) {
         ctx->op = op;
+        HAPAssert(EVP_CIPHER_CTX_set_padding(ctx->ctx, pal_cipher_openssl_paddings[ctx->padding]));
     }
     return status;
 }
