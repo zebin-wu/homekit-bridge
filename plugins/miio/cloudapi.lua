@@ -19,15 +19,30 @@ local M = {}
 ---@class MiCloudSession:MiCloudSessionPriv Xiaomi Cloud API session.
 local session = {}
 
+---Check the server region.
+---@param region string
+---@return boolean
+local function checkRegion(region)
+    if type(region) ~= "string" then
+        return false
+    end
+    for _, v in ipairs({"cn", "de", "us", "ru", "tw", "sg", "in", "i2"}) do
+        if region == v then
+            return true
+        end
+    end
+    return false
+end
+
 ---Get miIO devices.
----@param type? '"wifi"'|'"zigbee"'|'"blueTooth"'
+---@param type? '"wifi"'|'"zigbee"'|'"bluetooth"'
 ---@return integer pid
 local function getPidByType(type)
     if type == "wifi" then
         return 0
     elseif type == "zigbee" then
         return 3
-    elseif type == "blueTooth" then
+    elseif type == "bluetooth" then
         return 6
     end
 end
@@ -144,6 +159,7 @@ end
 ---Login.
 ---@return MiCloudSession
 function session:login()
+    assert(self:isLogin() == false, "attempt to log in repeatedly")
     self:loginStep3(self:loginStep2(self:loginStep1()))
     local handle <close> = nvs.open("miio.cloudapi")
     handle:set(self.username:sub(1, 15), {
@@ -158,6 +174,9 @@ function session:login()
 end
 
 function session:logout()
+    if not self:isLogin() then
+        return
+    end
     self.serviceToken = nil
     self.ssecurity = nil
     self.userId = nil
@@ -178,9 +197,7 @@ end
 ---@param encrypt? boolean
 ---@return table result
 function session:request(path, data, encrypt)
-    if self.serviceToken == nil then
-        error("attemp to call api before login")
-    end
+    assert(self:isLogin(), "attemp to request before login")
     local ssecurity = base64.decode(self.ssecurity)
     local nonce = genNonce()
     local signedNonce = signNonce(ssecurity, nonce)
@@ -235,7 +252,7 @@ function session:request(path, data, encrypt)
 end
 
 ---Get miIO devices.
----@param type? '"wifi"'|'"zigbee"'|'"blueTooth"'
+---@param type? '"wifi"'|'"zigbee"'|'"bluetooth"'
 ---@return table
 function session:getDevices(type)
     local pid = type and getPidByType(type) or nil
@@ -272,6 +289,10 @@ end
 ---@param password string User password.
 ---@return MiCloudSession session
 function M.session(region, username, password)
+    assert(checkRegion(region), "region must be one of ['cn', 'de', 'us', 'ru', 'tw', 'sg', 'in', 'i2']")
+    assert(type(username) == "string", "username must be a string")
+    assert(type(password) == "string", "password must be a string")
+
     local cache
     do
         local handle <close> = nvs.open("miio.cloudapi")
