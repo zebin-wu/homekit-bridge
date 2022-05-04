@@ -48,22 +48,22 @@ function M.gen(device, info, conf)
                     end, function (request, value)
                         local activeVal = Active.value
                         device.logger:info("Write Active: " .. searchKey(activeVal, value))
-                        device:setProp("power", value == activeVal.Active)
+                        device:request("s_power", { value == activeVal.Active })
                         raiseEvent(request.aid, request.sid, request.cid)
                     end),
                     RotationSpeed.new(iids.rotationSpeed, function (request)
-                        local value = device:getProp("fanSpeed")
+                        local value = device:getProp("speed")
                         device.logger:info("Read RotationSpeed: " .. value)
                         return value
                     end, function (request, value)
                         device.logger:info("Write RotationSpeed: " .. value)
-                        device:setProp("fanSpeed", tointeger(value))
+                        device:request("s_speed", { tointeger(value) })
                         raiseEvent(request.aid, request.sid, request.cid)
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request)
                         local swingModeVal = SwingMode.value
                         local value
-                        if device:getProp("swingMode") then
+                        if device:getProp("roll_enable") then
                             value = swingModeVal.Enabled
                         else
                             value = swingModeVal.Disabled
@@ -73,7 +73,7 @@ function M.gen(device, info, conf)
                     end, function (request, value)
                         local swingModeVal = SwingMode.value
                         device.logger:info("Write SwingMode: " .. searchKey(swingModeVal, value))
-                        device:setProp("swingMode", value == swingModeVal.Enabled)
+                        device:request("s_roll", { value == swingModeVal.Enabled })
                         raiseEvent(request.aid, request.sid, request.cid)
                     end)
                 }
