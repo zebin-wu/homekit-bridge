@@ -6,8 +6,8 @@ local M = {}
 
 ---@class PlugDevice:MiioDevice
 ---
----@field getOn fun(): boolean
----@field setOn fun(value: boolean)
+---@field getOn fun(self: MiioDevice): boolean
+---@field setOn fun(self: MiioDevice, value: boolean)
 
 ---Create a plug.
 ---@param device PlugDevice Device object.

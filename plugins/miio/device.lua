@@ -32,7 +32,7 @@ local device = {}
 
 ---Start a request.
 ---@param method string The request method.
----@param params? table Array of parameters.
+---@param params? any[] Array of parameters.
 ---@return any result
 function device:request(method, params)
     return self.pcb:request(self.timeout, method, params)

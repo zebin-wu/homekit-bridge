@@ -279,7 +279,7 @@ end
 ---Start a request.
 ---@param timeout integer Timeout period (in milliseconds).
 ---@param method string The request method.
----@param params? table Array of parameters.
+---@param params? any[] Array of parameters.
 ---@return any result
 function pcb:request(timeout, method, params)
     assert(timeout > 0, "timeout must be greater then 0")
