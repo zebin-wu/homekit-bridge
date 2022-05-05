@@ -48,7 +48,7 @@ function M.gen(device, info, conf)
                     end, function (request, value)
                         local activeVal = Active.value
                         device.logger:info("Write Active: " .. searchKey(activeVal, value))
-                        device:request("s_power", { value == activeVal.Active })
+                        device:s_power(value == activeVal.Active)
                         raiseEvent(request.aid, request.sid, request.cid)
                     end),
                     RotationSpeed.new(iids.rotationSpeed, function (request)
@@ -57,7 +57,7 @@ function M.gen(device, info, conf)
                         return value
                     end, function (request, value)
                         device.logger:info("Write RotationSpeed: " .. value)
-                        device:request("s_speed", { tointeger(value) })
+                        device:s_speed(tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request)
@@ -73,7 +73,7 @@ function M.gen(device, info, conf)
                     end, function (request, value)
                         local swingModeVal = SwingMode.value
                         device.logger:info("Write SwingMode: " .. searchKey(swingModeVal, value))
-                        device:request("s_roll", { value == swingModeVal.Enabled })
+                        device:s_roll(value == swingModeVal.Enabled)
                         raiseEvent(request.aid, request.sid, request.cid)
                     end)
                 }

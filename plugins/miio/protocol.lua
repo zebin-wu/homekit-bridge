@@ -279,14 +279,15 @@ end
 ---Start a request.
 ---@param timeout integer Timeout period (in milliseconds).
 ---@param method string The request method.
----@param params? any[] Array of parameters.
+---@param ... any The request parameters.
 ---@return any result
-function pcb:request(timeout, method, params)
+function pcb:request(timeout, method, ...)
     assert(timeout > 0, "timeout must be greater then 0")
     assert(type(method) == "string")
 
-    if params then
-        assert(type(params) == "table")
+    local params = {...}
+    if #params == 0 then
+        params = nil
     end
 
     if self.stampDiff == nil then
@@ -306,7 +307,7 @@ function pcb:request(timeout, method, params)
         local data = json.encode({
             id = reqid,
             method = method,
-            params = params or nil
+            params = params
         })
 
         sock:send(pack(0, self.devid, floor(core.time() / 1000) - self.stampDiff,

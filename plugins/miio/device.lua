@@ -4,6 +4,7 @@ local xpcall = xpcall
 local traceback = debug.traceback
 local assert = assert
 local type = type
+local tunpack = table.unpack
 local tinsert = table.insert
 
 local M = {}
@@ -28,22 +29,20 @@ local M = {}
 ---@field netif MiioDeviceNetIf Network interface.
 
 ---@class MiioDevice:MiioDevicePriv Device object.
-local device = {}
-
----Start a request.
----@param method string The request method.
----@param params? any[] Array of parameters.
----@return any result
-function device:request(method, params)
-    return self.pcb:request(self.timeout, method, params)
-end
+local device = setmetatable({}, {
+    __index = function (_, k)
+        return function (self, ...)
+            return self.pcb:request(self.timeout, k, ...)
+        end
+    end
+})
 
 ---Get properties.
 ---@param obj MiioDevice
 local function getProps(obj)
     local names = obj.names
     obj.names = {}
-    local success, result = xpcall(obj.request, traceback, obj, "get_prop", names)
+    local success, result = xpcall(obj.get_prop, traceback, obj, tunpack(names))
     if success == false then
         obj.mq:send(success, result)
         return
@@ -68,7 +67,7 @@ local function getPropsMiot(obj)
         })
     end
     obj.names = {}
-    local success, result = xpcall(obj.request, traceback, obj, "get_properties", params)
+    local success, result = xpcall(obj.get_properties, traceback, obj, tunpack(params))
     if success == false then
         obj.mq:send(success, result)
         return
@@ -125,14 +124,14 @@ function device:setProp(name, value)
     assert(type(name) == "string")
 
     if self.mapping then
-        assert(self:request("set_properties", {{
+        assert(self:set_properties({
             did = name,
             siid = self.mapping[name].siid,
             piid = self.mapping[name].piid,
             value = value
-        }})[1].code == 0)
+        })[1].code == 0)
     else
-        assert(self:request("set_" .. name, {value})[1] == "ok")
+        assert(self["set_" .. name](self, value)[1] == "ok")
     end
 end
 
@@ -140,7 +139,7 @@ end
 ---@return MiioDeviceInfo info
 ---@nodiscard
 function device:getInfo()
-    return self:request("miIO.info")
+    return self["miIO.info"](self)
 end
 
 ---Create a device object.
@@ -157,6 +156,7 @@ function M.create(addr, token)
     local o = {
         logger = log.getLogger("miio.device:" .. addr),
         pcb = protocol.create(addr, util.hex2bin(token)),
+        mapping = false,
         addr = addr,
         timeout = 5000,
         mq = core.createMQ(1),
