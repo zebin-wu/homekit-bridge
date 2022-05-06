@@ -5,7 +5,6 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <pal/hap.h>
-#include <pal/memory.h>
 
 #include <HAPPlatform+Init.h>
 #include <HAPAccessorySetup.h>
@@ -22,6 +21,17 @@
 #endif
 
 static bool ginited;
+
+static struct {
+    HAPPlatformKeyValueStore keyValueStore;
+    HAPPlatformAccessorySetup accessorySetup;
+    HAPPlatformTCPStreamManager tcpStreamManager;
+    HAPPlatformServiceDiscovery serviceDiscovery;
+#if HAVE_MFI_HW_AUTH
+    HAPPlatformMFiHWAuth mfiHWAuth;
+#endif
+    HAPPlatformMFiTokenAuth mfiTokenAuth;
+} gplatform;
 
 /**
  * Generate setup code, setup info and setup ID, and put them in the key-value store.
@@ -89,8 +99,7 @@ void pal_hap_init_platform(HAPPlatform *platform) {
     HAPPrecondition(platform);
 
     // Key-value store.
-    platform->keyValueStore = pal_mem_alloc(sizeof(HAPPlatformKeyValueStore));
-    HAPAssert(platform->keyValueStore);
+    platform->keyValueStore = &gplatform.keyValueStore;
     HAPPlatformKeyValueStoreCreate(
             platform->keyValueStore, &(const HAPPlatformKeyValueStoreOptions) { .rootDirectory = ".HomeKitStore" });
 
@@ -98,15 +107,13 @@ void pal_hap_init_platform(HAPPlatform *platform) {
     pal_hap_acc_setup_gen(platform->keyValueStore);
 
     // Accessory setup manager. Depends on key-value store.
-    platform->accessorySetup = pal_mem_alloc(sizeof(HAPPlatformAccessorySetup));
-    HAPAssert(platform->accessorySetup);
+    platform->accessorySetup = &gplatform.accessorySetup;
     HAPPlatformAccessorySetupCreate(
             platform->accessorySetup,
             &(const HAPPlatformAccessorySetupOptions) { .keyValueStore = platform->keyValueStore });
 
     // TCP stream manager.
-    platform->ip.tcpStreamManager = pal_mem_alloc(sizeof(HAPPlatformTCPStreamManager));
-    HAPAssert(platform->ip.tcpStreamManager);
+    platform->ip.tcpStreamManager = &gplatform.tcpStreamManager;
     HAPPlatformTCPStreamManagerCreate(
             platform->ip.tcpStreamManager,
             &(const HAPPlatformTCPStreamManagerOptions) {
@@ -115,8 +122,7 @@ void pal_hap_init_platform(HAPPlatform *platform) {
                     .maxConcurrentTCPStreams = PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS });
 
     // Service discovery.
-    platform->ip.serviceDiscovery = pal_mem_alloc(sizeof(HAPPlatformServiceDiscovery));
-    HAPAssert(platform->ip.serviceDiscovery);
+    platform->ip.serviceDiscovery = &gplatform.serviceDiscovery;
     HAPPlatformServiceDiscoveryCreate(
             platform->ip.serviceDiscovery,
             &(const HAPPlatformServiceDiscoveryOptions) {
@@ -125,19 +131,16 @@ void pal_hap_init_platform(HAPPlatform *platform) {
 
 #if HAVE_MFI_HW_AUTH
     // Apple Authentication Coprocessor provider.
-    platform->authentication.mfiHWAuth = pal_mem_alloc(sizeof(HAPPlatformMFiHWAuth));
-    HAPAssert(platform->authentication.mfiHWAuth);
+    platform->authentication.mfiHWAuth = &gplatform.mfiHWAuth;
     HAPPlatformMFiHWAuthCreate(platform->authentication.mfiHWAuth);
 #endif
 
     // Software Token provider. Depends on key-value store.
-    platform->authentication.mfiTokenAuth = pal_mem_alloc(sizeof(HAPPlatformMFiTokenAuth));
-    HAPAssert(platform->authentication.mfiTokenAuth);
+    platform->authentication.mfiTokenAuth = &gplatform.mfiTokenAuth;
     HAPPlatformMFiTokenAuthCreate(
             platform->authentication.mfiTokenAuth,
             &(const HAPPlatformMFiTokenAuthOptions) { .keyValueStore = platform->keyValueStore });
     if (!HAPPlatformMFiTokenAuthIsProvisioned(platform->authentication.mfiTokenAuth)) {
-        pal_mem_free(platform->authentication.mfiTokenAuth);
         platform->authentication.mfiTokenAuth = NULL;
     }
     ginited = true;
@@ -147,23 +150,12 @@ void pal_hap_deinit_platform(HAPPlatform *platform) {
     HAPPrecondition(ginited);
     HAPPrecondition(platform);
 
-    if (platform->authentication.mfiTokenAuth) {
-        pal_mem_free(platform->authentication.mfiTokenAuth);
-    }
 #if HAVE_MFI_HW_AUTH
     // Apple Authentication Coprocessor provider.
     HAPPlatformMFiHWAuthRelease(platform->authentication.mfiHWAuth);
-    pal_mem_free(platform->authentication.mfiHWAuth);
 #endif
-
-    pal_mem_free(platform->ip.serviceDiscovery);
-
     // TCP stream manager.
     HAPPlatformTCPStreamManagerRelease(platform->ip.tcpStreamManager);
-    pal_mem_free(platform->ip.tcpStreamManager);
-
-    pal_mem_free(platform->accessorySetup);
-    pal_mem_free(platform->keyValueStore);
 
     HAPRawBufferZero(platform, sizeof(*platform));
     ginited = false;

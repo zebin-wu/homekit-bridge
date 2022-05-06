@@ -729,22 +729,31 @@ lhap_init_ip(HAPAccessoryServerOptions *options, size_t num_contexts, size_t num
     HAPPrecondition(num_contexts);
     HAPPrecondition(num_notify);
 
-    HAPIPSession *sessions = pal_mem_alloc(sizeof(HAPIPSession) * PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS);
-    for (size_t i = 0; i < PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS; i++) {
-        sessions[i].inboundBuffer.bytes = pal_mem_alloc(PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE);
-        HAPAssert(sessions[i].inboundBuffer.bytes);
+    size_t num_sessions = PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS;
+    HAPIPSession *sessions = pal_mem_alloc(sizeof(HAPIPSession) * num_sessions);
+    HAPAssert(sessions);
+    char *inbounds = pal_mem_alloc(PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE * num_sessions);
+    HAPAssert(inbounds);
+    char *outbounds = pal_mem_alloc(PAL_HAP_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE * num_sessions);
+    HAPAssert(outbounds);
+    char *scratches = pal_mem_alloc(PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE * num_sessions);
+    HAPAssert(scratches);
+    HAPIPCharacteristicContextRef *contexts =
+        pal_mem_alloc(sizeof(HAPIPCharacteristicContextRef) * num_contexts * num_sessions);
+    HAPAssert(contexts);
+    HAPIPEventNotificationRef *eventNotifications =
+        pal_mem_alloc(sizeof(HAPIPEventNotificationRef) * num_notify * num_sessions);
+    HAPAssert(eventNotifications);
+    for (size_t i = 0; i < num_sessions; i++) {
+        sessions[i].inboundBuffer.bytes = inbounds + PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE * i;
         sessions[i].inboundBuffer.numBytes = PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE;
-        sessions[i].outboundBuffer.bytes = pal_mem_alloc(PAL_HAP_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE);
-        HAPAssert(sessions[i].outboundBuffer.bytes);
+        sessions[i].outboundBuffer.bytes = outbounds + PAL_HAP_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE * i;
         sessions[i].outboundBuffer.numBytes = PAL_HAP_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE;
-        sessions[i].scratchBuffer.bytes = pal_mem_alloc(PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE);
-        HAPAssert(sessions[i].scratchBuffer.bytes);
+        sessions[i].scratchBuffer.bytes = scratches + PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE * i;
         sessions[i].scratchBuffer.numBytes = PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE;
-        sessions[i].contexts = pal_mem_alloc(sizeof(HAPIPCharacteristicContextRef) * num_contexts);
-        HAPAssert(sessions[i].contexts);
+        sessions[i].contexts = contexts + num_contexts * i;
         sessions[i].numContexts = num_contexts;
-        sessions[i].eventNotifications = pal_mem_alloc(sizeof(HAPIPEventNotificationRef) * num_notify);
-        HAPAssert(sessions[i].eventNotifications);
+        sessions[i].eventNotifications = eventNotifications + num_notify * i;
         sessions[i].numEventNotifications = num_notify;
     }
 
@@ -752,7 +761,7 @@ lhap_init_ip(HAPAccessoryServerOptions *options, size_t num_contexts, size_t num
     options->ip.accessoryServerStorage = pal_mem_alloc(sizeof(HAPIPAccessoryServerStorage));
     HAPAssert(options->ip.accessoryServerStorage);
     options->ip.accessoryServerStorage->sessions = sessions;
-    options->ip.accessoryServerStorage->numSessions = PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS;
+    options->ip.accessoryServerStorage->numSessions = num_sessions;
 }
 
 static void
@@ -760,13 +769,11 @@ lhap_deinit_ip(HAPAccessoryServerOptions *options) {
     HAPPrecondition(options);
 
     HAPIPAccessoryServerStorage *storage = options->ip.accessoryServerStorage;
-    for (size_t i = 0; i < storage->numSessions; i++) {
-        pal_mem_free(storage->sessions[i].inboundBuffer.bytes);
-        pal_mem_free(storage->sessions[i].outboundBuffer.bytes);
-        pal_mem_free(storage->sessions[i].scratchBuffer.bytes);
-        pal_mem_free(storage->sessions[i].contexts);
-        pal_mem_free(storage->sessions[i].eventNotifications);
-    }
+    pal_mem_free(storage->sessions[0].inboundBuffer.bytes);
+    pal_mem_free(storage->sessions[0].outboundBuffer.bytes);
+    pal_mem_free(storage->sessions[0].scratchBuffer.bytes);
+    pal_mem_free(storage->sessions[0].contexts);
+    pal_mem_free(storage->sessions[0].eventNotifications);
     pal_mem_free(storage->sessions);
     pal_mem_free(storage);
     HAPRawBufferZero(options, sizeof(*options));
