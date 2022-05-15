@@ -5,14 +5,14 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <mbedtls/md.h>
-#include <pal/memory.h>
 #include <pal/crypto/md.h>
 #include <HAPBase.h>
 
-struct pal_md_ctx {
+typedef struct pal_md_ctx_int {
     bool hmac;
     mbedtls_md_context_t ctx;
-};
+} pal_md_ctx_int;
+HAP_STATIC_ASSERT(sizeof(pal_md_ctx) >= sizeof(pal_md_ctx_int), pal_md_ctx_int);
 
 static const mbedtls_md_type_t pal_md_type_mapping[] = {
     [PAL_MD_MD4] = MBEDTLS_MD_MD4,
@@ -25,52 +25,48 @@ static const mbedtls_md_type_t pal_md_type_mapping[] = {
     [PAL_MD_RIPEMD160] = MBEDTLS_MD_RIPEMD160
 };
 
-pal_md_ctx *pal_md_new(pal_md_type type, const void *key, size_t len) {
-    bool hmac = key != NULL;
-    pal_md_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
-    if (!ctx) {
-        return NULL;
-    }
-    ctx->hmac = hmac;
+bool pal_md_ctx_init(pal_md_ctx *_ctx, pal_md_type type, const void *key, size_t len) {
+    HAPPrecondition(_ctx);
+    HAPPrecondition(type >= 0 && type < PAL_MD_TYPE_MAX);
+    HAPPrecondition((key && len) || (!key && !len));
+
+    pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
+    ctx->hmac = key != NULL;
     mbedtls_md_init(&ctx->ctx);
-    const mbedtls_md_info_t *info = mbedtls_md_info_from_type(pal_md_type_mapping[type]);
-    if (!info) {
-        goto err;
-    }
-    if (mbedtls_md_setup(&ctx->ctx, info, hmac)) {
-        goto err;
+    if (mbedtls_md_setup(&ctx->ctx,
+        mbedtls_md_info_from_type(pal_md_type_mapping[type]), ctx->hmac)) {
+        return false;
     }
     int ret;
-    if (hmac) {
+    if (ctx->hmac) {
         ret = mbedtls_md_hmac_starts(&ctx->ctx, key, len);
     } else {
         ret = mbedtls_md_starts(&ctx->ctx);
     }
     if (ret) {
-        goto err;
-    }
-    return ctx;
-
-err:
-    pal_mem_free(ctx);
-    return NULL;
-}
-
-void pal_md_free(pal_md_ctx *ctx) {
-    if (ctx) {
         mbedtls_md_free(&ctx->ctx);
-        pal_mem_free(ctx);
+        return false;
     }
+    return true;
 }
 
-size_t pal_md_get_size(pal_md_ctx *ctx) {
-    HAPPrecondition(ctx);
+void pal_md_ctx_deinit(pal_md_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
+
+    mbedtls_md_free(&ctx->ctx);
+}
+
+size_t pal_md_get_size(pal_md_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
 
     return mbedtls_md_get_size(ctx->ctx.md_info);
 }
 
-bool pal_md_update(pal_md_ctx *ctx, const void *data, size_t len) {
-    HAPPrecondition(ctx);
+bool pal_md_update(pal_md_ctx *_ctx, const void *data, size_t len) {
+    HAPPrecondition(_ctx);
+    pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
     HAPPrecondition(data);
     HAPPrecondition(len > 0);
 
@@ -81,8 +77,9 @@ bool pal_md_update(pal_md_ctx *ctx, const void *data, size_t len) {
     }
 }
 
-bool pal_md_digest(pal_md_ctx *ctx, uint8_t *output) {
-    HAPPrecondition(ctx);
+bool pal_md_digest(pal_md_ctx *_ctx, uint8_t *output) {
+    HAPPrecondition(_ctx);
+    pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
     HAPPrecondition(output);
 
     if (ctx->hmac) {

@@ -14,6 +14,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <pal/types.h>
 
 /**
  * @brief Supported {cipher type, cipher mode} pairs.
@@ -117,27 +118,22 @@ typedef enum {
 } pal_cipher_operation;
 
 /**
- * @brief Generic cipher context.
- */
-typedef struct pal_cipher_ctx pal_cipher_ctx;
-
-/**
- * @brief New a cipher context.
+ * @brief Initializes a cipher context.
  *
+ * @param ctx The uninitialized cipher context.
  * @param type Type of the cipher.
  *
- * @return the cipher context on success.
- * @return NULL on failure.
+ * @return true on success
+ * @return false on failure.
  */
-pal_cipher_ctx *pal_cipher_new(pal_cipher_type type);
+bool pal_cipher_ctx_init(pal_cipher_ctx *ctx, pal_cipher_type type);
 
 /**
- * @brief Free a cipher context.
+ * @brief Releases resources associated with a initialized cipher context.
  *
- * @param ctx The cipher context to be freed.
- *            If this is NULL, the function has no effect.
+ * @param ctx The initialized cipher context.
  */
-void pal_cipher_free(pal_cipher_ctx *ctx);
+void pal_cipher_ctx_deinit(pal_cipher_ctx *ctx);
 
 /**
  * @brief Return the block size of the given cipher in bytes.

@@ -6,14 +6,14 @@
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
-#include <pal/memory.h>
 #include <pal/crypto/md.h>
 #include <HAPBase.h>
 
-struct pal_md_ctx {
+typedef struct pal_md_ctx_int {
     bool hmac;
     void *ctx;
-};
+} pal_md_ctx_int;
+HAP_STATIC_ASSERT(sizeof(pal_md_ctx) >= sizeof(pal_md_ctx_int), pal_md_ctx_int);
 
 static const EVP_MD *pal_md_get_md(pal_md_type type) {
     const EVP_MD *(*pal_cipher_md_funcs[])(void) = {
@@ -34,70 +34,67 @@ static const EVP_MD *pal_md_get_md(pal_md_type type) {
     return pal_cipher_md_funcs[type]();
 }
 
-pal_md_ctx *pal_md_new(pal_md_type type, const void *key, size_t len) {
-    if (key) {
-        HAPPrecondition(len > 0);
-    }
-    bool hmac = key != NULL;
-    pal_md_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
-    if (!ctx) {
-        return NULL;
-    }
-    ctx->hmac = hmac;
-    if (hmac) {
+bool pal_md_ctx_init(pal_md_ctx *_ctx, pal_md_type type, const void *key, size_t len) {
+    HAPPrecondition(_ctx);
+    HAPPrecondition(type >= 0 && type < PAL_MD_TYPE_MAX);
+    HAPPrecondition((key && len) || (!key && !len));
+
+    pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
+    ctx->hmac = key != NULL;
+    if (ctx->hmac) {
         ctx->ctx = HMAC_CTX_new();
     } else {
         ctx->ctx = EVP_MD_CTX_new();
     }
     if (!ctx->ctx) {
-        goto err;
+        return false;
     }
     const EVP_MD *md = pal_md_get_md(type);
     if (!md) {
-        goto err1;
+        goto err;
     }
 
     int ret;
-    if (hmac) {
+    if (ctx->hmac) {
         ret = HMAC_Init_ex(ctx->ctx, key, len, md, NULL);
     } else {
         ret = EVP_DigestInit(ctx->ctx, md);
     }
     if (!ret) {
-        goto err1;
+        goto err;
     }
-    return ctx;
+    return true;
 
-err1:
-    if (hmac) {
+err:
+    if (ctx->hmac) {
         HMAC_CTX_free(ctx->ctx);
     } else {
         EVP_MD_CTX_free(ctx->ctx);
     }
-err:
-    pal_mem_free(ctx);
-    return NULL;
+    return false;
 }
 
-void pal_md_free(pal_md_ctx *ctx) {
-    if (ctx) {
-        if (ctx->hmac) {
-            HMAC_CTX_free(ctx->ctx);
-        } else {
-            EVP_MD_CTX_free(ctx->ctx);
-        }
-        pal_mem_free(ctx);
+void pal_md_ctx_deinit(pal_md_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
+
+    if (ctx->hmac) {
+        HMAC_CTX_free(ctx->ctx);
+    } else {
+        EVP_MD_CTX_free(ctx->ctx);
     }
 }
 
-size_t pal_md_get_size(pal_md_ctx *ctx) {
-    HAPPrecondition(ctx);
+size_t pal_md_get_size(pal_md_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
 
     return EVP_MD_size(ctx->hmac ? HMAC_CTX_get_md(ctx->ctx) : EVP_MD_CTX_md(ctx->ctx));
 }
 
-bool pal_md_update(pal_md_ctx *ctx, const void *data, size_t len) {
-    HAPPrecondition(ctx);
+bool pal_md_update(pal_md_ctx *_ctx, const void *data, size_t len) {
+    HAPPrecondition(_ctx);
+    pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
     HAPPrecondition(data);
     HAPPrecondition(len > 0);
 
@@ -108,8 +105,9 @@ bool pal_md_update(pal_md_ctx *ctx, const void *data, size_t len) {
     }
 }
 
-bool pal_md_digest(pal_md_ctx *ctx, uint8_t *output) {
-    HAPPrecondition(ctx);
+bool pal_md_digest(pal_md_ctx *_ctx, uint8_t *output) {
+    HAPPrecondition(_ctx);
+    pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
     HAPPrecondition(output);
 
     if (ctx->hmac) {

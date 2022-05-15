@@ -14,6 +14,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <pal/types.h>
 
 /**
  * @brief     Supported message digests.
@@ -31,30 +32,28 @@ typedef enum {
     PAL_MD_SHA384,    /**< The SHA-384 message digest. */
     PAL_MD_SHA512,    /**< The SHA-512 message digest. */
     PAL_MD_RIPEMD160, /**< The RIPEMD-160 message digest. */
+    PAL_MD_TYPE_MAX,
 } pal_md_type;
 
 /**
- * message-digests context.
- */
-typedef struct pal_md_ctx pal_md_ctx;
-
-/**
- * New a message-digest context.
+ * Initializes a message-digest context.
  *
+ * @param ctx The uninitialized message-digest context.
  * @param type Type of digest.
  * @param key If key is set, HMAC will be used.
  * @param len Length of @p key.
- * @return message-digest context on success.
- * @return NULL on failure.
+ *
+ * @return true on success
+ * @return false on failure.
  */
-pal_md_ctx *pal_md_new(pal_md_type type, const void *key, size_t len);
+bool pal_md_ctx_init(pal_md_ctx *ctx, pal_md_type type, const void *key, size_t len);
 
 /**
- * Free a message-digest context.
- * 
- * @param ctx message-digest context.
+ * @brief Releases resources associated with a initialized message-digest context.
+ *
+ * @param ctx The initialized message-digest context.
  */
-void pal_md_free(pal_md_ctx *ctx);
+void pal_md_ctx_deinit(pal_md_ctx *ctx);
 
 /**
  * Return the size of message-digest.

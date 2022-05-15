@@ -15,6 +15,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <pal/err.h>
+#include <pal/types.h>
 
 /**
  * SSL type.
@@ -33,11 +34,6 @@ typedef enum pal_ssl_endpoint {
 } pal_ssl_endpoint;
 
 /**
- * SSL context.
- */
-typedef struct pal_ssl_ctx pal_ssl_ctx;
-
-/**
  * Initialize SSL module.
  */
 void pal_ssl_init();
@@ -48,23 +44,24 @@ void pal_ssl_init();
 void pal_ssl_deinit();
 
 /**
- * Create a SSL context.
+ * Initializes a SSL context.
  *
+ * @param ctx The uninitialized SSL context.
  * @param type SSL type.
  * @param endpoint SSL endpoint.
  * @param hostname Server host name, only valid when the SSL endpoint is PAL_SSL_ENDPOINT_CLIENT.
- * @return the SSL context on success.
- * @return NULL on failure.
+ *
+ * @return true on success
+ * @return false on failure.
  */
-pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname);
+bool pal_ssl_ctx_init(pal_ssl_ctx *ctx, pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname);
 
 /**
- * Destroy a SSL context.
+ * @brief Releases resources associated with a initialized SSL context.
  *
- * @param ctx The SSL context to be destroyed.
- *            If this is NULL, the function has no effect.
+ * @param ctx The initialized SSL context.
  */
-void pal_ssl_destroy(pal_ssl_ctx *ctx);
+void pal_ssl_ctx_deinit(pal_ssl_ctx *ctx);
 
 /**
  * Whether the handshake is finshed.

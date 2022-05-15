@@ -32,7 +32,7 @@ struct pal_ssl_buf {
     char buf[0];
 };
 
-struct pal_ssl_ctx {
+typedef struct pal_ssl_ctx_int {
     bool finshed;
     uint16_t id;
     pal_ssl_bio in_bio;
@@ -40,7 +40,8 @@ struct pal_ssl_ctx {
     STAILQ_HEAD(, pal_ssl_buf) outbuf_list_head;
     mbedtls_ssl_context ssl;
     mbedtls_ssl_config conf;
-};
+} pal_ssl_ctx_int;
+HAP_STATIC_ASSERT(sizeof(pal_ssl_ctx) >= sizeof(pal_ssl_ctx_int), pal_ssl_ctx_int);
 
 static const HAPLogObject ssl_log_obj = {
     .subsystem = kHAPPlatform_LogSubsystem,
@@ -75,7 +76,7 @@ static int pal_mbedtls_rng(void *arg, unsigned char *buf, size_t len) {
 }
 
 static void pal_mbedtls_dbg_cb(void *arg, int level, const char *file, int line, const char *str) {
-    pal_ssl_ctx *ctx = arg;
+    pal_ssl_ctx_int *ctx = arg;
     HAPLogType type = kHAPLogType_Debug;
     switch (level) {
     case 1:
@@ -97,7 +98,7 @@ static void pal_mbedtls_dbg_cb(void *arg, int level, const char *file, int line,
 }
 
 static int pal_mbedtls_ssl_send(void *arg, const unsigned char *buf, size_t len) {
-    pal_ssl_ctx *ctx = arg;
+    pal_ssl_ctx_int *ctx = arg;
     pal_ssl_bio *bio = &ctx->in_bio;
 
     if (bio->len == 0) {
@@ -111,7 +112,7 @@ static int pal_mbedtls_ssl_send(void *arg, const unsigned char *buf, size_t len)
 }
 
 static int pal_mbedtls_ssl_recv(void *arg, unsigned char *buf, size_t len) {
-    pal_ssl_ctx *ctx = arg;
+    pal_ssl_ctx_int *ctx = arg;
     struct pal_ssl_buf *outbuf = STAILQ_FIRST(&ctx->outbuf_list_head);
     pal_ssl_bio *bio = NULL;
     if (outbuf) {
@@ -134,15 +135,12 @@ static int pal_mbedtls_ssl_recv(void *arg, unsigned char *buf, size_t len) {
     return readbytes;
 }
 
-pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname) {
+bool pal_ssl_ctx_init(pal_ssl_ctx *_ctx, pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname) {
+    HAPPrecondition(_ctx);
     HAPPrecondition(type == PAL_SSL_TYPE_TLS || type == PAL_SSL_TYPE_DTLS);
     HAPPrecondition(ep == PAL_SSL_ENDPOINT_CLIENT || ep == PAL_SSL_ENDPOINT_SERVER);
 
-    pal_ssl_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
-    if (!ctx) {
-        HAPLogError(&ssl_log_obj, "%s: Failed to alloc SSL context.", __func__);
-        return NULL;
-    }
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
 
     mbedtls_ssl_init(&ctx->ssl);
     mbedtls_ssl_config_init(&ctx->conf);
@@ -151,7 +149,7 @@ pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *
         ssl_transport_mapping[type], MBEDTLS_SSL_PRESET_DEFAULT);
     if (ret) {
         MBEDTLS_PRINT_ERROR(mbedtls_ssl_config_defaults, ret);
-        goto err;
+        return false;
     }
 
     mbedtls_ssl_set_bio(&ctx->ssl, ctx, pal_mbedtls_ssl_send, pal_mbedtls_ssl_recv, NULL);
@@ -167,24 +165,21 @@ pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *
     ret = mbedtls_ssl_setup(&ctx->ssl, &ctx->conf);
     if (ret) {
         MBEDTLS_PRINT_ERROR(mbedtls_ssl_setup, ret);
-        goto err;
+        mbedtls_ssl_config_free(&ctx->conf);
+        return false;
     }
 
     ctx->finshed = false;
     ctx->id = ++gssl_count;
     STAILQ_INIT(&ctx->outbuf_list_head);
 
-    return ctx;
-
-err:
-    pal_mem_free(ctx);
-    return NULL;
+    return true;
 }
 
-void pal_ssl_destroy(pal_ssl_ctx *ctx) {
-    if (!ctx) {
-        return;
-    }
+void pal_ssl_ctx_deinit(pal_ssl_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
+
     for (struct pal_ssl_buf *t = STAILQ_FIRST(&ctx->outbuf_list_head); t;) {
         struct pal_ssl_buf *cur = t;
         t = STAILQ_NEXT(t, entry);
@@ -192,16 +187,18 @@ void pal_ssl_destroy(pal_ssl_ctx *ctx) {
     }
     mbedtls_ssl_free(&ctx->ssl);
     mbedtls_ssl_config_free(&ctx->conf);
-    pal_mem_free(ctx);
 }
 
-bool pal_ssl_finshed(pal_ssl_ctx *ctx) {
-    HAPPrecondition(ctx);
+bool pal_ssl_finshed(pal_ssl_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
+
     return ctx->finshed;
 }
 
-pal_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
-    HAPPrecondition(ctx);
+pal_err pal_ssl_handshake(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
     HAPPrecondition(olen);
@@ -241,8 +238,9 @@ pal_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *o
     return err;
 }
 
-pal_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
-    HAPPrecondition(ctx);
+pal_err pal_ssl_encrypt(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
     HAPPrecondition(olen);
@@ -267,8 +265,9 @@ pal_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out
     return err;
 }
 
-pal_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
-    HAPPrecondition(ctx);
+pal_err pal_ssl_decrypt(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
     HAPPrecondition(olen);

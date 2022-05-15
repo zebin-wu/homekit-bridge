@@ -125,6 +125,7 @@ target_compile_options(${PROJECT}
     PRIVATE
         -Wall
         -Werror
+        -Wno-deprecated-declarations
 )
 
 # install binaries

@@ -6,15 +6,15 @@
 
 #include <openssl/evp.h>
 #include <pal/crypto/cipher.h>
-#include <pal/memory.h>
 #include <HAPBase.h>
 
-struct pal_cipher_ctx {
+typedef struct pal_cipher_ctx_int {
     EVP_CIPHER_CTX *ctx;
     const EVP_CIPHER *cipher;
     pal_cipher_padding padding;
     pal_cipher_operation op;
-};
+} pal_cipher_ctx_int;
+HAP_STATIC_ASSERT(sizeof(pal_cipher_ctx) >= sizeof(pal_cipher_ctx_int), pal_cipher_ctx_int);
 
 static const struct {
     int (*init)(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher, ENGINE *impl,
@@ -119,66 +119,61 @@ static const EVP_CIPHER *pal_cipher_get_cipher(pal_cipher_type type) {
     return pal_cipher_get_cipher_funcs[type]();
 }
 
-pal_cipher_ctx *pal_cipher_new(pal_cipher_type type) {
+bool pal_cipher_ctx_init(pal_cipher_ctx *_ctx, pal_cipher_type type) {
+    HAPPrecondition(_ctx);
+    pal_cipher_ctx_int *ctx = (pal_cipher_ctx_int *)_ctx;
     HAPPrecondition(type >= 0 && type < PAL_CIPHER_TYPE_MAX);
-    pal_cipher_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
-    if (!ctx) {
-        return NULL;
-    }
+
     ctx->ctx = EVP_CIPHER_CTX_new();
     if (!ctx->ctx) {
-        goto err;
+        return false;
     }
     ctx->op = PAL_CIPHER_OP_NONE;
     ctx->cipher = pal_cipher_get_cipher(type);
     if (!ctx->cipher) {
-        goto err;
+        EVP_CIPHER_CTX_free(ctx->ctx);
+        return false;
     }
     ctx->padding = PAL_CIPHER_PADDING_NONE;
-    return ctx;
-
-err:
-    pal_mem_free(ctx);
-    return NULL;
+    return true;
 }
 
-void pal_cipher_free(pal_cipher_ctx *ctx) {
-    if (!ctx)  {
-        return;
-    }
+void pal_cipher_ctx_deinit(pal_cipher_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_cipher_ctx_int *ctx = (pal_cipher_ctx_int *)_ctx;
     EVP_CIPHER_CTX_free(ctx->ctx);
-    pal_mem_free(ctx);
 }
 
-size_t pal_cipher_get_block_size(pal_cipher_ctx *ctx) {
-    HAPPrecondition(ctx);
-
+size_t pal_cipher_get_block_size(pal_cipher_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_cipher_ctx_int *ctx = (pal_cipher_ctx_int *)_ctx;
     return EVP_CIPHER_block_size(ctx->cipher);
 }
 
-size_t pal_cipher_get_key_len(pal_cipher_ctx *ctx) {
-    HAPPrecondition(ctx);
-
+size_t pal_cipher_get_key_len(pal_cipher_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_cipher_ctx_int *ctx = (pal_cipher_ctx_int *)_ctx;
     return EVP_CIPHER_key_length(ctx->cipher);
 }
 
-size_t pal_cipher_get_iv_len(pal_cipher_ctx *ctx) {
-    HAPPrecondition(ctx);
-
+size_t pal_cipher_get_iv_len(pal_cipher_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_cipher_ctx_int *ctx = (pal_cipher_ctx_int *)_ctx;
     return EVP_CIPHER_iv_length(ctx->cipher);
 }
 
-bool pal_cipher_set_padding(pal_cipher_ctx *ctx, pal_cipher_padding padding) {
-    HAPPrecondition(ctx);
+bool pal_cipher_set_padding(pal_cipher_ctx *_ctx, pal_cipher_padding padding) {
+    HAPPrecondition(_ctx);
+    pal_cipher_ctx_int *ctx = (pal_cipher_ctx_int *)_ctx;
     HAPPrecondition(padding >= PAL_CIPHER_PADDING_NONE &&
         padding < PAL_CIPHER_PADDING_MAX);
-
     ctx->padding = padding;
     return true;
 }
 
-bool pal_cipher_begin(pal_cipher_ctx *ctx, pal_cipher_operation op, const uint8_t *key, const uint8_t *iv) {
-    HAPPrecondition(ctx);
+bool pal_cipher_begin(pal_cipher_ctx *_ctx, pal_cipher_operation op, const uint8_t *key, const uint8_t *iv) {
+    HAPPrecondition(_ctx);
+    pal_cipher_ctx_int *ctx = (pal_cipher_ctx_int *)_ctx;
     HAPPrecondition(ctx->op == PAL_CIPHER_OP_NONE);
     HAPPrecondition(op > PAL_CIPHER_OP_NONE && op < PAL_CIPHER_OP_MAX);
 
@@ -190,24 +185,26 @@ bool pal_cipher_begin(pal_cipher_ctx *ctx, pal_cipher_operation op, const uint8_
     return status;
 }
 
-bool pal_cipher_update(pal_cipher_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
-    HAPPrecondition(ctx);
+bool pal_cipher_update(pal_cipher_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+    HAPPrecondition(_ctx);
+    pal_cipher_ctx_int *ctx = (pal_cipher_ctx_int *)_ctx;
     HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);
     HAPPrecondition(in);
     HAPPrecondition(ilen > 0);
     HAPPrecondition(out);
     HAPPrecondition(olen);
-    HAPPrecondition(*olen >= ilen + pal_cipher_get_block_size(ctx));
+    HAPPrecondition(*olen >= ilen + pal_cipher_get_block_size(_ctx));
 
     return pal_cipher_crypt_funcs[ctx->op].update(ctx->ctx, out, (int *)olen, in, ilen);
 }
 
-bool pal_cipher_finsh(pal_cipher_ctx *ctx, void *out, size_t *olen) {
-    HAPPrecondition(ctx);
+bool pal_cipher_finsh(pal_cipher_ctx *_ctx, void *out, size_t *olen) {
+    HAPPrecondition(_ctx);
+    pal_cipher_ctx_int *ctx = (pal_cipher_ctx_int *)_ctx;
     HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);
     HAPPrecondition(out);
     HAPPrecondition(olen);
-    HAPPrecondition(*olen >= pal_cipher_get_block_size(ctx));
+    HAPPrecondition(*olen >= pal_cipher_get_block_size(_ctx));
 
     bool status = pal_cipher_crypt_funcs[ctx->op].final(ctx->ctx, out, (int *)olen);
     if (status) {

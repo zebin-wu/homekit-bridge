@@ -18,7 +18,7 @@
     lssl_ctx_common(L, ctx, in, ilen, #method, pal_ssl_##method)
 
 typedef struct {
-    pal_ssl_ctx *ctx;
+    pal_ssl_ctx ctx;
 } lssl_ctx;
 
 typedef pal_err (*lssl_func)(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
@@ -42,8 +42,7 @@ static int lssl_create(lua_State *L) {
 
     lssl_ctx *ctx = lua_newuserdata(L, sizeof(*ctx));
     luaL_setmetatable(L, LUA_SSL_CTX_NAME);
-    ctx->ctx = pal_ssl_create(type, ep, hostname);
-    if (!ctx) {
+    if (!pal_ssl_ctx_init(&ctx->ctx, type, ep, hostname)) {
         luaL_error(L, "failed to create SSL context");
     }
     return 1;
@@ -51,7 +50,7 @@ static int lssl_create(lua_State *L) {
 
 static int lssl_ctx_finshed(lua_State *L) {
     lssl_ctx *ctx = luaL_checkudata(L, 1, LUA_SSL_CTX_NAME);
-    lua_pushboolean(L, pal_ssl_finshed(ctx->ctx));
+    lua_pushboolean(L, pal_ssl_finshed(&ctx->ctx));
     return 1;
 }
 
@@ -61,7 +60,7 @@ static int lssl_ctx_common(lua_State *L, lssl_ctx *ctx,
     luaL_buffinitsize(L, &B, ilen);
     while (1) {
         size_t olen = B.size - luaL_bufflen(&B);
-        pal_err err = func(ctx->ctx, in, ilen, luaL_buffaddr(&B) + luaL_bufflen(&B), &olen);
+        pal_err err = func(&ctx->ctx, in, ilen, luaL_buffaddr(&B) + luaL_bufflen(&B), &olen);
         switch (err) {
         case PAL_ERR_OK:
             luaL_addsize(&B, olen);
@@ -86,7 +85,7 @@ static int lssl_ctx_handshake(lua_State *L) {
     lssl_ctx *ctx = luaL_checkudata(L, 1, LUA_SSL_CTX_NAME);
     size_t ilen = 0;
     const char *in = luaL_optlstring(L, 2, NULL, &ilen);
-    if (pal_ssl_finshed(ctx->ctx)) {
+    if (pal_ssl_finshed(&ctx->ctx)) {
         luaL_error(L, "handshake is finshed");
     }
     return LSSL_CTX_COMMON(L, ctx, in, ilen, handshake);
@@ -108,20 +107,13 @@ static int lssl_ctx_decrypt(lua_State *L) {
 
 static int lssl_ctx_gc(lua_State *L) {
     lssl_ctx *ctx = luaL_checkudata(L, 1, LUA_SSL_CTX_NAME);
-    if (ctx->ctx) {
-        pal_ssl_destroy(ctx->ctx);
-        ctx->ctx = NULL;
-    }
+    pal_ssl_ctx_deinit(&ctx->ctx);
     return 0;
 }
 
 static int lssl_ctx_tostring(lua_State *L) {
     lssl_ctx *ctx = luaL_checkudata(L, 1, LUA_SSL_CTX_NAME);
-    if (ctx->ctx) {
-        lua_pushfstring(L, "SSL (%p)", ctx->ctx);
-    } else {
-        lua_pushliteral(L, "SSL (destroyed)");
-    }
+    lua_pushfstring(L, "SSL context (%p)", ctx);
     return 1;
 }
 

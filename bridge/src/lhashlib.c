@@ -16,7 +16,7 @@
  * Hash object.
  */
 typedef struct {
-    pal_md_ctx *ctx;
+    pal_md_ctx ctx;
 } lhash_obj;
 
 const char *lhash_type_strs[] = {
@@ -37,8 +37,7 @@ static int lhash_create(lua_State *L) {
     const char *key = luaL_optlstring(L, 2, NULL, &keylen);
     lhash_obj *obj = lua_newuserdata(L, sizeof(lhash_obj));
     luaL_setmetatable(L, LUA_HASH_OBJ_NAME);
-    obj->ctx = pal_md_new(type, key, keylen);
-    if (luai_unlikely(!obj->ctx)) {
+    if (luai_unlikely(!pal_md_ctx_init(&obj->ctx, type, key, keylen))) {
         luaL_error(L, "failed to create a %s context", lhash_type_strs[type]);
     }
     return 1;
@@ -53,7 +52,7 @@ static int lhash_obj_update(lua_State *L) {
     size_t len;
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
     const char *s = luaL_checklstring(L, 2, &len);
-    if (luai_unlikely(!pal_md_update(obj->ctx, s, len))) {
+    if (luai_unlikely(!pal_md_update(&obj->ctx, s, len))) {
         luaL_error(L, "failed to update data");
     }
     lua_pushvalue(L, 1);
@@ -62,9 +61,9 @@ static int lhash_obj_update(lua_State *L) {
 
 static int lhash_obj_digest(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    size_t len = pal_md_get_size(obj->ctx);
+    size_t len = pal_md_get_size(&obj->ctx);
     char out[len];
-    if (luai_unlikely(!pal_md_digest(obj->ctx, (uint8_t *)out))) {
+    if (luai_unlikely(!pal_md_digest(&obj->ctx, (uint8_t *)out))) {
         luaL_error(L, "failed to finishes the digest operation");
     }
     lua_pushlstring(L, out, len);
@@ -73,9 +72,9 @@ static int lhash_obj_digest(lua_State *L) {
 
 static int lhash_obj_hexdigest(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    size_t len = pal_md_get_size(obj->ctx);
+    size_t len = pal_md_get_size(&obj->ctx);
     char digest[len];
-    if (luai_unlikely(!pal_md_digest(obj->ctx, (uint8_t *)digest))) {
+    if (luai_unlikely(!pal_md_digest(&obj->ctx, (uint8_t *)digest))) {
         luaL_error(L, "failed to finishes the digest operation");
     }
     size_t olen = len * 2;
@@ -90,13 +89,13 @@ static int lhash_obj_hexdigest(lua_State *L) {
 
 static int lhash_obj_gc(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    pal_md_free(obj->ctx);
+    pal_md_ctx_deinit(&obj->ctx);
     return 0;
 }
 
 static int lhash_obj_tostring(lua_State *L) {
     lhash_obj *obj = LHASH_GET_OBJ(L, 1);
-    lua_pushfstring(L, "hash object (%p)", obj->ctx);
+    lua_pushfstring(L, "hash object (%p)", obj);
     return 1;
 }
 

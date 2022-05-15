@@ -46,6 +46,7 @@ const char *lstream_client_type_strs[] = {
 typedef struct lstream_client {
     bool host_is_addr;
     bool sslctx_pending;
+    bool sslctx_inited;
     lstream_client_state state;
     lstream_client_type type;
     uint16_t port;
@@ -53,7 +54,7 @@ typedef struct lstream_client {
     lua_State *co;
     const char *host;
     pal_dns_req_ctx *dns_req;
-    pal_ssl_ctx *sslctx;
+    pal_ssl_ctx sslctx;
     pal_socket_obj *sock;
     luaL_Buffer B;
 } lstream_client;
@@ -83,9 +84,9 @@ static void lstream_client_cleanup(lstream_client *client) {
         pal_socket_destroy(client->sock);
         client->sock = NULL;
     }
-    if (client->sslctx) {
-        pal_ssl_destroy(client->sslctx);
-        client->sslctx = NULL;
+    if (client->sslctx_inited) {
+        pal_ssl_ctx_deinit(&client->sslctx);
+        client->sslctx_inited = false;
     }
 }
 
@@ -155,7 +156,7 @@ static void lstream_client_handshake_step2_write(lstream_client *client, void *d
 
 handshake:
     olen = sizeof(buf);
-    switch (pal_ssl_handshake(client->sslctx, data, len, buf, &olen)) {
+    switch (pal_ssl_handshake(&client->sslctx, data, len, buf, &olen)) {
     case PAL_ERR_OK:
         client->state = LSTREAM_CLIENT_HANDSHAKE_STEP2_READ;
         if (olen == 0) {
@@ -208,7 +209,7 @@ static void lstream_client_handshake_step2_read(lstream_client *client) {
     HAPPrecondition(client);
     HAPPrecondition(client->state == LSTREAM_CLIENT_HANDSHAKE_STEP2_READ);
 
-    if (pal_ssl_finshed(client->sslctx)) {
+    if (pal_ssl_finshed(&client->sslctx)) {
         client->state = LSTREAM_CLIENT_HANDSHAKED;
         lstream_client_create_finsh(client, NULL);
         return;
@@ -259,7 +260,7 @@ static void lstream_client_handshake_step1(lstream_client *client) {
 
 handshake:
     olen = sizeof(buf);
-    switch (pal_ssl_handshake(client->sslctx, NULL, 0, buf, &olen)) {
+    switch (pal_ssl_handshake(&client->sslctx, NULL, 0, buf, &olen)) {
     case PAL_ERR_OK:
         client->state = LSTREAM_CLIENT_HANDSHAKE_STEP2_READ;
         if (olen == 0) {
@@ -312,12 +313,13 @@ static void lstream_client_handshake(lstream_client *client) {
         HAPFatalError();
     }
 
-    client->sslctx = pal_ssl_create(ssltype, PAL_SSL_ENDPOINT_CLIENT,
-        client->host_is_addr ? NULL : client->host);
-    if (luai_unlikely(!client->sslctx)) {
+    HAPAssert(!client->sslctx_inited);
+    if (luai_unlikely(!pal_ssl_ctx_init(&client->sslctx, ssltype, PAL_SSL_ENDPOINT_CLIENT,
+        client->host_is_addr ? NULL : client->host))) {
         lstream_client_create_finsh(client, "failed to create ssl context");
         return;
     }
+    client->sslctx_inited = true;
 
     client->state = LSTREAM_CLIENT_HANDSHAKE_STEP1;
     lstream_client_handshake_step1(client);
@@ -427,7 +429,7 @@ static int lstream_client_create(lua_State *L) {
     client->host = host;
     client->host_is_addr = false;
     client->sslctx_pending = false;
-    client->sslctx = NULL;
+    client->sslctx_inited = false;
     client->sock = NULL;
     client->co = NULL;
     client->dns_req = NULL;
@@ -500,7 +502,7 @@ static void lstream_client_encrypt_write_sent_cb(pal_socket_obj *o, pal_err err,
 
 static pal_err lstream_client_encrypt_write(lstream_client *client, const void *data, size_t len) {
     HAPPrecondition(client);
-    HAPPrecondition(client->sslctx);
+    HAPPrecondition(&client->sslctx);
     HAPPrecondition(client->state == LSTREAM_CLIENT_ENCRYPTING);
 
     pal_err err;
@@ -509,7 +511,7 @@ static pal_err lstream_client_encrypt_write(lstream_client *client, const void *
 
 encrypt:
     olen = sizeof(out);
-    switch (pal_ssl_encrypt(client->sslctx, data, len, out, &olen)) {
+    switch (pal_ssl_encrypt(&client->sslctx, data, len, out, &olen)) {
     case PAL_ERR_OK:
         client->state = LSTREAM_CLIENT_HANDSHAKED;
         if (olen == 0) {
@@ -562,7 +564,7 @@ static int lstream_client_write(lua_State *L) {
     const char *data = luaL_checklstring(L, 2, &len);
 
     pal_err err;
-    if (client->sslctx) {
+    if (client->sslctx_inited) {
         client->state = LSTREAM_CLIENT_ENCRYPTING;
         err = lstream_client_encrypt_write(client, data, len);
     } else {
@@ -620,7 +622,7 @@ static pal_err lstream_client_decrypt(lstream_client *client, bool all,
 
 decrypt:
     olen = B->size - luaL_bufflen(B);
-    err = pal_ssl_decrypt(client->sslctx, data, len, luaL_buffaddr(B) + luaL_bufflen(B), &olen);
+    err = pal_ssl_decrypt(&client->sslctx, data, len, luaL_buffaddr(B) + luaL_bufflen(B), &olen);
     switch (err) {
     case PAL_ERR_OK:
         luaL_addsize(B, olen);
@@ -645,7 +647,7 @@ decrypt:
 }
 
 static size_t lstream_client_readlen(lstream_client *client, size_t len) {
-    return client->sslctx ? LSTREAM_FRAME_LEN : (len > LSTREAM_FRAME_LEN ? LSTREAM_FRAME_LEN : len);
+    return client->sslctx_inited ? LSTREAM_FRAME_LEN : (len > LSTREAM_FRAME_LEN ? LSTREAM_FRAME_LEN : len);
 }
 
 static int finshread(lua_State *L, int status, lua_KContext extra) {
@@ -673,7 +675,7 @@ static int finshread(lua_State *L, int status, lua_KContext extra) {
 
     size_t maxlen = client->B.size;
 
-    if (client->sslctx) {
+    if (client->sslctx_inited) {
         if (luai_unlikely(lstream_client_decrypt(client, false, B, data, len) != PAL_ERR_OK)) {
             luaL_pushresult(B);
             lua_setiuservalue(L, 1, 2);
@@ -781,7 +783,7 @@ static int finshreadall(lua_State *L, int status, lua_KContext extra) {
         goto success;
     }
 
-    if (client->sslctx) {
+    if (client->sslctx_inited) {
         if (luai_unlikely(lstream_client_decrypt(client, true, B, data, len) != PAL_ERR_OK)) {
             luaL_pushresult(B);
             lua_setiuservalue(L, 1, 2);
@@ -891,7 +893,7 @@ static int finshreadline(lua_State *L, int status, lua_KContext extra) {
         init = luaL_bufflen(B) + 1 - seplen;
     }
 
-    if (client->sslctx) {
+    if (client->sslctx_inited) {
         luaL_prepbuffsize(B, LSTREAM_LINE_LEN);
         if (luai_unlikely(lstream_client_decrypt(client, false, B, data, len) != PAL_ERR_OK)) {
             luaL_pushresult(B);

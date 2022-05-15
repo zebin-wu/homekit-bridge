@@ -18,12 +18,13 @@ do { \
         "%s: %s: %s", __func__, msg, buf); \
 } while (0)
 
-struct pal_ssl_ctx {
+typedef struct pal_ssl_ctx_int {
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *in_bio;
     BIO *out_bio;
-};
+} pal_ssl_ctx_int;
+HAP_STATIC_ASSERT(sizeof(pal_ssl_ctx) >= sizeof(pal_ssl_ctx_int), pal_ssl_ctx_int);
 
 static const HAPLogObject ssl_log_obj = {
     .subsystem = kHAPPlatform_LogSubsystem,
@@ -36,15 +37,12 @@ void pal_ssl_init() {
 void pal_ssl_deinit() {
 }
 
-pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname) {
+bool pal_ssl_ctx_init(pal_ssl_ctx *_ctx, pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname) {
+    HAPPrecondition(_ctx);
     HAPPrecondition(type == PAL_SSL_TYPE_TLS || type == PAL_SSL_TYPE_DTLS);
     HAPPrecondition(ep == PAL_SSL_ENDPOINT_CLIENT || ep == PAL_SSL_ENDPOINT_SERVER);
 
-    pal_ssl_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
-    if (!ctx) {
-        HAPLogError(&ssl_log_obj, "%s: Failed to alloc memory.", __func__);
-        return NULL;
-    }
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
 
     const SSL_METHOD *method;
     switch (ep) {
@@ -73,26 +71,26 @@ pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *
     ctx->ctx = SSL_CTX_new(method);
     if (!ctx->ctx) {
         LOG_OPENSSL_ERROR("Failed to new SSL context");
-        goto err;
+        return false;
     }
 
     ctx->ssl = SSL_new(ctx->ctx);
     if (!ctx->ssl) {
         LOG_OPENSSL_ERROR("Failed to new SSL connection");
-        goto err1;
+        goto err;
     }
 
     ctx->in_bio = BIO_new(BIO_s_mem());
     if (!ctx->in_bio) {
         LOG_OPENSSL_ERROR("Failed to new in BIO");
-        goto err2;
+        goto err1;
     }
     BIO_set_mem_eof_return(ctx->in_bio, -1);
 
     ctx->out_bio = BIO_new(BIO_s_mem());
     if (!ctx->out_bio) {
         LOG_OPENSSL_ERROR("Failed to new out BIO");
-        goto err3;
+        goto err2;
     }
     BIO_set_mem_eof_return(ctx->out_bio, -1);
 
@@ -111,38 +109,37 @@ pal_ssl_ctx *pal_ssl_create(pal_ssl_type type, pal_ssl_endpoint ep, const char *
         break;
     }
 
-    return ctx;
+    return true;
 
-err3:
-    BIO_free(ctx->in_bio);
 err2:
-    SSL_free(ctx->ssl);
+    BIO_free(ctx->in_bio);
 err1:
-    SSL_CTX_free(ctx->ctx);
+    SSL_free(ctx->ssl);
 err:
-    pal_mem_free(ctx);
-    return NULL;
+    SSL_CTX_free(ctx->ctx);
+    return false;
 }
 
-void pal_ssl_destroy(pal_ssl_ctx *ctx) {
-    if (!ctx) {
-        return;
-    }
+void pal_ssl_ctx_deinit(pal_ssl_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
+
     SSL_free(ctx->ssl);
     SSL_CTX_free(ctx->ctx);
-    pal_mem_free(ctx);
 }
 
-bool pal_ssl_finshed(pal_ssl_ctx *ctx) {
-    HAPPrecondition(ctx);
+bool pal_ssl_finshed(pal_ssl_ctx *_ctx) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
+
     return SSL_is_init_finished(ctx->ssl);
 }
 
-static inline size_t pal_ssl_bio_pending(pal_ssl_ctx *ctx) {
+static inline size_t pal_ssl_bio_pending(pal_ssl_ctx_int *ctx) {
     return BIO_ctrl_pending(ctx->out_bio);
 }
 
-static bool pal_ssl_bio_read(pal_ssl_ctx *ctx, void *data, size_t *len) {
+static bool pal_ssl_bio_read(pal_ssl_ctx_int *ctx, void *data, size_t *len) {
     size_t pending = pal_ssl_bio_pending(ctx);
 
     if (!pending) {
@@ -166,7 +163,7 @@ static bool pal_ssl_bio_read(pal_ssl_ctx *ctx, void *data, size_t *len) {
     return true;
 }
 
-static bool pal_ssl_bio_write(pal_ssl_ctx *ctx, const void *data, size_t len) {
+static bool pal_ssl_bio_write(pal_ssl_ctx_int *ctx, const void *data, size_t len) {
     size_t written;
     while (len) {
         if (!BIO_write_ex(ctx->in_bio, data, len, &written)) {
@@ -180,14 +177,15 @@ static bool pal_ssl_bio_write(pal_ssl_ctx *ctx, const void *data, size_t len) {
     return true;
 }
 
-pal_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
-    HAPPrecondition(ctx);
+pal_err pal_ssl_handshake(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
     HAPPrecondition(olen);
     HAPPrecondition(*olen > 0);
 
-    if (pal_ssl_finshed(ctx)) {
+    if (pal_ssl_finshed(_ctx)) {
         HAPLogError(&ssl_log_obj, "%s: Handshake is already finshed.", __func__);
         *olen = 0;
         return PAL_ERR_INVALID_STATE;
@@ -200,7 +198,7 @@ pal_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *o
         }
     }
 
-    if (pal_ssl_finshed(ctx)) {
+    if (pal_ssl_finshed(_ctx)) {
         *olen = 0;
         return PAL_ERR_OK;
     }
@@ -231,8 +229,9 @@ pal_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *o
     return PAL_ERR_UNKNOWN;
 }
 
-pal_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
-    HAPPrecondition(ctx);
+pal_err pal_ssl_encrypt(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
     HAPPrecondition(olen);
@@ -259,8 +258,9 @@ pal_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out
     return PAL_ERR_OK;
 }
 
-pal_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen) {
-    HAPPrecondition(ctx);
+pal_err pal_ssl_decrypt(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
     HAPPrecondition(out);
     HAPPrecondition(olen);
