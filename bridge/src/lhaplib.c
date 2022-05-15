@@ -2722,7 +2722,7 @@ static int lhap_add_bridged_accessory(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     if (desc->bridged_accs_max - desc->bridged_accs_cnt <= 1) {
-        desc->bridged_accs_max = desc->bridged_accs_cnt ? desc->bridged_accs_cnt * 2 : 2;
+        desc->bridged_accs_max = desc->bridged_accs_cnt ? desc->bridged_accs_max * 2 : 2;
         HAPAccessory **accs = pal_mem_realloc(desc->bridged_accs, sizeof(HAPAccessory *) * desc->bridged_accs_max);
         if (!accs) {
             luaL_error(L, "Failed to alloc memory.");
