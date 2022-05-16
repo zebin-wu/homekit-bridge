@@ -14,6 +14,9 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 
+/* The maximum length of the NVS namespace, not include '\0' */
+#define PAL_NVS_NAME_MAX_LEN 15
+
 /* The maximum length of the NVS key, not include '\0' */
 #define PAL_NVS_KEY_MAX_LEN 15
 

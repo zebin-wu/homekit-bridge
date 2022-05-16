@@ -20,7 +20,7 @@ typedef struct {
 static int lnvs_open(lua_State *L) {
     size_t len;
     const char *namespace = luaL_checklstring(L, 1, &len);
-    luaL_argcheck(L, len > 0 && len <= PAL_NVS_KEY_MAX_LEN, 1, "namespace out of range");
+    luaL_argcheck(L, len > 0 && len <= PAL_NVS_NAME_MAX_LEN, 1, "namespace out of range");
 
     lnvs_handle *handle = lua_newuserdata(L, sizeof(*handle));
     luaL_setmetatable(L, LUA_NVS_HANDLE_NAME);

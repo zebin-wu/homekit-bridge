@@ -35,11 +35,11 @@ struct pal_nvs_item {
 };
 
 struct pal_nvs_handle {
+    char name[PAL_NVS_NAME_MAX_LEN + 1];
     uint32_t using_count;
     bool changed;
     SLIST_HEAD(pal_nvs_item_list_head, pal_nvs_item) item_list_head;
     LIST_ENTRY(pal_nvs_handle) list_entry;
-    char name[0];
 };
 
 static bool ginited;
@@ -100,7 +100,7 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
     HAPPrecondition(ginited);
     HAPPrecondition(name);
     size_t name_len = strlen(name);
-    HAPPrecondition(name_len > 0 && name_len <= PAL_NVS_KEY_MAX_LEN);
+    HAPPrecondition(name_len > 0 && name_len <= PAL_NVS_NAME_MAX_LEN);
 
     pal_nvs_handle *handle;
     LIST_FOREACH(handle, &ghandle_list_head, list_entry) {
@@ -110,7 +110,7 @@ pal_nvs_handle *pal_nvs_open(const char *name) {
         }
     }
 
-    handle = pal_mem_alloc(sizeof(*handle) + name_len + 1);
+    handle = pal_mem_alloc(sizeof(*handle));
     if (!handle) {
         NVS_LOG_ERR("Failed to alloc NVS handle.");
         return NULL;

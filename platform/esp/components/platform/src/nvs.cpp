@@ -17,16 +17,16 @@ static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, 
     HAPLogError(&logObject, "%s: " fmt, __func__, ##arg);
 
 struct pal_nvs_handle {
+    char name[PAL_NVS_NAME_MAX_LEN + 1];
     nvs::NVSHandle *handle;
-    char name[0];
 };
 
 extern "C" pal_nvs_handle *pal_nvs_open(const char *name) {
     HAPPrecondition(name);
     size_t name_len = strlen(name);
-    HAPPrecondition(name_len > 0 && name_len <= PAL_NVS_KEY_MAX_LEN);
+    HAPPrecondition(name_len > 0 && name_len <= PAL_NVS_NAME_MAX_LEN);
 
-    pal_nvs_handle *handle = (pal_nvs_handle *)pal_mem_alloc(sizeof(*handle) + name_len + 1);
+    pal_nvs_handle *handle = (pal_nvs_handle *)pal_mem_alloc(sizeof(*handle));
     if (!handle) {
         NVS_LOG_ERR("Failed to alloc nvs handle.");
         return NULL;
