@@ -46,7 +46,7 @@ void pal_ssl_deinit();
 /**
  * Initializes a SSL context.
  *
- * @param ctx The uninitialized SSL context.
+ * @param ctx The SSL context to initialize.
  * @param type SSL type.
  * @param endpoint SSL endpoint.
  * @param hostname Server host name, only valid when the SSL endpoint is PAL_SSL_ENDPOINT_CLIENT.
@@ -57,7 +57,7 @@ void pal_ssl_deinit();
 bool pal_ssl_ctx_init(pal_ssl_ctx *ctx, pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname);
 
 /**
- * @brief Releases resources associated with a initialized SSL context.
+ * Releases resources associated with a initialized SSL context.
  *
  * @param ctx The initialized SSL context.
  */
@@ -67,6 +67,7 @@ void pal_ssl_ctx_deinit(pal_ssl_ctx *ctx);
  * Whether the handshake is finshed.
  *
  * @param ctx SSL context.
+ *
  * @return true on success
  * @return false on failure.
  */
@@ -80,6 +81,7 @@ bool pal_ssl_finshed(pal_ssl_ctx *ctx);
  * @param ilen Length of @p in.
  * @param out Output data.
  * @param olen Length of @p out.
+ *
  * @return PAL_ERR_OK on success.
  * @return PAL_ERR_AGAIN means you need to call this function again,
  *         to get the remaining output data.
@@ -95,6 +97,7 @@ pal_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *o
  * @param ilen Length of @p in.
  * @param out Output data.
  * @param olen Length of @p out.
+ *
  * @return PAL_ERR_OK on success.
  * @return PAL_ERR_AGAIN means you need to call this function again,
  *         to get the remaining output data.
@@ -110,6 +113,7 @@ pal_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out
  * @param ilen Length of @p in.
  * @param out Output data.
  * @param olen Length of @p out.
+ *
  * @return PAL_ERR_OK on success.
  * @return PAL_ERR_AGAIN means you need to call this function again,
  *         to get the remaining output data.

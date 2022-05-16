@@ -17,7 +17,7 @@ extern "C" {
 #include <pal/types.h>
 
 /**
- * @brief Supported {cipher type, cipher mode} pairs.
+ * Supported {cipher type, cipher mode} pairs.
  */
 typedef enum {
     PAL_CIPHER_TYPE_AES_128_ECB,          /**< AES cipher with 128-bit ECB mode. */
@@ -96,7 +96,7 @@ typedef enum {
 } pal_cipher_type;
 
 /**
- * @brief Supported cipher padding types.
+ * Supported cipher padding types.
  */
 typedef enum {
     PAL_CIPHER_PADDING_NONE,        /**< Never pad (full blocks only).   */
@@ -108,7 +108,7 @@ typedef enum {
 } pal_cipher_padding;
 
 /**
- * @brief Type of operation.
+ * Type of operation.
  */
 typedef enum {
     PAL_CIPHER_OP_NONE = -1,
@@ -118,9 +118,9 @@ typedef enum {
 } pal_cipher_operation;
 
 /**
- * @brief Initializes a cipher context.
+ * Initializes a cipher context.
  *
- * @param ctx The uninitialized cipher context.
+ * @param ctx The cipher context to initialize.
  * @param type Type of the cipher.
  *
  * @return true on success
@@ -129,14 +129,14 @@ typedef enum {
 bool pal_cipher_ctx_init(pal_cipher_ctx *ctx, pal_cipher_type type);
 
 /**
- * @brief Releases resources associated with a initialized cipher context.
+ * Releases resources associated with a initialized cipher context.
  *
  * @param ctx The initialized cipher context.
  */
 void pal_cipher_ctx_deinit(pal_cipher_ctx *ctx);
 
 /**
- * @brief Return the block size of the given cipher in bytes.
+ * Return the block size of the given cipher in bytes.
  *
  * @param ctx The cipher context.
  *
@@ -145,7 +145,7 @@ void pal_cipher_ctx_deinit(pal_cipher_ctx *ctx);
 size_t pal_cipher_get_block_size(pal_cipher_ctx *ctx);
 
 /**
- * @brief Return the key length of the cipher in bytes.
+ * Return the key length of the cipher in bytes.
  *
  * @param ctx The cipher context.
  *
@@ -154,7 +154,7 @@ size_t pal_cipher_get_block_size(pal_cipher_ctx *ctx);
 size_t pal_cipher_get_key_len(pal_cipher_ctx *ctx);
 
 /**
- * @brief Return the length of the IV or nonce of the cipher in bytes.
+ * Return the length of the IV or nonce of the cipher in bytes.
  *
  * @param ctx The cipher context.
  *
@@ -164,7 +164,7 @@ size_t pal_cipher_get_key_len(pal_cipher_ctx *ctx);
 size_t pal_cipher_get_iv_len(pal_cipher_ctx *ctx);
 
 /**
- * @brief Set the padding mode, for cipher modes that use padding.
+ * Set the padding mode, for cipher modes that use padding.
  *        The default padding mode is PKCS7 padding.
  *
  * @param ctx The cipher context.
@@ -176,7 +176,7 @@ size_t pal_cipher_get_iv_len(pal_cipher_ctx *ctx);
 bool pal_cipher_set_padding(pal_cipher_ctx *ctx, pal_cipher_padding padding);
 
 /**
- * @brief Begin a encryption/decryption process.
+ * Begin a encryption/decryption process.
  *
  * @param ctx The cipher context.
  * @param op The operation mode of this process.
@@ -189,7 +189,7 @@ bool pal_cipher_set_padding(pal_cipher_ctx *ctx, pal_cipher_padding padding);
 bool pal_cipher_begin(pal_cipher_ctx *ctx, pal_cipher_operation op, const uint8_t *key, const uint8_t *iv);
 
 /**
- * @brief Update data to the cipher context.
+ * Update data to the cipher context.
  *
  * @param ctx The cipher context.
  * @param in The buffer holding the input data.
@@ -206,7 +206,7 @@ bool pal_cipher_begin(pal_cipher_ctx *ctx, pal_cipher_operation op, const uint8_
 bool pal_cipher_update(pal_cipher_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
 
 /**
- * @brief Finsh the encryption/decryption process.
+ * Finsh the encryption/decryption process.
  *
  * @param ctx The cipher context.
  * @param out The buffer holding the output data.

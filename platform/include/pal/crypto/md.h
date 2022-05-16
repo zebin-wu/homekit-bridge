@@ -17,7 +17,7 @@ extern "C" {
 #include <pal/types.h>
 
 /**
- * @brief     Supported message digests.
+ *     Supported message digests.
  *
  * @warning   MD4, MD5 and SHA-1 are considered weak message digests and
  *            their use constitutes a security risk. We recommend considering
@@ -38,7 +38,7 @@ typedef enum {
 /**
  * Initializes a message-digest context.
  *
- * @param ctx The uninitialized message-digest context.
+ * @param ctx The message-digest context to initialize.
  * @param type Type of digest.
  * @param key If key is set, HMAC will be used.
  * @param len Length of @p key.
@@ -49,7 +49,7 @@ typedef enum {
 bool pal_md_ctx_init(pal_md_ctx *ctx, pal_md_type type, const void *key, size_t len);
 
 /**
- * @brief Releases resources associated with a initialized message-digest context.
+ * Releases resources associated with a initialized message-digest context.
  *
  * @param ctx The initialized message-digest context.
  */
@@ -57,6 +57,10 @@ void pal_md_ctx_deinit(pal_md_ctx *ctx);
 
 /**
  * Return the size of message-digest.
+ *
+ * @param message-digest context.
+ *
+ * @return the size of digest.
  */
 size_t pal_md_get_size(pal_md_ctx *ctx);
 
@@ -66,6 +70,7 @@ size_t pal_md_get_size(pal_md_ctx *ctx);
  * @param ctx message-digest context.
  * @param data The data to update.
  * @param len The length of the data.
+ *
  * @return true on success
  * @return false on failure.
  */
@@ -77,6 +82,7 @@ bool pal_md_update(pal_md_ctx *ctx, const void *data, size_t len);
  * @param ctx message-digest context.
  * @param output The buffer to receive the hash value. Its size must be
  *  (at least) the size returned by pal_md_get_size().
+ *
  * @return true on success
  * @return false on failure.
  */

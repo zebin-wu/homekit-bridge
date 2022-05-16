@@ -48,11 +48,13 @@ function mq:send(...) end
 ---When the message queue is empty, the current coroutine
 ---waits here until a message is received.
 ---@return ...
+---@nodiscard
 function mq:recv() end
 
 ---Create a message queue.
 ---@param size integer Queue size.
 ---@return MessageQueue
+---@nodiscard
 function core.createMQ(size) end
 
 return core

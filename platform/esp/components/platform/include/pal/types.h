@@ -14,17 +14,17 @@ extern "C" {
 #include <HAPBase.h>
 
 /**
- * @brief Opaque structure for cipher context.
+ * Opaque structure for cipher context.
  */
 typedef HAP_OPAQUE(68) pal_cipher_ctx;
 
 /**
- * @brief Opaque structure for message-digest context.
+ * Opaque structure for message-digest context.
  */
 typedef HAP_OPAQUE(16) pal_md_ctx;
 
 /**
- * @brief Opaque structure for SSL context.
+ * Opaque structure for SSL context.
  */
 typedef HAP_OPAQUE(420) pal_ssl_ctx;
 
