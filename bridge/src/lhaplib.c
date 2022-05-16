@@ -2911,7 +2911,6 @@ int lhap_deinit(lua_State *L) {
  * raiseEvent(accessoryIID:integer, serviceIID:integer, characteristicIID:integer)
  */
 static int lhap_raise_event(lua_State *L) {
-    lua_Integer iid;
     HAPSessionRef *session = NULL;
     lhap_desc *desc = &gv_lhap_desc;
 
@@ -2919,70 +2918,15 @@ static int lhap_raise_event(lua_State *L) {
         luaL_error(L, "HAP is not started.");
     }
 
-    luaL_checktype(L, 1, LUA_TNUMBER);
-    luaL_checktype(L, 2, LUA_TNUMBER);
-    luaL_checktype(L, 3, LUA_TNUMBER);
+    uint64_t aid = luaL_checkinteger(L, 1);
+    uint64_t sid = luaL_checkinteger(L, 2);
+    uint64_t cid = luaL_checkinteger(L, 3);
     if (!lua_isnoneornil(L, 4)) {
         luaL_checktype(L, 4, LUA_TLIGHTUSERDATA);
         session = lua_touserdata(L, 4);
     }
 
-    HAPAccessory *a = NULL;
-    iid = lua_tointeger(L, 1);
-    if (desc->primary_acc->aid == iid) {
-        a = desc->primary_acc;
-        goto service;
-    }
-    if (!desc->bridged_accs) {
-        luaL_argerror(L, 1, "accessory not found");
-    }
-    for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
-        if ((*pa)->aid == iid) {
-            a = *pa;
-            break;
-        }
-    }
-    if (!a) {
-        luaL_argerror(L, 1, "accessory not found");
-    }
-
-service:
-    if (!a->services) {
-        luaL_argerror(L, 2, "service not found");
-    }
-    HAPService *s = NULL;
-    iid = lua_tointeger(L, 2);
-    for (HAPService **ps = (HAPService **)a->services; *ps; ps++) {
-        if ((*ps)->iid == iid) {
-            s = *ps;
-            break;
-        }
-    }
-    if (!s) {
-        luaL_argerror(L, 2, "service not found");
-    }
-
-    if (!s->characteristics) {
-        luaL_argerror(L, 3, "characteristic not found");
-    }
-    HAPCharacteristic *c = NULL;
-    iid = lua_tointeger(L, 3);
-    for (HAPCharacteristic **pc = (HAPCharacteristic **)s->characteristics; *pc; pc++) {
-        if ((*(HAPBaseCharacteristic **)pc)->iid == iid) {
-            c = *pc;
-            break;
-        }
-    }
-    if (!c) {
-        luaL_argerror(L, 3, "characteristic not found");
-    }
-
-    if (session) {
-        HAPAccessoryServerRaiseEventOnSession(&desc->server, c, s, a, session);
-    } else {
-        HAPAccessoryServerRaiseEvent(&desc->server, c, s, a);
-    }
-
+    HAPAccessoryServerRaiseEventByIID(&desc->server, cid, sid, aid, session);
     return 0;
 }
 
