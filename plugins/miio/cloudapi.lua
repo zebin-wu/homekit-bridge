@@ -16,7 +16,7 @@ local error = error
 
 local M = {}
 
----@class MiCloudSession:MiCloudSessionPriv Xiaomi Cloud API session.
+---@class MiCloudSession Xiaomi Cloud API session.
 local session = {}
 
 ---Check the server region.
@@ -101,6 +101,7 @@ function session:loginStep1()
         ["Content-Type"] = "application/x-www-form-urlencoded",
         ["Cookie"] = self.cookie .. ";userId=" .. self.username,
     })
+    assert(body)
     if code ~= 200 or body:find("_sign", 1, true) == nil then
         error("invalid username")
     end
@@ -125,6 +126,7 @@ function session:loginStep2(sign)
         ["Content-Type"] = "application/x-www-form-urlencoded",
         ["Cookie"] = self.cookie,
     })
+    assert(body)
     local ssecurity = body:match("\"ssecurity\":\"(.-)\"")
     if code ~= 200 or ssecurity == nil or #ssecurity < 4 then
         error("invalid login or password")
@@ -159,7 +161,7 @@ end
 ---Login.
 ---@return MiCloudSession
 function session:login()
-    assert(self:isLogin() == false, "attempt to log in repeatedly")
+    assert(self:isLogin() == false, "attempt to login repeatedly")
     self:loginStep3(self:loginStep2(self:loginStep1()))
     local handle <close> = nvs.open("miio.cloudapi")
     handle:set(self.username:sub(1, 15), {
@@ -191,12 +193,12 @@ function session:isLogin()
     return self.serviceToken ~= nil
 end
 
----Request.
+---Private request.
 ---@param path string
 ---@param data any
 ---@param encrypt? boolean
 ---@return table result
-function session:request(path, data, encrypt)
+function session:_request(path, data, encrypt)
     assert(self:isLogin(), "attemp to request before login")
     local ssecurity = base64.decode(self.ssecurity)
     local nonce = genNonce()
@@ -251,6 +253,29 @@ function session:request(path, data, encrypt)
     return resp.result
 end
 
+---Request.
+---@param path string
+---@param data any
+---@param encrypt? boolean
+---@return table result
+function session:request(path, data, encrypt)
+    local retry = true
+
+::again::
+    local success, result = pcall(self._request, self, path, data, encrypt)
+    if success == false then
+        if retry then
+            retry = false
+            self:logout()
+            self:login()
+            goto again
+        end
+        error(result)
+    end
+
+    return result
+end
+
 ---Get miIO devices.
 ---@param type? '"wifi"'|'"zigbee"'|'"bluetooth"'
 ---@return table
@@ -301,7 +326,7 @@ function M.session(region, username, password)
     local agentId = cache.agentid or randomBytes(65, 69, 13)
     local deviceId = cache.agentid or randomBytes(97, 122, 6)
 
-    ---@class MiCloudSessionPriv
+    ---@class MiCloudSession
     local o = {
         region = region,
         username = username,
