@@ -18,20 +18,17 @@ static char hardware_version[HARDWARE_VERSION_BUF_LEN];
  * Buffer should be at least 13 bytes long.
  * String will be NUL-terminated and truncated if necessary.
  */
-static char *format_mac(const uint8_t *mac, char *buf, size_t buf_len)
-{
-	snprintf(buf, buf_len, "%2.2X%2.2X%2.2X%2.2X%2.2X%2.2X",
-	    mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	return buf;
+static char *format_mac(const uint8_t *mac, char *buf, size_t buf_len) {
+    snprintf(buf, buf_len, "%2.2X%2.2X%2.2X%2.2X%2.2X%2.2X",
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    return buf;
 }
 
-const char *pal_chip_get_manufacturer(void)
-{
+const char *pal_chip_get_manufacturer(void) {
     return "Espressif";
 }
 
-const char *pal_chip_get_model(void)
-{
+const char *pal_chip_get_model(void) {
     const char *model;
     esp_chip_info_t info;
 
@@ -56,8 +53,7 @@ const char *pal_chip_get_model(void)
     return model;
 }
 
-const char *pal_chip_get_serial_number(void)
-{
+const char *pal_chip_get_serial_number(void) {
     if (serial_number[0] != '\0') {
         return serial_number;
     }
@@ -66,8 +62,7 @@ const char *pal_chip_get_serial_number(void)
     return format_mac(mac, serial_number, sizeof(serial_number));
 }
 
-const char *pal_chip_get_hardware_version(void)
-{
+const char *pal_chip_get_hardware_version(void) {
     if (hardware_version[0] != '\0') {
         return hardware_version;
     }
