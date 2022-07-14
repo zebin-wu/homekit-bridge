@@ -8,6 +8,7 @@ local HeatThrholdTemp = require "hap.char.HeatingThresholdTemperature"
 local SwingMode = require "hap.char.SwingMode"
 local searchKey = require "util".searchKey
 local raiseEvent = hap.raiseEvent
+local tointeger = math.tointeger
 
 local M = {}
 
@@ -116,7 +117,7 @@ function M.gen(device, info, conf)
                         return value
                     end, function (request, value)
                         device.logger:info("Write CoolingThresholdTemperature: " .. value)
-                        device:setProp("tar_temp", math.tointeger(value))
+                        device:setProp("tar_temp", assert(tointeger(value), "value not a integer"))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end, 16, 30, 1),
                     HeatThrholdTemp.new(iids.heatThrTemp, function (request)
@@ -125,7 +126,7 @@ function M.gen(device, info, conf)
                         return value
                     end, function (request, value)
                         device.logger:info("Write HeatingThresholdTemperature: " .. value)
-                        device:setProp("tar_temp", math.tointeger(value))
+                        device:setProp("tar_temp", assert(tointeger(value), "value not a integer"))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end, 16, 30, 1),
                     SwingMode.new(iids.swingMode, function (request)

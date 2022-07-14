@@ -57,7 +57,7 @@ function M.gen(device, info, conf)
                         return value
                     end, function (request, value)
                         device.logger:info("Write RotationSpeed: " .. value)
-                        device:setProp("fanSpeed", tointeger(value))
+                        device:setProp("fanSpeed", assert(tointeger(value), "value not a integer"))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request)

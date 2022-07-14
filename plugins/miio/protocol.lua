@@ -85,7 +85,7 @@ local logger = log.getLogger("miio.protocol")
 ---
 --- The mode of operation is Cipher Block Chaining (CBC).
 ---
----@class MiioEncryption: MiioEncryptionPriv
+---@class MiioEncryption
 local encryption = {}
 
 ---Encrypt data.
@@ -122,7 +122,7 @@ local function createEncryption(token)
     local key = md5(token)
     local iv = md5(key .. token)
 
-    ---@class MiioEncryptionPriv
+    ---@class MiioEncryption
     local o = {
         ctx = ctx,
         key = key,
@@ -257,7 +257,7 @@ function M.scan(timeout, addr)
     end
 end
 
----@class MiioPcb: MiioPcbPriv miio protocol control block.
+---@class MiioPcb: table miio protocol control block.
 local pcb = {}
 
 ---@class MiioError miIO error.
@@ -360,7 +360,7 @@ function M.create(addr, token)
     assert(type(token) == "string")
     assert(#token == 16)
 
-    ---@class MiioPcbPriv
+    ---@class MiioPcb
     local o = {
         addr = addr,
         token = token,

@@ -3,6 +3,7 @@ local tostring = tostring
 local type = type
 local ipairs = ipairs
 local pairs = pairs
+local tointeger = math.tointeger
 local schar = string.char
 local sbyte = string.byte
 local tsort = table.sort
@@ -74,7 +75,7 @@ end
 ---@field user string
 ---@field password string
 ---@field host string
----@field port string
+---@field port integer
 ---@field fragment string
 local url = {}
 
@@ -115,7 +116,7 @@ function url:setAuthority(authority)
     end)
 
     authority = authority:gsub(":(%d+)$", function (v)
-        self.port = tonumber(v)
+        self.port = assert(tointeger(v), "invalid port")
         return ""
     end)
 
@@ -236,7 +237,7 @@ end
 
 ---Parses the query string to a table.
 ---@param s string
----@param sep string
+---@param sep? string
 ---@return table
 function M.parseQuery(s, sep)
     local opt = M.options.query

@@ -164,7 +164,7 @@ local function testService(expect, k, vals, log)
             },
             chars = {
                 require("hap.char.ServiceSignature").new(21),
-                require("hap.char.Name").new(22)
+                require("hap.char.Name").new(22, "LightBulb")
             }
         }
         if log then

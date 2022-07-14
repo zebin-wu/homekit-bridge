@@ -4,6 +4,7 @@ local RotationSpeed = require "hap.char.RotationSpeed"
 local SwingMode = require "hap.char.SwingMode"
 local searchKey = require "util".searchKey
 local raiseEvent = hap.raiseEvent
+local tointeger = math.tointeger
 
 local M = {}
 
@@ -61,7 +62,7 @@ function M.gen(device, info, conf)
                         return value
                     end, function (request, value)
                         device.logger:info("Write RotationSpeed: " .. value)
-                        device:setProp("speed_level", math.tointeger(value))
+                        device:setProp("speed_level", assert(tointeger(value), "value not a integer"))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request)

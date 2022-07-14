@@ -80,7 +80,7 @@ function M.gen(device, info, conf)
                         return value
                     end, function (request, value)
                         device.logger:info("Write RelativeHumidityDehumidifierThreshold: " .. tointeger(value))
-                        device:setProp("tgtHumidity", tointeger(value))
+                        device:setProp("tgtHumidity", assert(tointeger(value), "value not a integer"))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end)
                 }

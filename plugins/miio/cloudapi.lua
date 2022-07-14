@@ -45,6 +45,7 @@ local function getPidByType(type)
     elseif type == "bluetooth" then
         return 6
     end
+    error("invalid type")
 end
 
 local function buildCookie(tab)
@@ -223,8 +224,7 @@ function session:_request(path, data, encrypt)
     local url = ("https://%sapi.io.mi.com/app%s?%s"):format(
         self.region == "cn" and "" or self.region .. ".",
         path, urllib.buildQuery(params))
-    local code, _, body = self.session:request(
-        "POST", url, 5000, {
+    local headers = {
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
         ["Cookie"] = self.cookie .. ";" .. buildCookie({
@@ -237,12 +237,16 @@ function session:_request(path, data, encrypt)
             dst_offset = "3600000",
             channel = "MI_APP_STORE"
         }),
-        ["x-xiaomi-protocal-flag-cli"] = "PROTOCAL-HTTP2",
-        ["MIOT-ENCRYPT-ALGORITHM"] = encrypt and "ENCRYPT-RC4" or nil,
-    })
-    if code ~= 200 then
-        error(cjson.decode(body).message)
+        ["x-xiaomi-protocal-flag-cli"] = "PROTOCAL-HTTP2"
+    }
+    if encrypt then
+        headers["MIOT-ENCRYPT-ALGORITHM"] = "ENCRYPT-RC4"
     end
+    local code, _, body = self.session:request("POST", url, 5000, headers)
+    if code ~= 200 then
+        error(cjson.decode(assert(body)).message)
+    end
+    assert(body, "missing body")
     if encrypt then
         body = rc4ctx:crypt(base64.decode(body))
     end

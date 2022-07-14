@@ -9,10 +9,18 @@ local tinsert = table.insert
 
 local M = {}
 
----@class MiotIID: table MIOT instance ID.
+---@class MiotIID:table MIOT instance ID.
 ---
 ---@field siid integer Service instance ID.
 ---@field piid integer Property instance ID.
+
+---@class MiotProperty:table MIOT property.
+---
+---@field did any Device ID(Use this field to map aliases).
+---@field siid integer Service instance ID.
+---@field piid integer Property instance ID.
+---@field code integer Error code.
+---@field value any Proeprty value.
 
 ---@class MiioDeviceNetIf:table Device network interface.
 ---
@@ -28,7 +36,11 @@ local M = {}
 ---@field hw_ver string Hardware version.
 ---@field netif MiioDeviceNetIf Network interface.
 
----@class MiioDevice:MiioDevicePriv Device object.
+---@class MiioDevice Device object.
+---
+---@field get_prop fun(...: string): any[] Get properties.
+---@field get_properties fun(...: MiotProperty): MiotProperty[] Get properties(MIOT).
+---@field set_properties fun(...: MiotProperty): MiotProperty[] Set properties(MIOT).
 local device = setmetatable({}, {
     __index = function (_, k)
         return function (self, ...)
@@ -58,6 +70,7 @@ end
 ---@param obj MiioDevice
 local function getPropsMiot(obj)
     local mapping = obj.mapping
+    assert(mapping ~= nil, "missing mapping")
     local params = {}
     for _, name in ipairs(obj.names) do
         tinsert(params, {
@@ -152,7 +165,7 @@ function M.create(addr, token)
     assert(type(token) == "string")
     assert(#token == 32)
 
-    ---@class MiioDevicePriv
+    ---@class MiioDevice
     local o = {
         logger = log.getLogger("miio.device:" .. addr),
         pcb = protocol.create(addr, util.hex2bin(token)),

@@ -1,6 +1,7 @@
 local stream = require "stream"
 local urllib = require "url"
 local tonumber = tonumber
+local tointeger = math.tointeger
 local tinsert = table.insert
 local ipairs = ipairs
 local pairs = pairs
@@ -40,10 +41,10 @@ end
 ---@nodiscard
 function client:request(method, path, headers, body)
     local sc = self.sc
+    headers = headers or {}
 
     local chunked = false
     do
-        headers = headers or {}
         if not headers["Host"] then
             headers["Host"] = self.host
         end
@@ -72,6 +73,7 @@ function client:request(method, path, headers, body)
 
     if body then
         if chunked then
+            assert(type(body) == "function")
             while true do
                 local chunk = body()
                 if #chunk > 0 then
@@ -82,13 +84,14 @@ function client:request(method, path, headers, body)
                 end
             end
         else
+            assert(type(body) == "string")
             sc:write(body)
         end
     end
 
     local line = sc:readline("\r\n", true)
     local code, _ = line:match("HTTP/[%d%.]+%s+([%d]+)%s+(.*)$")
-    code = assert(tonumber(code))
+    code = assert(tointeger(code))
 
     headers = {}
     while true do
@@ -108,10 +111,6 @@ function client:request(method, path, headers, body)
     end
 
     local length = headers["Content-Length"]
-    if length then
-        length = tonumber(length)
-    end
-
     local mode = headers["Transfer-Encoding"]
     if mode then
         if mode ~= "identity" and mode ~= "chunked" then
@@ -126,7 +125,7 @@ function client:request(method, path, headers, body)
             return chunk
         end
     elseif length then
-        body = sc:read(length, true)
+        body = sc:read(assert(tointeger(length)), true)
     elseif code == 204 or code == 304 or code < 200 then
         body = nil
     else
