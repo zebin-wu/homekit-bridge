@@ -1,5 +1,7 @@
 # 米家 - miio
 
+[English Version](README.md) | 中文版
+
 ## 介绍
 
 **miio** 实现了 [miio 协议](https://github.com/OpenMiHome/mihome-binary-protocol/blob/master/doc/PROTOCOL.md), 并将协议封装抽象成Lua类 `MiioDevice`, 提供以下功能:

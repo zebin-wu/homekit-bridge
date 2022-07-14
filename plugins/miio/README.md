@@ -1,5 +1,7 @@
 # Mi Home - miio
 
+English Version | [中文版](README_CN.md)
+
 ## Introduction
 
 **miio** implement the [miio protocol](https://github.com/OpenMiHome/mihome-binary-protocol/blob/master/doc/PROTOCOL.md), and encapsulate the class `MiioDevice`, provide features:
