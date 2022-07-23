@@ -25,6 +25,12 @@ typedef enum {
     PAL_SOCKET_TYPE_UDP,            /**< UDP */
 } pal_socket_type;
 
+typedef struct {
+    pal_err (*handshake)(void *ctx);
+    pal_err (*send)(void *ctx, const void *data, size_t *len);
+    pal_err (*recv)(void *ctx, void *buf, size_t *len);
+} pal_socket_bio_method;
+
 /**
  * Opaque structure for the socket object.
  */
@@ -45,6 +51,15 @@ pal_socket_obj *pal_socket_create(pal_socket_type type, pal_addr_family af);
  * @param o The pointer to the socket object.
  */
 void pal_socket_destroy(pal_socket_obj *o);
+
+/**
+ * Set basic I/O functions.
+ *
+ * @param o The pointer to the socket object.
+ * @param ctx BIO context.
+ * @param method BIO method.
+ */
+void pal_socket_set_bio(pal_socket_obj *o, void *ctx, const pal_socket_bio_method *method);
 
 /**
  * Set the timeout.
@@ -196,14 +211,36 @@ typedef void (*pal_socket_recved_cb)(pal_socket_obj *o, pal_err err,
  * Receive data.
  *
  * @param o The pointer to the socket object.
- * @param maxlen The max length of data you want to received.
+ * @param[out] buf The buf to hold data.
+ * @param[inout] len The length of @p buf, to be updated with the actual number of Bytes received.
  * @param recved_cb A callback called when a socket received data.
  * @param arg The value to be passed as the last argument to recved_cb.
+ * @return PAL_ERR_OK on success.
  * @return PAL_ERR_IN_PROGRESS means it will take a while to recv,
  *         @p recved_cb will be called when the data is received.
  * @return other error number on failure.
  */
-pal_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recved_cb recved_cb, void *arg);
+pal_err pal_socket_recv(pal_socket_obj *o, void *buf, size_t *len,
+    pal_socket_recved_cb recved_cb, void *arg);
+
+/**
+ * Receive data and get remote address and port.
+ *
+ * @param o The pointer to the socket object.
+ * @param[out] buf The buf to hold data.
+ * @param[inout] len The length of @p buf, to be updated with the actual number of Bytes received.
+ * @param[out] addr A buffer to hold remote address.
+ * @param addrlen The length of @p addr.
+ * @param[out] port Remote port.
+ * @param recved_cb A callback called when a socket received data.
+ * @param arg The value to be passed as the last argument to recved_cb.
+ * @return PAL_ERR_OK on success.
+ * @return PAL_ERR_IN_PROGRESS means it will take a while to recv,
+ *         @p recved_cb will be called when the data is received.
+ * @return other error number on failure.
+ */
+pal_err pal_socket_recvfrom(pal_socket_obj *o, void *buf, size_t *len, char *addr,
+    size_t addrlen, uint16_t *port, pal_socket_recved_cb recved_cb, void *arg);
 
 /**
  * Whether the socket is readable.
@@ -212,6 +249,14 @@ pal_err pal_socket_recv(pal_socket_obj *o, size_t maxlen, pal_socket_recved_cb r
  * @returns true if there is buffered record data in the socket and false otherwise.
  */
 bool pal_socket_readable(pal_socket_obj *o);
+
+typedef void (*pal_socket_handshaked_cb)(pal_socket_obj *o, pal_err err, void *arg);
+
+pal_err pal_socket_handshake(pal_socket_obj *o, pal_socket_handshaked_cb handshaked_cb, void *arg);
+
+pal_err pal_socket_raw_send(pal_socket_obj *o, const void *data, size_t *len);
+
+pal_err pal_socket_raw_recv(pal_socket_obj *o, void *buf, size_t *len);
 
 #ifdef __cplusplus
 }

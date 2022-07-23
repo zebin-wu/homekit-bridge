@@ -7,8 +7,6 @@
 #include <string.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/error.h>
-#include <sys/queue.h>
-#include <pal/memory.h>
 #include <pal/crypto/ssl.h>
 #include <pal/crypto/ssl_int.h>
 #include <HAPPlatform.h>
@@ -21,23 +19,11 @@ do { \
         "%s: %s() returned -%04X: %s", __func__, #func, -err, buf); \
 } while (0)
 
-typedef struct {
-    void *data;
-    size_t len;
-} pal_ssl_bio;
-
-struct pal_ssl_buf {
-    STAILQ_ENTRY(pal_ssl_buf) entry;
-    pal_ssl_bio bio;
-    char buf[0];
-};
-
 typedef struct pal_ssl_ctx_int {
     bool finshed;
     uint16_t id;
-    pal_ssl_bio in_bio;
-    pal_ssl_bio out_bio;
-    STAILQ_HEAD(, pal_ssl_buf) outbuf_list_head;
+    void *bio;
+    pal_ssl_bio_method bio_method;
     mbedtls_ssl_context ssl;
     mbedtls_ssl_config conf;
 } pal_ssl_ctx_int;
@@ -59,16 +45,6 @@ static const int ssl_transport_mapping[] = {
 };
 
 static uint16_t gssl_count;
-
-static inline void pal_ssl_bio_init(pal_ssl_bio *bio, void *data, size_t len) {
-    bio->data = data;
-    bio->len = len;
-}
-
-static inline void pal_ssl_bio_reset(pal_ssl_bio *bio) {
-    bio->data = NULL;
-    bio->len = 0;
-}
 
 static int pal_mbedtls_rng(void *arg, unsigned char *buf, size_t len) {
     HAPPlatformRandomNumberFill(buf, len);
@@ -99,40 +75,30 @@ static void pal_mbedtls_dbg_cb(void *arg, int level, const char *file, int line,
 
 static int pal_mbedtls_ssl_send(void *arg, const unsigned char *buf, size_t len) {
     pal_ssl_ctx_int *ctx = arg;
-    pal_ssl_bio *bio = &ctx->in_bio;
 
-    if (bio->len == 0) {
+    pal_err err = ctx->bio_method.write(ctx->bio, buf, &len);
+    switch (err) {
+    case PAL_ERR_AGAIN:
         return MBEDTLS_ERR_SSL_WANT_WRITE;
+    case PAL_ERR_OK:
+        return len;
+    default:
+        return MBEDTLS_ERR_ERROR_GENERIC_ERROR;
     }
-    size_t written = HAPMin(len, bio->len);
-    memcpy(bio->data, buf, written);
-    bio->data += written;
-    bio->len -= written;
-    return written;
 }
 
 static int pal_mbedtls_ssl_recv(void *arg, unsigned char *buf, size_t len) {
     pal_ssl_ctx_int *ctx = arg;
-    struct pal_ssl_buf *outbuf = STAILQ_FIRST(&ctx->outbuf_list_head);
-    pal_ssl_bio *bio = NULL;
-    if (outbuf) {
-        bio = &outbuf->bio;
-    } else {
-        bio = &ctx->out_bio;
-        if (bio->len == 0) {
-            return MBEDTLS_ERR_SSL_WANT_READ;
-        }
-    }
-    size_t readbytes = HAPMin(len, bio->len);
-    memcpy(buf, bio->data, readbytes);
-    bio->data += readbytes;
-    bio->len -= readbytes;
 
-    if (outbuf && bio->len == 0) {
-        STAILQ_REMOVE_HEAD(&ctx->outbuf_list_head, entry);
-        pal_mem_free(outbuf);
+    pal_err err = ctx->bio_method.read(ctx->bio, buf, &len);
+    switch (err) {
+    case PAL_ERR_AGAIN:
+        return MBEDTLS_ERR_SSL_WANT_READ;
+    case PAL_ERR_OK:
+        return len;
+    default:
+        return MBEDTLS_ERR_ERROR_GENERIC_ERROR;
     }
-    return readbytes;
 }
 
 bool pal_ssl_ctx_init(pal_ssl_ctx *_ctx, pal_ssl_type type, pal_ssl_endpoint ep, const char *hostname) {
@@ -152,13 +118,12 @@ bool pal_ssl_ctx_init(pal_ssl_ctx *_ctx, pal_ssl_type type, pal_ssl_endpoint ep,
         return false;
     }
 
-    mbedtls_ssl_set_bio(&ctx->ssl, ctx, pal_mbedtls_ssl_send, pal_mbedtls_ssl_recv, NULL);
     if (hostname) {
         mbedtls_ssl_set_hostname(&ctx->ssl, hostname);
     }
 
     pal_ssl_set_default_ca_chain(&ctx->conf);
-    mbedtls_ssl_conf_authmode(&ctx->conf, MBEDTLS_SSL_VERIFY_REQUIRED);
+    mbedtls_ssl_conf_authmode(&ctx->conf, MBEDTLS_SSL_VERIFY_NONE);
     mbedtls_ssl_conf_rng(&ctx->conf, pal_mbedtls_rng, NULL);
     mbedtls_ssl_conf_dbg(&ctx->conf, pal_mbedtls_dbg_cb, ctx);
 
@@ -171,7 +136,6 @@ bool pal_ssl_ctx_init(pal_ssl_ctx *_ctx, pal_ssl_type type, pal_ssl_endpoint ep,
 
     ctx->finshed = false;
     ctx->id = ++gssl_count;
-    STAILQ_INIT(&ctx->outbuf_list_head);
 
     return true;
 }
@@ -180,13 +144,17 @@ void pal_ssl_ctx_deinit(pal_ssl_ctx *_ctx) {
     HAPPrecondition(_ctx);
     pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
 
-    for (struct pal_ssl_buf *t = STAILQ_FIRST(&ctx->outbuf_list_head); t;) {
-        struct pal_ssl_buf *cur = t;
-        t = STAILQ_NEXT(t, entry);
-        pal_mem_free(cur);
-    }
     mbedtls_ssl_free(&ctx->ssl);
     mbedtls_ssl_config_free(&ctx->conf);
+}
+
+void pal_ssl_set_bio(pal_ssl_ctx *_ctx, void *bio, const pal_ssl_bio_method *method) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
+
+    ctx->bio = bio;
+    ctx->bio_method = *method;
+    mbedtls_ssl_set_bio(&ctx->ssl, ctx, pal_mbedtls_ssl_send, pal_mbedtls_ssl_recv, NULL);
 }
 
 bool pal_ssl_finshed(pal_ssl_ctx *_ctx) {
@@ -196,115 +164,67 @@ bool pal_ssl_finshed(pal_ssl_ctx *_ctx) {
     return ctx->finshed;
 }
 
-pal_err pal_ssl_handshake(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+pal_err pal_ssl_handshake(pal_ssl_ctx *_ctx) {
     HAPPrecondition(_ctx);
     pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
-    HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
-    HAPPrecondition(out);
-    HAPPrecondition(olen);
-    HAPPrecondition(*olen > 0);
 
     if (ctx->finshed) {
         HAPLogError(&ssl_log_obj, "%s: Handshake is already finshed.", __func__);
-        *olen = 0;
         return PAL_ERR_INVALID_STATE;
     }
 
-    pal_ssl_bio_init(&ctx->out_bio, (void *)in, ilen);
-    pal_ssl_bio_init(&ctx->in_bio, out, *olen);
-
-    pal_err err = PAL_ERR_UNKNOWN;
     int ret = mbedtls_ssl_handshake(&ctx->ssl);
     switch (ret) {
     case 0:
         ctx->finshed = true;
+        return PAL_ERR_OK;
     case MBEDTLS_ERR_SSL_WANT_READ:
-        HAPAssert(ctx->out_bio.len == 0);
-        err = PAL_ERR_OK;
-        *olen = *olen - ctx->in_bio.len;
-        break;
+        return PAL_ERR_WANT_READ;
     case MBEDTLS_ERR_SSL_WANT_WRITE:
-        HAPAssert(ctx->out_bio.len == 0);
-        err = PAL_ERR_AGAIN;
-        *olen = *olen - ctx->in_bio.len;
-        break;
+        return PAL_ERR_WANT_WRITE;
     default:
         MBEDTLS_PRINT_ERROR(mbedtls_ssl_handshake, ret);
-        *olen = 0;
+        return PAL_ERR_UNKNOWN;
     }
-
-    pal_ssl_bio_reset(&ctx->in_bio);
-    pal_ssl_bio_reset(&ctx->out_bio);
-    return err;
 }
 
-pal_err pal_ssl_encrypt(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+pal_err pal_ssl_read(pal_ssl_ctx *_ctx, void *buf, size_t *len) {
     HAPPrecondition(_ctx);
     pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
-    HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
-    HAPPrecondition(out);
-    HAPPrecondition(olen);
-    HAPPrecondition(*olen > 0);
 
-    pal_ssl_bio_init(&ctx->in_bio, out, *olen);
+    int ret = mbedtls_ssl_read(&ctx->ssl, buf, *len);
+    if (ret > 0) {
+        *len = ret;
+        return PAL_ERR_OK;
+    } else if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
+        return PAL_ERR_AGAIN;
+    } else {
+        MBEDTLS_PRINT_ERROR(mbedtls_ssl_read, ret);
+        return PAL_ERR_UNKNOWN;
+    }
+}
 
-    pal_err err = PAL_ERR_UNKNOWN;
-    int ret = mbedtls_ssl_write(&ctx->ssl, in, ilen);
-    if (ret == ilen) {
-        err = PAL_ERR_OK;
-        *olen = *olen - ctx->in_bio.len;
+pal_err pal_ssl_write(pal_ssl_ctx *_ctx, const void *data, size_t *len) {
+    HAPPrecondition(_ctx);
+    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
+
+    int ret = mbedtls_ssl_write(&ctx->ssl, data, *len);
+    if (ret >= 0) {
+        *len = ret;
+        return PAL_ERR_OK;
     } else if (ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
-        err = PAL_ERR_AGAIN;
-        *olen = *olen - ctx->in_bio.len;
+        return PAL_ERR_AGAIN;
     } else {
         MBEDTLS_PRINT_ERROR(mbedtls_ssl_write, ret);
-        *olen = 0;
+        return PAL_ERR_UNKNOWN;
     }
-
-    pal_ssl_bio_reset(&ctx->in_bio);
-    return err;
 }
 
-pal_err pal_ssl_decrypt(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
-    HAPPrecondition(_ctx);
-    pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
-    HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));
-    HAPPrecondition(out);
-    HAPPrecondition(olen);
-    HAPPrecondition(*olen > 0);
+__attribute__((weak)) void pal_ssl_set_default_ca_chain(mbedtls_ssl_config *conf) {
+}
 
-    pal_ssl_bio_init(&ctx->out_bio, (void *)in, ilen);
+__attribute__((weak)) void pal_ssl_init() {
+}
 
-    size_t len = *olen;
-    while (len > 0) {
-        int ret = mbedtls_ssl_read(&ctx->ssl, out, len);
-        if (ret > 0) {
-            out += ret;
-            len -= ret;
-        } else if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
-            *olen = *olen - len;
-            pal_ssl_bio_reset(&ctx->out_bio);
-            return PAL_ERR_OK;
-        } else {
-            MBEDTLS_PRINT_ERROR(mbedtls_ssl_read, ret);
-            *olen = 0;
-            pal_ssl_bio_reset(&ctx->out_bio);
-            return PAL_ERR_UNKNOWN;
-        }
-    }
-
-    if (ctx->out_bio.len) {
-        size_t len = ctx->out_bio.len;
-        struct pal_ssl_buf *buf = pal_mem_alloc(sizeof(*buf) + len);
-        if (!buf) {
-            HAPLogError(&ssl_log_obj, "%s: Failed to alloc SSL context.", __func__);
-            return PAL_ERR_ALLOC;
-        }
-        STAILQ_INSERT_TAIL(&ctx->outbuf_list_head, buf, entry);
-        buf->bio.len = len;
-        memcpy(buf->buf, ctx->out_bio.data, len);
-        buf->bio.data = buf->buf;
-    }
-    pal_ssl_bio_reset(&ctx->out_bio);
-    return mbedtls_ssl_check_pending(&ctx->ssl) ? PAL_ERR_AGAIN : PAL_ERR_OK;
+__attribute__((weak)) void pal_ssl_deinit() {
 }

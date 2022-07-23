@@ -33,6 +33,11 @@ typedef enum pal_ssl_endpoint {
     PAL_SSL_ENDPOINT_SERVER,
 } pal_ssl_endpoint;
 
+typedef struct {
+    pal_err (*read)(void *bio, void *buf, size_t *len);
+    pal_err (*write)(void *bio, const void *data, size_t *len);
+} pal_ssl_bio_method;
+
 /**
  * Initialize SSL module.
  */
@@ -63,6 +68,8 @@ bool pal_ssl_ctx_init(pal_ssl_ctx *ctx, pal_ssl_type type, pal_ssl_endpoint ep, 
  */
 void pal_ssl_ctx_deinit(pal_ssl_ctx *ctx);
 
+void pal_ssl_set_bio(pal_ssl_ctx *ctx, void *bio, const pal_ssl_bio_method *method);
+
 /**
  * Whether the handshake is finshed.
  *
@@ -77,49 +84,37 @@ bool pal_ssl_finshed(pal_ssl_ctx *ctx);
  * Perform the SSL handshake.
  *
  * @param ctx SSL context.
- * @param in Input data.
- * @param ilen Length of @p in.
- * @param out Output data.
- * @param olen Length of @p out.
  *
  * @return PAL_ERR_OK on success.
  * @return PAL_ERR_AGAIN means you need to call this function again,
  *         to get the remaining output data.
  * @return Other error numbers on failure.
  */
-pal_err pal_ssl_handshake(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
+pal_err pal_ssl_handshake(pal_ssl_ctx *ctx);
 
 /**
  * Encrypt data to be output. 
  *
  * @param ctx SSL context.
- * @param in Input data.
- * @param ilen Length of @p in.
- * @param out Output data.
- * @param olen Length of @p out.
  *
  * @return PAL_ERR_OK on success.
  * @return PAL_ERR_AGAIN means you need to call this function again,
  *         to get the remaining output data.
  * @return Other error numbers on failure.
  */
-pal_err pal_ssl_encrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
+pal_err pal_ssl_read(pal_ssl_ctx *ctx, void *buf, size_t *len);
 
 /**
  * Decrypt input data.
  *
  * @param ctx SSL context.
- * @param in Input data.
- * @param ilen Length of @p in.
- * @param out Output data.
- * @param olen Length of @p out.
  *
  * @return PAL_ERR_OK on success.
  * @return PAL_ERR_AGAIN means you need to call this function again,
  *         to get the remaining output data.
  * @return Other error numbers on failure.
  */
-pal_err pal_ssl_decrypt(pal_ssl_ctx *ctx, const void *in, size_t ilen, void *out, size_t *olen);
+pal_err pal_ssl_write(pal_ssl_ctx *ctx, const void *data, size_t *len);
 
 #ifdef __cplusplus
 }

@@ -177,7 +177,7 @@ static bool pal_ssl_bio_write(pal_ssl_ctx_int *ctx, const void *data, size_t len
     return true;
 }
 
-pal_err pal_ssl_handshake(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
+pal_err pal_ssl_do_handshake(pal_ssl_ctx *_ctx, const void *in, size_t ilen, void *out, size_t *olen) {
     HAPPrecondition(_ctx);
     pal_ssl_ctx_int *ctx = (pal_ssl_ctx_int *)_ctx;
     HAPPrecondition((in && ilen > 0) || (!in && ilen == 0));

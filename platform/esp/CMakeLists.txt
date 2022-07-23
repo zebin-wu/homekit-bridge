@@ -59,6 +59,5 @@ endif()
 target_add_lua_binary_embedfs(${PROJECT}.elf
     ${BRIDGE_EMBEDFS_ROOT}
     ${LUAC}
-    DEBUG
     SRC_DIRS ${SCRIPTS_SRC_DIRS} ${PLUGINS_DIR}
 )

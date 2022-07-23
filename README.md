@@ -44,7 +44,7 @@ Xiaomi Smart Dehumidifier 22L | `dmaker.derh.22l`
 After clone the repository to the local, please initialize submodules by the follow command:
 
 ```bash
-$ git submodule update --init
+git submodule update --init
 ```
 
 ### Linux (Ubuntu)
@@ -52,17 +52,17 @@ $ git submodule update --init
 #### Prepare
 
 ```bash
-$ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev python3-pip
-$ sudo pip3 install cpplint
+sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev python3-pip
+sudo pip3 install cpplint
 ```
 
 #### Compile and install
 
 ```bash
-$ mkdir build
-$ cd build
-$ cmake -G Ninja .. && ninja
-$ sudo ninja install
+mkdir build
+cd build
+cmake -G Ninja .. && ninja
+sudo ninja install
 ```
 
 #### Run
@@ -70,7 +70,7 @@ $ sudo ninja install
 Run homekit-bridge by default:
 
 ```bash
-$ homekit-bridge
+homekit-bridge
 ```
 
 The following options can be specified when running homekit-bridge:
@@ -94,9 +94,9 @@ Set up the host environment and ESP-IDF as per the steps given [here](https://do
 The currently tested ESP-IDF version is **v4.4**, switch to this version with the following command:
 
 ```bash
-$ git fetch --tag
-$ git checkout v4.4
-$ git submodule update
+git fetch --tag
+git checkout v4.4
+git submodule update
 ```
 
 #### Compile and flash
@@ -104,11 +104,11 @@ $ git submodule update
 You can use homekit-bridge with any ESP32 or ESP32-S2 board. Compile, flash and connect to console as below:
 
 ```bash
-$ cd /path/to/homekit-bridge/platform/esp
-$ export ESPPORT=/dev/ttyUSB0  # Set your board's serial port here
-$ idf.py set-target [esp32|esp32s2|esp32c3|esp32s3]
-$ idf.py flash
-$ idf.py monitor
+cd /path/to/homekit-bridge/platform/esp
+export ESPPORT=/dev/ttyUSB0  # Set your board's serial port here
+idf.py set-target [esp32|esp32s2|esp32c3|esp32s3]
+idf.py flash
+idf.py monitor
 ```
 
 #### Join Wi-Fi
@@ -116,7 +116,7 @@ $ idf.py monitor
 Use `join` command to configure Wi-Fi:
 
 ```bash
-esp32 > join "<ssid>" "<password>"
+join "<ssid>" "<password>"
 ```
 
 #### Configure

@@ -1,7 +1,7 @@
 local suites = {
-    "testhap",
+    -- "testhap",
     "testsocket",
-    "testnvs"
+    -- "testnvs"
 }
 
 local function runSuite(s)

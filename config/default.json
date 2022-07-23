@@ -2,5 +2,12 @@
     "bridge": {
         "name": "HomeKit Bridge"
     },
-    "plugins": {}
+    "plugins": {
+        "miio": {
+            "region": "cn",
+            "username": "869371250@qq.com",
+            "password": "wU83610872",
+            "ssid": "HUAWEI-H10O4C"
+        }
+    }
 }

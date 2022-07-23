@@ -16,6 +16,7 @@
 
 typedef struct {
     pal_socket_obj *socket;
+    luaL_Buffer B;
 } lsocket_obj;
 
 static const HAPLogObject lsocket_log = {
@@ -314,6 +315,7 @@ static void lsocket_recved_cb(pal_socket_obj *o, pal_err err,
 }
 
 static int finshrecv(lua_State *L, int status, lua_KContext extra) {
+    lsocket_obj *obj = lsocket_obj_get(L, 1);
     bool isrecvfrom = (bool)extra;
     pal_err err = lua_tointeger(L, -1);
     lua_pop(L, 1);
@@ -321,15 +323,18 @@ static int finshrecv(lua_State *L, int status, lua_KContext extra) {
     switch (err) {
     case PAL_ERR_OK: {
         const char *data = lua_touserdata(L, -1);
+        HAPAssert(data == luaL_buffaddr(&obj->B));
         size_t len = lua_tointeger(L, -2);
         const char *addr = lua_touserdata(L, -3);
-        lua_pop(L, 3);
-        lua_pushlstring(L, data, len);
+        uint16_t port = lua_tointeger(L, -4);
+        lua_pop(L, 4);
+        luaL_addsize(&obj->B, len);
+        luaL_pushresult(&obj->B);
         if (!isrecvfrom) {
             return 1;
         }
         lua_pushstring(L, addr);
-        lua_pushvalue(L, -3);
+        lua_pushinteger(L, port);
         return 3;
     } break;
     default:
@@ -342,10 +347,16 @@ static int finshrecv(lua_State *L, int status, lua_KContext extra) {
 static int lsocket_obj_recv(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
     lua_Integer maxlen = luaL_checkinteger(L, 2);
-    luaL_argcheck(L, maxlen > 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
+    luaL_argcheck(L, maxlen >= 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
 
-    pal_err err = pal_socket_recv(obj->socket, maxlen, lsocket_recved_cb, L);
+    luaL_buffinitsize(L, &obj->B, maxlen);
+    size_t len = maxlen;
+    pal_err err = pal_socket_recv(obj->socket, luaL_buffaddr(&obj->B), &len, lsocket_recved_cb, L);
     switch (err) {
+    case PAL_ERR_OK:
+        luaL_addsize(&obj->B, len);
+        luaL_pushresult(&obj->B);
+        return 1;
     case PAL_ERR_IN_PROGRESS:
         return lua_yieldk(L, 0, (lua_KContext)false, finshrecv);
     default:
@@ -357,10 +368,22 @@ static int lsocket_obj_recv(lua_State *L) {
 static int lsocket_obj_recvfrom(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
     lua_Integer maxlen = luaL_checkinteger(L, 2);
-    luaL_argcheck(L, maxlen > 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
+    luaL_argcheck(L, maxlen >= 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
 
-    pal_err err = pal_socket_recv(obj->socket, maxlen, lsocket_recved_cb, L);
+    char addr[64];
+    uint16_t port;
+    luaL_buffinitsize(L, &obj->B, maxlen);
+    size_t len = maxlen;
+    pal_err err = pal_socket_recvfrom(obj->socket,
+        luaL_buffaddr(&obj->B), &len, addr, sizeof(addr),
+        &port, lsocket_recved_cb, L);
     switch (err) {
+    case PAL_ERR_OK:
+        luaL_addsize(&obj->B, len);
+        luaL_pushresult(&obj->B);
+        lua_pushstring(L, addr);
+        lua_pushinteger(L, port);
+        return 3;
     case PAL_ERR_IN_PROGRESS:
         return lua_yieldk(L, 0, (lua_KContext)true, finshrecv);
     default:

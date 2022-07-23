@@ -118,6 +118,8 @@ target_link_libraries(${PROJECT}
         m
         dns_sd
         dl
+        mbedtls
+        mbedcrypto
 )
 
 # add compile options
@@ -125,6 +127,7 @@ target_compile_options(${PROJECT}
     PRIVATE
         -Wall
         -Werror
+        -Wno-deprecated-declarations
 )
 
 # install binaries
