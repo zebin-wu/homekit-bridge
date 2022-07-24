@@ -255,7 +255,7 @@ pal_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t *len,
  * @param port The remote port.
  * @param data The received data.
  * @param len The length of the received data.
- * @param arg The last paramter of pal_socket_recv().
+ * @param arg The last paramter of @b pal_socket_recv().
  */
 typedef void (*pal_socket_recved_cb)(pal_socket_obj *o, pal_err err,
     const char *addr, uint16_t port, void *data, size_t len, void *arg);
@@ -306,6 +306,13 @@ pal_err pal_socket_recvfrom(pal_socket_obj *o, void *buf, size_t *len, char *add
  */
 bool pal_socket_readable(pal_socket_obj *o);
 
+/**
+ * A callback called when the handshake is done.
+ *
+ * @param o The pointer to the socket object.
+ * @param err The error of the handshake.
+ * @param arg The last paramter of @b pal_socket_handshake().
+ */
 typedef void (*pal_socket_handshaked_cb)(pal_socket_obj *o, pal_err err, void *arg);
 
 /**
@@ -319,7 +326,7 @@ typedef void (*pal_socket_handshaked_cb)(pal_socket_obj *o, pal_err err, void *a
  *
  * @return PAL_ERR_OK on success.
  * @return PAL_ERR_IN_PROGRESS means it will take a while to handshake,
- *         @p handshaked_cb will be called when the data is received.
+ *         @p handshaked_cb will be called when the handshake is done.
  * @return other error number on failure.
  */
 pal_err pal_socket_handshake(pal_socket_obj *o, pal_socket_handshaked_cb handshaked_cb, void *arg);
