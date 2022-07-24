@@ -29,11 +29,8 @@ HAP_ENUM_BEGIN(uint8_t, lstream_client_state) {
     LSTREAM_CLIENT_DNS_RESOLVING,
     LSTREAM_CLIENT_CONNECTING,
     LSTREAM_CLIENT_CONNECTED,
-    LSTREAM_CLIENT_HANDSHAKE_STEP1,
-    LSTREAM_CLIENT_HANDSHAKE_STEP2_READ,
-    LSTREAM_CLIENT_HANDSHAKE_STEP2_WRITE,
+    LSTREAM_CLIENT_HANDSHAKING,
     LSTREAM_CLIENT_HANDSHAKED,
-    LSTREAM_CLIENT_ENCRYPTING,
 } HAP_ENUM_END(uint8_t, lstream_client_state);
 
 const char *lstream_client_type_strs[] = {
@@ -64,10 +61,6 @@ static const HAPLogObject lstream_log = {
     .category = "lstream",
 };
 
-static void lstream_client_handshake_step1(lstream_client *client);
-static void lstream_client_handshake_step2_read(lstream_client *client);
-static void lstream_client_handshake_step2_write(lstream_client *client, void *data, size_t len);
-static pal_err lstream_client_encrypt_write(lstream_client *client, const void *data, size_t len);
 static int lstream_client_async_read(lua_State *L, lstream_client *client, size_t maxlen, lua_KFunction k);
 
 static void lstream_client_cleanup(lstream_client *client) {
@@ -122,169 +115,14 @@ static void lstream_client_create_finsh(lstream_client *client, const char *errm
     lc_collectgarbage(L);
 }
 
-static void lstream_client_handshake_step2_sent_cb(pal_socket_obj *o,
-    pal_err err, size_t sent_len, void *arg) {
+static void lstream_client_handshaked_cb(pal_socket_obj *o, pal_err err, void *arg) {
     lstream_client *client = arg;
     HAPAssert(client->sock == o);
 
     switch (err) {
     case PAL_ERR_OK:
-        switch (client->state) {
-        case LSTREAM_CLIENT_HANDSHAKE_STEP2_WRITE:
-            lstream_client_handshake_step2_write(client, NULL, 0);
-            break;
-        case LSTREAM_CLIENT_HANDSHAKE_STEP2_READ: {
-            lstream_client_handshake_step2_read(client);
-        } break;
-        default:
-            HAPFatalError();
-        }
-        break;
-    default:
-        lstream_client_create_finsh(client, pal_err_string(err));
-        break;
-    }
-}
-
-static void lstream_client_handshake_step2_write(lstream_client *client, void *data, size_t len) {
-    HAPPrecondition(client);
-    HAPPrecondition(client->state == LSTREAM_CLIENT_HANDSHAKE_STEP2_WRITE);
-
-    pal_err err;
-    char buf[LSTREAM_FRAME_LEN];
-    size_t olen;
-
-handshake:
-    olen = sizeof(buf);
-    switch (pal_ssl_handshake(&client->sslctx, data, len, buf, &olen)) {
-    case PAL_ERR_OK:
-        client->state = LSTREAM_CLIENT_HANDSHAKE_STEP2_READ;
-        if (olen == 0) {
-            lstream_client_handshake_step2_read(client);
-            return;
-        }
-        break;
-    case PAL_ERR_AGAIN:
-        data = NULL;
-        len = 0;
-        break;
-    default:
-        lstream_client_create_finsh(client, "failed to handshake");
-        return;
-    }
-
-    err = pal_socket_send(client->sock, buf, &olen, true,
-        lstream_client_handshake_step2_sent_cb, client);
-    switch (err) {
-    case PAL_ERR_OK:
-        if (client->state == LSTREAM_CLIENT_HANDSHAKE_STEP2_WRITE) {
-            goto handshake;
-        }
-        lstream_client_handshake_step2_read(client);
-        break;
-    case PAL_ERR_IN_PROGRESS:
-        break;
-    default:
-        lstream_client_create_finsh(client, pal_err_string(err));
-        break;
-    }
-}
-
-static void lstream_client_handshake_step2_recved_cb(pal_socket_obj *o, pal_err err,
-    const char *addr, uint16_t port, void *data, size_t len, void *arg) {
-    lstream_client *client = arg;
-    HAPAssert(client->sock == o);
-
-    switch (err) {
-    case PAL_ERR_OK:
-        client->state = LSTREAM_CLIENT_HANDSHAKE_STEP2_WRITE;
-        lstream_client_handshake_step2_write(client, data, len);
-        break;
-    default:
-        lstream_client_create_finsh(client, pal_err_string(err));
-    }
-}
-
-static void lstream_client_handshake_step2_read(lstream_client *client) {
-    HAPPrecondition(client);
-    HAPPrecondition(client->state == LSTREAM_CLIENT_HANDSHAKE_STEP2_READ);
-
-    if (pal_ssl_finshed(&client->sslctx)) {
         client->state = LSTREAM_CLIENT_HANDSHAKED;
         lstream_client_create_finsh(client, NULL);
-        return;
-    }
-
-    pal_err err = pal_socket_recv(client->sock, LSTREAM_FRAME_LEN,
-        lstream_client_handshake_step2_recved_cb, client);
-    switch (err) {
-    case PAL_ERR_IN_PROGRESS:
-        break;
-    default:
-        lstream_client_create_finsh(client, pal_err_string(err));
-        break;
-    }
-}
-
-static void lstream_client_handshake_step1_sent_cb(pal_socket_obj *o,
-    pal_err err, size_t sent_len, void *arg) {
-    lstream_client *client = arg;
-    HAPAssert(client->sock == o);
-
-    switch (err) {
-    case PAL_ERR_OK:
-        switch (client->state) {
-        case LSTREAM_CLIENT_HANDSHAKE_STEP1:
-            lstream_client_handshake_step1(client);
-            break;
-        case LSTREAM_CLIENT_HANDSHAKE_STEP2_READ: {
-            lstream_client_handshake_step2_read(client);
-        } break;
-        default:
-            HAPFatalError();
-        }
-        break;
-    default:
-        lstream_client_create_finsh(client, pal_err_string(err));
-        break;
-    }
-}
-
-static void lstream_client_handshake_step1(lstream_client *client) {
-    HAPPrecondition(client);
-    HAPPrecondition(client->state == LSTREAM_CLIENT_HANDSHAKE_STEP1);
-
-    pal_err err;
-    char buf[LSTREAM_FRAME_LEN];
-    size_t olen;
-
-handshake:
-    olen = sizeof(buf);
-    switch (pal_ssl_handshake(&client->sslctx, NULL, 0, buf, &olen)) {
-    case PAL_ERR_OK:
-        client->state = LSTREAM_CLIENT_HANDSHAKE_STEP2_READ;
-        if (olen == 0) {
-            lstream_client_handshake_step2_read(client);
-            return;
-        }
-        break;
-    case PAL_ERR_AGAIN:
-        break;
-    default:
-        lstream_client_create_finsh(client, "failed to handshake");
-        return;
-    }
-
-    err = pal_socket_send(client->sock, buf, &olen, true,
-        lstream_client_handshake_step1_sent_cb, client);
-    switch (err) {
-    case PAL_ERR_OK:
-        if (client->state == LSTREAM_CLIENT_HANDSHAKE_STEP1) {
-            goto handshake;
-        }
-        lstream_client_handshake_step2_read(client);
-        break;
-    case PAL_ERR_IN_PROGRESS:
         break;
     default:
         lstream_client_create_finsh(client, pal_err_string(err));
@@ -315,14 +153,34 @@ static void lstream_client_handshake(lstream_client *client) {
 
     HAPAssert(!client->sslctx_inited);
     if (luai_unlikely(!pal_ssl_ctx_init(&client->sslctx, ssltype, PAL_SSL_ENDPOINT_CLIENT,
-        client->host_is_addr ? NULL : client->host))) {
+        client->host_is_addr ? NULL : client->host, client->sock, &(pal_ssl_bio_method) {
+        .read = (void *)pal_socket_raw_recv,
+        .write = (void *)pal_socket_raw_send,
+    }))) {
         lstream_client_create_finsh(client, "failed to create ssl context");
         return;
     }
+    pal_socket_set_bio(client->sock, &client->sslctx, &(pal_socket_bio_method) {
+        .handshake = (void *)pal_ssl_handshake,
+        .recv = (void *)pal_ssl_read,
+        .send = (void *)pal_ssl_write,
+        .pending = (void *)pal_ssl_pending,
+    });
     client->sslctx_inited = true;
 
-    client->state = LSTREAM_CLIENT_HANDSHAKE_STEP1;
-    lstream_client_handshake_step1(client);
+    pal_err err = pal_socket_handshake(client->sock, lstream_client_handshaked_cb, client);
+    switch (err) {
+    case PAL_ERR_OK:
+        client->state = LSTREAM_CLIENT_HANDSHAKED;
+        lstream_client_create_finsh(client, NULL);
+        break;
+    case PAL_ERR_IN_PROGRESS:
+        client->state = LSTREAM_CLIENT_HANDSHAKING;
+        break;
+    default:
+        lstream_client_create_finsh(client, pal_err_string(err));
+        break;
+    }
 }
 
 static void lstream_client_connected_cb(pal_socket_obj *o, pal_err err, void *arg) {
@@ -471,7 +329,9 @@ static int lstream_client_settimeout(lua_State *L) {
     return 0;
 }
 
-static void lstream_client_write_finsh(lstream_client *client, pal_err err) {
+static void lstream_client_write_sent_cb(pal_socket_obj *o, pal_err err, size_t sent_len, void *arg) {
+    lstream_client *client = arg;
+    HAPAssert(client->sock == o);
     lua_State *co = client->co;
     lua_State *L = lc_getmainthread(co);
 
@@ -485,64 +345,6 @@ static void lstream_client_write_finsh(lstream_client *client, pal_err err) {
 
     lua_settop(L, 0);
     lc_collectgarbage(L);
-}
-
-static void lstream_client_encrypt_write_sent_cb(pal_socket_obj *o, pal_err err, size_t sent_len, void *arg) {
-    lstream_client *client = arg;
-    HAPAssert(client->sock == o);
-
-    if (err == PAL_ERR_OK && client->state == LSTREAM_CLIENT_ENCRYPTING) {
-        err = lstream_client_encrypt_write(client, NULL, 0);
-        if (err == PAL_ERR_IN_PROGRESS) {
-            return;
-        }
-    }
-    lstream_client_write_finsh(client, err);
-}
-
-static pal_err lstream_client_encrypt_write(lstream_client *client, const void *data, size_t len) {
-    HAPPrecondition(client);
-    HAPPrecondition(&client->sslctx);
-    HAPPrecondition(client->state == LSTREAM_CLIENT_ENCRYPTING);
-
-    pal_err err;
-    char out[LSTREAM_FRAME_LEN];
-    size_t olen;
-
-encrypt:
-    olen = sizeof(out);
-    switch (pal_ssl_encrypt(&client->sslctx, data, len, out, &olen)) {
-    case PAL_ERR_OK:
-        client->state = LSTREAM_CLIENT_HANDSHAKED;
-        if (olen == 0) {
-            return PAL_ERR_OK;
-        }
-        break;
-    case PAL_ERR_AGAIN:
-        data = NULL;
-        len = 0;
-        break;
-    default:
-        return PAL_ERR_UNKNOWN;
-    }
-
-    err = pal_socket_send(client->sock, out, &olen, true,
-        lstream_client_encrypt_write_sent_cb, client);
-    switch (err) {
-    case PAL_ERR_OK:
-        if (client->state == LSTREAM_CLIENT_ENCRYPTING) {
-            goto encrypt;
-        }
-    default:
-        break;
-    }
-    return err;
-}
-
-static void lstream_client_write_sent_cb(pal_socket_obj *o, pal_err err, size_t sent_len, void *arg) {
-    lstream_client *client = arg;
-    HAPAssert(client->sock == o);
-    lstream_client_write_finsh(client, err);
 }
 
 static int finshwrite(lua_State *L, int status, lua_KContext extra) {
@@ -564,12 +366,7 @@ static int lstream_client_write(lua_State *L) {
     const char *data = luaL_checklstring(L, 2, &len);
 
     pal_err err;
-    if (client->sslctx_inited) {
-        client->state = LSTREAM_CLIENT_ENCRYPTING;
-        err = lstream_client_encrypt_write(client, data, len);
-    } else {
-        err = pal_socket_send(client->sock, data, &len, true, lstream_client_write_sent_cb, client);
-    }
+    err = pal_socket_send(client->sock, data, &len, true, lstream_client_write_sent_cb, client);
     switch (err) {
     case PAL_ERR_OK:
         return 0;
@@ -609,47 +406,6 @@ static void lstream_client_read_recved_cb(pal_socket_obj *o, pal_err err,
     lc_collectgarbage(L);
 }
 
-static pal_err lstream_client_decrypt(lstream_client *client, bool all,
-    luaL_Buffer *B, void *data, size_t len) {
-    HAPPrecondition(B->size > B->n);
-
-    pal_err err;
-    size_t olen;
-
-    if (all) {
-        luaL_prepbuffsize(B, len);
-    }
-
-decrypt:
-    olen = B->size - luaL_bufflen(B);
-    err = pal_ssl_decrypt(&client->sslctx, data, len, luaL_buffaddr(B) + luaL_bufflen(B), &olen);
-    switch (err) {
-    case PAL_ERR_OK:
-        luaL_addsize(B, olen);
-        return PAL_ERR_OK;
-    case PAL_ERR_AGAIN:
-        luaL_addsize(B, olen);
-        if (all) {
-            if (B->size == luaL_bufflen(B)) {
-                luaL_prepbuffsize(B, LSTREAM_FRAME_LEN);
-            }
-        } else {
-            client->sslctx_pending = true;
-            return PAL_ERR_OK;
-        }
-        data = NULL;
-        len = 0;
-        goto decrypt;
-    default:
-        break;
-    }
-    return err;
-}
-
-static size_t lstream_client_readlen(lstream_client *client, size_t len) {
-    return client->sslctx_inited ? LSTREAM_FRAME_LEN : (len > LSTREAM_FRAME_LEN ? LSTREAM_FRAME_LEN : len);
-}
-
 static int finshread(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
     luaL_Buffer *B = &client->B;
@@ -666,6 +422,7 @@ static int finshread(lua_State *L, int status, lua_KContext extra) {
     }
 
     void *data = lua_touserdata(L, -2);
+    HAPAssert(data);
     size_t len = lua_tointeger(L, -1);
     lua_pop(L, 2);
 
@@ -673,24 +430,16 @@ static int finshread(lua_State *L, int status, lua_KContext extra) {
         goto success;
     }
 
-    size_t maxlen = client->B.size;
+    luaL_addsize(B, len);
 
-    if (client->sslctx_inited) {
-        if (luai_unlikely(lstream_client_decrypt(client, false, B, data, len) != PAL_ERR_OK)) {
-            luaL_pushresult(B);
-            lua_setiuservalue(L, 1, 2);
-            return luaL_error(L, "failed to decrypt received data");
-        }
-    } else {
-        luaL_addlstring(B, data, len);
-    }
-
+    size_t maxlen = B->size;
     len = luaL_bufflen(B);
-    if (len == maxlen || (!lua_toboolean(L, 3) && len != 0 && !pal_socket_readable(client->sock))) {
+    bool all = lua_toboolean(L, 3);
+    if (len == maxlen || (!all && len != 0 && !pal_socket_readable(client->sock))) {
         goto success;
     }
 
-    return lstream_client_async_read(L, client, lstream_client_readlen(client, maxlen - len), finshread);
+    return lstream_client_async_read(L, client, maxlen - len, finshread);
 
 success:
     luaL_pushresult(B);
@@ -700,15 +449,23 @@ success:
 }
 
 static int lstream_client_async_read(lua_State *L, lstream_client *client, size_t maxlen, lua_KFunction k) {
-    pal_err err = pal_socket_recv(client->sock, maxlen, lstream_client_read_recved_cb, client);
-    switch (err) {
-    case PAL_ERR_IN_PROGRESS:
+    luaL_Buffer *B = &client->B;
+    size_t len = maxlen;
+    pal_err err = pal_socket_recv(client->sock, luaL_buffaddr(B) + luaL_bufflen(B),
+        &len, lstream_client_read_recved_cb, client);
+    if (err == PAL_ERR_IN_PROGRESS) {
         client->co = L;
         return lua_yieldk(L, 0, (lua_KContext)client, k);
-    default:
-        lua_pushstring(L, pal_err_string(err));
-        return lua_error(L);
     }
+
+    int narg = 1;
+    if (err == PAL_ERR_OK) {
+        narg = 3;
+        lua_pushlightuserdata(L, luaL_buffaddr(B) + luaL_bufflen(B));
+        lua_pushinteger(L, len);
+    }
+    lua_pushinteger(L, err);
+    return k(L, narg, (lua_KContext)client);
 }
 
 static int lstream_client_read(lua_State *L) {
@@ -742,19 +499,7 @@ static int lstream_client_read(lua_State *L) {
     luaL_buffinitsize(L, B, maxlen);
     B->size = maxlen;
     luaL_addlstring(B, readbuf, len);
-    if (client->sslctx_pending) {
-        client->sslctx_pending = false;
-        if (lstream_client_decrypt(client, false, B, NULL, 0) != PAL_ERR_OK) {
-            return luaL_error(L, "failed to decrypt received data");
-        }
-        if (luaL_bufflen(B) == maxlen) {
-            lua_pushstring(L, "");
-            lua_setiuservalue(L, 1, 2);
-            luaL_pushresult(B);
-            return 1;
-        }
-    }
-    return lstream_client_async_read(L, client, lstream_client_readlen(client, maxlen - len), finshread);
+    return lstream_client_async_read(L, client, maxlen - len, finshread);
 }
 
 static int finshreadall(lua_State *L, int status, lua_KContext extra) {
@@ -776,6 +521,7 @@ static int finshreadall(lua_State *L, int status, lua_KContext extra) {
     }
 
     void *data = lua_touserdata(L, -2);
+    HAPAssert(data);
     size_t len = lua_tointeger(L, -1);
     lua_pop(L, 2);
 
@@ -783,16 +529,8 @@ static int finshreadall(lua_State *L, int status, lua_KContext extra) {
         goto success;
     }
 
-    if (client->sslctx_inited) {
-        if (luai_unlikely(lstream_client_decrypt(client, true, B, data, len) != PAL_ERR_OK)) {
-            luaL_pushresult(B);
-            lua_setiuservalue(L, 1, 2);
-            return luaL_error(L, "failed to decrypt received data");
-        }
-    } else {
-        luaL_addlstring(B, data, len);
-    }
-
+    luaL_addsize(B, len);
+    luaL_prepbuffsize(B, LSTREAM_FRAME_LEN);
     return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finshreadall);
 
 success:
@@ -816,12 +554,7 @@ static int lstream_client_readall(lua_State *L) {
     luaL_Buffer *B = &client->B;
     luaL_buffinit(L, B);
     luaL_addlstring(B, readbuf, len);
-    if (client->sslctx_pending) {
-        client->sslctx_pending = false;
-        if (lstream_client_decrypt(client, true, B, NULL, 0) != PAL_ERR_OK) {
-            return luaL_error(L, "failed to decrypt received data");
-        }
-    }
+    luaL_prepbuffsize(B, LSTREAM_FRAME_LEN);
     return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finshreadall);
 }
 
@@ -875,6 +608,7 @@ static int finshreadline(lua_State *L, int status, lua_KContext extra) {
     }
 
     void *data = lua_touserdata(L, -2);
+    HAPAssert(data);
     size_t len = lua_tointeger(L, -1);
     lua_pop(L, 2);
 
@@ -893,39 +627,15 @@ static int finshreadline(lua_State *L, int status, lua_KContext extra) {
         init = luaL_bufflen(B) + 1 - seplen;
     }
 
-    if (client->sslctx_inited) {
-        luaL_prepbuffsize(B, LSTREAM_LINE_LEN);
-        if (luai_unlikely(lstream_client_decrypt(client, false, B, data, len) != PAL_ERR_OK)) {
-            luaL_pushresult(B);
-            lua_setiuservalue(L, 1, 2);
-            return luaL_error(L, "failed to decrypt received data");
-        }
-    } else {
-        luaL_addlstring(B, data, len);
-    }
+    luaL_addsize(B, len);
 
     if (lstream_client_getline(L, skip, luaL_buffaddr(B),
         luaL_bufflen(B), sep, seplen, init)) {
         return 1;
     }
 
-    while (client->sslctx_pending) {
-        client->sslctx_pending = false;
-        luaL_prepbuffsize(B, LSTREAM_LINE_LEN);
-        if (seplen < luaL_bufflen(B)) {
-            init = luaL_bufflen(B) + 1 - seplen;
-        }
-        if (lstream_client_decrypt(client, false, B, NULL, 0) != PAL_ERR_OK) {
-            return luaL_error(L, "failed to decrypt received data");
-        }
-        if (lstream_client_getline(L, skip, luaL_buffaddr(B),
-            luaL_bufflen(B), sep, seplen, init)) {
-            return 1;
-        }
-    }
-
-    return lstream_client_async_read(L, client,
-        lstream_client_readlen(client, LSTREAM_LINE_LEN), finshreadline);
+    luaL_prepbuffsize(B, LSTREAM_LINE_LEN);
+    return lstream_client_async_read(L, client, LSTREAM_LINE_LEN, finshreadline);
 }
 
 static int lstream_client_readline(lua_State *L) {
@@ -949,22 +659,8 @@ static int lstream_client_readline(lua_State *L) {
     luaL_Buffer *B = &client->B;
     luaL_buffinit(L, B);
     luaL_addlstring(B, readbuf, len);
-    while (client->sslctx_pending) {
-        client->sslctx_pending = false;
-        luaL_prepbuffsize(B, LSTREAM_LINE_LEN);
-        if (seplen < luaL_bufflen(B)) {
-            init = luaL_bufflen(B) + 1 - seplen;
-        }
-        if (lstream_client_decrypt(client, false, B, NULL, 0) != PAL_ERR_OK) {
-            return luaL_error(L, "failed to decrypt received data");
-        }
-        if (lstream_client_getline(L, skip, luaL_buffaddr(B),
-            luaL_bufflen(B), sep, seplen, init)) {
-            return 1;
-        }
-    }
-    return lstream_client_async_read(L, client,
-        lstream_client_readlen(client, LSTREAM_LINE_LEN), finshreadline);
+    luaL_prepbuffsize(B, LSTREAM_LINE_LEN);
+    return lstream_client_async_read(L, client, LSTREAM_LINE_LEN, finshreadline);
 }
 
 static int lstream_client_close(lua_State *L) {

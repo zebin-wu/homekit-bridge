@@ -26,7 +26,7 @@ typedef HAP_OPAQUE(16) pal_md_ctx;
 /**
  * Opaque structure for SSL context.
  */
-typedef HAP_OPAQUE(32) pal_ssl_ctx;
+typedef HAP_OPAQUE(48) pal_ssl_ctx;
 
 #ifdef __cplusplus
 }

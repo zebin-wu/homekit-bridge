@@ -20,17 +20,19 @@ extern "C" {
  * Error numbers.
  */
 typedef enum pal_err {
-    PAL_ERR_OK,              /**< no error */
-    PAL_ERR_TIMEOUT,         /**< timeout */
-    PAL_ERR_IN_PROGRESS,     /**< in progress */
-    PAL_ERR_UNKNOWN,         /**< unknown */
-    PAL_ERR_ALLOC,           /**< failed to alloc */
-    PAL_ERR_INVALID_ARG,     /**< invalid argument */
-    PAL_ERR_INVALID_STATE,   /**< invalid state */
-    PAL_ERR_BUSY,            /**< resource busy */
-    PAL_ERR_AGAIN,           /**< try again */
+    PAL_ERR_OK,             /**< no error */
+    PAL_ERR_TIMEOUT,        /**< timeout */
+    PAL_ERR_IN_PROGRESS,    /**< in progress */
+    PAL_ERR_UNKNOWN,        /**< unknown */
+    PAL_ERR_ALLOC,          /**< failed to alloc */
+    PAL_ERR_INVALID_ARG,    /**< invalid argument */
+    PAL_ERR_INVALID_STATE,  /**< invalid state */
+    PAL_ERR_BUSY,           /**< resource busy */
+    PAL_ERR_AGAIN,          /**< try again */
+    PAL_ERR_WANT_READ,      /**< want read */
+    PAL_ERR_WANT_WRITE,     /**< want write */
 
-    PAL_ERR_COUNT,           /**< Error count, not error number. */
+    PAL_ERR_COUNT,          /**< Error count, not error number. */
 } pal_err;
 
 const char *pal_err_string(pal_err err);

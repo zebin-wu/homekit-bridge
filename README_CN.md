@@ -46,7 +46,7 @@
 在克隆完代码后需要执行以下命令来初始化子模块代码：
 
 ```
-$ git submodule update --init
+git submodule update --init
 ```
 
 ### Linux (Ubuntu)
@@ -54,17 +54,17 @@ $ git submodule update --init
 #### 准备
 
 ```bash
-$ sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev python3-pip
-$ sudo pip3 install cpplint
+sudo apt install cmake ninja-build clang libavahi-compat-libdnssd-dev libssl-dev python3-pip
+sudo pip3 install cpplint
 ```
 
 #### 编译和安装
 
 ```bash
-$ mkdir build
-$ cd build
-$ cmake -G Ninja .. && ninja
-$ sudo ninja install
+mkdir build
+cd build
+cmake -G Ninja .. && ninja
+sudo ninja install
 ```
 
 #### 运行
@@ -72,7 +72,7 @@ $ sudo ninja install
 默认运行homekit-bridge:
 
 ```bash
-$ homekit-bridge
+homekit-bridge
 ```
 
 以下选项可以在运行homekit-bridge的时候指定：
@@ -96,9 +96,9 @@ $ homekit-bridge
 目前经过测试的ESP-IDF版本为**v4.4**，通过以下命令切换到该版本：
 
 ```bash
-$ git fetch --tag
-$ git checkout v4.4
-$ git submodule update
+git fetch --tag
+git checkout v4.4
+git submodule update
 ```
 
 #### 编译、烧录和运行
@@ -106,11 +106,11 @@ $ git submodule update
 你可以在ESP32或者ESP32-S2上使用homekit-bridge，使用以下命令来编译、烧录和运行：
 
 ```bash
-$ cd /path/to/homekit-bridge/platform/esp
-$ export ESPPORT=/dev/ttyUSB0  # 设置开发板的串口
-$ idf.py set-target [esp32|esp32s2|esp32c3|esp32s3]
-$ idf.py flash
-$ idf.py monitor
+cd /path/to/homekit-bridge/platform/esp
+export ESPPORT=/dev/ttyUSB0  # 设置开发板的串口
+idf.py set-target [esp32|esp32s2|esp32c3|esp32s3]
+idf.py flash
+idf.py monitor
 ```
 
 #### 连接Wi-Fi
@@ -118,7 +118,7 @@ $ idf.py monitor
 使用 `join` 命令来连接Wi-Fi:
 
 ```bash
-esp32 > join "<ssid>" "<password>"
+join "<ssid>" "<password>"
 ```
 
 #### 配置
