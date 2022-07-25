@@ -729,6 +729,8 @@ lhap_init_ip(HAPAccessoryServerOptions *options, size_t num_contexts, size_t num
     HAPPrecondition(num_contexts);
     HAPPrecondition(num_notify);
 
+    static HAPIPAccessoryServerStorage serverStorage;
+
     size_t num_sessions = PAL_HAP_IP_SESSION_STORAGE_NUM_ELEMENTS;
     HAPIPSession *sessions = pal_mem_alloc(sizeof(HAPIPSession) * num_sessions);
     HAPAssert(sessions);
@@ -756,12 +758,11 @@ lhap_init_ip(HAPAccessoryServerOptions *options, size_t num_contexts, size_t num
         sessions[i].eventNotifications = eventNotifications + num_notify * i;
         sessions[i].numEventNotifications = num_notify;
     }
+    serverStorage.sessions = sessions;
+    serverStorage.numSessions = num_sessions;
 
     options->ip.transport = &kHAPAccessoryServerTransport_IP;
-    options->ip.accessoryServerStorage = pal_mem_alloc(sizeof(HAPIPAccessoryServerStorage));
-    HAPAssert(options->ip.accessoryServerStorage);
-    options->ip.accessoryServerStorage->sessions = sessions;
-    options->ip.accessoryServerStorage->numSessions = num_sessions;
+    options->ip.accessoryServerStorage = &serverStorage;
 }
 
 static void
@@ -775,7 +776,8 @@ lhap_deinit_ip(HAPAccessoryServerOptions *options) {
     pal_mem_free(storage->sessions[0].contexts);
     pal_mem_free(storage->sessions[0].eventNotifications);
     pal_mem_free(storage->sessions);
-    pal_mem_free(storage);
+    storage->sessions = NULL;
+    storage->numSessions = 0;
     HAPRawBufferZero(options, sizeof(*options));
 }
 
