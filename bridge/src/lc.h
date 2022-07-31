@@ -77,6 +77,11 @@ void lc_collectgarbage(lua_State *L);
 void lc_pushtraceback(lua_State *L);
 
 /**
+ * New a coroutine.
+ */
+lua_State *lc_newthread(lua_State *L);
+
+/**
  * Resume a coroutine. Must call it in protected mode.
  */
 int lc_resume(lua_State *L, lua_State *from, int narg, int *nres);

@@ -158,7 +158,7 @@ static int lcore_timer_resume(lua_State *L) {
     lua_pop(L, 1);
 
     int nres, status;
-    lua_State *co = lua_newthread(L);
+    lua_State *co = lc_newthread(L);
     HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, ctx) == LUA_TUSERDATA);
     if (luai_unlikely(!lua_checkstack(L, ctx->nargs + 1))) {
         luaL_error(L, "stack overflow");

@@ -10,10 +10,41 @@
 #include "app_int.h"
 #include "lc.h"
 
+#define THREAD_POOL_SIZE 8
+
 static const HAPLogObject lc_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
     .category = "lc",
 };
+
+static struct {
+    size_t head, tail;
+    lua_State *pool[THREAD_POOL_SIZE + 1];
+} thread_pool;
+
+static inline size_t thread_pool_size() {
+    return (HAPArrayCount(thread_pool.pool) + thread_pool.tail - thread_pool.head)
+        % HAPArrayCount(thread_pool.pool);
+}
+
+static inline bool thread_pool_full() {
+    return thread_pool_size() == THREAD_POOL_SIZE;
+}
+
+static inline bool thread_pool_empty() {
+    return thread_pool.head == thread_pool.tail;
+}
+
+static lua_State *thread_pool_deque() {
+    lua_State *L = thread_pool.pool[thread_pool.head];
+    thread_pool.head = (thread_pool.head + 1) % HAPArrayCount(thread_pool.pool);
+    return L;
+}
+
+static void thread_pool_enque(lua_State *L) {
+    thread_pool.pool[thread_pool.tail] = L;
+    thread_pool.tail = (thread_pool.tail + 1) % HAPArrayCount(thread_pool.pool);
+}
 
 static const lc_table_kv *
 lc_lookup_kv_by_name(const lc_table_kv *kv_tab, const char *key) {
@@ -152,6 +183,26 @@ void lc_pushtraceback(lua_State *L) {
     lua_pushcfunction(L, traceback);
 }
 
+lua_State *lc_newthread(lua_State *L) {
+    if (!thread_pool_empty()) {
+        return thread_pool_deque();
+    }
+    lua_State *co = lua_newthread(L);
+    lua_pushthread(co);
+    lua_rawsetp(co, LUA_REGISTRYINDEX, co);
+    return co;
+}
+
+static void lc_freethread(lua_State *L) {
+    if (thread_pool_full()) {
+        lua_pushnil(L);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, L);
+    } else {
+        thread_pool_enque(L);
+    }
+    lua_resetthread(L);
+}
+
 int lc_resume(lua_State *L, lua_State *from, int narg, int *nres) {
     int before_status = lua_status(L);
     if (luai_unlikely(before_status != LUA_OK && before_status != LUA_YIELD)) {
@@ -165,25 +216,13 @@ int lc_resume(lua_State *L, lua_State *from, int narg, int *nres) {
             luaL_error(L, "too many arguments to resume");
         }
         lua_xmove(L, from, *nres);
-        if (before_status == LUA_YIELD) {
-            lua_pushnil(L);
-            lua_rawsetp(L, LUA_REGISTRYINDEX, L);
-        }
-        lua_resetthread(L);
+        lc_freethread(L);
         break;
     case LUA_YIELD:
-        if (before_status == LUA_OK) {
-            lua_pushthread(L);
-            lua_rawsetp(L, LUA_REGISTRYINDEX, L);
-        }
         break;
     default:
         luaL_traceback(from, L, lua_tostring(L, -1), 1);
-        if (before_status == LUA_YIELD) {
-            lua_pushnil(L);
-            lua_rawsetp(L, LUA_REGISTRYINDEX, L);
-        }
-        lua_resetthread(L);
+        lc_freethread(L);
         break;
     }
     return status;

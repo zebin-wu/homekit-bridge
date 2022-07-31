@@ -240,7 +240,7 @@ static int app_pinit(lua_State *L) {
 
     // run entry
     int nres, status;
-    lua_State *co = lua_newthread(L);
+    lua_State *co = lc_newthread(L);
     lua_pushcfunction(co, app_entry);
     lc_pushtraceback(co);
     lua_pushstring(co, entry);
@@ -299,7 +299,7 @@ void app_deinit() {
 
 static int app_pexit(lua_State *L) {
     int nres, status;
-    lua_State *co = lua_newthread(L);
+    lua_State *co = lc_newthread(L);
     lua_getglobal(co, "core");
     lua_getfield(co, -1, "exit");
     lua_remove(co, -2);

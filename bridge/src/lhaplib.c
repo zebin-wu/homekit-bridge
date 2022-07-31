@@ -1613,7 +1613,7 @@ static int lhap_char_handle_read_pcall(lua_State *L) {
     const void *pfunc = lua_touserdata(L, 7);
     lua_pop(L, 7);
 
-    lua_State *co = lua_newthread(L);
+    lua_State *co = lc_newthread(L);
     lua_pushcfunction(co, lhap_char_handle_read);
     lhap_call_context *call_ctx = lua_newuserdata(co, sizeof(*call_ctx));
     call_ctx->in_progress = false;
@@ -1905,7 +1905,7 @@ static int lhap_char_handle_write_pcall(lua_State *L) {
     bool remote = lua_toboolean(L, 9);
     lua_pop(L, 8);
 
-    lua_State *co = lua_newthread(L);
+    lua_State *co = lc_newthread(L);
     lua_pushcfunction(co, lhap_char_handle_write);
     lhap_call_context *call_ctx = lua_newuserdata(co, sizeof(*call_ctx));
     call_ctx->in_progress = false;
@@ -2385,7 +2385,7 @@ static int lhap_accessory_pcall_identify(lua_State *L) {
     const HAPAccessoryIdentifyRequest *request = lua_touserdata(L, 1);
     lua_pop(L, 1);
 
-    lua_State *co = lua_newthread(L);
+    lua_State *co = lc_newthread(L);
     const HAPAccessory *accessory = request->accessory;
 
     // push the identify function
@@ -2495,7 +2495,7 @@ static int lhap_server_handle_session_pcall(lua_State *L) {
     const void *pfunc = lua_touserdata(L, 2);
     lua_pop(L, 2);
 
-    lua_State *co = lua_newthread(L);
+    lua_State *co = lc_newthread(L);
     lua_rawgetp(co, LUA_REGISTRYINDEX, pfunc);
     lua_pushlightuserdata(co, session);
     int status, nres;
