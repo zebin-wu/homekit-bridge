@@ -37,11 +37,8 @@ function M.gen(device, info, conf)
                 },
                 chars = {
                     On.new(iids.on, function (request)
-                        local value = device:getOn()
-                        device.logger:info(("Read On: %s"):format(value))
-                        return value
+                        return device:getOn()
                     end, function (request, value)
-                        device.logger:info(("Write On: %s"):format(value))
                         device:setOn(value)
                         raiseEvent(request.aid, request.sid, request.cid)
                     end)

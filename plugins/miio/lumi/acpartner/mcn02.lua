@@ -57,11 +57,8 @@ function M.gen(device, info, conf)
                 },
                 chars = {
                     Active.new(iids.active, function (request)
-                        local value = valMapping.power[device:getProp("power")]
-                        device.logger:info("Read Active: " .. searchKey(Active.value, value))
-                        return value
+                        return valMapping.power[device:getProp("power")]
                     end, function (request, value)
-                        device.logger:info("Write Active: " .. searchKey(Active.value, value))
                         device:setProp("power", searchKey(valMapping.power, value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         core.createTimer(function ()
@@ -74,9 +71,7 @@ function M.gen(device, info, conf)
                         end):start(500)
                     end),
                     CurTemp.new(iids.curTemp, function (request)
-                        local value = device:getProp("tar_temp")
-                        device.logger:info("Read CurrentTemperature: " .. value)
-                        return value
+                        return device:getProp("tar_temp")
                     end),
                     CurHeatCoolState.new(iids.curState, function (request)
                         local mode = device:getProp("mode")
@@ -88,7 +83,6 @@ function M.gen(device, info, conf)
                         else
                             value = CurHeatCoolState.value.Idle
                         end
-                        device.logger:info("Read CurrentHeaterCoolerState: " .. searchKey(CurHeatCoolState.value, value))
                         return value
                     end),
                     TgtHeatCoolState.new(iids.tgtState, function (request)
@@ -99,10 +93,8 @@ function M.gen(device, info, conf)
                         else
                             value = valMapping.mode[mode]
                         end
-                        device.logger:info("Read TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
                         return value
                     end, function (request, value)
-                        device.logger:info("Write TargetHeaterCoolerState: " .. searchKey(TgtHeatCoolState.value, value))
                         device:setProp("mode", searchKey(valMapping.mode, value))
                         raiseEvent(request.aid, request.sid, request.cid)
                         core.createTimer(function ()
@@ -112,20 +104,14 @@ function M.gen(device, info, conf)
                         end):start(500)
                     end),
                     CoolThrholdTemp.new(iids.coolThrTemp, function (request)
-                        local value =  device:getProp("tar_temp")
-                        device.logger:info("Read CoolingThresholdTemperature: " .. value)
-                        return value
+                        return device:getProp("tar_temp")
                     end, function (request, value)
-                        device.logger:info("Write CoolingThresholdTemperature: " .. value)
                         device:setProp("tar_temp", assert(tointeger(value), "value not a integer"))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end, 16, 30, 1),
                     HeatThrholdTemp.new(iids.heatThrTemp, function (request)
-                        local value = device:getProp("tar_temp")
-                        device.logger:info("Read HeatingThresholdTemperature: " .. value)
-                        return value
+                        return device:getProp("tar_temp")
                     end, function (request, value)
-                        device.logger:info("Write HeatingThresholdTemperature: " .. value)
                         device:setProp("tar_temp", assert(tointeger(value), "value not a integer"))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end, 16, 30, 1),
@@ -137,10 +123,8 @@ function M.gen(device, info, conf)
                         else
                             value = valMapping.ver_swing[ver_swing]
                         end
-                        device.logger:info("Read SwingMode: " .. searchKey(SwingMode.value, value))
                         return value
                     end, function (request, value)
-                        device.logger:info("Write SwingMode: " .. searchKey(SwingMode.value, value))
                         device:setProp("ver_swing", searchKey(valMapping.ver_swing, value))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end)

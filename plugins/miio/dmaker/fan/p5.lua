@@ -3,7 +3,6 @@ local Active = require "hap.char.Active"
 local RotationSpeed = require "hap.char.RotationSpeed"
 local SwingMode = require "hap.char.SwingMode"
 local tointeger = math.tointeger
-local searchKey = require "util".searchKey
 local raiseEvent = hap.raiseEvent
 
 local M = {}
@@ -36,44 +35,21 @@ function M.gen(device, info, conf)
                 },
                 chars = {
                     Active.new(iids.active, function (request)
-                        local activeVal = Active.value
-                        local value
-                        if device:getProp("power") then
-                            value = activeVal.Active
-                        else
-                            value = activeVal.Inactive
-                        end
-                        device.logger:info("Read Active: " .. searchKey(activeVal, value))
-                        return value
+                        return device:getProp("power") and Active.value.Active or Active.value.Inactive
                     end, function (request, value)
-                        local activeVal = Active.value
-                        device.logger:info("Write Active: " .. searchKey(activeVal, value))
-                        device:s_power(value == activeVal.Active)
+                        device:s_power(value == Active.value.Active)
                         raiseEvent(request.aid, request.sid, request.cid)
                     end),
                     RotationSpeed.new(iids.rotationSpeed, function (request)
-                        local value = device:getProp("speed")
-                        device.logger:info("Read RotationSpeed: " .. value)
-                        return value
+                        return device:getProp("speed")
                     end, function (request, value)
-                        device.logger:info("Write RotationSpeed: " .. value)
                         device:s_speed(tointeger(value))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request)
-                        local swingModeVal = SwingMode.value
-                        local value
-                        if device:getProp("roll_enable") then
-                            value = swingModeVal.Enabled
-                        else
-                            value = swingModeVal.Disabled
-                        end
-                        device.logger:info("Read SwingMode: " .. searchKey(swingModeVal, value))
-                        return value
+                        return device:getProp("roll_enable") and SwingMode.value.Enabled or SwingMode.value.Disabled
                     end, function (request, value)
-                        local swingModeVal = SwingMode.value
-                        device.logger:info("Write SwingMode: " .. searchKey(swingModeVal, value))
-                        device:s_roll(value == swingModeVal.Enabled)
+                        device:s_roll(value == SwingMode.value.Enabled)
                         raiseEvent(request.aid, request.sid, request.cid)
                     end)
                 }

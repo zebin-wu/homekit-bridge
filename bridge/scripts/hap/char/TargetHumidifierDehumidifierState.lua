@@ -7,7 +7,7 @@ return {
     ---New a ``TargetHumidifierDehumidifierState`` characteristic.
     ---@param iid integer Instance ID.
     ---@param read fun(request:HAPCharacteristicReadRequest): any
-    ---@param write fun(request:HAPCharacteristicWriteRequest, value:any)
+    ---@param write? fun(request:HAPCharacteristicWriteRequest, value:any)
     ---@param minVal? number Minimum value.
     ---@param maxVal? number Maximum value.
     ---@param stepVal? number Step value.
@@ -19,7 +19,7 @@ return {
             type = "TargetHumidifierDehumidifierState",
             props = {
                 readable = true,
-                writable = true,
+                writable = write and true or false,
                 supportsEventNotification = true
             },
             constraints = {

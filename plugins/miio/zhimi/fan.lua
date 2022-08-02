@@ -48,29 +48,20 @@ function M.gen(device, info, conf)
                 },
                 chars = {
                     Active.new(iids.active, function (request)
-                        local value = valMapping.power[device:getProp("power")]
-                        device.logger:info("Read Active: " .. searchKey(Active.value, value))
-                        return value
+                        return valMapping.power[device:getProp("power")]
                     end, function (request, value)
-                        device.logger:info("Write Active: " .. searchKey(Active.value, value))
                         device:setProp("power", searchKey(valMapping.power, value))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end),
                     RotationSpeed.new(iids.rotationSpeed, function (request)
-                        local value = device:getProp("speed_level")
-                        device.logger:info("Read RotationSpeed: " .. value)
-                        return value
+                        return device:getProp("speed_level")
                     end, function (request, value)
-                        device.logger:info("Write RotationSpeed: " .. value)
                         device:setProp("speed_level", assert(tointeger(value), "value not a integer"))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end, 1, 100, 1),
                     SwingMode.new(iids.swingMode, function (request)
-                        local value = valMapping.angle_enable[device:getProp("angle_enable")]
-                        device.logger:info("Read SwingMode: " .. searchKey(SwingMode.value, value))
-                        return value
+                        return valMapping.angle_enable[device:getProp("angle_enable")]
                     end, function (request, value)
-                        device.logger:info("Write SwingMode: " .. searchKey(SwingMode.value, value))
                         device:setProp("angle_enable", searchKey(valMapping.angle_enable, value))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end)

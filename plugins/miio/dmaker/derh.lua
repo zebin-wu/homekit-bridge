@@ -4,7 +4,6 @@ local CurrentState = require "hap.char.CurrentHumidifierDehumidifierState"
 local TargetState = require "hap.char.TargetHumidifierDehumidifierState"
 local CurrentHumidity = require "hap.char.CurrentRelativeHumidity"
 local TargetHumidity = require "hap.char.RelativeHumidityDehumidifierThreshold"
-local searchKey = require "util".searchKey
 local raiseEvent = hap.raiseEvent
 local tointeger = math.tointeger
 
@@ -38,48 +37,24 @@ function M.gen(device, info, conf)
                 },
                 chars = {
                     Active.new(iids.active, function (request)
-                        local value
-                        if device:getProp("power") then
-                            value = Active.value.Active
-                        else
-                            value = Active.value.Inactive
-                        end
-                        device.logger:info("Read Active: " .. searchKey(Active.value, value))
-                        return value
+                        return device:getProp("power") and Active.value.Active or Active.value.Inactive
                     end, function (request, value)
-                        device.logger:info("Write Active: " .. searchKey(Active.value, value))
                         device:setProp("power", value == Active.value.Active)
                         raiseEvent(request.aid, request.sid, request.cid)
                         raiseEvent(request.aid, request.sid, iids.curState)
                     end),
                     CurrentState.new(iids.curState, function (request)
-                        local value
-                        if device:getProp("power") then
-                            value = CurrentState.value.Dehumidifying
-                        else
-                            value = CurrentState.value.Inactive
-                        end
-                        device.logger:info("Read CurrentHumidifierDehumidifierState: " .. searchKey(CurrentState.value, value))
-                        return value
+                        return device:getProp("power") and CurrentState.value.Dehumidifying or CurrentState.value.Inactive
                     end),
                     TargetState.new(iids.tgtState, function (request)
-                        local value = TargetState.value.Dehumidifier
-                        device.logger:info("Read TargetHumidifierDehumidifierState: Dehumidifier")
-                        return value
-                    end, function (request, value)
-                        device.logger:info("Write TargetHumidifierDehumidifierState: " .. searchKey(TargetState.value, value))
-                    end, TargetState.value.Dehumidifier, TargetState.value.Dehumidifier, 0),
+                        return TargetState.value.Dehumidifier
+                    end, nil, TargetState.value.Dehumidifier, TargetState.value.Dehumidifier, 0),
                     CurrentHumidity.new(iids.curHumidity, function (request)
-                        local value =  device:getProp("curHumidity")
-                        device.logger:info("Read CurrentRelativeHumidity: " .. tointeger(value))
-                        return value
+                        return device:getProp("curHumidity")
                     end),
                     TargetHumidity.new(iids.tgtHumidity, function (request)
-                        local value = device:getProp("tgtHumidity")
-                        device.logger:info("Read RelativeHumidityDehumidifierThreshold: " .. tointeger(value))
-                        return value
+                        return device:getProp("tgtHumidity")
                     end, function (request, value)
-                        device.logger:info("Write RelativeHumidityDehumidifierThreshold: " .. tointeger(value))
                         device:setProp("tgtHumidity", assert(tointeger(value), "value not a integer"))
                         raiseEvent(request.aid, request.sid, request.cid)
                     end)
