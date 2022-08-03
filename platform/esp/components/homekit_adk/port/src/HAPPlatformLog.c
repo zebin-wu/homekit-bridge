@@ -23,6 +23,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
+#include <esp_attr.h>
 
 #include "HAP.h"
 #include "HAPPlatformLog+Init.h"
@@ -78,7 +79,7 @@ HAPPlatformLogEnabledTypes HAPPlatformLogGetEnabledTypes(const HAPLogObject* _No
     }
 }
 
-void HAPPlatformLogCapture(
+IRAM_ATTR void HAPPlatformLogCapture(
         const HAPLogObject* _Nonnull log,
         HAPLogType type,
         const char* _Nonnull message,

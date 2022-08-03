@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <esp_attr.h>
 
 #include "HAPPlatform+Init.h"
 #include "HAPPlatformFileHandle.h"
@@ -414,7 +415,7 @@ static void HandleLoopbackFileHandleCallback(
     HAPAssert(fileHandleEvents.isReadyForReading);
 
     HAPAssert(runLoop.numLoopbackBytes < sizeof runLoop.loopbackBytes);
-    
+
     ssize_t n;
     do {
         n = recv(runLoop.loopbackFileDescriptor0,
@@ -595,7 +596,7 @@ void HAPPlatformRunLoopRelease(void) {
     __sync_synchronize();
 }
 
-void HAPPlatformRunLoopRun(void) {
+IRAM_ATTR void HAPPlatformRunLoopRun(void) {
     HAPPrecondition(runLoop.state == kHAPPlatformRunLoopState_Idle);
 
     HAPLogInfo(&logObject, "Entering run loop.");

@@ -21,12 +21,13 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <time.h>
+#include <esp_attr.h>
 
 #include "HAPPlatform.h"
 
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "Clock" };
 
-HAPTime HAPPlatformClockGetCurrent(void) {
+IRAM_ATTR HAPTime HAPPlatformClockGetCurrent(void) {
     int e;
 
     static bool isInitialized;
