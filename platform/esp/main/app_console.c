@@ -15,7 +15,6 @@
 #include "app_console.h"
 
 #define APP_CONSOLE_TASK_STACKSIZE  3 * 1024
-#define APP_CONSOLE_TASK_PRIORITY   6
 
 #define PROMPT_STR CONFIG_IDF_TARGET
 
@@ -28,7 +27,6 @@ void app_console_init(void)
     esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
 
     repl_config.prompt = PROMPT_STR ">";
-    repl_config.max_cmdline_length = 256;
     repl_config.task_stack_size = APP_CONSOLE_TASK_STACKSIZE;
 
     /* Register commands */
