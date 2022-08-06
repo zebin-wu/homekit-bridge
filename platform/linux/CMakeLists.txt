@@ -79,9 +79,8 @@ target_sources(${PROJECT}
 )
 
 # check code style
-add_dependencies(${PROJECT} cstyle)
-check_style(cstyle ${TOP_DIR}
-    SRCS
+target_check_cstyle(${PROJECT}
+    FILES
         ${BRIDGE_SRCS}
         ${BRIDGE_HEADERS}
         ${PLATFORM_LINUX_SRCS}

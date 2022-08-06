@@ -77,42 +77,43 @@ function(find_luac output)
     set(${output} ${luac} PARENT_SCOPE)
 endfunction(find_luac)
 
-# Check code style.
+# Check code style when building <target>.
 #
-# check_style(<target> <top_dir> [SRCS src1 [src2...]])
-function(check_style target top_dir)
+# add_cstyle_check(<target> <top_dir> [SRCS src1 [src2...]])
+function(target_check_cstyle target)
     find_program(CPPLINT NAMES "cpplint")
     if(NOT CPPLINT)
         message(FATAL_ERROR "cpplint not found")    
     endif()
 
-    set(multi SRCS)
+    set(multi FILES)
     cmake_parse_arguments(arg "" "" "${multi}" "${ARGN}")
 
     set(cstyle_dir ${CMAKE_BINARY_DIR}/cstyle)
-    foreach(src ${arg_SRCS})
+    foreach(file ${arg_FILES})
         # get the relative path of the script
-        file(RELATIVE_PATH rel_path ${top_dir} ${src})
+        file(RELATIVE_PATH rel_path ${TOP_DIR} ${file})
         set(output ${cstyle_dir}/${rel_path}.cs)
         set(outputs ${outputs} ${output})
         get_filename_component(dir ${output} DIRECTORY)
         make_directory(${dir})
         add_custom_command(OUTPUT ${output}
-            COMMENT "Check ${rel_path}"
+            COMMENT "Checking ${rel_path}"
             COMMAND ${CPPLINT}
                 --linelength=120
                 --filter=-readability/casting,-build/include,-runtime/arrays,-runtime/int
                 ${rel_path}
             COMMAND touch ${output}
-            WORKING_DIRECTORY ${top_dir}
-            DEPENDS ${src}
+            WORKING_DIRECTORY ${TOP_DIR}
+            DEPENDS ${file}
         )
     endforeach()
-    add_custom_target(${target}
+    add_custom_target(${target}_cstyle
         ALL
         DEPENDS ${outputs}
     )
-endfunction(check_style)
+    add_dependencies(${target} ${target}_cstyle)
+endfunction(target_check_cstyle)
 
 #
 # Add embedfs to a target.
