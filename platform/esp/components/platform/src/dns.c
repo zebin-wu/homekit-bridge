@@ -111,7 +111,7 @@ pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
     HAPPrecondition(af >= PAL_ADDR_FAMILY_UNSPEC && af <= PAL_ADDR_FAMILY_IPV6);
     HAPPrecondition(response_cb);
 
-    pal_dns_req_ctx *ctx = pal_mem_calloc(sizeof(*ctx));
+    pal_dns_req_ctx *ctx = pal_mem_calloc(1, sizeof(*ctx));
     if (!ctx) {
         HAPLogError(&dns_log_obj, "%s: Failed to alloc memory.", __func__);
         return NULL;

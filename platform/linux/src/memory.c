@@ -11,8 +11,8 @@ void *pal_mem_alloc(size_t size) {
     return malloc(size);
 }
 
-void *pal_mem_calloc(size_t size) {
-    return calloc(1, size);
+void *pal_mem_calloc(size_t nmemb, size_t size) {
+    return calloc(nmemb, size);
 }
 
 void *pal_mem_realloc(void *ptr, size_t size) {
@@ -20,5 +20,5 @@ void *pal_mem_realloc(void *ptr, size_t size) {
 }
 
 void pal_mem_free(void *p) {
-    return free(p);
+    free(p);
 }

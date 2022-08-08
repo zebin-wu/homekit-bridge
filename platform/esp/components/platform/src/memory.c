@@ -12,8 +12,8 @@ IRAM_ATTR void *pal_mem_alloc(size_t size) {
     return malloc(size);
 }
 
-IRAM_ATTR void *pal_mem_calloc(size_t size) {
-    return calloc(1, size);;
+IRAM_ATTR void *pal_mem_calloc(size_t nmemb, size_t size) {
+    return calloc(nmemb, size);
 }
 
 IRAM_ATTR void *pal_mem_realloc(void *ptr, size_t size) {
@@ -21,5 +21,5 @@ IRAM_ATTR void *pal_mem_realloc(void *ptr, size_t size) {
 }
 
 IRAM_ATTR void pal_mem_free(void *p) {
-    return free(p);
+    free(p);
 }

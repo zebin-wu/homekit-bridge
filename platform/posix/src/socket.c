@@ -268,7 +268,7 @@ static pal_err pal_socket_accept_async(pal_socket_obj *o, pal_socket_obj **new_o
         }
     }
 
-    pal_socket_obj *_new = pal_mem_calloc(sizeof(pal_socket_obj));
+    pal_socket_obj *_new = pal_mem_calloc(1, sizeof(pal_socket_obj));
     if (!_new) {
         return PAL_ERR_ALLOC;
     }
@@ -667,7 +667,7 @@ static void pal_socket_udp_handle_event_cb(
 }
 
 pal_socket_obj *pal_socket_create(pal_socket_type type, pal_addr_family af) {
-    pal_socket_obj *o = pal_mem_calloc(sizeof(*o));
+    pal_socket_obj *o = pal_mem_calloc(1, sizeof(*o));
     if (!o) {
         HAPLogWithType(&socket_log_obj, kHAPLogType_Error, "%s: Failed to calloc memory.", __func__);
         return NULL;

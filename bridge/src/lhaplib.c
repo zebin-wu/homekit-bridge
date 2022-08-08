@@ -2217,7 +2217,7 @@ static bool lhap_service_characteristics_arr_cb(lua_State *L, size_t i, void *ar
         return false;
     }
 
-    HAPCharacteristic *c = pal_mem_calloc(lhap_characteristic_struct_size[format]);
+    HAPCharacteristic *c = pal_mem_calloc(1, lhap_characteristic_struct_size[format]);
     if (!c) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         return false;
@@ -2281,7 +2281,7 @@ static bool lhap_service_chars_cb(lua_State *L, void *arg) {
         return true;
     }
 
-    HAPCharacteristic **characteristics = pal_mem_calloc((len + 1) * sizeof(HAPCharacteristic *));
+    HAPCharacteristic **characteristics = pal_mem_calloc(len + 1, sizeof(HAPCharacteristic *));
     if (!characteristics) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         return false;
@@ -2335,7 +2335,7 @@ static bool lhap_accessory_services_arr_cb(lua_State *L, size_t i, void *arg) {
     if (!lua_istable(L, -1)) {
         return false;
     }
-    HAPService *s = pal_mem_calloc(sizeof(HAPService));
+    HAPService *s = pal_mem_calloc(1, sizeof(HAPService));
     if (!s) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         return false;
@@ -2359,7 +2359,7 @@ static bool lhap_accessory_services_cb(lua_State *L, void *arg) {
         return true;
     }
 
-    HAPService **services = pal_mem_calloc((len + 1) * sizeof(HAPService *));
+    HAPService **services = pal_mem_calloc(len + 1, sizeof(HAPService *));
     if (!services) {
         HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
         return false;
@@ -2663,7 +2663,7 @@ static int lhap_init(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     luaL_checktype(L, 2, LUA_TTABLE);
 
-    desc->primary_acc = pal_mem_calloc(sizeof(HAPAccessory));
+    desc->primary_acc = pal_mem_calloc(1, sizeof(HAPAccessory));
     if (!desc->primary_acc) {
         lua_pushliteral(L, "Failed to alloc memory.");
         goto err;
@@ -2733,7 +2733,7 @@ static int lhap_add_bridged_accessory(lua_State *L) {
         desc->bridged_accs = accs;
     }
 
-    HAPAccessory *acc = pal_mem_calloc(sizeof(HAPAccessory));
+    HAPAccessory *acc = pal_mem_calloc(1, sizeof(HAPAccessory));
     if (!acc) {
         luaL_error(L, "Failed to alloc memory.");
     }

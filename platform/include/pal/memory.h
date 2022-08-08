@@ -25,10 +25,11 @@ extern "C" {
 void *pal_mem_alloc(size_t size);
 
 /**
- * Allocate memory size bytes and returns a pointer to the allocated memory.
+ * Allocates memory for an array of nmemb elements of size
+ * bytes each and returns a pointer to the allocated memory.
  * The memory is set to zero.
  */
-void *pal_mem_calloc(size_t size);
+void *pal_mem_calloc(size_t nmemb, size_t size);
 
 /**
  * Change the size of the memory block pointed to by ptr to size bytes.
