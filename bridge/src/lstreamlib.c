@@ -44,6 +44,7 @@ typedef struct lstream_client {
     bool host_is_addr;
     bool sslctx_pending;
     bool sslctx_inited;
+    bool sock_inited;
     lstream_client_state state;
     lstream_client_type type;
     uint16_t port;
@@ -52,7 +53,7 @@ typedef struct lstream_client {
     const char *host;
     pal_dns_req_ctx *dns_req;
     pal_ssl_ctx sslctx;
-    pal_socket_obj *sock;
+    pal_socket_obj sock;
     luaL_Buffer B;
 } lstream_client;
 
@@ -73,9 +74,9 @@ static void lstream_client_cleanup(lstream_client *client) {
         pal_dns_cancel_request(client->dns_req);
         client->dns_req = NULL;
     }
-    if (client->sock) {
-        pal_socket_destroy(client->sock);
-        client->sock = NULL;
+    if (client->sock_inited) {
+        pal_socket_obj_deinit(&client->sock);
+        client->sock_inited = false;
     }
     if (client->sslctx_inited) {
         pal_ssl_ctx_deinit(&client->sslctx);
@@ -117,7 +118,7 @@ static void lstream_client_create_finsh(lstream_client *client, const char *errm
 
 static void lstream_client_handshaked_cb(pal_socket_obj *o, pal_err err, void *arg) {
     lstream_client *client = arg;
-    HAPAssert(client->sock == o);
+    HAPAssert(&client->sock == o);
 
     switch (err) {
     case PAL_ERR_OK:
@@ -153,14 +154,14 @@ static void lstream_client_handshake(lstream_client *client) {
 
     HAPAssert(!client->sslctx_inited);
     if (luai_unlikely(!pal_ssl_ctx_init(&client->sslctx, ssltype, PAL_SSL_ENDPOINT_CLIENT,
-        client->host_is_addr ? NULL : client->host, client->sock, &(pal_ssl_bio_method) {
+        client->host_is_addr ? NULL : client->host, &client->sock, &(pal_ssl_bio_method) {
         .read = (void *)pal_socket_raw_recv,
         .write = (void *)pal_socket_raw_send,
     }))) {
         lstream_client_create_finsh(client, "failed to create ssl context");
         return;
     }
-    pal_socket_set_bio(client->sock, &client->sslctx, &(pal_socket_bio_method) {
+    pal_socket_set_bio(&client->sock, &client->sslctx, &(pal_socket_bio_method) {
         .handshake = (void *)pal_ssl_handshake,
         .recv = (void *)pal_ssl_read,
         .send = (void *)pal_ssl_write,
@@ -168,7 +169,7 @@ static void lstream_client_handshake(lstream_client *client) {
     });
     client->sslctx_inited = true;
 
-    pal_err err = pal_socket_handshake(client->sock, lstream_client_handshaked_cb, client);
+    pal_err err = pal_socket_handshake(&client->sock, lstream_client_handshaked_cb, client);
     switch (err) {
     case PAL_ERR_OK:
         client->state = LSTREAM_CLIENT_HANDSHAKED;
@@ -185,7 +186,7 @@ static void lstream_client_handshake(lstream_client *client) {
 
 static void lstream_client_connected_cb(pal_socket_obj *o, pal_err err, void *arg) {
     lstream_client *client = arg;
-    HAPAssert(client->sock == o);
+    HAPAssert(&client->sock == o);
 
     switch (err) {
     case PAL_ERR_OK:
@@ -228,13 +229,13 @@ static void lstream_client_dns_response_cb(const char *errmsg, const char *addr,
         HAPFatalError();
     }
 
-    client->sock = pal_socket_create(socktype, af);
-    if (luai_unlikely(!client->sock)) {
+    if (luai_unlikely(!pal_socket_obj_init(&client->sock, socktype, af))) {
         lstream_client_create_finsh(client, "failed to create socket object");
         return;
     }
+    client->sock_inited = true;
 
-    pal_err err = pal_socket_connect(client->sock, addr,
+    pal_err err = pal_socket_connect(&client->sock, addr,
         client->port, lstream_client_connected_cb, client);
     switch (err) {
     case PAL_ERR_OK:
@@ -288,7 +289,7 @@ static int lstream_client_create(lua_State *L) {
     client->host_is_addr = false;
     client->sslctx_pending = false;
     client->sslctx_inited = false;
-    client->sock = NULL;
+    client->sock_inited = false;
     client->co = NULL;
     client->dns_req = NULL;
     client->timer = 0;
@@ -325,13 +326,13 @@ static int lstream_client_settimeout(lua_State *L) {
     lua_Integer ms = luaL_checkinteger(L, 2);
     luaL_argcheck(L, ms >= 0 && ms <= UINT32_MAX, 2, "ms out of range");
 
-    pal_socket_set_timeout(client->sock, ms);
+    pal_socket_set_timeout(&client->sock, ms);
     return 0;
 }
 
 static void lstream_client_write_sent_cb(pal_socket_obj *o, pal_err err, size_t sent_len, void *arg) {
     lstream_client *client = arg;
-    HAPAssert(client->sock == o);
+    HAPAssert(&client->sock == o);
     lua_State *co = client->co;
     lua_State *L = lc_getmainthread(co);
 
@@ -366,7 +367,7 @@ static int lstream_client_write(lua_State *L) {
     const char *data = luaL_checklstring(L, 2, &len);
 
     pal_err err;
-    err = pal_socket_send(client->sock, data, &len, true, lstream_client_write_sent_cb, client);
+    err = pal_socket_send(&client->sock, data, &len, true, lstream_client_write_sent_cb, client);
     switch (err) {
     case PAL_ERR_OK:
         return 0;
@@ -380,9 +381,9 @@ static int lstream_client_write(lua_State *L) {
 }
 
 static void lstream_client_read_recved_cb(pal_socket_obj *o, pal_err err,
-    const char *addr, uint16_t port, void *data, size_t len, void *arg) {
+    const char *addr, uint16_t port, size_t len, void *arg) {
     lstream_client *client = arg;
-    HAPAssert(client->sock == o);
+    HAPAssert(&client->sock == o);
 
     lua_State *co = client->co;
     lua_State *L = lc_getmainthread(co);
@@ -390,14 +391,13 @@ static void lstream_client_read_recved_cb(pal_socket_obj *o, pal_err err,
     HAPAssert(lua_gettop(L) == 0);
     int narg = 1;
     if (err == PAL_ERR_OK) {
-        narg = 3;
-        lua_pushlightuserdata(co, data);
+        narg = 2;
         lua_pushinteger(co, len);
     }
     lua_pushinteger(co, err);
 
     int status, nres;
-    status = lc_resume(co, L, narg, &nres);  // stack <..., data, len, err>
+    status = lc_resume(co, L, narg, &nres);  // stack <..., len, err>
     if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         HAPLogError(&lstream_log, "%s: %s", __func__, lua_tostring(L, -1));
     }
@@ -421,10 +421,8 @@ static int finshread(lua_State *L, int status, lua_KContext extra) {
         return lua_error(L);
     }
 
-    void *data = lua_touserdata(L, -2);
-    HAPAssert(data);
     size_t len = lua_tointeger(L, -1);
-    lua_pop(L, 2);
+    lua_pop(L, 1);
 
     if (len == 0) {
         goto success;
@@ -435,7 +433,7 @@ static int finshread(lua_State *L, int status, lua_KContext extra) {
     size_t maxlen = B->size;
     len = luaL_bufflen(B);
     bool all = lua_toboolean(L, 3);
-    if (len == maxlen || (!all && len != 0 && !pal_socket_readable(client->sock))) {
+    if (len == maxlen || (!all && len != 0 && !pal_socket_readable(&client->sock))) {
         goto success;
     }
 
@@ -451,7 +449,7 @@ success:
 static int lstream_client_async_read(lua_State *L, lstream_client *client, size_t maxlen, lua_KFunction k) {
     luaL_Buffer *B = &client->B;
     size_t len = maxlen;
-    pal_err err = pal_socket_recv(client->sock, luaL_buffaddr(B) + luaL_bufflen(B),
+    pal_err err = pal_socket_recv(&client->sock, luaL_buffaddr(B) + luaL_bufflen(B),
         &len, lstream_client_read_recved_cb, client);
     if (err == PAL_ERR_IN_PROGRESS) {
         client->co = L;
@@ -483,7 +481,7 @@ static int lstream_client_read(lua_State *L) {
 
     size_t len;
     const char *readbuf = lua_tolstring(L, -1, &len);
-    if (len == maxlen || (!all && len > 0 && len < maxlen && !pal_socket_readable(client->sock))) {
+    if (len == maxlen || (!all && len > 0 && len < maxlen && !pal_socket_readable(&client->sock))) {
         lua_pushstring(L, "");
         lua_setiuservalue(L, 1, 2);
         return 1;
@@ -520,10 +518,8 @@ static int finshreadall(lua_State *L, int status, lua_KContext extra) {
         return lua_error(L);
     }
 
-    void *data = lua_touserdata(L, -2);
-    HAPAssert(data);
     size_t len = lua_tointeger(L, -1);
-    lua_pop(L, 2);
+    lua_pop(L, 1);
 
     if (len == 0) {
         goto success;
@@ -607,10 +603,8 @@ static int finshreadline(lua_State *L, int status, lua_KContext extra) {
         return lua_error(L);
     }
 
-    void *data = lua_touserdata(L, -2);
-    HAPAssert(data);
     size_t len = lua_tointeger(L, -1);
-    lua_pop(L, 2);
+    lua_pop(L, 1);
 
     if (len == 0) {
         luaL_pushresult(B);

@@ -16,14 +16,15 @@ extern "C" {
 #include <stdbool.h>
 #include <pal/err.h>
 #include <pal/net/addr.h>
+#include <pal/types.h>
 
 /**
  * Communication type.
  */
-typedef enum {
+HAP_ENUM_BEGIN(uint8_t, pal_socket_type) {
     PAL_SOCKET_TYPE_TCP,            /**< TCP */
     PAL_SOCKET_TYPE_UDP,            /**< UDP */
-} pal_socket_type;
+} HAP_ENUM_END(uint8_t, pal_socket_type);
 
 /**
  * Socket basic I/O method.
@@ -78,25 +79,22 @@ typedef struct {
 } pal_socket_bio_method;
 
 /**
- * Opaque structure for the socket object.
- */
-typedef struct pal_socket_obj pal_socket_obj;
-
-/**
- * Create a socket object.
+ * Initializes a socket object.
  *
  * @param type Specified communication type.
  * @param af Specified address family.
- * @returns a socket pointer or NULL if the allocation fails.
+ *
+ * @return true on success.
+ * @return false on failure.
  */
-pal_socket_obj *pal_socket_create(pal_socket_type type, pal_addr_family af);
+bool pal_socket_obj_init(pal_socket_obj *o, pal_socket_type type, pal_addr_family af);
 
 /**
- * Destroy the socket object.
+ * Releases resources associated with a initialized socket object.
  *
  * @param o The pointer to the socket object.
  */
-void pal_socket_destroy(pal_socket_obj *o);
+void pal_socket_obj_deinit(pal_socket_obj *o);
 
 /**
  * Set basic I/O.
@@ -147,13 +145,12 @@ pal_err pal_socket_listen(pal_socket_obj *o, int backlog);
  *
  * @param o The pointer to the socket object.
  * @param err The error of the accept procress.
- * @param new_o The pointer to the new socket object for the incoming connection.
  * @param addr The remote address.
  * @param port The remote port.
  * @param arg The last paramter of @b pal_socket_accept().
  */
-typedef void (*pal_socket_accepted_cb)(pal_socket_obj *o, pal_err err,
-    pal_socket_obj *new_o, const char *addr, uint16_t port, void *arg);
+typedef void (*pal_socket_accepted_cb)(pal_socket_obj *o,
+    pal_err err, const char *addr, uint16_t port, void *arg);
 
 /**
  * Accept a connection.
@@ -170,7 +167,7 @@ typedef void (*pal_socket_accepted_cb)(pal_socket_obj *o, pal_err err,
  *         @p accepted_cb will be called when accepting the connection.
  * @return other error number on failure.
  */
-pal_err pal_socket_accept(pal_socket_obj *o, pal_socket_obj **new_o, char *addr, size_t addrlen, uint16_t *port,
+pal_err pal_socket_accept(pal_socket_obj *o, pal_socket_obj *new_o, char *addr, size_t addrlen, uint16_t *port,
     pal_socket_accepted_cb accepted_cb, void *arg);
 
 /**
@@ -253,12 +250,11 @@ pal_err pal_socket_sendto(pal_socket_obj *o, const void *data, size_t *len,
  * @param err The error of the receive procress.
  * @param addr The remote address.
  * @param port The remote port.
- * @param data The received data.
  * @param len The length of the received data.
  * @param arg The last paramter of @b pal_socket_recv().
  */
 typedef void (*pal_socket_recved_cb)(pal_socket_obj *o, pal_err err,
-    const char *addr, uint16_t port, void *data, size_t len, void *arg);
+    const char *addr, uint16_t port, size_t len, void *arg);
 
 /**
  * Receive data.

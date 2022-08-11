@@ -28,6 +28,11 @@ typedef HAP_OPAQUE(16) pal_md_ctx;
  */
 typedef HAP_OPAQUE(48) pal_ssl_ctx;
 
+/**
+ * Opaque structure for socket object.
+ */
+typedef HAP_OPAQUE(176) pal_socket_obj;
+
 #ifdef __cplusplus
 }
 #endif

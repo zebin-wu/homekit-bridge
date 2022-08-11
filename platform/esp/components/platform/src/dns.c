@@ -108,7 +108,7 @@ void pal_dns_deinit() {
 pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
     pal_dns_response_cb response_cb, void *arg) {
     HAPPrecondition(hostname);
-    HAPPrecondition(af >= PAL_ADDR_FAMILY_UNSPEC && af <= PAL_ADDR_FAMILY_IPV6);
+    HAPPrecondition(af <= PAL_ADDR_FAMILY_IPV6);
     HAPPrecondition(response_cb);
 
     pal_dns_req_ctx *ctx = pal_mem_calloc(1, sizeof(*ctx));
