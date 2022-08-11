@@ -42,7 +42,7 @@
 #include "app_spiffs.h"
 
 #define APP_MAIN_TASK_STACKSIZE 8 * 1024
-#define APP_MAIN_TASK_PRIORITY 6
+#define APP_MAIN_TASK_PRIORITY 1
 #define APP_SPIFFS_DIR_PATH "/spiffs"
 #define APP_NVS_NAMESPACE_NAME "bridge"
 #define APP_NVS_LOG_ENABLED_TYPE "log"
