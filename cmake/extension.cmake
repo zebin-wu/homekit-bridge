@@ -20,7 +20,6 @@ function(gen_lua_binary out in dir luac)
     add_custom_command(OUTPUT ${out}
         COMMAND cd ${dir}
         COMMAND ${luac} ${LUAC_FLAGS} -o ${out} ${in}
-        COMMAND echo "Generated ${out}"
         DEPENDS ${luac} ${dir}/${in}
         COMMENT "Generating ${out}"
     )
@@ -69,7 +68,7 @@ function(find_luac output)
     endif()
     set(luac ${LUA_SRC_DIR}/luac)
     add_custom_command(OUTPUT ${luac}
-        COMMAND ${MAKE} -C ${LUA_DIR}
+        COMMAND ${MAKE} -s -C ${LUA_DIR} 1> /dev/null
         DEPENDS ${LUA_SRCS} ${LUAC_SRCS} ${LUA_HEADERS}
         COMMENT "Compiling luac"
     )
@@ -100,6 +99,7 @@ function(target_check_cstyle target)
         add_custom_command(OUTPUT ${output}
             COMMENT "Checking ${rel_path}"
             COMMAND ${CPPLINT}
+                --quiet
                 --linelength=120
                 --filter=-readability/casting,-build/include,-runtime/arrays,-runtime/int
                 ${rel_path}
@@ -133,7 +133,6 @@ function (target_add_embedfs target dir root_name)
             -D OUTPUT=${header}
             -D INPUT=${file}
             -P ${TOP_DIR}/cmake/bin2hex.cmake
-            COMMAND echo "Generated ${header}"
             DEPENDS ${dir}/${file}
             COMMENT "Generating ${header}"
         )
@@ -193,7 +192,6 @@ function(target_add_lua_binary_embedfs target root_name luac)
                     -D OUTPUT=${header}
                     -D INPUT=${bin}
                     -P ${TOP_DIR}/cmake/bin2hex.cmake
-                COMMAND echo "Generated ${header}"
                 DEPENDS ${binary_dir}/${bin}
                 COMMENT "Generating ${header}"
             )
@@ -207,7 +205,6 @@ function(target_add_lua_binary_embedfs target root_name luac)
             -D DEST_DIR=${dest_dir}
             -D EMBEDFS_ROOT_NAME=${root_name}
             -P ${TOP_DIR}/cmake/gen_embedfs.cmake
-        COMMAND echo "Generated ${output}"
         DEPENDS ${headers} ${TOP_DIR}/cmake/gen_embedfs.cmake
         COMMENT "Generating ${output}"
     )
