@@ -1,27 +1,15 @@
+local hap = require "hap"
+
 return {
     ---New a ``CurrentTemperature`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HAPCharacteristicReadRequest): any
+    ---@param read fun(request: HAPCharacteristicReadRequest): number
     ---@return HAPCharacteristic characteristic
     new = function (iid, read)
-        return {
-            format = "Float",
-            iid = iid,
-            type = "CurrentTemperature",
-            props = {
-                readable = true,
-                writable = false,
-                supportsEventNotification = true
-            },
-            units = "Celsius",
-            constraints = {
-                minVal = 0,
-                maxVal = 100,
-                stepVal = 0.1
-            },
-            cbs = {
-                read = read
-            }
-        }
+        return hap.newCharacteristic(iid, "Float", "CurrentTemperature", {
+            readable = true,
+            writable = false,
+            supportsEventNotification = true
+        }, read):setUnits("Celsius"):setContraints(0, 100, 0.1)
     end
 }

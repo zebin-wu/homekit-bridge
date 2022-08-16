@@ -17,56 +17,46 @@ local M = {}
 function M.gen(device, info, conf)
     local iids = conf.iids
 
-    return {
-        aid = conf.aid,
-        category = "BridgedAccessory",
-        name = conf.name or "Dmaker Dehumidifier",
-        mfg = "dmaker",
-        model = info.model,
-        sn = conf.sn,
-        fwVer = info.fw_ver,
-        hwVer = info.hw_ver,
-        services = {
+    return hap.newAccessory(
+        conf.aid,
+        "BridgedAccessory",
+        conf.name or "Dmaker Dehumidifier",
+        "dmaker",
+        info.model,
+        conf.sn,
+        info.fw_ver,
+        info.hw_ver,
+        {
             hap.AccessoryInformationService,
-            {
-                iid = iids.derh,
-                type = "HumidifierDehumidifier",
-                props = {
-                    primaryService = true,
-                    hidden = false
-                },
-                chars = {
-                    Active.new(iids.active, function (request)
-                        return device:getProp("power") and Active.value.Active or Active.value.Inactive
-                    end, function (request, value)
-                        device:setProp("power", value == Active.value.Active)
-                        raiseEvent(request.aid, request.sid, request.cid)
-                        raiseEvent(request.aid, request.sid, iids.curState)
-                    end),
-                    CurrentState.new(iids.curState, function (request)
-                        return device:getProp("power") and CurrentState.value.Dehumidifying or CurrentState.value.Inactive
-                    end),
-                    TargetState.new(iids.tgtState, function (request)
-                        return TargetState.value.Dehumidifier
-                    end, nil, TargetState.value.Dehumidifier, TargetState.value.Dehumidifier, 0),
-                    CurrentHumidity.new(iids.curHumidity, function (request)
-                        return device:getProp("curHumidity")
-                    end),
-                    TargetHumidity.new(iids.tgtHumidity, function (request)
-                        return device:getProp("tgtHumidity")
-                    end, function (request, value)
-                        device:setProp("tgtHumidity", assert(tointeger(value), "value not a integer"))
-                        raiseEvent(request.aid, request.sid, request.cid)
-                    end)
-                }
-            }
+            hap.newService(iids.derh, "HumidifierDehumidifier", true, false, {
+                Active.new(iids.active, function (request)
+                    return device:getProp("power") and Active.value.Active or Active.value.Inactive
+                end, function (request, value)
+                    device:setProp("power", value == Active.value.Active)
+                    raiseEvent(request.aid, request.sid, request.cid)
+                    raiseEvent(request.aid, request.sid, iids.curState)
+                end),
+                CurrentState.new(iids.curState, function (request)
+                    return device:getProp("power") and CurrentState.value.Dehumidifying or CurrentState.value.Inactive
+                end):setValidVals(CurrentState.value.Inactive, CurrentState.value.Dehumidifying),
+                TargetState.new(iids.tgtState, function (request)
+                    return TargetState.value.Dehumidifier
+                end, nil):setValidVals(TargetState.value.Dehumidifier),
+                CurrentHumidity.new(iids.curHumidity, function (request)
+                    return device:getProp("curHumidity")
+                end),
+                TargetHumidity.new(iids.tgtHumidity, function (request)
+                    return device:getProp("tgtHumidity")
+                end, function (request, value)
+                    device:setProp("tgtHumidity", assert(tointeger(value), "value not a integer"))
+                    raiseEvent(request.aid, request.sid, request.cid)
+                end)
+            })
         },
-        cbs = {
-            identify = function (request)
-                device.logger:info("Identify callback is called.")
-            end
-        }
-    }
+        function (request)
+            device.logger:info("Identify callback is called.")
+        end
+    )
 end
 
 return M

@@ -1,3 +1,5 @@
+local hap = require "hap"
+
 return {
     value = {
         Unsecured = 0,
@@ -7,26 +9,13 @@ return {
     },
     ---New a ``LockCurrentState`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HAPCharacteristicReadRequest): any
+    ---@param read fun(request: HAPCharacteristicReadRequest): integer
     ---@return HAPCharacteristic characteristic
     new = function (iid, read)
-        return {
-            format = "UInt8",
-            iid = iid,
-            type = "LockCurrentState",
-            props = {
-                readable = true,
-                writable = false,
-                supportsEventNotification = true
-            },
-            constraints = {
-                minVal = 0,
-                maxVal = 3,
-                stepVal = 1,
-            },
-            cbs = {
-                read = read
-            }
-        }
+        return hap.newCharacteristic(iid, "UInt8", "LockCurrentState", {
+            readable = true,
+            writable = false,
+            supportsEventNotification = true
+        }, read):setContraints(0, 3, 1)
     end
 }

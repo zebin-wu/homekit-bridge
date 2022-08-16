@@ -5,27 +5,51 @@ local M = {}
 
 ---@class HAPSession:lightuserdata HomeKit Session.
 
----@class HAPAccessoryServerCallbacks:table Accessory server callbacks.
----
----@field sessionAccept async fun(session: HAPSession) The callback used when a HomeKit Session is accepted.
----@field sessionInvalidate async fun(session: HAPSession) The callback used when a HomeKit Session is invalidated.
+---@class HAPAccessory:userdata HomeKit accessory.
 
----@class HAPAccessory:table HomeKit accessory.
----
----@field aid integer Accessory instance ID.
----@field category HAPAccessoryCategory Category information for the accessory.
----@field name string The display name of the accessory.
----@field mfg string The manufacturer of the accessory.
----@field model string The model name of the accessory.
----@field sn string The serial number of the accessory.
----@field fwVer string The firmware version of the accessory.
----@field hwVer string The hardware version of the accessory.
----@field services HAPService[] Array of provided services.
----@field cbs HAPAccessoryCallbacks Callbacks.
+---@class HAPService:userdata HomeKit service.
+local service = {}
 
----@class HAPAccessoryCallbacks:table Accessory Callbacks.
----
----@field identify fun(request: HAPAccessoryIdentifyRequest) The callback used to invoke the identify routine.
+---Link services.
+---@param ... integer Instance IDs of linked services.
+---@return HAPService self
+function service:linkServices(...) end
+
+---@class HAPCharacteristic:userdata HomeKit characteristic.
+local characteristic = {}
+
+---Set the manufacturer description for the characteristic.
+---@param mfgDesc? string Description of the characteristic provided by the manufacturer of the accessory.
+---@return HAPCharacteristic self
+function characteristic:setMfgDesc(mfgDesc) end
+
+---Set units for characteristic.
+---@param units HAPCharacteristicUnits The units of the values for the characteristic. Format: UInt8|UInt16|UInt32|UInt64|Int|Float
+---@return HAPCharacteristic self
+function characteristic:setUnits(units) end
+
+---Set contraints for characteristic.
+---@overload fun(characteristic: HAPCharacteristic, maxLen: integer): HAPCharacteristic
+---@param minVal number Minimum value.
+---@param maxVal number Maximum value.
+---@param stepVal number Step value.
+---@return HAPCharacteristic self
+function characteristic:setContraints(minVal, maxVal, stepVal) end
+
+---Set valid values for ``UInt8`` characteristic. Only supported for Apple defined characteristics.
+---@param ... integer Valid values in ascending order.
+---@return HAPCharacteristic self
+function characteristic:setValidVals(...) end
+
+---Valid values ranges, is an array of length 2.
+---Element 1 represents the ``start`` value.
+---Element 2 represents the ``end`` value.
+---@class HAPValidValsRanges:integer[]
+
+---Set valid values ranges for ``UInt8`` characteristic. Only supported for Apple defined characteristics.
+---@param ... HAPValidValsRanges Valid values ranges in ascending order.
+---@return HAPCharacteristic self
+function characteristic:setValidValsRanges(...) end
 
 ---@class HAPAccessoryIdentifyRequest:table Accessory identify request.
 ---
@@ -33,60 +57,6 @@ local M = {}
 ---@field remote boolean Whether the request appears to have originated from a remote controller, e.g. via Apple TV.
 ---@field session HAPSession The session over which the request has been received.
 ---@field aid integer Accessory instance ID.
-
----@class HAPService:table HomeKit service.
----
----@field iid integer Instance ID.
----@field type HAPServiceType The type of the service.
----@field props HAPServiceProperties HAP Service properties.
----@field linkedServices integer[] Array containing instance IDs of linked services.
----@field chars HAPCharacteristic[] Array of contained characteristics.
-
----@class HAPServiceProperties:table Properties that HomeKit services can have.
----
----@field primaryService boolean The service is the primary service on the accessory.
----@field hidden boolean The service should be hidden from the user.
----@field ble HAPServicePropertiesBLE
-
----@class HAPServicePropertiesBLE:table These properties only affect connections over Bluetooth LE.
----
----@field supportsConfiguration boolean The service supports configuration. Only the HAP Protocol Information service may support configuration.
-
----@class HAPCharacteristic:table HomeKit characteristic.
----
----@field format HAPCharacteristicFormat Format.
----@field iid integer Instance ID.
----@field type HAPCharacteristicType The type of the characteristic.
----@field mfgDesc string Description of the characteristic provided by the manufacturer of the accessory.
----@field props HAPCharacteristicProperties Characteristic properties.
----@field units HAPCharacteristicUnits The units of the values for the characteristic. Format: UInt8|UInt16|UInt32|UInt64|Int|Float
----@field constraints HAPStringCharacteristiConstraints|HAPNumberCharacteristiConstraints|HAPUInt8CharacteristiConstraints Value constraints.
----@field cbs HAPCharacteristicCallbacks Callbacks.
-
----@class HAPStringCharacteristiConstraints:table Format: String|Data
----
----@field maxLen integer Maximum length.
-
----@class HAPNumberCharacteristiConstraints:table Format: UInt16|UInt32|Uint64|Int|Float
----
----@field minVal number Minimum value.
----@field maxVal number Maximum value.
----@field stepVal number Step value.
-
----@class HAPUInt8CharacteristiConstraints:table Format: UInt8
----
----@field minVal integer Minimum value.
----@field maxVal integer Maximum value.
----@field stepVal integer Step value.
----
----Only supported for Apple defined characteristics.
----@field validVals integer[] List of valid values in ascending order.
----@field validValsRanges HAPUInt8CharacteristicValidValuesRange[] List of valid values ranges in ascending order.
-
----@class HAPUInt8CharacteristicValidValuesRange
----
----@field start integer Starting value.
----@field stop integer Ending value.
 
 ---@class HAPCharacteristicReadRequest:table Characteristic read request.
 ---
@@ -112,13 +82,6 @@ local M = {}
 ---@field aid integer Accessory instance ID.
 ---@field sid integer Service instance ID.
 ---@field cid integer Characteristic intstance ID.
-
----@class HAPCharacteristicCallbacks:table Characteristic Callbacks.
----
----@field read async fun(request:HAPCharacteristicReadRequest): any The callback used to handle read requests, it returns value.
----@field write async fun(request:HAPCharacteristicWriteRequest, value:any) The callback used to handle write requests.
----@field sub async fun(request:HAPCharacteristicSubscriptionRequest) The callback used to handle subscribe requests.
----@field unsub async fun(request:HAPCharacteristicSubscriptionRequest) The callback used to handle unsubscribe requests.
 
 ---@class HAPCharacteristicProperties:table Properties that HomeKit characteristics can have.
 ---
@@ -355,32 +318,64 @@ local M = {}
 ---| '"Seconds"'    # Seconds.
 
 ---HomeKit Accessory Information service.
----@type lightuserdata
+---@type HAPService
 M.AccessoryInformationService = {}
 
 ---HAP Protocol Information service.
----@type lightuserdata
+---@type HAPService
 M.HAPProtocolInformationService = {}
 
 ---Pairing service.
----@type lightuserdata
+---@type HAPService
 M.PairingService = {}
 
----Initialize HAP.
+---New a accessory.
+---@param aid integer Accessory instance ID.
+---@param category HAPAccessoryCategory Category information for the accessory.
+---@param name string The display name of the accessory.
+---@param manufacturer string The manufacturer of the accessory.
+---@param model string The model name of the accessory.
+---@param serialNumber string The serial number of the accessory.
+---@param firmwareVersion string The firmware version of the accessory.
+---@param hardwareVersion string The hardware version of the accessory.
+---@param services HAPService[] The services of the accessory.
+---@param identify? async fun(request: HAPAccessoryIdentifyRequest) The callback used to invoke the identify routine.
+---@return HAPAccessory
+function M.newAccessory(aid, category, name, manufacturer, model, serialNumber, firmwareVersion, hardwareVersion, services, identify) end
+
+---New a service.
+---@param iid integer Instance ID.
+---@param type HAPServiceType The type of the service.
+---@param primary boolean The service is the primary service on the accessory.
+---@param hidden boolean The service should be hidden from the user.
+---@param characteristics HAPCharacteristic[] The characteristics of the service.
+---@return HAPService
+function M.newService(iid, type, primary, hidden, characteristics) end
+
+---New a characteristic.
+---@param iid integer Instance ID.
+---@param format HAPCharacteristicFormat Characteristic format.
+---@param type HAPCharacteristicType The type of the characteristic.
+---@param props HAPCharacteristicProperties Characteristic properties.
+---@param read? async fun(request: HAPCharacteristicReadRequest): any The callback used to handle read requests, it returns value.
+---@param write? async fun(request: HAPCharacteristicWriteRequest, value: any) The callback used to handle write requests.
+---@param sub? async fun(request: HAPCharacteristicSubscriptionRequest) The callback used to handle subscribe requests.
+---@param unsub? async fun(request: HAPCharacteristicSubscriptionRequest) The callback used to handle unsubscribe requests.
+---@return HAPCharacteristic
+function M.newCharacteristic(iid, format, type, props, read, write, sub, unsub) end
+
+---Accessory is valid.
+---@param accessory HAPAccessory HAP accessory.
+---@param bridged? boolean Whether the accessory is bridged accessory.
+function M.accessoryIsValid(accessory, bridged) end
+
+---Start accessory server.
 ---@param primaryAccessory HAPAccessory Primary accessory to serve.
----@param serverCallbacks HAPAccessoryServerCallbacks Accessory server callbacks.
-function M.init(primaryAccessory, serverCallbacks) end
-
----De-initialize then you can init() again.
-function M.deinit() end
-
----Add bridged accessory.
----@param accessory HAPAccessory Bridged accessory.
-function M.addBridgedAccessory(accessory) end
-
----Start accessory server, you must init() first.
+---@param bridgedAccessories? HAPAccessory[] Bridged accessories.
 ---@param confChanged boolean Whether or not the bridge configuration changed since the last start.
-function M.start(confChanged) end
+---@param sessionAccept? async fun(session: HAPSession) The callback used when a HomeKit Session is accepted.
+---@param sessionInvalidate? async fun(session: HAPSession) The callback used when a HomeKit Session is invalidated.
+function M.start(primaryAccessory, bridgedAccessories, confChanged, sessionAccept, sessionInvalidate) end
 
 ---Stop accessory server.
 function M.stop() end
@@ -402,7 +397,7 @@ function M.getNewInstanceID(bridgedAccessory) end
 
 ---Restore factory settings.
 ---
----This function must be called before initialization.
+---This function must be called before calling start().
 function M.restoreFactorySettings() end
 
 return M

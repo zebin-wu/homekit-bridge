@@ -39,19 +39,26 @@ local function loadPlugin(name, conf)
             error(("%s.%s: type error, expected %s, got %s."):format(name, k, t, _t))
         end
     end
-    plugin.init(conf)
+    logger:info(("Plugin '%s' initializing ..."):format(name))
+    local accessories = plugin.init(conf)
+    logger:info(("Plugin '%s' initialized."):format(name))
     priv.plugins[name] = plugin
+    return accessories
 end
 
 ---Load plugins and generate bridged accessories.
 ---@param pluginConfs table<string, PluginConf> Plugin configurations.
+---@return HAPAccessory[] bridgedAccessories # Bridges Accessories.
 function M.init(pluginConfs)
+    local accessories = {}
     if pluginConfs then
         for name, conf in pairs(pluginConfs) do
-            logger:info(("Loading plugin '%s' ..."):format(name))
             local success, result = xpcall(loadPlugin, traceback, name, conf)
             if success == false then
                 logger:error(result)
+            end
+            for _, accessory in ipairs(result) do
+                table.insert(accessories, accessory)
             end
         end
     end
@@ -60,6 +67,7 @@ function M.init(pluginConfs)
         loaded[name] = nil
     end
     collectgarbage()
+    return accessories
 end
 
 return M

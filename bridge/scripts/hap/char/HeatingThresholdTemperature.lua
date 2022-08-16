@@ -1,32 +1,16 @@
+local hap = require "hap"
+
 return {
     ---New a ``HeatingThresholdTemperature`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HAPCharacteristicReadRequest): any
-    ---@param write fun(request:HAPCharacteristicWriteRequest, value:any)
-    ---@param minVal? number Minimum value.
-    ---@param maxVal? number Maximum value.
-    ---@param stepVal? number Step value.
+    ---@param read fun(request: HAPCharacteristicReadRequest): number
+    ---@param write fun(request: HAPCharacteristicWriteRequest, value: number)
     ---@return HAPCharacteristic characteristic
-    new = function (iid, read, write, minVal, maxVal, stepVal)
-        return {
-            format = "Float",
-            iid = iid,
-            type = "HeatingThresholdTemperature",
-            props = {
-                readable = true,
-                writable = true,
-                supportsEventNotification = true
-            },
-            units = "Celsius",
-            constraints = {
-                minVal = minVal or 0,
-                maxVal = maxVal or 25,
-                stepVal = stepVal or 0.1
-            },
-            cbs = {
-                read = read,
-                write = write,
-            }
-        }
+    new = function (iid, read, write)
+        return hap.newCharacteristic(iid, "Float", "HeatingThresholdTemperature", {
+            readable = true,
+            writable = true,
+            supportsEventNotification = true
+        }, read, write):setUnits("Celsius"):setContraints(0, 25, 0.1)
     end
 }

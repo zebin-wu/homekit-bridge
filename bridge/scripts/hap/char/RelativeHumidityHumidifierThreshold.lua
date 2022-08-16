@@ -1,29 +1,16 @@
+local hap = require "hap"
+
 return {
     ---New a ``RelativeHumidityHumidifierThreshold`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HAPCharacteristicReadRequest): any
-    ---@param write fun(request:HAPCharacteristicWriteRequest, value:any)
+    ---@param read fun(request: HAPCharacteristicReadRequest): number
+    ---@param write fun(request: HAPCharacteristicWriteRequest, value: number)
     ---@return HAPCharacteristic characteristic
     new = function (iid, read, write)
-        return {
-            format = "Float",
-            iid = iid,
-            type = "RelativeHumidityHumidifierThreshold",
-            props = {
-                readable = true,
-                writable = true,
-                supportsEventNotification = true
-            },
-            units = "Percentage",
-            constraints = {
-                minVal = 0,
-                maxVal = 100,
-                stepVal = 1
-            },
-            cbs = {
-                read = read,
-                write = write
-            }
-        }
+        return hap.newCharacteristic(iid, "Float", "RelativeHumidityHumidifierThreshold", {
+            readable = true,
+            writable = true,
+            supportsEventNotification = true
+        }, read, write):setUnits("Percentage"):setContraints(0, 100, 1)
     end
 }

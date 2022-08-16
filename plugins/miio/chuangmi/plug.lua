@@ -17,40 +17,30 @@ local M = {}
 function M.gen(device, info, conf)
     local iids = conf.iids
 
-    return {
-        aid = conf.aid,
-        category = "BridgedAccessory",
-        name = conf.name or "Chuangmi Plug",
-        mfg = "chuangmi",
-        model = info.model,
-        sn = conf.sn,
-        fwVer = info.fw_ver,
-        hwVer = info.hw_ver,
-        services = {
+    return hap.newAccessory(
+        conf.aid,
+        "BridgedAccessory",
+        conf.name or "Chuangmi Plug",
+        "chuangmi",
+        info.model,
+        conf.sn,
+        info.fw_ver,
+        info.hw_ver,
+        {
             hap.AccessoryInformationService,
-            {
-                iid = iids.outlet,
-                type = "Outlet",
-                props = {
-                    primaryService = true,
-                    hidden = false
-                },
-                chars = {
-                    On.new(iids.on, function (request)
-                        return device:getOn()
-                    end, function (request, value)
-                        device:setOn(value)
-                        raiseEvent(request.aid, request.sid, request.cid)
-                    end)
-                }
-            }
+            hap.newService(iids.outlet, "Outlet", true, false, {
+                On.new(iids.on, function (request)
+                    return device:getOn()
+                end, function (request, value)
+                    device:setOn(value)
+                    raiseEvent(request.aid, request.sid, request.cid)
+                end)
+            })
         },
-        cbs = {
-            identify = function (request)
-                device.logger:info("Identify callback is called.")
-            end
-        }
-    }
+        function (request)
+            device.logger:info("Identify callback is called.")
+        end
+    )
 end
 
 return M

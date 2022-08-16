@@ -16,8 +16,12 @@
 #include "app_int.h"
 #include "lc.h"
 
-#define lhap_safe_free(p)     do { if (p) { pal_mem_free((void *)p); (p) = NULL; } } while (0)
+#define lhap_optfunction(L, n) luaL_opt(L, lhap_checkfunction, n, false)
+#define lhap_optarray(L, n) luaL_opt(L, lhap_checkarray, n, 0)
 
+#define LHAP_ACCESSORY_NAME "HAPAccessory*"
+#define LHAP_SERVICE_NAME "HAPService*"
+#define LHAP_CHARACTERISTIC_NAME "HAPCharacteristic*"
 #define LHAP_NVS_NAMESPACE "bridge::lhaplib"
 
 /**
@@ -406,11 +410,7 @@ const HAPService pairingService = {
 
 #define LHAP_CASE_CHAR_FORMAT_CODE(format, ptr, code) \
     case kHAPCharacteristicFormat_ ## format: \
-        { HAP ## format ## Characteristic *p = ptr; code; } break;
-
-#define LHAP_LOG_TYPE_ERROR(L, name, idx, type) \
-    HAPLogError(&lhap_log, "%s: wrong type of %s (%s excepted, got %s)", \
-        __func__, name, lua_typename(L, type), luaL_typename(L, idx));
+        { HAP ## format ## Characteristic *p = (HAP ## format ## Characteristic *)ptr; code; } break;
 
 static const HAPLogObject lhap_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
@@ -443,19 +443,20 @@ static const char *lhap_accessory_category_strs[] = {
     "ProgrammableSwitches",
     "RangeExtenders",
     "IPCameras",
-    NULL,
+    "Video Doorbells",
     "AirPurifiers",
     "Heaters",
     "AirConditioners",
     "Humidifiers",
     "Dehumidifiers",
-    NULL,
-    NULL,
-    NULL,
-    NULL,
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
     "Sprinklers",
     "Faucets",
-    "ShowerSystems"
+    "ShowerSystems",
+    NULL
 };
 
 static const char *lhap_characteristic_format_strs[] = {
@@ -469,6 +470,7 @@ static const char *lhap_characteristic_format_strs[] = {
     "Float",
     "String",
     "TLV8",
+    NULL,
 };
 
 static const char *lhap_characteristic_units_strs[] = {
@@ -478,6 +480,7 @@ static const char *lhap_characteristic_units_strs[] = {
     "Percentage",
     "Lux",
     "Seconds",
+    NULL,
 };
 
 static const size_t lhap_characteristic_struct_size[] = {
@@ -705,13 +708,11 @@ static const struct lhap_char_integer_val_range {
 };
 
 typedef struct lhap_desc {
-    bool inited:1;
-    bool started:1;
+    bool started;
 
     HAPAccessory *primary_acc;
     HAPAccessory **bridged_accs;
-    size_t bridged_accs_max;
-    size_t bridged_accs_cnt;
+    size_t num_bridged_accs;
 
     lua_State *mL;
     lua_State *co;
@@ -722,6 +723,16 @@ typedef struct lhap_desc {
 } lhap_desc;
 
 static lhap_desc gv_lhap_desc;
+
+static bool lhap_checkfunction(lua_State *L, int arg) {
+    luaL_checktype(L, arg, LUA_TFUNCTION);
+    return true;
+}
+
+static size_t lhap_checkarray(lua_State *L, int arg) {
+    luaL_checktype(L, arg, LUA_TTABLE);
+    return lua_rawlen(L, arg);
+}
 
 static void
 lhap_init_ip(HAPAccessoryServerOptions *options, size_t num_contexts, size_t num_notify) {
@@ -786,45 +797,6 @@ static void lhap_rawsetp_reset(lua_State *L, int idx, const void *p) {
     lua_rawsetp(L, idx, p);
 }
 
-// Return a new copy from the str on the "idx" of the stack.
-static char *lhap_new_str(lua_State *L, int idx) {
-    size_t len;
-    const char *str = lua_tolstring(L, idx, &len);
-    if (str[len] != '\0') {
-        HAPLogError(&lhap_log, "%s: Invalid string.", __func__);
-        return NULL;
-    }
-    char *copy = pal_mem_alloc(len + 1);
-    if (!copy) {
-        HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
-        return NULL;
-    }
-    HAPRawBufferCopyBytes(copy, str, len);
-    copy[len] = '\0';
-    return copy;
-}
-
-// Find the string and return the string index, if not found, return -1.
-static int lhap_lookup_by_name(const char *name, const char *strs[], int len) {
-    for (int i = 0; i < len; i++) {
-        if (strs[i] && HAPStringAreEqual(name, strs[i])) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-// Check if the service is one of "lhap_accessory_services_userdatas"
-static bool lhap_service_is_light_userdata(HAPService *service) {
-    for (const lhap_lightuserdata *ud = lhap_accessory_services_userdatas;
-        ud->ptr; ud++) {
-        if (service == ud->ptr) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static lua_Integer
 lhap_tointegerx(lua_State *L, int idx, int *isnum, HAPCharacteristicFormat format, bool is_unsigned) {
     lua_Integer num;
@@ -842,205 +814,6 @@ lhap_tointegerx(lua_State *L, int idx, int *isnum, HAPCharacteristicFormat forma
         return 0;
     }
     return num;
-}
-
-static bool lhap_accessory_aid_cb(lua_State *L, void *arg) {
-    int isnum;
-    lua_Integer aid = lua_tointegerx(L, -1, &isnum);
-    if (!isnum || aid <= 0) {
-        return false;
-    }
-    ((HAPAccessory *)arg)->aid = aid;
-    return true;
-}
-
-static bool lhap_accessory_category_cb(lua_State *L, void *arg) {
-    int idx = lhap_lookup_by_name(lua_tostring(L, -1),
-        lhap_accessory_category_strs,
-        HAPArrayCount(lhap_accessory_category_strs));
-    if (idx == -1) {
-        return false;
-    }
-    ((HAPAccessory *)arg)->category = idx;
-    return true;
-}
-
-static bool lhap_accessory_name_cb(lua_State *L, void *arg) {
-    HAPAccessory *accessory = arg;
-
-    return (*((char **)&accessory->name) =
-        lhap_new_str(L, -1)) ? true : false;
-}
-
-static bool lhap_accessory_mfg_cb(lua_State *L, void *arg) {
-    HAPAccessory *accessory = arg;
-
-    return (*((char **)&accessory->manufacturer) =
-        lhap_new_str(L, -1)) ? true : false;
-}
-
-static bool lhap_accessory_model_cb(lua_State *L, void *arg) {
-    HAPAccessory *accessory = arg;
-
-    return (*((char **)&accessory->model) =
-        lhap_new_str(L, -1)) ? true : false;
-}
-
-static bool lhap_accessory_sn_cb(lua_State *L, void *arg) {
-    HAPAccessory *accessory = arg;
-
-    return (*((char **)&accessory->serialNumber) =
-        lhap_new_str(L, -1)) ? true : false;
-}
-
-static bool lhap_accessory_fw_ver_cb(lua_State *L, void *arg) {
-    HAPAccessory *accessory = arg;
-
-    return (*((char **)&accessory->firmwareVersion) =
-        lhap_new_str(L, -1)) ? true : false;
-}
-
-static bool lhap_accessory_hw_ver_cb(lua_State *L, void *arg) {
-    HAPAccessory *accessory = arg;
-
-    return (*((char **)&accessory->hardwareVersion) =
-        lhap_new_str(L, -1)) ? true : false;
-}
-
-static bool lhap_service_iid_cb(lua_State *L, void *arg) {
-    int isnum;
-    lua_Integer iid = lua_tointegerx(L, -1, &isnum);
-    if (!isnum || iid <= (lua_Integer)LHAP_ATTR_CNT_DFT) {
-        HAPLogError(&lhap_log, "%s: Invalid IID.", __func__);
-        return false;
-    }
-    ((HAPService *)arg)->iid = iid;
-    return true;
-}
-
-static bool lhap_service_type_cb(lua_State *L, void *arg) {
-    HAPService *service = arg;
-    const char *str = lua_tostring(L, -1);
-    for (int i = 0; i < HAPArrayCount(lhap_service_type_tab);
-        i++) {
-        if (HAPStringAreEqual(str, lhap_service_type_tab[i].name)) {
-            service->serviceType = lhap_service_type_tab[i].type;
-            service->debugDescription = lhap_service_type_tab[i].debugDescription;
-            return true;
-        }
-    }
-    return false;
-}
-
-static bool lhap_service_props_primary_service_cb(lua_State *L, void *arg) {
-    ((HAPServiceProperties *)arg)->primaryService = lua_toboolean(L, -1);
-    return true;
-}
-
-static bool lhap_service_props_hidden_cb(lua_State *L, void *arg) {
-    ((HAPServiceProperties *)arg)->hidden = lua_toboolean(L, -1);
-    return true;
-}
-
-static bool lhap_service_props_supports_conf_cb(lua_State *L, void *arg) {
-    ((HAPServiceProperties *)arg)->ble.supportsConfiguration = lua_toboolean(L, -1);
-    return true;
-}
-
-static const lc_table_kv lhap_service_props_ble_kvs[] = {
-    {"supportsConfiguration", LC_TBOOLEAN, lhap_service_props_supports_conf_cb},
-    {NULL, LUA_TNONE, NULL},
-};
-
-static bool lhap_service_props_ble_cb(lua_State *L, void *arg) {
-    return lc_traverse_table(L, -1, lhap_service_props_ble_kvs, arg);
-}
-
-static const lc_table_kv lhap_service_props_kvs[] = {
-    {"primaryService", LC_TBOOLEAN, lhap_service_props_primary_service_cb},
-    {"hidden", LC_TBOOLEAN, lhap_service_props_hidden_cb},
-    {"ble", LC_TTABLE, lhap_service_props_ble_cb},
-    {NULL, LC_TNONE, NULL},
-};
-
-static bool lhap_service_props_cb(lua_State *L, void *arg) {
-    HAPService *service = arg;
-
-    return lc_traverse_table(L, -1, lhap_service_props_kvs, &service->properties);
-}
-
-bool lhap_service_linked_services_arr_cb(lua_State *L, size_t i, void *arg) {
-    uint16_t *iids = arg;
-
-    if (!lua_isnumber(L, -1)) {
-        char name[32];
-        snprintf(name, sizeof(name), "linkedServices[%zu]", i + 1);
-        LHAP_LOG_TYPE_ERROR(L, name, -1, LUA_TNUMBER);
-        return false;
-    }
-
-    int isnum;
-    iids[i] = lhap_tointegerx(L, -1, &isnum, kHAPCharacteristicFormat_UInt64, true);
-    if (!isnum) {
-        return false;
-    }
-    return true;
-}
-
-static bool lhap_service_linked_services_cb(lua_State *L, void *arg) {
-    HAPService *service = arg;
-
-    uint64_t **piids = (uint64_t **)&(service->linkedServices);
-    lua_Unsigned len = lua_rawlen(L, -1);
-    if (!len) {
-        HAPLogError(&lhap_log, "%s: Invalid array.", __func__);
-        return false;
-    }
-    uint64_t *iids = pal_mem_alloc(sizeof(uint64_t) * (len + 1));
-    if (!iids) {
-        HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
-        return false;
-    }
-    iids[len] = 0;
-    if (!lc_traverse_array(L, -1, lhap_service_linked_services_arr_cb,
-        iids)) {
-        lhap_safe_free(iids);
-        return false;
-    }
-    *piids = iids;
-    return true;
-}
-
-static bool lhap_char_iid_cb(lua_State *L, void *arg) {
-    int isnum;
-    lua_Integer iid = lua_tointegerx(L, -1, &isnum);
-    if (!isnum || iid <= (lua_Integer)LHAP_ATTR_CNT_DFT) {
-        HAPLogError(&lhap_log, "%s: Invalid IID.", __func__);
-        return false;
-    }
-    ((HAPBaseCharacteristic *)arg)->iid = iid;
-    return true;
-}
-
-static bool lhap_char_type_cb(lua_State *L, void *arg) {
-    HAPBaseCharacteristic *c = arg;
-    const char *str = lua_tostring(L, -1);
-    for (int i = 0; i < HAPArrayCount(lhap_characteristic_type_tab);
-        i++) {
-        if (HAPStringAreEqual(str, lhap_characteristic_type_tab[i].name)) {
-            c->characteristicType = lhap_characteristic_type_tab[i].type;
-            c->debugDescription = lhap_characteristic_type_tab[i].debugDescription;
-            return true;
-        }
-    }
-    HAPLogError(&lhap_log, "%s: error type.", __func__);
-    return false;
-}
-
-static bool lhap_char_mfg_desc_cb(lua_State *L, void *arg) {
-    HAPBaseCharacteristic *ch = arg;
-
-    return (*((char **)&ch->manufacturerDescription) = lhap_new_str(L, -1)) ? true : false;
 }
 
 static bool lhap_char_props_readable_cb(lua_State *L, void *arg) {
@@ -1168,258 +941,6 @@ static const lc_table_kv lhap_char_props_kvs[] = {
     {"ble", LC_TTABLE, lhap_char_props_ble_cb},
     {NULL, LC_TNONE, NULL},
 };
-
-static bool lhap_char_props_cb(lua_State *L, void *arg) {
-    HAPBaseCharacteristic *ch = arg;
-
-    return lc_traverse_table(L, -1, lhap_char_props_kvs, &ch->properties);
-}
-
-static bool lhap_char_units_cb(lua_State *L, void *arg) {
-    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
-    if (format < kHAPCharacteristicFormat_UInt8 ||
-        format > kHAPCharacteristicFormat_Float) {
-        HAPLogError(&lhap_log, "%s: %s characteristic has no unit.",
-            __func__, lhap_characteristic_format_strs[format]);
-        return false;
-    }
-    const char *str = lua_tostring(L, -1);
-    int idx = lhap_lookup_by_name(str, lhap_characteristic_units_strs,
-        HAPArrayCount(lhap_characteristic_units_strs));
-    if (idx == -1) {
-        HAPLogError(&lhap_log, "%s: Failed to find the unit \"%s\""
-            " in lhap_characteristic_units_strs", __func__, str);
-        return false;
-    }
-
-    switch (format) {
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg, p->units = idx)
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg, p->units = idx)
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg, p->units = idx)
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg, p->units = idx)
-    LHAP_CASE_CHAR_FORMAT_CODE(Int, arg, p->units = idx)
-    LHAP_CASE_CHAR_FORMAT_CODE(Float, arg, p->units = idx)
-    default:
-        HAPFatalError();
-    }
-    return true;
-}
-
-static bool lhap_char_constraints_max_len_cb(lua_State *L, void *arg) {
-    int isnum;
-    lua_Integer num;
-    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
-    switch (format) {
-    LHAP_CASE_CHAR_FORMAT_CODE(String, arg,
-        num = lua_tointegerx(L, -1, &isnum);
-        p->constraints.maxLength = num;
-    )
-    LHAP_CASE_CHAR_FORMAT_CODE(Data, arg,
-        num = lua_tointegerx(L, -1, &isnum);
-        p->constraints.maxLength = num;
-    )
-    default:
-        HAPLogError(&lhap_log, "%s: The constraints of the %s "
-            "characteristic has no maxLength.",
-            __func__, lhap_characteristic_format_strs[format]);
-        return false;
-    }
-    if (!isnum) {
-        HAPLogError(&lhap_log, "%s: Invalid maxLength", __func__);
-        return false;
-    }
-    if (num < 0 || num > LHAP_UINT32_MAX) {
-        HAPLogError(&lhap_log, "%s: maxLength is out of range(0, %u).",
-            __func__, LHAP_UINT32_MAX);
-        return false;
-    }
-    return true;
-}
-
-#define LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(member, is_unsigned) \
-    int isnum; \
-    lua_Integer num = 0; \
-    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format; \
-    if (format >= kHAPCharacteristicFormat_UInt8 && \
-        format <= kHAPCharacteristicFormat_Int) { \
-        num = lhap_tointegerx(L, -1, &isnum, format, is_unsigned); \
-    } \
-    switch (format) { \
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg, p->constraints.member = num) \
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, arg, p->constraints.member = num) \
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, arg, p->constraints.member = num) \
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, arg, p->constraints.member = num) \
-    LHAP_CASE_CHAR_FORMAT_CODE(Int, arg, p->constraints.member = num) \
-    LHAP_CASE_CHAR_FORMAT_CODE(Float, arg, \
-        p->constraints.member = lua_tonumberx(L, -1, &isnum)) \
-    default: \
-        HAPLogError(&lhap_log, "%s: The constraints of the %s " \
-            "characteristic has no %s.", __func__, \
-            lhap_characteristic_format_strs[format], #member); \
-        return false; \
-    } \
-    if (!isnum) { \
-        HAPLogError(&lhap_log, "%s: Invalid %s", __func__, #member); \
-        return false; \
-    } \
-    return true;
-
-static bool lhap_char_constraints_min_val_cb(lua_State *L, void *arg) {
-    LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(minimumValue, false)
-}
-
-static bool lhap_char_constraints_max_val_cb(lua_State *L, void *arg) {
-    LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(maximumValue, false)
-}
-
-static bool lhap_char_constraints_step_val_cb(lua_State *L, void *arg) {
-    LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE(stepValue, true)
-}
-
-#undef LHAP_CHAR_CONSTRAINTS_VAL_CB_CODE
-
-static bool lhap_char_constraints_valid_vals_arr_cb(lua_State *L, size_t i, void *arg) {
-    uint8_t **vals = arg;
-
-    if (!lua_isnumber(L, -1)) {
-        char name[32];
-        snprintf(name, sizeof(name), "validValues[%zu]", i + 1);
-        LHAP_LOG_TYPE_ERROR(L, name, -1, LUA_TNUMBER);
-        return false;
-    }
-
-    int isnum;
-    *(vals[i]) = lhap_tointegerx(L, -1, &isnum, kHAPCharacteristicFormat_UInt8, true);
-    if (!isnum) {
-        return false;
-    }
-    return true;
-}
-
-static bool lhap_char_constraints_valid_vals_cb(lua_State *L, void *arg) {
-    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
-    switch (format) {
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
-        uint8_t ***pValidValues = (uint8_t ***)&(p->constraints.validValues);
-        lua_Unsigned len = lua_rawlen(L, -1);
-        if (!len) {
-            HAPLogError(&lhap_log, "%s: Invalid array.", __func__);
-            return false;
-        }
-        size_t vals_len = (len + 1) * sizeof(uint8_t *);
-        uint8_t **vals = pal_mem_alloc(vals_len + sizeof(uint8_t) * len);
-        if (!vals) {
-            HAPLogError(&lhap_log, "%s: Failed to alloc.", __func__);
-            return false;
-        }
-        for (int i = 0; i < len; i++) {
-            vals[i] = (uint8_t *)((char *)vals + vals_len) + i;
-        }
-        vals[len] = NULL;
-        if (!lc_traverse_array(L, -1, lhap_char_constraints_valid_vals_arr_cb,
-            vals)) {
-            lhap_safe_free(vals);
-            return false;
-        }
-        *pValidValues = vals;
-    )
-    default:
-        HAPLogError(&lhap_log, "%s: The constraints of the %s "
-            "characteristic has no validValues.",
-            __func__, lhap_characteristic_format_strs[format]);
-        return false;
-    }
-    return true;
-}
-
-static bool lhap_char_constraints_valid_val_range_start_cb(lua_State *L, void *arg) {
-    int isnum;
-    ((HAPUInt8CharacteristicValidValuesRange *)arg)->start = lhap_tointegerx(L, -1,
-        &isnum, kHAPCharacteristicFormat_UInt8, true);
-    return isnum;
-}
-
-static bool lhap_char_constraints_valid_val_range_end_cb(lua_State *L, void *arg) {
-    int isnum;
-    ((HAPUInt8CharacteristicValidValuesRange *)arg)->end = lhap_tointegerx(L, -1,
-        &isnum, kHAPCharacteristicFormat_UInt8, true);
-    return isnum;
-}
-
-static const lc_table_kv lhap_char_constraints_valid_val_range_kvs[] = {
-    {"start", LC_TNUMBER, lhap_char_constraints_valid_val_range_start_cb},
-    {"stop", LC_TNUMBER, lhap_char_constraints_valid_val_range_end_cb},
-    {NULL, LC_TNONE, NULL},
-};
-
-static bool lhap_char_constraints_valid_vals_ranges_arr_cb(lua_State *L, size_t i, void *arg) {
-    HAPUInt8CharacteristicValidValuesRange **ranges = arg;
-
-    if (!lua_istable(L, -1)) {
-        char name[32];
-        snprintf(name, sizeof(name), "validValuesRanges[%zu]", i + 1);
-        LHAP_LOG_TYPE_ERROR(L, name, -1, LUA_TTABLE);
-        return false;
-    }
-    if (!lc_traverse_table(L, -1, lhap_char_constraints_valid_val_range_kvs, ranges[i])) {
-        HAPLogError(&lhap_log, "%s: Failed to parse valid value range.", __func__);
-        return false;
-    }
-    return true;
-}
-
-static bool lhap_char_constraints_valid_vals_ranges_cb(lua_State *L, void *arg) {
-    HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)arg)->format;
-    switch (format) {
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, arg,
-        HAPUInt8CharacteristicValidValuesRange ***pValidValuesRanges =
-            (HAPUInt8CharacteristicValidValuesRange ***)
-            &(p->constraints.validValuesRanges);
-        lua_Unsigned len = lua_rawlen(L, -1);
-        if (!len) {
-            HAPLogError(&lhap_log, "%s: Invalid array.", __func__);
-            return false;
-        }
-        size_t ranges_len = (len + 1) * sizeof(HAPUInt8CharacteristicValidValuesRange *);
-        HAPUInt8CharacteristicValidValuesRange **ranges =
-            pal_mem_alloc(ranges_len + len * sizeof(HAPUInt8CharacteristicValidValuesRange));
-        if (!ranges) {
-            HAPLogError(&lhap_log, "%s: Failed to alloc ranges.", __func__);
-            return false;
-        }
-        for (int i = 0; i < len; i++) {
-            ranges[i] = (HAPUInt8CharacteristicValidValuesRange *)((char *)ranges + ranges_len) + i;
-        }
-        ranges[len] = NULL;
-        if (!lc_traverse_array(L, -1, lhap_char_constraints_valid_vals_ranges_arr_cb,
-            ranges)) {
-            lhap_safe_free(ranges);
-            return false;
-        }
-        *pValidValuesRanges = ranges;
-    )
-    default:
-        HAPLogError(&lhap_log, "%s: The constraints of the %s "
-            "characteristic has no validValues.",
-            __func__, lhap_characteristic_format_strs[format]);
-        return false;
-    }
-    return true;
-}
-
-static const lc_table_kv lhap_char_constraints_kvs[] = {
-    {"maxLen", LC_TNUMBER, lhap_char_constraints_max_len_cb},
-    {"minVal", LC_TNUMBER, lhap_char_constraints_min_val_cb},
-    {"maxVal", LC_TNUMBER, lhap_char_constraints_max_val_cb},
-    {"stepVal", LC_TNUMBER, lhap_char_constraints_step_val_cb},
-    {"validVals", LC_TTABLE, lhap_char_constraints_valid_vals_cb},
-    {"validValsRanges", LC_TTABLE, lhap_char_constraints_valid_vals_ranges_cb},
-    {NULL, LC_TNONE, NULL},
-};
-
-static bool lhap_char_constraints_cb(lua_State *L, void *arg) {
-    return lc_traverse_table(L, -1, lhap_char_constraints_kvs, arg);
-}
 
 static void
 lhap_create_request_table(
@@ -2109,277 +1630,11 @@ HAPError lhap_char_TLV8_handleWrite(
 }
 
 // This definitation is only used to register characteristic callbacks.
-#define LHAP_CASE_CHAR_REGISTER_CB(format, cb) \
-LHAP_CASE_CHAR_FORMAT_CODE(format, arg, \
-    lua_pushvalue(L, -1); \
+#define LHAP_CASE_CHAR_REGISTER_CB(L, arg, ptr, format, cb) \
+LHAP_CASE_CHAR_FORMAT_CODE(format, ptr, \
+    lua_pushvalue(L, arg); \
     lua_rawsetp(L, LUA_REGISTRYINDEX, &p->callbacks.cb); \
     p->callbacks.cb = lhap_char_ ## format ## _ ## cb)
-
-static bool lhap_char_cbs_handle_read_cb(lua_State *L, void *arg) {
-#define LHAP_CASE_CHAR_REGISTER_READ_CB(format) \
-    LHAP_CASE_CHAR_REGISTER_CB(format, handleRead)
-
-    switch (((HAPBaseCharacteristic *)arg)->format) {
-        LHAP_CASE_CHAR_REGISTER_READ_CB(Data)
-        LHAP_CASE_CHAR_REGISTER_READ_CB(Bool)
-        LHAP_CASE_CHAR_REGISTER_READ_CB(UInt8)
-        LHAP_CASE_CHAR_REGISTER_READ_CB(UInt16)
-        LHAP_CASE_CHAR_REGISTER_READ_CB(UInt32)
-        LHAP_CASE_CHAR_REGISTER_READ_CB(UInt64)
-        LHAP_CASE_CHAR_REGISTER_READ_CB(Int)
-        LHAP_CASE_CHAR_REGISTER_READ_CB(Float)
-        LHAP_CASE_CHAR_REGISTER_READ_CB(String)
-        LHAP_CASE_CHAR_REGISTER_READ_CB(TLV8)
-    }
-
-#undef LHAP_CASE_CHAR_REGISTER_READ_CB
-
-    return true;
-}
-
-static bool lhap_char_cbs_handle_write_cb(lua_State *L, void *arg) {
-#define LHAP_CASE_CHAR_REGISTER_WRITE_CB(format) \
-    LHAP_CASE_CHAR_REGISTER_CB(format, handleWrite)
-
-    switch (((HAPBaseCharacteristic *)arg)->format) {
-        LHAP_CASE_CHAR_REGISTER_WRITE_CB(Data)
-        LHAP_CASE_CHAR_REGISTER_WRITE_CB(Bool)
-        LHAP_CASE_CHAR_REGISTER_WRITE_CB(UInt8)
-        LHAP_CASE_CHAR_REGISTER_WRITE_CB(UInt16)
-        LHAP_CASE_CHAR_REGISTER_WRITE_CB(UInt32)
-        LHAP_CASE_CHAR_REGISTER_WRITE_CB(UInt64)
-        LHAP_CASE_CHAR_REGISTER_WRITE_CB(Int)
-        LHAP_CASE_CHAR_REGISTER_WRITE_CB(Float)
-        LHAP_CASE_CHAR_REGISTER_WRITE_CB(String)
-        LHAP_CASE_CHAR_REGISTER_WRITE_CB(TLV8)
-    }
-
-#undef LHAP_CASE_CHAR_REGISTER_WRITE_CB
-
-    return true;
-}
-
-static bool lhap_char_cbs_handle_sub_cb(lua_State *L, void *arg) {
-    return false;
-}
-
-static bool lhap_char_cbs_handle_unsub_cb(lua_State *L, void *arg) {
-    return false;
-}
-
-#undef LHAP_CASE_CHAR_REGISTER_CB
-
-static const lc_table_kv lhap_char_cbs_kvs[] = {
-    {"read", LC_TFUNCTION, lhap_char_cbs_handle_read_cb},
-    {"write", LC_TFUNCTION, lhap_char_cbs_handle_write_cb},
-    {"sub", LC_TFUNCTION, lhap_char_cbs_handle_sub_cb},
-    {"unsub", LC_TFUNCTION, lhap_char_cbs_handle_unsub_cb},
-    {NULL, LC_TNONE, NULL},
-};
-
-static bool lhap_char_cbs_cb(lua_State *L, void *arg) {
-    return lc_traverse_table(L, -1, lhap_char_cbs_kvs, arg);
-}
-
-static const lc_table_kv lhap_char_kvs[] = {
-    {"format", LC_TSTRING, NULL},
-    {"iid", LC_TNUMBER, lhap_char_iid_cb},
-    {"type", LC_TSTRING, lhap_char_type_cb},
-    {"mfgDesc", LC_TSTRING, lhap_char_mfg_desc_cb},
-    {"props", LC_TTABLE, lhap_char_props_cb},
-    {"units", LC_TSTRING, lhap_char_units_cb},
-    {"constraints", LC_TTABLE, lhap_char_constraints_cb},
-    {"cbs", LC_TTABLE, lhap_char_cbs_cb},
-    {NULL, LC_TNONE, NULL},
-};
-
-static bool lhap_service_characteristics_arr_cb(lua_State *L, size_t i, void *arg) {
-    HAPCharacteristic **characteristics = arg;
-
-    if (!lua_istable(L, -1)) {
-        return false;
-    }
-
-    lua_pushstring(L, "format");
-    lua_gettable(L, -2);
-    if (!lua_isstring(L, -1)) {
-        char name[32];
-        snprintf(name, sizeof(name), "chars[%zu].format", i + 1);
-        LHAP_LOG_TYPE_ERROR(L, name, -1, LUA_TSTRING);
-        return false;
-    }
-    int format = lhap_lookup_by_name(lua_tostring(L, -1),
-        lhap_characteristic_format_strs,
-        HAPArrayCount(lhap_characteristic_format_strs));
-    lua_pop(L, 1);
-    if (format == -1) {
-        HAPLogError(&lhap_log, "%s: Invalid format.", __func__);
-        return false;
-    }
-
-    HAPCharacteristic *c = pal_mem_calloc(1, lhap_characteristic_struct_size[format]);
-    if (!c) {
-        HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
-        return false;
-    }
-    ((HAPBaseCharacteristic *)c)->format = format;
-    characteristics[i] = c;
-    if (!lc_traverse_table(L, -1, lhap_char_kvs, c)) {
-        HAPLogError(&lhap_log, "%s: Failed to parse characteristic.", __func__);
-        return false;
-    }
-    return true;
-}
-
-static void lhap_reset_characteristic(lua_State *L, HAPCharacteristic *characteristic) {
-    HAPCharacteristicFormat format =
-        ((HAPBaseCharacteristic *)characteristic)->format;
-    lhap_safe_free(((HAPBaseCharacteristic *)characteristic)->manufacturerDescription);
-
-#define LHAP_RESET_CHAR_CBS(type, ptr) \
-    LHAP_CASE_CHAR_FORMAT_CODE(type, ptr, \
-        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleRead); \
-        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleWrite); \
-        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleSubscribe); \
-        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleUnsubscribe); \
-    )
-
-    switch (format) {
-    LHAP_RESET_CHAR_CBS(Data, characteristic)
-    LHAP_RESET_CHAR_CBS(Bool, characteristic)
-    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, characteristic,
-        if (p->constraints.validValues) {
-            lhap_safe_free(p->constraints.validValues);
-        }
-        if (p->constraints.validValuesRanges) {
-            lhap_safe_free(p->constraints.validValuesRanges);
-        }
-        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleRead);
-        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleWrite);
-        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleSubscribe);
-        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleUnsubscribe);
-    )
-    LHAP_RESET_CHAR_CBS(UInt16, characteristic)
-    LHAP_RESET_CHAR_CBS(UInt32, characteristic)
-    LHAP_RESET_CHAR_CBS(UInt64, characteristic)
-    LHAP_RESET_CHAR_CBS(Int, characteristic)
-    LHAP_RESET_CHAR_CBS(Float, characteristic)
-    LHAP_RESET_CHAR_CBS(String, characteristic)
-    LHAP_RESET_CHAR_CBS(TLV8, characteristic)
-    }
-
-#undef LHAP_RESET_CHAR_CBS
-}
-
-static bool lhap_service_chars_cb(lua_State *L, void *arg) {
-    HAPService *service = arg;
-    HAPCharacteristic ***pcharacteristic = (HAPCharacteristic ***)&(service->characteristics);
-    // Get the array length.
-    lua_Unsigned len = lua_rawlen(L, -1);
-    if (len == 0) {
-        *pcharacteristic = NULL;
-        return true;
-    }
-
-    HAPCharacteristic **characteristics = pal_mem_calloc(len + 1, sizeof(HAPCharacteristic *));
-    if (!characteristics) {
-        HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
-        return false;
-    }
-    if (!lc_traverse_array(L, -1, lhap_service_characteristics_arr_cb, characteristics)) {
-        HAPLogError(&lhap_log, "%s: Failed to parse characteristics.", __func__);
-        for (HAPCharacteristic **c = characteristics; *c; c++) {
-            lhap_reset_characteristic(L, *c);
-            pal_mem_free(*c);
-        }
-        lhap_safe_free(characteristics);
-        return false;
-    }
-    *pcharacteristic = characteristics;
-    return true;
-}
-
-static const lc_table_kv lhap_service_kvs[] = {
-    {"iid", LC_TNUMBER, lhap_service_iid_cb},
-    {"type", LC_TSTRING, lhap_service_type_cb},
-    {"props", LC_TTABLE, lhap_service_props_cb},
-    {"linkedServices", LC_TTABLE, lhap_service_linked_services_cb},
-    {"chars", LC_TTABLE, lhap_service_chars_cb},
-    {NULL, LC_TNONE, NULL},
-};
-
-static void lhap_reset_service(lua_State *L, HAPService *service) {
-    lhap_safe_free(service->name);
-    lhap_safe_free(service->linkedServices);
-    if (service->characteristics) {
-        for (HAPCharacteristic **c = (HAPCharacteristic **)service->characteristics; *c; c++) {
-            lhap_reset_characteristic(L, *c);
-            pal_mem_free(*c);
-        }
-        lhap_safe_free(service->characteristics);
-    }
-}
-
-static bool lhap_accessory_services_arr_cb(lua_State *L, size_t i, void *arg) {
-    HAPService **services = arg;
-
-    if (lua_islightuserdata(L, -1)) {
-        HAPService *s = lua_touserdata(L, -1);
-        if (lhap_service_is_light_userdata(s)) {
-            services[i] = s;
-        } else {
-            return false;
-        }
-        return true;
-    }
-    if (!lua_istable(L, -1)) {
-        return false;
-    }
-    HAPService *s = pal_mem_calloc(1, sizeof(HAPService));
-    if (!s) {
-        HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
-        return false;
-    }
-    services[i] = s;
-    if (!lc_traverse_table(L, -1, lhap_service_kvs, s)) {
-        HAPLogError(&lhap_log, "%s: Failed to parse service.", __func__);
-        return false;
-    }
-    return true;
-}
-
-static bool lhap_accessory_services_cb(lua_State *L, void *arg) {
-    HAPAccessory *accessory = arg;
-    HAPService ***pservices = (HAPService ***)&(accessory->services);
-
-    // Get the array length.
-    lua_Unsigned len = lua_rawlen(L, -1);
-    if (len == 0) {
-        *pservices = NULL;
-        return true;
-    }
-
-    HAPService **services = pal_mem_calloc(len + 1, sizeof(HAPService *));
-    if (!services) {
-        HAPLogError(&lhap_log, "%s: Failed to alloc memory.", __func__);
-        return false;
-    }
-
-    if (!lc_traverse_array(L, -1, lhap_accessory_services_arr_cb, services)) {
-        HAPLogError(&lhap_log, "%s: Failed to parse services.", __func__);
-        for (HAPService **s = services; *s; s++) {
-            if (!lhap_service_is_light_userdata(*s)) {
-                lhap_reset_service(L, *s);
-                pal_mem_free(*s);
-            }
-        }
-        lhap_safe_free(services);
-        return false;
-    }
-
-    *pservices = services;
-    return true;
-}
 
 static int lhap_accessory_pcall_identify(lua_State *L) {
     const HAPAccessoryIdentifyRequest *request = lua_touserdata(L, 1);
@@ -2430,66 +1685,6 @@ HAPError lhap_accessory_on_identify(
     return kHAPError_None;
 }
 
-static bool lhap_accessory_cbs_identify_cb(lua_State *L, void *arg) {
-    HAPAccessory *acc = arg;
-    lua_pushvalue(L, -1);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &(acc->callbacks.identify));
-    acc->callbacks.identify = lhap_accessory_on_identify;
-    return true;
-}
-
-static lc_table_kv lhap_accessory_cbs_kvs[] = {
-    {"identify", LC_TFUNCTION, lhap_accessory_cbs_identify_cb},
-    {NULL, LC_TNONE, NULL},
-};
-
-static bool lhap_accessory_cbs_cb(lua_State *L, void *arg) {
-    return lc_traverse_table(L, -1, lhap_accessory_cbs_kvs, arg);
-}
-
-static bool lhap_accesory_context_cb(lua_State *L, void *arg) {
-    lua_pushvalue(L, -1);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, arg);
-    return true;
-}
-
-static const lc_table_kv lhap_accessory_kvs[] = {
-    {"aid", LC_TNUMBER, lhap_accessory_aid_cb},
-    {"category", LC_TSTRING, lhap_accessory_category_cb},
-    {"name", LC_TSTRING, lhap_accessory_name_cb},
-    {"mfg", LC_TSTRING, lhap_accessory_mfg_cb},
-    {"model", LC_TSTRING, lhap_accessory_model_cb},
-    {"sn", LC_TSTRING, lhap_accessory_sn_cb},
-    {"fwVer", LC_TSTRING, lhap_accessory_fw_ver_cb},
-    {"hwVer", LC_TSTRING, lhap_accessory_hw_ver_cb},
-    {"services", LC_TTABLE, lhap_accessory_services_cb},
-    {"cbs", LC_TTABLE, lhap_accessory_cbs_cb},
-    {"context", LC_TTABLE, lhap_accesory_context_cb},
-    {NULL, LC_TNONE, NULL},
-};
-
-static void lhap_reset_accessory(lua_State *L, HAPAccessory *accessory) {
-    lhap_safe_free(accessory->name);
-    lhap_safe_free(accessory->manufacturer);
-    lhap_safe_free(accessory->model);
-    lhap_safe_free(accessory->serialNumber);
-    lhap_safe_free(accessory->firmwareVersion);
-    lhap_safe_free(accessory->hardwareVersion);
-    if (accessory->services) {
-        for (HAPService **s = (HAPService **)accessory->services; *s; s++) {
-            if (!lhap_service_is_light_userdata(*s)) {
-                lhap_reset_service(L, *s);
-                pal_mem_free(*s);
-            }
-        }
-        lhap_safe_free(accessory->services);
-    }
-    lua_pushnil(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, accessory);
-    lua_pushnil(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &(accessory->callbacks.identify));
-}
-
 static int lhap_server_handle_session_pcall(lua_State *L) {
     HAPSessionRef *session = lua_touserdata(L, 1);
     const void *pfunc = lua_touserdata(L, 2);
@@ -2531,7 +1726,7 @@ static void lhap_server_handle_session_accept(
     lc_collectgarbage(L);
 }
 
-static void lhap_server_handle_session_invalidate(
+static void lhap_server_handle_session_invalid(
         HAPAccessoryServerRef *server,
         HAPSessionRef *session,
         void *_Nullable context) {
@@ -2555,30 +1750,6 @@ static void lhap_server_handle_session_invalidate(
     lua_settop(L, 0);
     lc_collectgarbage(L);
 }
-
-static bool lhap_server_cb_session_accept_cb(lua_State *L, void *arg) {
-    HAPAccessoryServerCallbacks *cbs = arg;
-
-    lua_pushvalue(L, -1);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &cbs->handleSessionAccept);
-    cbs->handleSessionAccept = lhap_server_handle_session_accept;
-    return true;
-}
-
-static bool lhap_server_cb_session_invalid_cb(lua_State *L, void *arg) {
-    HAPAccessoryServerCallbacks *cbs = arg;
-
-    lua_pushvalue(L, -1);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &cbs->handleSessionInvalidate);
-    cbs->handleSessionInvalidate = lhap_server_handle_session_invalidate;
-    return true;
-}
-
-static const lc_table_kv lhap_server_callbacks_kvs[] = {
-    {"sessionAccept", LC_TFUNCTION, lhap_server_cb_session_accept_cb},
-    {"sessionInvalidate", LC_TFUNCTION, lhap_server_cb_session_invalid_cb},
-    {NULL, LC_TNONE, NULL},
-};
 
 static void lhap_reset_server_cb(lua_State *L, HAPAccessoryServerCallbacks *cbs) {
     lua_pushnil(L);
@@ -2649,110 +1820,404 @@ static void lhap_server_handle_update_state(HAPAccessoryServerRef *server, void 
     lc_collectgarbage(L);
 }
 
-/**
- * init(primaryAccessory: table, serverCallbacks: table)
- */
-static int lhap_init(lua_State *L) {
-    lhap_desc *desc = &gv_lhap_desc;
+static int lhap_new_accessory(lua_State *L) {
+    uint64_t aid = luaL_checkinteger(L, 1);
+    HAPAccessoryCategory category = luaL_checkoption(L, 2, NULL, lhap_accessory_category_strs);
+    const char *name = luaL_checkstring(L, 3);
+    const char *mfg = luaL_checkstring(L, 4);
+    const char *model = luaL_checkstring(L, 5);
+    const char *sn = luaL_checkstring(L, 6);
+    const char *fwVer = luaL_checkstring(L, 7);
+    const char *hwVer = luaL_checkstring(L, 8);
+    size_t nservices = lhap_checkarray(L, 9);
+    luaL_argcheck(L, nservices, 9, "empty services");
+    bool has_identify = lhap_optfunction(L, 10);
 
-    if (desc->inited) {
-        lua_pushliteral(L, "HAP is already initialized.");
-        goto err;
+    HAPAccessory *accessory = lua_newuserdatauv(L, sizeof(HAPAccessory), 7);
+    luaL_setmetatable(L, LHAP_ACCESSORY_NAME);
+    for (size_t i = 3, j = 1; i <= 8; i++, j++) {
+        lua_pushvalue(L, i);
+        lua_setiuservalue(L, -2, j);
     }
 
-    luaL_checktype(L, 1, LUA_TTABLE);
-    luaL_checktype(L, 2, LUA_TTABLE);
+    accessory->aid = aid;
+    accessory->category = category;
+    accessory->name = name;
+    accessory->manufacturer = mfg;
+    accessory->model = model;
+    accessory->serialNumber = sn;
+    accessory->firmwareVersion = fwVer;
+    accessory->hardwareVersion = hwVer;
 
-    desc->primary_acc = pal_mem_calloc(1, sizeof(HAPAccessory));
-    if (!desc->primary_acc) {
-        lua_pushliteral(L, "Failed to alloc memory.");
-        goto err;
+    HAPService **services = lua_newuserdata(L, sizeof(HAPService *) * (nservices + 1));
+    lua_pushvalue(L, 9);
+    lua_setuservalue(L, -2);
+    lua_setiuservalue(L, -2, 7);
+    for (size_t i = 1; i <= nservices; i++) {
+        int type = lua_geti(L, 9, i);
+        if (luai_unlikely(type != LUA_TUSERDATA && type != LUA_TLIGHTUSERDATA)) {
+            luaL_error(L, "services[%d]: invalid type", i);
+        }
+        services[i - 1] = lua_touserdata(L, -1);
+        lua_pop(L, 1);
     }
-    if (!lc_traverse_table(L, 1, lhap_accessory_kvs, desc->primary_acc)) {
-        lua_pushliteral(L, "Failed to generate accessory structure from table accessory.");
-        goto err1;
+    services[nservices] = NULL;
+    accessory->services = (const HAPService * const *)services;
+
+    accessory->callbacks.identify = has_identify ? lhap_accessory_on_identify : NULL;
+    if (has_identify) {
+        lua_pushvalue(L, 10);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, &(accessory->callbacks.identify));
     }
+    return 1;
+}
 
-    if (desc->primary_acc->aid != 1) {
-        lua_pushliteral(L, "Primary accessory must have aid 1.");
-        goto err1;
+static int lhap_accessory_gc(lua_State *L) {
+    HAPAccessory *accessory = luaL_checkudata(L, 1, LHAP_ACCESSORY_NAME);
+
+    if (accessory->callbacks.identify) {
+        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &(accessory->callbacks.identify));
     }
-
-    if (!lc_traverse_table(L, 2, lhap_server_callbacks_kvs, &desc->server_cbs)) {
-        lua_pushliteral(L, "Failed to parse the server callbacks from table serverCallbacks.");
-        goto err2;
-    }
-
-    HAPLog(&lhap_log,
-        "Primary accessory \"%s\" has been configured.", desc->primary_acc->name);
-
-    pal_hap_init_platform(&desc->platform);
-
-    // Display setup code.
-    HAPSetupCode setupCode;
-    HAPPlatformAccessorySetupLoadSetupCode(desc->platform.accessorySetup, &setupCode);
-    HAPLog(&lhap_log, "Setup code: %s", setupCode.stringValue);
-
-    desc->server_cbs.handleUpdatedState = lhap_server_handle_update_state;
-    desc->mL = lc_getmainthread(L);
-    desc->inited = true;
-
-    return 0;
-
-err2:
-    lhap_reset_server_cb(L, &desc->server_cbs);
-err1:
-    lhap_reset_accessory(L, desc->primary_acc);
-    lhap_safe_free(desc->primary_acc);
-err:
-    lua_error(L);
     return 0;
 }
 
-/* addBridgedAccessory(accessory: table) */
-static int lhap_add_bridged_accessory(lua_State *L) {
-    lhap_desc *desc = &gv_lhap_desc;
-
-    if (!desc->inited) {
-        luaL_error(L, "HAP is not initialized.");
-    }
-
-    if (desc->started) {
-        luaL_error(L, "HAP is already started");
-    }
-
-    luaL_checktype(L, 1, LUA_TTABLE);
-
-    if (desc->bridged_accs_max - desc->bridged_accs_cnt <= 1) {
-        desc->bridged_accs_max = desc->bridged_accs_cnt ? desc->bridged_accs_max * 2 : 2;
-        HAPAccessory **accs = pal_mem_realloc(desc->bridged_accs, sizeof(HAPAccessory *) * desc->bridged_accs_max);
-        if (!accs) {
-            luaL_error(L, "Failed to alloc memory.");
+static const lhap_service_type *lhap_get_service_type(const char *s) {
+    for (int i = 0; i < HAPArrayCount(lhap_service_type_tab);
+        i++) {
+        if (HAPStringAreEqual(s, lhap_service_type_tab[i].name)) {
+            return lhap_service_type_tab + i;
         }
-        accs[desc->bridged_accs_cnt] = NULL;
-        desc->bridged_accs = accs;
+    }
+    return NULL;
+}
+
+static int lhap_new_service(lua_State *L) {
+    uint64_t iid = luaL_checkinteger(L, 1);
+    const lhap_service_type *type = lhap_get_service_type(luaL_checkstring(L, 2));
+    luaL_argcheck(L, type, 2, "unknown type");
+    luaL_checktype(L, 3, LUA_TBOOLEAN);
+    luaL_checktype(L, 4, LUA_TBOOLEAN);
+    size_t nchars = lhap_checkarray(L, 5);
+    luaL_argcheck(L, nchars, 5, "empty characteristics");
+
+    HAPService *service = lua_newuserdatauv(L, sizeof(HAPService), 2);
+    luaL_setmetatable(L, LHAP_SERVICE_NAME);
+    HAPRawBufferZero(service, sizeof(HAPService));
+    service->iid = iid;
+    service->serviceType = type->type;
+    service->debugDescription = type->debugDescription;
+    service->name = NULL;
+    service->properties.primaryService = lua_toboolean(L, 3);
+    service->properties.hidden = lua_toboolean(L, 4);
+    service->properties.ble.supportsConfiguration = false;
+
+    HAPCharacteristic **characteristics = lua_newuserdata(L, sizeof(HAPCharacteristic *) * (nchars + 1));
+    lua_pushvalue(L, 5);
+    lua_setuservalue(L, -2);
+    lua_setiuservalue(L, -2, 2);
+    for (size_t i = 1; i <= nchars; i++) {
+        lua_geti(L, 5, i);
+        characteristics[i - 1] = luaL_testudata(L, -1, LHAP_CHARACTERISTIC_NAME);
+        if (luai_unlikely(!characteristics[i - 1])) {
+            luaL_error(L, "characteristics[%d]: invalid type", i);
+        }
+        lua_pop(L, 1);
+    }
+    characteristics[nchars] = NULL;
+    service->characteristics = (const HAPCharacteristic * const *)characteristics;
+
+    return 1;
+}
+
+static int lhap_service_link_services(lua_State *L) {
+    HAPService *service = luaL_checkudata(L, 1, LHAP_SERVICE_NAME);
+    if (luai_unlikely(service->linkedServices)) {
+        luaL_error(L, "already link services");
+    }
+    int nargs = lua_gettop(L);
+    if (nargs == 1) {
+        luaL_error(L, "missing iids");
+    }
+    for (int i = 2; i <= nargs; i++) {
+        luaL_checkinteger(L, i);
+    }
+    size_t niids = nargs - 1;
+
+    uint64_t *iids = lua_newuserdatauv(L, sizeof(uint64_t) * (niids + 1), 0);
+    lua_setiuservalue(L, 1, 1);
+    for (int i = niids - 1; i >= 0; i--) {
+        iids[i] =  lua_tointeger(L, -1);
+        lua_pop(L, 1);
+    }
+    iids[niids] = 0;
+    service->linkedServices = iids;
+
+    return 1;
+}
+
+static const lhap_characteristic_type *lhap_get_char_type(const char *s) {
+    for (int i = 0; i < HAPArrayCount(lhap_characteristic_type_tab);
+        i++) {
+        if (HAPStringAreEqual(s, lhap_characteristic_type_tab[i].name)) {
+            return lhap_characteristic_type_tab + i;
+        }
+    }
+    return NULL;
+}
+
+static int lhap_new_char(lua_State *L) {
+    uint64_t iid = luaL_checkinteger(L, 1);
+    HAPCharacteristicFormat format = luaL_checkoption(L, 2, NULL, lhap_characteristic_format_strs);
+    const lhap_characteristic_type *type = lhap_get_char_type(luaL_checkstring(L, 3));
+    luaL_argcheck(L, type, 3, "unknown type");
+    luaL_checktype(L, 4, LUA_TTABLE);
+    bool has_read = lhap_optfunction(L, 5);
+    bool has_write = lhap_optfunction(L, 6);
+
+    HAPBaseCharacteristic *characteristic = lua_newuserdatauv(L,
+        lhap_characteristic_struct_size[format], format == kHAPCharacteristicFormat_UInt8 ? 3 : 1);
+    luaL_setmetatable(L, LHAP_CHARACTERISTIC_NAME);
+    HAPRawBufferZero(characteristic, lhap_characteristic_struct_size[format]);
+    characteristic->iid = iid;
+    characteristic->format = format;
+    characteristic->characteristicType = type->type;
+    characteristic->debugDescription = type->debugDescription;
+    lc_traverse_table(L, 4, lhap_char_props_kvs, &characteristic->properties);
+
+    if (has_read) {
+#define LHAP_CASE_CHAR_REGISTER_READ_CB(format) \
+    LHAP_CASE_CHAR_REGISTER_CB(L, 5, characteristic, format, handleRead)
+
+    switch (format) {
+        LHAP_CASE_CHAR_REGISTER_READ_CB(Data)
+        LHAP_CASE_CHAR_REGISTER_READ_CB(Bool)
+        LHAP_CASE_CHAR_REGISTER_READ_CB(UInt8)
+        LHAP_CASE_CHAR_REGISTER_READ_CB(UInt16)
+        LHAP_CASE_CHAR_REGISTER_READ_CB(UInt32)
+        LHAP_CASE_CHAR_REGISTER_READ_CB(UInt64)
+        LHAP_CASE_CHAR_REGISTER_READ_CB(Int)
+        LHAP_CASE_CHAR_REGISTER_READ_CB(Float)
+        LHAP_CASE_CHAR_REGISTER_READ_CB(String)
+        LHAP_CASE_CHAR_REGISTER_READ_CB(TLV8)
     }
 
-    HAPAccessory *acc = pal_mem_calloc(1, sizeof(HAPAccessory));
-    if (!acc) {
-        luaL_error(L, "Failed to alloc memory.");
-    }
-    if (!lc_traverse_table(L, 1, lhap_accessory_kvs, acc)) {
-        lhap_reset_accessory(L, acc);
-        pal_mem_free(acc);
-        luaL_error(L, "Failed to generate accessory structure from table accessory.");
-    }
-    if (!HAPBridgedAccessoryIsValid(acc)) {
-        lhap_reset_accessory(L, acc);
-        pal_mem_free(acc);
-        luaL_error(L, "Invalid bridged accessory.");
+#undef LHAP_CASE_CHAR_REGISTER_READ_CB
     }
 
-    desc->bridged_accs[desc->bridged_accs_cnt++] = acc;
-    desc->bridged_accs[desc->bridged_accs_cnt] = NULL;
+    if (has_write) {
+#define LHAP_CASE_CHAR_REGISTER_WRITE_CB(format) \
+    LHAP_CASE_CHAR_REGISTER_CB(L, 6, characteristic, format, handleWrite)
 
-    HAPLog(&lhap_log, "Bridged accessory \"%s\" has been configured.", acc->name);
+    switch (format) {
+        LHAP_CASE_CHAR_REGISTER_WRITE_CB(Data)
+        LHAP_CASE_CHAR_REGISTER_WRITE_CB(Bool)
+        LHAP_CASE_CHAR_REGISTER_WRITE_CB(UInt8)
+        LHAP_CASE_CHAR_REGISTER_WRITE_CB(UInt16)
+        LHAP_CASE_CHAR_REGISTER_WRITE_CB(UInt32)
+        LHAP_CASE_CHAR_REGISTER_WRITE_CB(UInt64)
+        LHAP_CASE_CHAR_REGISTER_WRITE_CB(Int)
+        LHAP_CASE_CHAR_REGISTER_WRITE_CB(Float)
+        LHAP_CASE_CHAR_REGISTER_WRITE_CB(String)
+        LHAP_CASE_CHAR_REGISTER_WRITE_CB(TLV8)
+    }
+
+#undef LHAP_CASE_CHAR_REGISTER_READ_CB
+    }
+
+    // TODO(Zebin Wu): Register sub/unsub callbacks.
+    return 1;
+}
+
+static int lhap_char_gc(lua_State *L) {
+    HAPBaseCharacteristic *characteristic = luaL_checkudata(L, 1, LHAP_CHARACTERISTIC_NAME);
+
+#define LHAP_RESET_CHAR_CBS(type, ptr) \
+    LHAP_CASE_CHAR_FORMAT_CODE(type, ptr, \
+        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleRead); \
+        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleWrite); \
+        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleSubscribe); \
+        lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &p->callbacks.handleUnsubscribe); \
+    )
+
+    switch (characteristic->format) {
+    LHAP_RESET_CHAR_CBS(Data, characteristic)
+    LHAP_RESET_CHAR_CBS(Bool, characteristic)
+    LHAP_RESET_CHAR_CBS(UInt8, characteristic)
+    LHAP_RESET_CHAR_CBS(UInt16, characteristic)
+    LHAP_RESET_CHAR_CBS(UInt32, characteristic)
+    LHAP_RESET_CHAR_CBS(UInt64, characteristic)
+    LHAP_RESET_CHAR_CBS(Int, characteristic)
+    LHAP_RESET_CHAR_CBS(Float, characteristic)
+    LHAP_RESET_CHAR_CBS(String, characteristic)
+    LHAP_RESET_CHAR_CBS(TLV8, characteristic)
+    }
+
+#undef LHAP_RESET_CHAR_CBS
+
     return 0;
+}
+
+static int lhap_char_set_mfg_desc(lua_State *L) {
+    HAPBaseCharacteristic *characteristic = luaL_checkudata(L, 1, LHAP_CHARACTERISTIC_NAME);
+    const char *mfgDesc = luaL_checkstring(L, 2);
+    lua_setiuservalue(L, 1, 1);
+    characteristic->manufacturerDescription = mfgDesc;
+    return 1;
+}
+
+static int lhap_char_set_units(lua_State *L) {
+    HAPBaseCharacteristic *characteristic = luaL_checkudata(L, 1, LHAP_CHARACTERISTIC_NAME);
+    HAPCharacteristicFormat format = characteristic->format;
+    if (format < kHAPCharacteristicFormat_UInt8 ||
+        format > kHAPCharacteristicFormat_Float) {
+        luaL_error(L, "%s characteristic has no units.", lhap_characteristic_format_strs[format]);
+    }
+    HAPCharacteristicUnits units = luaL_checkoption(L, 2, "None", lhap_characteristic_units_strs);
+
+    switch (format) {
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, characteristic, p->units = units)
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, characteristic, p->units = units)
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, characteristic, p->units = units)
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, characteristic, p->units = units)
+    LHAP_CASE_CHAR_FORMAT_CODE(Int, characteristic, p->units = units)
+    LHAP_CASE_CHAR_FORMAT_CODE(Float, characteristic, p->units = units)
+    default:
+        HAPFatalError();
+    }
+    lua_pop(L, 1);
+    return 1;
+}
+
+static int lhap_char_set_contraints(lua_State *L) {
+    HAPBaseCharacteristic *characteristic = luaL_checkudata(L, 1, LHAP_CHARACTERISTIC_NAME);
+    HAPCharacteristicFormat format = characteristic->format;
+    switch (format) {
+    LHAP_CASE_CHAR_FORMAT_CODE(String, characteristic, p->constraints.maxLength = luaL_checkinteger(L, 2))
+    LHAP_CASE_CHAR_FORMAT_CODE(Data, characteristic, p->constraints.maxLength = luaL_checkinteger(L, 2))
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt8, characteristic,
+        p->constraints.minimumValue = luaL_checkinteger(L, 2);
+        p->constraints.maximumValue = luaL_checkinteger(L, 3);
+        p->constraints.stepValue = luaL_checkinteger(L, 4);
+    )
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt16, characteristic,
+        p->constraints.minimumValue = luaL_checkinteger(L, 2);
+        p->constraints.maximumValue = luaL_checkinteger(L, 3);
+        p->constraints.stepValue = luaL_checkinteger(L, 4);
+    )
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt32, characteristic,
+        p->constraints.minimumValue = luaL_checkinteger(L, 2);
+        p->constraints.maximumValue = luaL_checkinteger(L, 3);
+        p->constraints.stepValue = luaL_checkinteger(L, 4);
+    )
+    LHAP_CASE_CHAR_FORMAT_CODE(UInt64, characteristic,
+        p->constraints.minimumValue = luaL_checkinteger(L, 2);
+        p->constraints.maximumValue = luaL_checkinteger(L, 3);
+        p->constraints.stepValue = luaL_checkinteger(L, 4);
+    )
+    LHAP_CASE_CHAR_FORMAT_CODE(Int, characteristic,
+        p->constraints.minimumValue = luaL_checkinteger(L, 2);
+        p->constraints.maximumValue = luaL_checkinteger(L, 3);
+        p->constraints.stepValue = luaL_checkinteger(L, 4);
+    )
+    LHAP_CASE_CHAR_FORMAT_CODE(Float, characteristic,
+        p->constraints.minimumValue = luaL_checknumber(L, 2);
+        p->constraints.maximumValue = luaL_checknumber(L, 3);
+        p->constraints.stepValue = luaL_checknumber(L, 4);
+    )
+    default:
+        HAPFatalError();
+    }
+    lua_pushvalue(L, 1);
+    return 1;
+}
+
+static int lhap_char_set_valid_vals(lua_State *L) {
+    HAPBaseCharacteristic *_characteristic = luaL_checkudata(L, 1, LHAP_CHARACTERISTIC_NAME);
+    if (_characteristic->format != kHAPCharacteristicFormat_UInt8) {
+        luaL_error(L, "attempt to set valid values for not 'UInt8' format characteristic");
+    }
+    HAPUInt8Characteristic *characteristic = (HAPUInt8Characteristic *)_characteristic;
+    if (characteristic->constraints.validValues) {
+        luaL_error(L, "already set valid values");
+    }
+
+    int nargs = lua_gettop(L);
+    if (nargs == 1) {
+        luaL_error(L, "missing values");
+    }
+    for (int i = 2; i <= nargs; i++) {
+        luaL_checkinteger(L, i);
+    }
+    size_t nvals = nargs - 1;
+
+    size_t list_len = sizeof(uint8_t *) * (nvals + 1);
+    uint8_t **list = lua_newuserdatauv(L, list_len + sizeof(uint8_t) * nvals, 0);
+    lua_setiuservalue(L, 1, 2);
+    characteristic->constraints.validValues = (const uint8_t * const *)list;
+
+    uint8_t *vals = (uint8_t *)((uintptr_t)list + list_len);
+    for (size_t i = 0; i < nvals; i++) {
+        list[i] = vals + i;
+    }
+    list[nvals] = NULL;
+
+    for (int i = nvals - 1; i >= 0; i--) {
+        vals[i] = lua_tointeger(L, -1);
+        lua_pop(L, 1);
+    }
+
+    return 1;
+}
+
+static int lhap_set_valid_vals_ranges(lua_State *L) {
+    HAPBaseCharacteristic *_characteristic = luaL_checkudata(L, 1, LHAP_CHARACTERISTIC_NAME);
+    if (_characteristic->format != kHAPCharacteristicFormat_UInt8) {
+        luaL_error(L, "attempt to set valid values for not 'UInt8' format characteristic");
+    }
+    HAPUInt8Characteristic *characteristic = (HAPUInt8Characteristic *)_characteristic;
+    if (characteristic->constraints.validValuesRanges) {
+        luaL_error(L, "already set valid values");
+    }
+
+    int nargs = lua_gettop(L);
+    if (nargs == 1) {
+        luaL_error(L, "missing values ranges");
+    }
+    for (int i = 2; i <= nargs; i++) {
+        size_t n = lhap_checkarray(L, i);
+        luaL_argcheck(L, n == 2, i, "length must be 2");
+        for (int j = 1; j <= 2; j++) {
+            lua_geti(L, i, j);
+            luaL_argcheck(L, lua_isinteger(L, -1), i, "element type must be integer");
+            lua_pop(L, 1);
+        }
+    }
+    size_t nranges = nargs - 1;
+
+    size_t list_len = sizeof(HAPUInt8CharacteristicValidValuesRange *) * (nranges + 1);
+    HAPUInt8CharacteristicValidValuesRange **list = lua_newuserdatauv(L,
+        list_len + sizeof(HAPUInt8CharacteristicValidValuesRange) * nranges, 0);
+    lua_setiuservalue(L, 1, 3);
+    characteristic->constraints.validValuesRanges =
+        (const HAPUInt8CharacteristicValidValuesRange * const *)list;
+
+    HAPUInt8CharacteristicValidValuesRange *ranges =
+        (HAPUInt8CharacteristicValidValuesRange *)((uintptr_t)list + list_len);
+    for (size_t i = 0; i < nranges; i++) {
+        list[i] = ranges + i;
+    }
+    list[nranges] = NULL;
+
+    for (int i = nranges - 1; i >= 0; i--) {
+        lua_geti(L, -1, 1);
+        ranges[i].start = lua_tointeger(L, -1);
+        lua_pop(L, 1);
+        lua_geti(L, -1, 2);
+        ranges[i].end = lua_tointeger(L, -1);
+        lua_pop(L, 2);
+    }
+
+    return 1;
 }
 
 static int lhap_start_finsh(lua_State *L, int status, lua_KContext extra) {
@@ -2762,31 +2227,48 @@ static int lhap_start_finsh(lua_State *L, int status, lua_KContext extra) {
     return 0;
 }
 
-/* start(confChanged: boolean) */
+static int lhap_accessory_is_valid(lua_State *L) {
+    HAPAccessory *acc = luaL_checkudata(L, 1, LHAP_ACCESSORY_NAME);
+    bool bridged = lua_toboolean(L, 2);
+
+    lua_pushboolean(L, bridged ? HAPBridgedAccessoryIsValid(acc) : HAPRegularAccessoryIsValid(acc));
+    return 1;
+}
+
 static int lhap_start(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
-
-    if (!desc->inited) {
-        luaL_error(L, "HAP is not initialized.");
-    }
-
     if (desc->started) {
         luaL_error(L, "HAP is already started");
     }
 
-    luaL_checktype(L, 1, LUA_TBOOLEAN);
+    desc->primary_acc = luaL_checkudata(L, 1, LHAP_ACCESSORY_NAME);
+    luaL_argcheck(L, HAPRegularAccessoryIsValid(desc->primary_acc), 1, "invalid primary accessory");
+    desc->num_bridged_accs = lhap_optarray(L, 2);
+    luaL_checktype(L, 3, LUA_TBOOLEAN);
+    bool conf_changed = lua_toboolean(L, 3);
+    bool has_session_accept = lhap_optfunction(L, 4);
+    bool has_session_invalid = lhap_optfunction(L, 5);
 
-    bool conf_changed = lua_toboolean(L, 1);
-
-    if (desc->bridged_accs && desc->bridged_accs_max - desc->bridged_accs_cnt > 1) {
-        size_t max = desc->bridged_accs_cnt + 1;
-        HAPAccessory **accs = pal_mem_realloc(desc->bridged_accs, sizeof(HAPAccessory *) * max);
-        if (!accs) {
-            luaL_error(L, "Failed to resize bridged accessories.");
+    desc->bridged_accs = NULL;
+    if (desc->num_bridged_accs) {
+        desc->bridged_accs = lua_newuserdata(L, sizeof(HAPAccessory *) * (desc->num_bridged_accs + 1));
+        lua_pushvalue(L, 2);
+        lua_setuservalue(L, -2);
+        for (size_t i = 1; i <= desc->num_bridged_accs; i++) {
+            lua_geti(L, 2, i);
+            desc->bridged_accs[i - 1] = luaL_checkudata(L, -1, LHAP_ACCESSORY_NAME);
+            if (!HAPBridgedAccessoryIsValid(desc->bridged_accs[i - 1])) {
+                luaL_error(L, "bridgedAccessories[%d]: invalid definition", i);
+            }
+            lua_pop(L, 1);
         }
-        desc->bridged_accs = accs;
-        desc->bridged_accs_max = max;
+        desc->bridged_accs[desc->num_bridged_accs] = NULL;
     }
+
+    HAPAccessoryServerCallbacks *server_cbs = &desc->server_cbs;
+    server_cbs->handleSessionAccept = has_session_accept ? lhap_server_handle_session_accept : NULL;
+    server_cbs->handleSessionInvalidate = has_session_invalid ? lhap_server_handle_session_invalid : NULL;
+    server_cbs->handleUpdatedState = lhap_server_handle_update_state;
 
     size_t num_attr = LHAP_ATTR_CNT_DFT;
     size_t num_readable = LHAP_CHAR_READ_CNT_DFT;
@@ -2812,6 +2294,13 @@ static int lhap_start(lua_State *L) {
         num_notify = 1;
     }
 
+    pal_hap_init_platform(&desc->platform);
+
+    // Display setup code.
+    HAPSetupCode setupCode;
+    HAPPlatformAccessorySetupLoadSetupCode(desc->platform.accessorySetup, &setupCode);
+    HAPLog(&lhap_log, "Setup code: %s", setupCode.stringValue);
+
     lhap_init_ip(&desc->server_options, HAPMax(num_readable, num_writable), num_notify);
     desc->server_options.maxPairings = kHAPPairingStorage_MinElements;
 
@@ -2831,6 +2320,21 @@ static int lhap_start(lua_State *L) {
         HAPAccessoryServerStart(&desc->server, desc->primary_acc);
     }
 
+    lua_pushvalue(L, 1);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &desc->primary_acc);
+
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &desc->bridged_accs);
+
+    if (has_session_accept) {
+        lua_pushvalue(L, 4);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, &server_cbs->handleSessionAccept);
+    }
+    if (has_session_invalid) {
+        lua_pushvalue(L, 5);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, &server_cbs->handleSessionInvalidate);
+    }
+
+    desc->mL = lc_getmainthread(L);
     desc->co = L;
     return lua_yieldk(L, 0, (lua_KContext)desc, lhap_start_finsh);
 }
@@ -2843,14 +2347,25 @@ static int lhap_stop_finsh(lua_State *L, int status, lua_KContext extra) {
 
     lhap_deinit_ip(&desc->server_options);
 
+    pal_hap_deinit_platform(&desc->platform);
+
+    lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &desc->primary_acc);
+    lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &desc->bridged_accs);
+
+    lhap_reset_server_cb(L, &desc->server_cbs);
+    HAPRawBufferZero(&desc->server_cbs, sizeof(desc->server_cbs));
+
     HAPRawBufferZero(&desc->server, sizeof(desc->server));
 
+    desc->primary_acc = NULL;
+    desc->bridged_accs = NULL;
+    desc->num_bridged_accs = 0;
     desc->co = NULL;
+    desc->mL = NULL;
     desc->started = false;
     return 0;
 }
 
-/* stop() */
 static int lhap_stop(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
 
@@ -2865,53 +2380,15 @@ static int lhap_stop(lua_State *L) {
     return lua_yieldk(L, 0, (lua_KContext)desc, lhap_stop_finsh);
 }
 
-static int lhap_deinit_finsh(lua_State *L, int status, lua_KContext extra) {
-    lhap_desc *desc = (lhap_desc *)extra;
-
-    pal_hap_deinit_platform(&desc->platform);
-
-    lhap_reset_server_cb(L, &desc->server_cbs);
-    HAPRawBufferZero(&desc->server_cbs, sizeof(desc->server_cbs));
-
-    if (desc->bridged_accs) {
-        for (HAPAccessory **pa = desc->bridged_accs; *pa != NULL; pa++) {
-            lhap_reset_accessory(L, *pa);
-            pal_mem_free(*pa);
-        }
-        lhap_safe_free(desc->bridged_accs);
-    }
-    if (desc->primary_acc) {
-        lhap_reset_accessory(L, desc->primary_acc);
-        lhap_safe_free(desc->primary_acc);
-    }
-    desc->bridged_accs_cnt = 0;
-    desc->bridged_accs_max = 0;
-    desc->mL = NULL;
-    desc->co = NULL;
-    desc->inited = false;
-
-    return 0;
-}
-
-/* deinit() */
-int lhap_deinit(lua_State *L) {
+static int lhap_at_exit(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
 
-    if (!desc->inited) {
+    if (!desc->started) {
         return 0;
     }
-
-    if (desc->started) {
-        lua_pushcfunction(L, lhap_stop);
-        lua_callk(L, 0, 0, (lua_KContext)desc, lhap_deinit_finsh);
-    }
-
-    return lhap_deinit_finsh(L, 0, (lua_KContext)desc);
+    return lhap_stop(L);
 }
 
-/**
- * raiseEvent(accessoryIID:integer, serviceIID:integer, characteristicIID:integer)
- */
 static int lhap_raise_event(lua_State *L) {
     HAPSessionRef *session = NULL;
     lhap_desc *desc = &gv_lhap_desc;
@@ -2964,8 +2441,8 @@ static int lhap_get_new_iid(lua_State *L) {
 static int lhap_restore_factory_settings(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
 
-    if (desc->inited) {
-        luaL_error(L, "HAP is already initialized");
+    if (desc->started) {
+        luaL_error(L, "HAP is already started");
     }
 
     if (luai_unlikely(!pal_hap_restore_factory_settings())) {
@@ -2985,9 +2462,10 @@ static int lhap_restore_factory_settings(lua_State *L) {
 }
 
 static const luaL_Reg haplib[] = {
-    {"init", lhap_init},
-    {"deinit", lhap_deinit},
-    {"addBridgedAccessory", lhap_add_bridged_accessory},
+    {"newAccessory", lhap_new_accessory},
+    {"newService", lhap_new_service},
+    {"newCharacteristic", lhap_new_char},
+    {"accessoryIsValid", lhap_accessory_is_valid},
     {"start", lhap_start},
     {"stop", lhap_stop},
     {"raiseEvent", lhap_raise_event},
@@ -3000,8 +2478,74 @@ static const luaL_Reg haplib[] = {
     {NULL, NULL},
 };
 
+/*
+ * metamethods for accessory
+ */
+static const luaL_Reg lhap_accessory_metameth[] = {
+    {"__gc", lhap_accessory_gc},
+    {NULL, NULL}
+};
+
+/*
+ * metamethods for service
+ */
+static const luaL_Reg lhap_service_metameth[] = {
+    {"__index", NULL},  /* place holder */
+    {NULL, NULL}
+};
+
+/*
+ * methods for service
+ */
+static const luaL_Reg lhap_service_meth[] = {
+    {"linkServices", lhap_service_link_services},
+    {NULL, NULL},
+};
+
+/*
+ * metamethods for characteristic
+ */
+static const luaL_Reg lhap_char_metameth[] = {
+    {"__index", NULL},  /* place holder */
+    {"__gc", lhap_char_gc},
+    {NULL, NULL}
+};
+
+/*
+ * methods for characteristic
+ */
+static const luaL_Reg lhap_char_meth[] = {
+    {"setMfgDesc", lhap_char_set_mfg_desc},
+    {"setUnits", lhap_char_set_units},
+    {"setContraints", lhap_char_set_contraints},
+    {"setValidVals", lhap_char_set_valid_vals},
+    {"setValidValsRanges", lhap_set_valid_vals_ranges},
+    {NULL, NULL},
+};
+
+static void lhap_createmeta(lua_State *L) {
+    luaL_newmetatable(L, LHAP_ACCESSORY_NAME);  /* metatable for accessory */
+    luaL_setfuncs(L, lhap_accessory_metameth, 0);  /* add metamethods to new metatable */
+    lua_pop(L, 1);  /* pop metatable */
+
+    luaL_newmetatable(L, LHAP_SERVICE_NAME);  /* metatable for service */
+    luaL_setfuncs(L, lhap_service_metameth, 0);  /* add metamethods to new metatable */
+    luaL_newlibtable(L, lhap_service_meth);  /* create method table */
+    luaL_setfuncs(L, lhap_service_meth, 0);  /* add service methods to method table */
+    lua_setfield(L, -2, "__index");  /* metatable.__index = method table */
+    lua_pop(L, 1);  /* pop metatable */
+
+    luaL_newmetatable(L, LHAP_CHARACTERISTIC_NAME);  /* metatable for characteristic */
+    luaL_setfuncs(L, lhap_char_metameth, 0);  /* add metamethods to new metatable */
+    luaL_newlibtable(L, lhap_char_meth);  /* create method table */
+    luaL_setfuncs(L, lhap_char_meth, 0);  /* add characteristic methods to method table */
+    lua_setfield(L, -2, "__index");  /* metatable.__index = method table */
+    lua_pop(L, 1);  /* pop metatable */
+}
+
 LUAMOD_API int luaopen_hap(lua_State *L) {
     luaL_newlib(L, haplib);
+    lhap_createmeta(L);
 
     /* set services */
     for (const lhap_lightuserdata *ud = lhap_accessory_services_userdatas;
@@ -3013,7 +2557,7 @@ LUAMOD_API int luaopen_hap(lua_State *L) {
     lua_getglobal(L, "core");
     lua_getfield(L, -1, "atexit");
     lua_remove(L, -2);
-    lua_pushcfunction(L, lhap_deinit);
+    lua_pushcfunction(L, lhap_at_exit);
     lua_call(L, 1, 0);
 
     return 1;

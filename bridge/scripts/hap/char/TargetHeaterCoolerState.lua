@@ -1,3 +1,5 @@
+local hap = require "hap"
+
 return {
     value = {
         HeatOrCool= 0,
@@ -6,28 +8,14 @@ return {
     },
     ---New a ``TargetHeaterCoolerState`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HAPCharacteristicReadRequest): any
-    ---@param write fun(request:HAPCharacteristicWriteRequest, value:any)
+    ---@param read fun(request: HAPCharacteristicReadRequest): integer
+    ---@param write fun(request: HAPCharacteristicWriteRequest, value: integer)
     ---@return HAPCharacteristic characteristic
     new = function (iid, read, write)
-        return {
-            format = "UInt8",
-            iid = iid,
-            type = "TargetHeaterCoolerState",
-            props = {
-                readable = true,
-                writable = true,
-                supportsEventNotification = true
-            },
-            constraints = {
-                minVal = 0,
-                maxVal = 2,
-                stepVal = 1
-            },
-            cbs = {
-                read = read,
-                write = write
-            }
-        }
+        return hap.newCharacteristic(iid, "UInt8", "TargetHeaterCoolerState", {
+            readable = true,
+            writable = true,
+            supportsEventNotification = true
+        }, read, write):setContraints(0, 2, 1)
     end
 }

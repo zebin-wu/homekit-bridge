@@ -43,6 +43,7 @@ end
 
 ---Initialize plugin.
 ---@param conf MiioPluginConf Plugin configuration.
+---@return HAPAccessory[] bridgedAccessories Bridges Accessories.
 function M.init(conf)
     logger:info("Initialing ...")
 
@@ -67,16 +68,17 @@ function M.init(conf)
     end
     collectgarbage()
 
+    local accessories = {}
+
     for _, conf in ipairs(confs) do
         local success, result = xpcall(gen, traceback, conf)
         if success == false then
             logger:error(result)
         else
-            hap.addBridgedAccessory(result)
+            table.insert(accessories, result)
         end
     end
-
-    logger:info("Initialized.")
+    return accessories
 end
 
 return M

@@ -13,7 +13,7 @@ local logger = log.getLogger("lightbulb.plugin")
 ---LightBulb accessory configuration.
 ---@class LightBulbAccessoryConf
 ---
----@field sn integer Serial number.
+---@field sn string Serial number.
 ---@field name string Accessory name.
 
 ---LightBulb plugin configuration.
@@ -31,59 +31,48 @@ local function gen(conf, handle)
     local lightBulbOn = handle:get("on") or false
     local name = conf.name or "Light Bulb"
 
-    return {
-        aid = aid,
-        category = "BridgedAccessory",
-        name = name,
-        mfg = "Acme",
-        model = "LightBulb1,1",
-        sn = conf.sn,
-        fwVer = "1",
-        hwVer = "1",
-        services = {
+    return hap.newAccessory(
+        aid,
+        "BridgedAccessory",
+        name,
+        "Acme",
+        "LightBulb1,1",
+        conf.sn,
+        "1",
+        "1",
+        {
             hap.AccessoryInformationService,
-            {
-                iid = iids.lightBlub,
-                type = "LightBulb",
-                props = {
-                    primaryService = true,
-                    hidden = false
-                },
-                chars = {
-                    ServiceSignature.new(iids.srvSign),
-                    Name.new(iids.name, name),
-                    On.new(iids.on, function (request)
-                            logger:info(("Read lightBulbOn: %s"):format(lightBulbOn))
-                            return lightBulbOn
-                        end,
-                        function (request, value)
-                            logger:info(("Write lightBulbOn: %s"):format(value))
-                            if value ~= lightBulbOn then
-                                lightBulbOn = value
-                                handle:set("on", lightBulbOn)
-                                handle:commit()
-                                raiseEvent(request.aid, request.sid, request.cid)
-                            end
-                        end)
-                }
-            }
+            hap.newService(iids.lightBlub, "LightBulb", true, false, {
+                ServiceSignature.new(iids.srvSign),
+                Name.new(iids.name, name),
+                On.new(iids.on, function (request)
+                    return lightBulbOn
+                end,
+                function (request, value)
+                    if value ~= lightBulbOn then
+                        lightBulbOn = value
+                        handle:set("on", lightBulbOn)
+                        handle:commit()
+                        raiseEvent(request.aid, request.sid, request.cid)
+                    end
+                end)
+            })
         },
-        cbs = {
-            identify = function (request)
-                logger:info("Identify callback is called.")
-            end
-        }
-    }
+        function (request)
+            logger:info("Identify callback is called.")
+        end
+    )
 end
 
 ---Initialize plugin.
 ---@param conf LightBulbPluginConf Plugin configuration.
+---@return HAPAccessory[] bridgedAccessories Bridges Accessories.
 function M.init(conf)
-    logger:info("Initialized.")
-
+    local accessories = {}
     for _, accessoryConf in ipairs(conf.accessories) do
-        hap.addBridgedAccessory(gen(accessoryConf, nvs.open(accessoryConf.sn)))
+        table.insert(accessories, gen(accessoryConf, nvs.open(accessoryConf.sn)))
     end
+    return accessories
 end
 
 return M
