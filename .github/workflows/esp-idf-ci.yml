@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: espressif/idf:v4.4
+    container: espressif/idf:v4.4.2
 
     steps:
     - name: Checkout code

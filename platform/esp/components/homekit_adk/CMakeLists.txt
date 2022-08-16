@@ -10,7 +10,6 @@ include(${TOP_DIR}/cmake/adk.cmake)
 set(PORT_SRCS
     port/src/HAPPlatform.c
     port/src/HAPPlatformAbort.c
-    port/src/HAPCrypto.c
     port/src/HAPPlatformAccessorySetup.c
     port/src/HAPPlatformAccessorySetupDisplay.c
     port/src/HAPPlatformAccessorySetupNFC.c
@@ -29,7 +28,7 @@ set(PORT_SRCS
 set(PORT_INC_DIR port/include)
 
 idf_component_register(
-    SRCS ${ADK_SRCS} ${PORT_SRCS}
+    SRCS ${ADK_SRCS} ${ADK_PAL_MBEDTLS_SRCS} ${PORT_SRCS}
     INCLUDE_DIRS ${ADK_INC_DIRS} ${PORT_INC_DIR}
     REQUIRES
     PRIV_REQUIRES nvs_flash mdns

@@ -91,19 +91,19 @@ homekit-bridge
 
 #### 准备
 
-根据ESP-IDF官方文档[快速入门](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/get-started/index.html)准备环境。
+根据ESP-IDF官方文档[快速入门](https://docs.espressif.com/projects/esp-idf/zh_CN/v4.4.2/get-started/index.html)准备环境。
 
-目前经过测试的ESP-IDF版本为**v4.4**，通过以下命令切换到该版本：
+目前经过测试的ESP-IDF版本为**v4.4.2**，通过以下命令切换到该版本：
 
 ```bash
 git fetch --tag
-git checkout v4.4
+git checkout v4.4.2
 git submodule update
 ```
 
 #### 编译、烧录和运行
 
-你可以在ESP32或者ESP32-S2上使用homekit-bridge，使用以下命令来编译、烧录和运行：
+使用以下命令来编译、烧录和运行：
 
 ```bash
 cd /path/to/homekit-bridge/platform/esp

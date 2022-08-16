@@ -89,19 +89,19 @@ The configuration file `config.json` is placed in `/usr/local/lib/homekit-bridge
 
 #### Prepare
 
-Set up the host environment and ESP-IDF as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
+Set up the host environment and ESP-IDF as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/v4.4.2/get-started/index.html).
 
-The currently tested ESP-IDF version is **v4.4**, switch to this version with the following command:
+The currently tested ESP-IDF version is **v4.4.2**, switch to this version with the following command:
 
 ```bash
 git fetch --tag
-git checkout v4.4
+git checkout v4.4.2
 git submodule update
 ```
 
 #### Compile and flash
 
-You can use homekit-bridge with any ESP32 or ESP32-S2 board. Compile, flash and connect to console as below:
+Compile, flash and connect to console as below:
 
 ```bash
 cd /path/to/homekit-bridge/platform/esp

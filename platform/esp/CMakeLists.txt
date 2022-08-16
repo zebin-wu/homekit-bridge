@@ -9,6 +9,10 @@
 # $ cmake --version
 cmake_minimum_required(VERSION 3.5)
 
+# required IDF version, some modules depend on specific IDF version
+set(REQUIRED_IDF_VERSION 4.4.2)
+
+# directories
 set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 set(PLUGINS_DIR ${TOP_DIR}/plugins)
 set(SCRIPTS_DST_DIR ${CMAKE_BINARY_DIR}/bridge_scripts)
@@ -27,6 +31,10 @@ include(${TOP_DIR}/cmake/extension.cmake)
 find_luac(LUAC)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+if(NOT $ENV{IDF_VERSION} STREQUAL ${REQUIRED_IDF_VERSION})
+message(FATAL_ERROR "IDF version must be v${REQUIRED_IDF_VERSION}, current version is v$ENV{IDF_VERSION}")
+endif()
+
 add_definitions(-DBRIDGE_EMBEDFS_ROOT=${BRIDGE_EMBEDFS_ROOT})
 add_definitions(-DBRIDGE_VERSION="${PROJECT_VER}")
 if(CONFIG_HAP_MFI_HW_AUTH)
