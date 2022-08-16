@@ -1,5 +1,4 @@
 local suites = {
-    "testhap",
     "testsocket",
     "testnvs"
 }
