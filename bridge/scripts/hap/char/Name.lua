@@ -1,25 +1,17 @@
+local hap = require "hap"
+
 return {
     ---New a ``Name`` characteristic.
     ---@param iid integer Instance ID.
     ---@param name string Service name.
     ---@return HAPCharacteristic characteristic
     new = function (iid, name)
-        local hap = require("hap")
-        return {
-            format = "String",
-            iid = iid,
-            type = "Name",
-            props = {
-                readable = true,
-                writable = false,
-                supportsEventNotification = false
-            },
-            constraints = { maxLen = 64 },
-            cbs = {
-                read = function (request)
-                    return name
-                end
-            }
-        }
+        return hap.newCharacteristic(iid, "String", "Name", {
+            readable = true,
+            writable = false,
+            supportsEventNotification = false
+        }, function (request)
+            return name
+        end):setContraints(64)
     end
 }

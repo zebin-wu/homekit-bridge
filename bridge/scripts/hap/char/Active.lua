@@ -1,3 +1,5 @@
+local hap = require "hap"
+
 return {
     value = {
         Inactive = 0,
@@ -5,28 +7,14 @@ return {
     },
     ---New a ``Active`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HAPCharacteristicReadRequest): any
-    ---@param write fun(request:HAPCharacteristicWriteRequest, value:any)
+    ---@param read fun(request: HAPCharacteristicReadRequest): integer
+    ---@param write fun(request: HAPCharacteristicWriteRequest, value: integer)
     ---@return HAPCharacteristic characteristic
     new = function (iid, read, write)
-        return {
-            format = "UInt8",
-            iid = iid,
-            type = "Active",
-            props = {
-                readable = true,
-                writable = true,
-                supportsEventNotification = true
-            },
-            constraints = {
-                minVal = 0,
-                maxVal = 1,
-                stepVal = 1
-            },
-            cbs = {
-                read = read,
-                write = write
-            }
-        }
+        return hap.newCharacteristic(iid, "UInt8", "Active", {
+            readable = true,
+            writable = true,
+            supportsEventNotification = true
+        }, read, write):setContraints(0, 1, 1)
     end
 }

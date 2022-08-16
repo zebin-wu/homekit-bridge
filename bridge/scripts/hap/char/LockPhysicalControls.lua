@@ -1,3 +1,5 @@
+local hap = require "hap"
+
 return {
     value = {
         Disabled = 0,
@@ -5,29 +7,15 @@ return {
     },
     ---New a ``LockPhysicalControls`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HAPCharacteristicReadRequest): any
-    ---@param write fun(request:HAPCharacteristicWriteRequest, value:any)
+    ---@param read fun(request: HAPCharacteristicReadRequest): integer
+    ---@param write fun(request: HAPCharacteristicWriteRequest, value: integer)
     ---@return HAPCharacteristic characteristic
     new = function (iid, read, write)
-        return {
-            format = "UInt8",
-            iid = iid,
-            type = "LockPhysicalControls",
-            props = {
-                readable = true,
-                writable = true,
-                supportsEventNotification = true,
-                requiresTimedWrite = true
-            },
-            constraints = {
-                minVal = 0,
-                maxVal = 1,
-                stepVal = 1
-            },
-            cbs = {
-                read = read,
-                write = write
-            }
-        }
+        return hap.newCharacteristic(iid, "UInt8", "LockPhysicalControls", {
+            readable = true,
+            writable = true,
+            supportsEventNotification = true,
+            requiresTimedWrite = true
+        }, read, write):setContraints(0, 1, 1)
     end
 }

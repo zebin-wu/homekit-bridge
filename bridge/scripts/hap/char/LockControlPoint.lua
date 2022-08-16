@@ -1,22 +1,16 @@
+local hap = require "hap"
+
 return {
     ---New a ``LockControlPoint`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param write fun(request:HAPCharacteristicWriteRequest, value:any)
+    ---@param write fun(request: HAPCharacteristicWriteRequest, value: string)
     ---@return HAPCharacteristic characteristic
     new = function (iid, write)
-        return {
-            format = "TLV8",
-            iid = iid,
-            type = "LockControlPoint",
-            props = {
-                readable = false,
-                writable = true,
-                supportsEventNotification = false,
-                requiresTimedWrite = true,
-            },
-            cbs = {
-                write = write
-            }
-        }
+        return hap.newCharacteristic(iid, "TLV8", "LockControlPoint", {
+            readable = false,
+            writable = true,
+            supportsEventNotification = false,
+            requiresTimedWrite = true,
+        }, nil, write)
     end
 }

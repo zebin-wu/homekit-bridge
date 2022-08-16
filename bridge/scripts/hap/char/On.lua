@@ -1,23 +1,16 @@
+local hap = require "hap"
+
 return {
     ---New a ``On`` characteristic.
     ---@param iid integer Instance ID.
-    ---@param read fun(request:HAPCharacteristicReadRequest): any
-    ---@param write fun(request:HAPCharacteristicWriteRequest, value:any)
+    ---@param read fun(request: HAPCharacteristicReadRequest): boolean
+    ---@param write fun(request: HAPCharacteristicWriteRequest, value: boolean)
     ---@return HAPCharacteristic characteristic
     new = function (iid, read, write)
-        return {
-            format = "Bool",
-            iid = iid,
-            type = "On",
-            props = {
-                readable = true,
-                writable = true,
-                supportsEventNotification = true
-            },
-            cbs = {
-                read = read,
-                write = write
-            }
-        }
+        return hap.newCharacteristic(iid, "Bool", "On", {
+            readable = true,
+            writable = true,
+            supportsEventNotification = true
+        }, read, write)
     end
 }

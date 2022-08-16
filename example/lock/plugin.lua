@@ -17,7 +17,7 @@ local logger = log.getLogger("lock.plugin")
 ---Lock accessory configuration.
 ---@class LockAccessoryConf
 ---
----@field sn integer Serial number.
+---@field sn string Serial number.
 ---@field name string Accessory name.
 
 ---Lock plugin configuration.
@@ -36,86 +36,67 @@ local function gen(conf, handle)
     local tgtState = handle:get("tgtState") or LockTargetState.value.Secured
     local name = conf.name or "Lock"
 
-    return {
-        aid = aid,
-        category = "BridgedAccessory",
-        name = name,
-        mfg = "Acme",
-        model = "Lock1,1",
-        sn = conf.sn,
-        fwVer = "1",
-        hwVer = "1",
-        services = {
+    return hap.newAccessory(
+        aid,
+        "BridgedAccessory",
+        name,
+        "Acme",
+        "Lock1,1",
+        conf.sn,
+        "1",
+        "1",
+        {
             hap.AccessoryInformationService,
-            {
-                iid = iids.mechanism,
-                type = "LockMechanism",
-                props = {
-                    primaryService = true,
-                    hidden = false
-                },
-                linkedServices = { iids.manage },
-                chars = {
-                    ServiceSignature.new(iids.mechanismSrvSign),
-                    Name.new(iids.mechanismName, name),
-                    LockCurrentState.new(iids.curState,
-                        function (request)
-                            logger:info(("Read currentState: %s"):format(
-                                util.searchKey(LockCurrentState.value, curState)))
-                            return curState
-                        end),
-                    LockTargetState.new(iids.tgtState,
-                        function (request)
-                            logger:info(("Read targetState: %s"):format(
-                                util.searchKey(LockTargetState.value, tgtState)))
-                            return tgtState
-                        end,
-                        function (request, value)
-                            logger:info(("Write targetState: %s"):format(
-                                util.searchKey(LockTargetState.value, value)))
-                            if value ~= tgtState then
-                                tgtState = value
-                                curState = value
-                                handle:set("tgtState", value)
-                                handle:set("curState", value)
-                                handle:commit()
-                                raiseEvent(request.aid, request.sid, request.cid)
-                                raiseEvent(request.aid, request.sid, iids.curState)
-                            end
-                        end)
-                }
-            },
-            {
-                iid = iids.manage,
-                type = "LockManagement",
-                props = {
-                    primaryService = false,
-                    hidden = false
-                },
-                linkedServices = { iids.mechanism },
-                chars = {
-                    ServiceSignature.new(iids.manageSrvSign),
-                    LockControlPoint.new(iids.manageCtrlPoint, function (request, value) end),
-                    Version.new(iids.manageVersion, function (request) return "1.0" end)
-                }
-            }
+            hap.newService(iids.mechanism, "LockMechanism", true, false, {
+                ServiceSignature.new(iids.mechanismSrvSign),
+                Name.new(iids.mechanismName, name),
+                LockCurrentState.new(iids.curState,
+                    function (request)
+                        logger:info(("Read currentState: %s"):format(
+                            util.searchKey(LockCurrentState.value, curState)))
+                        return curState
+                    end),
+                LockTargetState.new(iids.tgtState,
+                    function (request)
+                        logger:info(("Read targetState: %s"):format(
+                            util.searchKey(LockTargetState.value, tgtState)))
+                        return tgtState
+                    end,
+                    function (request, value)
+                        logger:info(("Write targetState: %s"):format(
+                            util.searchKey(LockTargetState.value, value)))
+                        if value ~= tgtState then
+                            tgtState = value
+                            curState = value
+                            handle:set("tgtState", value)
+                            handle:set("curState", value)
+                            handle:commit()
+                            raiseEvent(request.aid, request.sid, request.cid)
+                            raiseEvent(request.aid, request.sid, iids.curState)
+                        end
+                    end)
+            }):linkServices(iids.manage),
+            hap.newService(iids.manage, "LockManagement", false, false, {
+                ServiceSignature.new(iids.manageSrvSign),
+                LockControlPoint.new(iids.manageCtrlPoint, function (request, value) end),
+                Version.new(iids.manageVersion, function (request) return "1.0" end)
+            }):linkServices(iids.mechanism)
         },
-        cbs = {
-            identify = function (request)
-                logger:info("Identify callback is called.")
-            end
-        }
-    }
+        function (request)
+            logger:info("Identify callback is called.")
+        end
+    )
 end
 
 ---Initialize plugin.
 ---@param conf LockPluginConf Plugin configuration.
+---@return HAPAccessory[] bridgedAccessories Bridges Accessories.
 function M.init(conf)
-    logger:info("Initialized.")
-
+    local accessories = {}
     for _, accessoryConf in ipairs(conf.accessories) do
-        hap.addBridgedAccessory(gen(accessoryConf, nvs.open(accessoryConf.sn)))
+        table.insert(accessories, gen(accessoryConf, nvs.open(accessoryConf.sn)))
     end
+    return accessories
 end
 
 return M

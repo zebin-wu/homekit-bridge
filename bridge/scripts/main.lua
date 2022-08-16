@@ -5,35 +5,32 @@ local chip = require "chip"
 
 local logger = log.getLogger()
 
-hap.init({
-    aid = 1, -- Primary accessory must have aid 1.
-    category = "Bridges",
-    name = config.bridge.name or "HomeKit Bridge",
-    mfg = chip.getInfo("mfg"),
-    model = chip.getInfo("model"),
-    sn = chip.getInfo("sn"),
-    ---@diagnostic disable-next-line: undefined-global
-    fwVer = _BRIDGE_VERSION,
-    hwVer = chip.getInfo("hwver"),
-    services = {
-        hap.AccessoryInformationService,
-        hap.HAPProtocolInformationService,
-        hap.PairingService,
-    },
-    cbs = {
-        identify = function (request)
+hap.start(
+    hap.newAccessory(
+        1,
+        "Bridges",
+        config.bridge.name or "HomeKit Bridge",
+        chip.getInfo("mfg"),
+        chip.getInfo("model"),
+        chip.getInfo("sn"),
+        ---@diagnostic disable-next-line: undefined-global
+        _BRIDGE_VERSION,
+        chip.getInfo("hwver"),
+        {
+            hap.AccessoryInformationService,
+            hap.HAPProtocolInformationService,
+            hap.PairingService,
+        },
+        function (request)
             logger:info("Identify callback is called.")
         end
-    }
-}, {
-    sessionAccept = function (session)
+    ),
+    plugins.init(config.plugins),
+    true,
+    function (session)
         logger:default(("Session %p is accepted."):format(session))
     end,
-    sessionInvalidate = function (session)
+    function (session)
         logger:default(("Session %p is invalidated."):format(session))
     end
-})
-
-plugins.init(config.plugins)
-
-hap.start(true)
+)
