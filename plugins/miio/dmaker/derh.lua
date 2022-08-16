@@ -1,9 +1,10 @@
 local hap = require "hap"
 local Active = require "hap.char.Active"
-local CurrentState = require "hap.char.CurrentHumidifierDehumidifierState"
-local TargetState = require "hap.char.TargetHumidifierDehumidifierState"
-local CurrentHumidity = require "hap.char.CurrentRelativeHumidity"
-local TargetHumidity = require "hap.char.RelativeHumidityDehumidifierThreshold"
+local CurState = require "hap.char.CurrentHumidifierDehumidifierState"
+local TgtState = require "hap.char.TargetHumidifierDehumidifierState"
+local CurHumidity = require "hap.char.CurrentRelativeHumidity"
+local TgtHumidity = require "hap.char.RelativeHumidityDehumidifierThreshold"
+local CurTemp = require "hap.char.CurrentTemperature"
 local raiseEvent = hap.raiseEvent
 local tointeger = math.tointeger
 
@@ -36,21 +37,26 @@ function M.gen(device, info, conf)
                     raiseEvent(request.aid, request.sid, request.cid)
                     raiseEvent(request.aid, request.sid, iids.curState)
                 end),
-                CurrentState.new(iids.curState, function (request)
-                    return device:getProp("power") and CurrentState.value.Dehumidifying or CurrentState.value.Inactive
-                end):setValidVals(CurrentState.value.Inactive, CurrentState.value.Dehumidifying),
-                TargetState.new(iids.tgtState, function (request)
-                    return TargetState.value.Dehumidifier
-                end, nil):setValidVals(TargetState.value.Dehumidifier),
-                CurrentHumidity.new(iids.curHumidity, function (request)
+                CurState.new(iids.curState, function (request)
+                    return device:getProp("power") and CurState.value.Dehumidifying or CurState.value.Inactive
+                end):setValidVals(CurState.value.Inactive, CurState.value.Dehumidifying),
+                TgtState.new(iids.tgtState, function (request)
+                    return TgtState.value.Dehumidifier
+                end, nil):setValidVals(TgtState.value.Dehumidifier),
+                CurHumidity.new(iids.curHumidity, function (request)
                     return device:getProp("curHumidity")
                 end),
-                TargetHumidity.new(iids.tgtHumidity, function (request)
+                TgtHumidity.new(iids.tgtHumidity, function (request)
                     return device:getProp("tgtHumidity")
                 end, function (request, value)
                     device:setProp("tgtHumidity", assert(tointeger(value), "value not a integer"))
                     raiseEvent(request.aid, request.sid, request.cid)
                 end)
+            }),
+            hap.newService(iids.temp, "TemperatureSensor", false, false, {
+                CurTemp.new(iids.curTemp, function (request)
+                    return device:getProp("curTemp")
+                end):setContraints(-30, 100, 0.1)
             })
         },
         function (request)

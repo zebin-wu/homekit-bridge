@@ -11,6 +11,7 @@ function M.gen(device, info, conf)
         power = {siid = 2, piid = 1},
         tgtHumidity = {siid = 2, piid = 5},
         curHumidity = {siid = 3, piid = 1},
+        curTemp = {siid = 3, piid = 2},
     })
 
     return require("miio.dmaker.derh").gen(device, info, conf)
