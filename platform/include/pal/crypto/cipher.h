@@ -217,7 +217,7 @@ bool pal_cipher_update(pal_cipher_ctx *ctx, const void *in, size_t ilen, void *o
  * @return true on success.
  * @return false on failure.
  */
-bool pal_cipher_finsh(pal_cipher_ctx *ctx, void *out, size_t *olen);
+bool pal_cipher_finish(pal_cipher_ctx *ctx, void *out, size_t *olen);
 
 #ifdef __cplusplus
 }

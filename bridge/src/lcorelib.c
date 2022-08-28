@@ -40,7 +40,7 @@ static int lcore_time(lua_State *L) {
     return 1;
 }
 
-static int lcore_exit_finsh(lua_State *L, int status, lua_KContext extra) {
+static int lcore_exit_finish(lua_State *L, int status, lua_KContext extra) {
     if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         HAPPlatformRunLoopStop();
         lua_error(L);
@@ -53,7 +53,7 @@ static int lcore_exit_finsh(lua_State *L, int status, lua_KContext extra) {
             HAPPlatformRunLoopStop();
             luaL_error(L, "'registry." LCORE_ATEXITS "[%d]' must be a function", i);
         }
-        int status = lua_pcallk(L, 0, 0, 1, i + 1, lcore_exit_finsh);
+        int status = lua_pcallk(L, 0, 0, 1, i + 1, lcore_exit_finish);
         if (luai_unlikely(status != LUA_OK)) {
             HAPPlatformRunLoopStop();
             lua_error(L);
@@ -70,7 +70,7 @@ static int lcore_exit(lua_State *L) {
         HAPPlatformRunLoopStop();
         return 0;
     }
-    return lcore_exit_finsh(L, LUA_OK, 1);
+    return lcore_exit_finish(L, LUA_OK, 1);
 }
 
 static int lcore_atexit(lua_State *L) {

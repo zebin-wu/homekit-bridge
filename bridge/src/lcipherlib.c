@@ -192,12 +192,12 @@ static int lcipher_ctx_update(lua_State *L) {
     return 1;
 }
 
-static int lcipher_ctx_finsh(lua_State *L) {
+static int lcipher_ctx_finish(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
     size_t outlen = pal_cipher_get_block_size(&ctx->ctx);
     char out[outlen];
-    if (luai_unlikely(!pal_cipher_finsh(&ctx->ctx, out, &outlen))) {
-        luaL_error(L, "failed to finsh the process");
+    if (luai_unlikely(!pal_cipher_finish(&ctx->ctx, out, &outlen))) {
+        luaL_error(L, "failed to finish the process");
     }
     lua_pushlstring(L, out, outlen);
     return 1;
@@ -222,7 +222,7 @@ static const luaL_Reg lcipher_ctx_meth[] = {
     {"setPadding", lcipher_ctx_set_padding},
     {"begin", lcipher_ctx_begin},
     {"update", lcipher_ctx_update},
-    {"finsh", lcipher_ctx_finsh},
+    {"finish", lcipher_ctx_finish},
     {NULL, NULL},
 };
 

@@ -1040,7 +1040,7 @@ lhap_char_value_get(lua_State *L, int idx, HAPCharacteristicFormat format, union
     return valid;
 }
 
-int lhap_char_handle_read_finsh(lua_State *L, int status, lua_KContext _ctx) {
+int lhap_char_handle_read_finish(lua_State *L, int status, lua_KContext _ctx) {
     lhap_call_context *ctx = (lhap_call_context *)_ctx;
     HAPCharacteristicFormat format = ((HAPBaseCharacteristic *)ctx->characteristic)->format;
     HAPError err = kHAPError_None;
@@ -1120,8 +1120,8 @@ int lhap_char_handle_read_finsh(lua_State *L, int status, lua_KContext _ctx) {
 static int lhap_char_handle_read(lua_State *L) {
     // stack: <call_ctx, traceback, func, request>
     lua_KContext call_ctx = (lua_KContext)lua_touserdata(L, 1);
-    int status = lua_pcallk(L, 1, 1, 2, call_ctx, lhap_char_handle_read_finsh);
-    return lhap_char_handle_read_finsh(L, status, call_ctx);
+    int status = lua_pcallk(L, 1, 1, 2, call_ctx, lhap_char_handle_read_finish);
+    return lhap_char_handle_read_finish(L, status, call_ctx);
 }
 
 static int lhap_char_handle_read_pcall(lua_State *L) {
@@ -1389,7 +1389,7 @@ end:
     return err;
 }
 
-int lhap_char_handle_write_finsh(lua_State *L, int status, lua_KContext _ctx) {
+int lhap_char_handle_write_finish(lua_State *L, int status, lua_KContext _ctx) {
     lhap_call_context *ctx = (lhap_call_context *)_ctx;
     HAPError err = kHAPError_None;
     if (status != LUA_OK && status != LUA_YIELD) {
@@ -1411,8 +1411,8 @@ int lhap_char_handle_write_finsh(lua_State *L, int status, lua_KContext _ctx) {
 static int lhap_char_handle_write(lua_State *L) {
     // stack: <call_ctx, traceback, func, request, value>
     lua_KContext call_ctx = (lua_KContext)lua_touserdata(L, 1);
-    int status = lua_pcallk(L, 2, 0, 2, call_ctx, lhap_char_handle_write_finsh);
-    return lhap_char_handle_write_finsh(L, status, call_ctx);
+    int status = lua_pcallk(L, 2, 0, 2, call_ctx, lhap_char_handle_write_finish);
+    return lhap_char_handle_write_finish(L, status, call_ctx);
 }
 
 static int lhap_char_handle_write_pcall(lua_State *L) {
@@ -2220,7 +2220,7 @@ static int lhap_set_valid_vals_ranges(lua_State *L) {
     return 1;
 }
 
-static int lhap_start_finsh(lua_State *L, int status, lua_KContext extra) {
+static int lhap_start_finish(lua_State *L, int status, lua_KContext extra) {
     lhap_desc *desc = (lhap_desc *)extra;
     desc->co = NULL;
     desc->started = true;
@@ -2336,10 +2336,10 @@ static int lhap_start(lua_State *L) {
 
     desc->mL = lc_getmainthread(L);
     desc->co = L;
-    return lua_yieldk(L, 0, (lua_KContext)desc, lhap_start_finsh);
+    return lua_yieldk(L, 0, (lua_KContext)desc, lhap_start_finish);
 }
 
-static int lhap_stop_finsh(lua_State *L, int status, lua_KContext extra) {
+static int lhap_stop_finish(lua_State *L, int status, lua_KContext extra) {
     lhap_desc *desc = (lhap_desc *)extra;
 
     // Release accessory server.
@@ -2377,7 +2377,7 @@ static int lhap_stop(lua_State *L) {
     HAPAccessoryServerStop(&desc->server);
 
     desc->co = L;
-    return lua_yieldk(L, 0, (lua_KContext)desc, lhap_stop_finsh);
+    return lua_yieldk(L, 0, (lua_KContext)desc, lhap_stop_finish);
 }
 
 static int lhap_at_exit(lua_State *L) {

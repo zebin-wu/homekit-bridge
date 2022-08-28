@@ -129,7 +129,7 @@ static void lsocket_accepted_cb(pal_socket_obj *o, pal_err err,
     lc_collectgarbage(L);
 }
 
-static int finshaccept(lua_State *L, int status, lua_KContext extra) {
+static int finishaccept(lua_State *L, int status, lua_KContext extra) {
     pal_err err = lua_tointeger(L, -1);
     lua_pop(L, 1);
 
@@ -168,7 +168,7 @@ static int lsocket_obj_accept(lua_State *L) {
         return 3;
     }
     case PAL_ERR_IN_PROGRESS:
-        lua_yieldk(L, 0, (lua_KContext)obj, finshaccept);
+        lua_yieldk(L, 0, (lua_KContext)obj, finishaccept);
         break;
     default:
         lua_pushstring(L, pal_err_string(err));
@@ -193,14 +193,14 @@ static void lsocket_connected_cb(pal_socket_obj *o, pal_err err, void *arg) {
     lc_collectgarbage(L);
 }
 
-static int finshconnect(lua_State *L, int status, lua_KContext extra) {
+static int finishconnect(lua_State *L, int status, lua_KContext extra) {
     pal_err err = lua_tointeger(L, -1);
 
     switch (err) {
     case PAL_ERR_OK:
         break;
     case PAL_ERR_IN_PROGRESS:
-        lua_yieldk(L, 0, extra, finshconnect);
+        lua_yieldk(L, 0, extra, finishconnect);
         break;
     default:
         lua_pushstring(L, pal_err_string(err));
@@ -216,7 +216,7 @@ static int lsocket_obj_connect(lua_State *L) {
     luaL_argcheck(L, (port >= 0) && (port <= 65535), 3, "port out of range");
     lua_pushinteger(L, pal_socket_connect(&obj->socket, addr,
         port, lsocket_connected_cb, L));
-    return finshconnect(L, 1, (lua_KContext)obj);
+    return finishconnect(L, 1, (lua_KContext)obj);
 }
 
 static void lsocket_sent_cb(pal_socket_obj *o, pal_err err, size_t sent_len, void *arg) {
@@ -236,7 +236,7 @@ static void lsocket_sent_cb(pal_socket_obj *o, pal_err err, size_t sent_len, voi
     lc_collectgarbage(L);
 }
 
-static int finshsend(lua_State *L, int status, lua_KContext extra) {
+static int finishsend(lua_State *L, int status, lua_KContext extra) {
     bool all = (bool)extra;
     pal_err err = lua_tointeger(L, -2);
 
@@ -244,7 +244,7 @@ static int finshsend(lua_State *L, int status, lua_KContext extra) {
     case PAL_ERR_OK:
         return all ? 0 : 1;
     case PAL_ERR_IN_PROGRESS:
-        lua_yieldk(L, 0, extra, finshsend);
+        lua_yieldk(L, 0, extra, finishsend);
         break;
     default:
         lua_pushstring(L, pal_err_string(err));
@@ -261,7 +261,7 @@ static int lsocket_obj_sent_int(lua_State *L, bool all) {
     size_t sent_len = len;
     lua_pushinteger(L, pal_socket_send(&obj->socket, data, &sent_len, all, lsocket_sent_cb, L));
     lua_pushinteger(L, sent_len);
-    return finshsend(L, 2, (lua_KContext)all);
+    return finishsend(L, 2, (lua_KContext)all);
 }
 
 static int lsocket_obj_send(lua_State *L) {
@@ -283,7 +283,7 @@ static int lsocket_obj_sendto(lua_State *L) {
     size_t sent_len = len;
     lua_pushinteger(L, pal_socket_sendto(&obj->socket, data, &sent_len, addr, port, false, lsocket_sent_cb, L));
     lua_pushinteger(L, sent_len);
-    return finshsend(L, 0, (lua_KContext)false);
+    return finishsend(L, 0, (lua_KContext)false);
 }
 
 static void lsocket_recved_cb(pal_socket_obj *o, pal_err err,
@@ -311,7 +311,7 @@ static void lsocket_recved_cb(pal_socket_obj *o, pal_err err,
     lc_collectgarbage(L);
 }
 
-static int finshrecv(lua_State *L, int status, lua_KContext extra) {
+static int finishrecv(lua_State *L, int status, lua_KContext extra) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
     bool isrecvfrom = (bool)extra;
     pal_err err = lua_tointeger(L, -1);
@@ -353,7 +353,7 @@ static int lsocket_obj_recv(lua_State *L) {
         luaL_pushresult(&obj->B);
         return 1;
     case PAL_ERR_IN_PROGRESS:
-        return lua_yieldk(L, 0, (lua_KContext)false, finshrecv);
+        return lua_yieldk(L, 0, (lua_KContext)false, finishrecv);
     default:
         lua_pushstring(L, pal_err_string(err));
         return lua_error(L);
@@ -380,7 +380,7 @@ static int lsocket_obj_recvfrom(lua_State *L) {
         lua_pushinteger(L, port);
         return 3;
     case PAL_ERR_IN_PROGRESS:
-        return lua_yieldk(L, 0, (lua_KContext)true, finshrecv);
+        return lua_yieldk(L, 0, (lua_KContext)true, finishrecv);
     default:
         lua_pushstring(L, pal_err_string(err));
         return lua_error(L);

@@ -84,7 +84,7 @@ static void lstream_client_cleanup(lstream_client *client) {
     }
 }
 
-static void lstream_client_create_finsh(lstream_client *client, const char *errmsg) {
+static void lstream_client_create_finish(lstream_client *client, const char *errmsg) {
     HAPPrecondition(client);
     HAPPrecondition(client->co);
 
@@ -123,10 +123,10 @@ static void lstream_client_handshaked_cb(pal_socket_obj *o, pal_err err, void *a
     switch (err) {
     case PAL_ERR_OK:
         client->state = LSTREAM_CLIENT_HANDSHAKED;
-        lstream_client_create_finsh(client, NULL);
+        lstream_client_create_finish(client, NULL);
         break;
     default:
-        lstream_client_create_finsh(client, pal_err_string(err));
+        lstream_client_create_finish(client, pal_err_string(err));
         break;
     }
 }
@@ -136,7 +136,7 @@ static void lstream_client_handshake(lstream_client *client) {
     HAPPrecondition(client->state == LSTREAM_CLIENT_CONNECTED);
 
     if (client->type == LSTREAM_CLIENT_TCP) {
-        lstream_client_create_finsh(client, NULL);
+        lstream_client_create_finish(client, NULL);
         return;
     }
 
@@ -158,7 +158,7 @@ static void lstream_client_handshake(lstream_client *client) {
         .read = (void *)pal_socket_raw_recv,
         .write = (void *)pal_socket_raw_send,
     }))) {
-        lstream_client_create_finsh(client, "failed to create ssl context");
+        lstream_client_create_finish(client, "failed to create ssl context");
         return;
     }
     pal_socket_set_bio(&client->sock, &client->sslctx, &(pal_socket_bio_method) {
@@ -173,13 +173,13 @@ static void lstream_client_handshake(lstream_client *client) {
     switch (err) {
     case PAL_ERR_OK:
         client->state = LSTREAM_CLIENT_HANDSHAKED;
-        lstream_client_create_finsh(client, NULL);
+        lstream_client_create_finish(client, NULL);
         break;
     case PAL_ERR_IN_PROGRESS:
         client->state = LSTREAM_CLIENT_HANDSHAKING;
         break;
     default:
-        lstream_client_create_finsh(client, pal_err_string(err));
+        lstream_client_create_finish(client, pal_err_string(err));
         break;
     }
 }
@@ -194,7 +194,7 @@ static void lstream_client_connected_cb(pal_socket_obj *o, pal_err err, void *ar
         lstream_client_handshake(client);
         break;
     default:
-        lstream_client_create_finsh(client, pal_err_string(err));
+        lstream_client_create_finish(client, pal_err_string(err));
         break;
     }
 }
@@ -205,7 +205,7 @@ static void lstream_client_dns_response_cb(const char *errmsg, const char *addr,
     client->dns_req = NULL;
 
     if (errmsg) {
-        lstream_client_create_finsh(client, errmsg);
+        lstream_client_create_finish(client, errmsg);
         return;
     }
 
@@ -230,7 +230,7 @@ static void lstream_client_dns_response_cb(const char *errmsg, const char *addr,
     }
 
     if (luai_unlikely(!pal_socket_obj_init(&client->sock, socktype, af))) {
-        lstream_client_create_finsh(client, "failed to create socket object");
+        lstream_client_create_finish(client, "failed to create socket object");
         return;
     }
     client->sock_inited = true;
@@ -246,7 +246,7 @@ static void lstream_client_dns_response_cb(const char *errmsg, const char *addr,
         client->state = LSTREAM_CLIENT_CONNECTING;
         break;
     default:
-        lstream_client_create_finsh(client, pal_err_string(err));
+        lstream_client_create_finish(client, pal_err_string(err));
         break;
     }
 }
@@ -254,10 +254,10 @@ static void lstream_client_dns_response_cb(const char *errmsg, const char *addr,
 static void lstream_client_timeout_timer_cb(HAPPlatformTimerRef timer, void *context) {
     lstream_client *client = context;
     client->timer = 0;
-    lstream_client_create_finsh(client, "timeout");
+    lstream_client_create_finish(client, "timeout");
 }
 
-static int finshcreate(lua_State *L, int status, lua_KContext extra) {
+static int finishcreate(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
     client->co = NULL;
 
@@ -310,7 +310,7 @@ static int lstream_client_create(lua_State *L) {
     }
     client->state = LSTREAM_CLIENT_DNS_RESOLVING;
     client->co = L;
-    return lua_yieldk(L, 0, (lua_KContext)client, finshcreate);
+    return lua_yieldk(L, 0, (lua_KContext)client, finishcreate);
 }
 
 static lstream_client *lstream_client_get(lua_State *L, int idx) {
@@ -348,7 +348,7 @@ static void lstream_client_write_sent_cb(pal_socket_obj *o, pal_err err, size_t 
     lc_collectgarbage(L);
 }
 
-static int finshwrite(lua_State *L, int status, lua_KContext extra) {
+static int finishwrite(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
     client->co = NULL;
 
@@ -373,7 +373,7 @@ static int lstream_client_write(lua_State *L) {
         return 0;
     case PAL_ERR_IN_PROGRESS:
         client->co = L;
-        return lua_yieldk(L, 0, (lua_KContext)client, finshwrite);
+        return lua_yieldk(L, 0, (lua_KContext)client, finishwrite);
     default:
         lua_pushstring(L, pal_err_string(err));
         return lua_error(L);
@@ -406,7 +406,7 @@ static void lstream_client_read_recved_cb(pal_socket_obj *o, pal_err err,
     lc_collectgarbage(L);
 }
 
-static int finshread(lua_State *L, int status, lua_KContext extra) {
+static int finishread(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
     luaL_Buffer *B = &client->B;
     client->co = NULL;
@@ -437,7 +437,7 @@ static int finshread(lua_State *L, int status, lua_KContext extra) {
         goto success;
     }
 
-    return lstream_client_async_read(L, client, maxlen - len, finshread);
+    return lstream_client_async_read(L, client, maxlen - len, finishread);
 
 success:
     luaL_pushresult(B);
@@ -497,10 +497,10 @@ static int lstream_client_read(lua_State *L) {
     luaL_buffinitsize(L, B, maxlen);
     B->size = maxlen;
     luaL_addlstring(B, readbuf, len);
-    return lstream_client_async_read(L, client, maxlen - len, finshread);
+    return lstream_client_async_read(L, client, maxlen - len, finishread);
 }
 
-static int finshreadall(lua_State *L, int status, lua_KContext extra) {
+static int finishreadall(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
     luaL_Buffer *B = &client->B;
     client->co = NULL;
@@ -527,7 +527,7 @@ static int finshreadall(lua_State *L, int status, lua_KContext extra) {
 
     luaL_addsize(B, len);
     luaL_prepbuffsize(B, LSTREAM_FRAME_LEN);
-    return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finshreadall);
+    return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finishreadall);
 
 success:
     luaL_pushresult(B);
@@ -551,7 +551,7 @@ static int lstream_client_readall(lua_State *L) {
     luaL_buffinit(L, B);
     luaL_addlstring(B, readbuf, len);
     luaL_prepbuffsize(B, LSTREAM_FRAME_LEN);
-    return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finshreadall);
+    return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finishreadall);
 }
 
 static const char *memfind(const char *s1, size_t l1, const char *s2, size_t l2) {
@@ -588,7 +588,7 @@ static bool lstream_client_getline(lua_State *L, bool skip, const char *data, si
     return false;
 }
 
-static int finshreadline(lua_State *L, int status, lua_KContext extra) {
+static int finishreadline(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
     luaL_Buffer *B = &client->B;
     client->co = NULL;
@@ -629,7 +629,7 @@ static int finshreadline(lua_State *L, int status, lua_KContext extra) {
     }
 
     luaL_prepbuffsize(B, LSTREAM_LINE_LEN);
-    return lstream_client_async_read(L, client, LSTREAM_LINE_LEN, finshreadline);
+    return lstream_client_async_read(L, client, LSTREAM_LINE_LEN, finishreadline);
 }
 
 static int lstream_client_readline(lua_State *L) {
@@ -654,7 +654,7 @@ static int lstream_client_readline(lua_State *L) {
     luaL_buffinit(L, B);
     luaL_addlstring(B, readbuf, len);
     luaL_prepbuffsize(B, LSTREAM_LINE_LEN);
-    return lstream_client_async_read(L, client, LSTREAM_LINE_LEN, finshreadline);
+    return lstream_client_async_read(L, client, LSTREAM_LINE_LEN, finishreadline);
 }
 
 static int lstream_client_close(lua_State *L) {

@@ -118,7 +118,7 @@ function ctx:update(input) end
 ---Finsh the encryption/decryption process.
 ---@return string output Output binary data.
 ---@nodiscard
-function ctx:finsh() end
+function ctx:finish() end
 
 ---Create a cipher context.
 ---@param type CipherType Cipher type.

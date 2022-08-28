@@ -87,7 +87,7 @@ static void ldns_timeout_timer_cb(HAPPlatformTimerRef timer, void *context) {
     ldns_response_cb("resolve timeout", NULL, PAL_ADDR_FAMILY_UNSPEC, ctx);
 }
 
-static int finshresolve(lua_State *L, int status, lua_KContext extra) {
+static int finishresolve(lua_State *L, int status, lua_KContext extra) {
     if (lua_isstring(L, -1)) {
         lua_error(L);
     }
@@ -113,7 +113,7 @@ static int ldns_resolve(lua_State *L) {
         luaL_error(L, "failed to start DNS resolution request");
     }
     ctx->co = L;
-    return lua_yieldk(L, 0, 0, finshresolve);
+    return lua_yieldk(L, 0, 0, finishresolve);
 }
 
 static const luaL_Reg ldns_funcs[] = {

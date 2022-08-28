@@ -198,7 +198,7 @@ bool pal_cipher_update(pal_cipher_ctx *_ctx, const void *in, size_t ilen, void *
     return pal_cipher_crypt_funcs[ctx->op].update(ctx->ctx, out, (int *)olen, in, ilen);
 }
 
-bool pal_cipher_finsh(pal_cipher_ctx *_ctx, void *out, size_t *olen) {
+bool pal_cipher_finish(pal_cipher_ctx *_ctx, void *out, size_t *olen) {
     HAPPrecondition(_ctx);
     pal_cipher_ctx_int *ctx = (pal_cipher_ctx_int *)_ctx;
     HAPPrecondition(ctx->op != PAL_CIPHER_OP_NONE);

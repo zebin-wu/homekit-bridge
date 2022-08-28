@@ -161,16 +161,16 @@ static void *app_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
     }
 }
 
-static int finshexit(lua_State *L, int status, lua_KContext extra) {
+static int finishexit(lua_State *L, int status, lua_KContext extra) {
     return 0;
 }
 
-static int finshentry(lua_State *L, int status, lua_KContext extra) {
+static int finishentry(lua_State *L, int status, lua_KContext extra) {
     if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         HAPLogError(&kHAPLog_Default, "%s", lua_tostring(L, -1));
         lua_getglobal(L, "core");
         lua_getfield(L, -1, "exit");
-        lua_callk(L, 0, 0, 0, finshexit);
+        lua_callk(L, 0, 0, 0, finishexit);
     }
     return 0;
 }
@@ -179,7 +179,7 @@ static int finshentry(lua_State *L, int status, lua_KContext extra) {
 static int app_entry(lua_State *L) {
     lua_getglobal(L, "require");
     lua_insert(L, 2);
-    return finshentry(L, lua_pcallk(L, 1, 0, 1, 0, finshentry), 0);
+    return finishentry(L, lua_pcallk(L, 1, 0, 1, 0, finishentry), 0);
 }
 
 // app_pinit(dir: lightuserdata, entry: lightuserdata)

@@ -93,7 +93,7 @@ local encryption = {}
 ---@return string output
 function encryption:encrypt(input)
     local ctx = self.ctx
-    return ctx:begin("encrypt", self.key, self.iv):update(input) .. ctx:finsh()
+    return ctx:begin("encrypt", self.key, self.iv):update(input) .. ctx:finish()
 end
 
 ---Decrypt data.
@@ -101,7 +101,7 @@ end
 ---@return string output
 function encryption:decrypt(input)
     local ctx = self.ctx
-    return ctx:begin("decrypt", self.key, self.iv):update(input) .. ctx:finsh()
+    return ctx:begin("decrypt", self.key, self.iv):update(input) .. ctx:finish()
 end
 
 ---Calculates a MD5 checksum for the given data.
