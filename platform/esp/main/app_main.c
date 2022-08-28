@@ -32,6 +32,7 @@
 
 #include <app.h>
 #include <pal/crypto/ssl.h>
+#include <pal/crypto/ssl_int.h>
 #include <pal/net/dns.h>
 
 #include <HAPPlatformRunLoop+Init.h>

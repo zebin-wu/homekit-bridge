@@ -65,16 +65,6 @@ typedef struct {
 } pal_ssl_bio_method;
 
 /**
- * Initialize SSL module.
- */
-void pal_ssl_init();
-
-/**
- * De-initialize SSL module.
- */
-void pal_ssl_deinit();
-
-/**
  * Initializes a SSL context.
  *
  * @param ctx The SSL context to initialize.
