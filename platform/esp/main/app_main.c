@@ -49,24 +49,24 @@
 #define APP_NVS_LOG_ENABLED_TYPE "log"
 
 void app_main_task(void *arg) {
-    HAPPlatformRunLoopCreate();
-
     // Initialize pal modules.
+    HAPPlatformRunLoopCreate();
     pal_ssl_init();
     pal_dns_init();
 
+    // Initialize application.
     app_init(APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY);
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
     // Run loop stopped explicitly by calling function HAPPlatformRunLoopStop.
 
+    // De-initialize application.
     app_deinit();
 
     // De-initialize pal modules.
     pal_dns_deinit();
     pal_ssl_deinit();
-
     HAPPlatformRunLoopRelease();
 }
 

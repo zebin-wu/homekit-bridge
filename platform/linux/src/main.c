@@ -80,31 +80,32 @@ void sigint(int signum) {
 }
 
 int main(int argc, char *argv[]) {
-    signal(SIGINT, sigint);
-
     // Parse arguments.
     doargs(argc, argv);
 
-    HAPPlatformRunLoopCreate();
-
     // Initialize pal modules.
+    HAPPlatformRunLoopCreate();
     pal_ssl_init();
     pal_dns_init();
     pal_nvs_init(".nvs");
 
+    // Initialize application.
     app_init(workdir, entry);
+
+    // Use 'ctrl + C' to exit the application.
+    signal(SIGINT, sigint);
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
     // Run loop stopped explicitly by calling function HAPPlatformRunLoopStop.
 
+    // De-initialize application.
     app_deinit();
 
     // De-initialize pal modules.
     pal_nvs_deinit();
     pal_dns_deinit();
     pal_ssl_deinit();
-
     HAPPlatformRunLoopRelease();
 
     return 0;
