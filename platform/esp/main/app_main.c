@@ -49,8 +49,6 @@
 #define APP_NVS_LOG_ENABLED_TYPE "log"
 
 void app_main_task(void *arg) {
-    HAPAssert(HAPGetCompatibilityVersion() == HAP_COMPATIBILITY_VERSION);
-
     HAPPlatformRunLoopCreate();
 
     // Initialize pal modules.

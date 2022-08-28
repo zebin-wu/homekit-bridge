@@ -98,6 +98,8 @@ void pal_hap_init_platform(HAPPlatform *platform) {
     HAPPrecondition(!ginited);
     HAPPrecondition(platform);
 
+    HAPAssert(HAPGetCompatibilityVersion() == HAP_COMPATIBILITY_VERSION);
+
     // Key-value store.
     platform->keyValueStore = &gplatform.keyValueStore;
     HAPPlatformKeyValueStoreCreate(platform->keyValueStore, &(const HAPPlatformKeyValueStoreOptions) {

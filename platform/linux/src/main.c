@@ -80,8 +80,6 @@ void sigint(int signum) {
 }
 
 int main(int argc, char *argv[]) {
-    HAPAssert(HAPGetCompatibilityVersion() == HAP_COMPATIBILITY_VERSION);
-
     signal(SIGINT, sigint);
 
     // Parse arguments.
