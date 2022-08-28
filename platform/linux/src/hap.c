@@ -10,7 +10,6 @@
 #include <HAPAccessorySetup.h>
 #include <HAPPlatformAccessorySetup+Init.h>
 #include <HAPPlatformKeyValueStore+SDKDomains.h>
-#include <HAPPlatformBLEPeripheralManager+Init.h>
 #include <HAPPlatformKeyValueStore+Init.h>
 #include <HAPPlatformMFiTokenAuth+Init.h>
 #include <HAPPlatformServiceDiscovery+Init.h>

@@ -13,7 +13,6 @@ set(PORT_SRCS
     port/src/HAPPlatformAccessorySetup.c
     port/src/HAPPlatformAccessorySetupDisplay.c
     port/src/HAPPlatformAccessorySetupNFC.c
-    port/src/HAPPlatformBLEPeripheralManager.c
     port/src/HAPPlatformClock.c
     port/src/HAPPlatformKeyValueStore.c
     port/src/HAPPlatformLog.c
