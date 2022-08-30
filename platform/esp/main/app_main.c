@@ -31,6 +31,8 @@
 #include <esp_console.h>
 
 #include <app.h>
+#include <pal/cli.h>
+#include <pal/cli_int.h>
 #include <pal/crypto/ssl.h>
 #include <pal/crypto/ssl_int.h>
 #include <pal/net/dns.h>
@@ -47,28 +49,6 @@
 #define APP_SPIFFS_DIR_PATH "/spiffs"
 #define APP_NVS_NAMESPACE_NAME "bridge"
 #define APP_NVS_LOG_ENABLED_TYPE "log"
-
-void app_main_task(void *arg) {
-    // Initialize pal modules.
-    HAPPlatformRunLoopCreate();
-    pal_ssl_init();
-    pal_dns_init();
-
-    // Initialize application.
-    app_init(APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY);
-
-    // Run main loop until explicitly stopped.
-    HAPPlatformRunLoopRun();
-    // Run loop stopped explicitly by calling function HAPPlatformRunLoopStop.
-
-    // De-initialize application.
-    app_deinit();
-
-    // De-initialize pal modules.
-    pal_dns_deinit();
-    pal_ssl_deinit();
-    HAPPlatformRunLoopRelease();
-}
 
 static int app_log_cmd(int argc, char **argv) {
     const char *enabled_type_strs[] = {
@@ -96,6 +76,37 @@ static int app_log_cmd(int argc, char **argv) {
 
     printf("log: invalid command.\r\n");
     return -1;
+}
+
+void app_main_task(void *arg) {
+    // Initialize pal modules.
+    HAPPlatformRunLoopCreate();
+    pal_cli_init();
+    pal_ssl_init();
+    pal_dns_init();
+
+    pal_cli_register(&(pal_cli_info) {
+        .cmd = "log",
+        .help = "Show or set enabled log type.",
+        .hint = "[none|default|info|debug]",
+        .func = app_log_cmd,
+    });
+
+    // Initialize application.
+    app_init(APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY);
+
+    // Run main loop until explicitly stopped.
+    HAPPlatformRunLoopRun();
+    // Run loop stopped explicitly by calling function HAPPlatformRunLoopStop.
+
+    // De-initialize application.
+    app_deinit();
+
+    // De-initialize pal modules.
+    pal_dns_deinit();
+    pal_ssl_deinit();
+    pal_cli_deinit();
+    HAPPlatformRunLoopRelease();
 }
 
 static void app_wifi_connected_cb() {
@@ -130,14 +141,6 @@ void app_main() {
 
     app_wifi_set_connected_cb(app_wifi_connected_cb);
     app_wifi_register_cmd();
-
-    ESP_ERROR_CHECK(esp_console_cmd_register(& (const esp_console_cmd_t) {
-        .command = "log",
-        .help = "Show or set enabled log type.",
-        .hint = "[none|default|info|debug]",
-        .func = app_log_cmd,
-        .argtable = NULL,
-    }));
 
     app_console_start();
 }
