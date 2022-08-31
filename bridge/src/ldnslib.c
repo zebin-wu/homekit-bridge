@@ -19,7 +19,7 @@ static const char *ldns_family_strs[] = {
 
 static const HAPLogObject ldns_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
-    .category = "ldns",
+    .category = "dns",
 };
 
 typedef struct ldns_resolve_context {

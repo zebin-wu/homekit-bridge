@@ -414,7 +414,7 @@ const HAPService pairingService = {
 
 static const HAPLogObject lhap_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
-    .category = "lhap",
+    .category = "hap",
 };
 
 static const char *lhap_transport_type_strs[] = {

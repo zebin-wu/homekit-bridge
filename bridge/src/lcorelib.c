@@ -17,7 +17,7 @@
 
 static const HAPLogObject lcore_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
-    .category = "ltime",
+    .category = "core",
 };
 
 /**
@@ -159,8 +159,10 @@ static int lcore_timer_resume(lua_State *L) {
 
     int nres, status;
     lua_State *co = lc_newthread(L);
-    HAPAssert(lua_rawgetp(co, LUA_REGISTRYINDEX, ctx) == LUA_TUSERDATA);
-    if (luai_unlikely(!lua_checkstack(L, ctx->nargs + 1))) {
+    if (luai_unlikely(lua_rawgetp(co, LUA_REGISTRYINDEX, ctx) != LUA_TUSERDATA)) {
+        HAPFatalError();
+    }
+    if (luai_unlikely(!lua_checkstack(co, ctx->nargs + 1))) {
         luaL_error(L, "stack overflow");
     }
     for (int i = 1; i <= ctx->nargs + 1; i++) {

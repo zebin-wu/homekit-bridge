@@ -22,7 +22,7 @@ typedef struct {
 
 static const HAPLogObject lsocket_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
-    .category = "lsocket",
+    .category = "socket",
 };
 
 static const char *lsocket_type_strs[] = {
@@ -227,7 +227,7 @@ static void lsocket_sent_cb(pal_socket_obj *o, pal_err err, size_t sent_len, voi
     HAPAssert(lua_gettop(L) == 0);
     lua_pushinteger(co, err);
     lua_pushinteger(co, sent_len);
-    status = lc_resume(co, L, 2, &nres);  // stack <..., sent_len, err>
+    status = lc_resume(co, L, 2, &nres);  // stack <..., err, sent_len>
     if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
         HAPLogError(&lsocket_log, "%s: %s", __func__, lua_tostring(L, -1));
     }

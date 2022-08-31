@@ -59,7 +59,7 @@ typedef struct lstream_client {
 
 static const HAPLogObject lstream_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
-    .category = "lstream",
+    .category = "stream",
 };
 
 static int lstream_client_async_read(lua_State *L, lstream_client *client, size_t maxlen, lua_KFunction k);
