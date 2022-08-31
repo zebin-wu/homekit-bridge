@@ -6,6 +6,6 @@
 
 #include <pal/cli.h>
 
-pal_err pal_cli_register(const pal_cli_info *info) {
+pal_err pal_cli_register(const pal_cli_info *info, void *ctx) {
     return PAL_ERR_UNKNOWN;
 }

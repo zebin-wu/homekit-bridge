@@ -42,19 +42,24 @@ typedef struct {
 
     /**
      * Pointer to a function which implements the command.
+     *
+     * @param argc Count of arguments.
+     * @param argv Arguments.
+     * @param ctx The last paramter of @b pal_cli_register().
      */
-    int (*func)(int argc, char *argv[]);
+    int (*func)(int argc, char *argv[], void *ctx);
 } pal_cli_info;
 
 /**
  * Register a command.
  *
  * @param info The command information.
+ * @param ctx The context to be passed as the last argument to @b func.
  *
  * @return PAL_ERR_OK on success.
  * @return other error number on failure.
  */
-pal_err pal_cli_register(const pal_cli_info *info);
+pal_err pal_cli_register(const pal_cli_info *info, void *ctx);
 
 #ifdef __cplusplus
 }

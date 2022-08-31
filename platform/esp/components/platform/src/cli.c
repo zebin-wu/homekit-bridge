@@ -16,7 +16,8 @@
 
 struct pal_cli_cmd {
     const char *cmd;
-    int (*func)(int argc, char *argv[]);
+    int (*func)(int argc, char *argv[], void *ctx);
+    void *ctx;
     SLIST_ENTRY(pal_cli_cmd) list_entry;
 };
 
@@ -54,7 +55,7 @@ static void pal_cli_run_cb(void *context, size_t contextSize) {
     HAPPrecondition(contextSize == sizeof(struct pal_cli_run_ctx));
 
     struct pal_cli_run_ctx *ctx = context;
-    int ret = ctx->cmd->func(ctx->argc, ctx->argv);
+    int ret = ctx->cmd->func(ctx->argc, ctx->argv, ctx->cmd->ctx);
     xQueueSend(ctx->ret_que, &ret, portMAX_DELAY);
 }
 
@@ -95,7 +96,7 @@ static int pal_cli_cmd_func(int argc, char *argv[]) {
     HAPFatalError();
 }
 
-pal_err pal_cli_register(const pal_cli_info *info) {
+pal_err pal_cli_register(const pal_cli_info *info, void *ctx) {
     HAPPrecondition(ginited);
     HAPPrecondition(info);
     HAPPrecondition(info->cmd);
@@ -114,6 +115,7 @@ pal_err pal_cli_register(const pal_cli_info *info) {
         }
         cmd->cmd = info->cmd;
         cmd->func = info->func;
+        cmd->ctx = ctx;
         SLIST_INSERT_HEAD(&glist_head, cmd, list_entry);
         return PAL_ERR_OK;
     }

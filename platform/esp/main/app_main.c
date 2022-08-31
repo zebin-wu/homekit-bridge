@@ -50,7 +50,7 @@
 #define APP_NVS_NAMESPACE_NAME "bridge"
 #define APP_NVS_LOG_ENABLED_TYPE "log"
 
-static int app_log_cmd(int argc, char **argv) {
+static int app_log_cmd(int argc, char **argv, void *ctx) {
     const char *enabled_type_strs[] = {
         [kHAPPlatformLogEnabledTypes_None] = "none",
         [kHAPPlatformLogEnabledTypes_Default] = "default",
@@ -90,7 +90,7 @@ void app_main_task(void *arg) {
         .help = "Show or set enabled log type.",
         .hint = "[none|default|info|debug]",
         .func = app_log_cmd,
-    });
+    }, NULL);
 
     // Initialize application.
     app_init(APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY);
