@@ -11,6 +11,7 @@
 extern "C" {
 #endif
 
+#include <argtable3.h>
 #include <pal/err.h>
 
 /**
@@ -36,9 +37,18 @@ typedef struct {
 
     /**
      * Hint text, usually lists possible arguments.
-     * If set, the pointer must be valid until deinit.
+     * If set to NULL, and 'argtable' field is non-NULL, hint will be generated
+     * automatically.
      */
     const char *hint;
+
+    /**
+     * Array or structure of pointers to arg_xxx structures, may be NULL.
+     * Used to generate hint text if 'hint' is set to NULL.
+     * Array/structure which this field points to must end with an arg_end.
+     * Only used for the duration of esp_console_cmd_register call.
+     */
+    void *argtable;
 
     /**
      * Pointer to a function which implements the command.

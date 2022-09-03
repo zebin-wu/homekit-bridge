@@ -50,7 +50,19 @@
 #define APP_NVS_NAMESPACE_NAME "bridge"
 #define APP_NVS_LOG_ENABLED_TYPE "log"
 
+/** Arguments used by 'log' function */
+static struct {
+    struct arg_str *enabled_type;
+    struct arg_end *end;
+} log_args;
+
 static int app_log_cmd(int argc, char **argv, void *ctx) {
+    int nerrors = arg_parse(argc, argv, (void **) &log_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, log_args.end, argv[0]);
+        return 1;
+    }
+
     const char *enabled_type_strs[] = {
         [kHAPPlatformLogEnabledTypes_None] = "none",
         [kHAPPlatformLogEnabledTypes_Default] = "default",
@@ -58,24 +70,40 @@ static int app_log_cmd(int argc, char **argv, void *ctx) {
         [kHAPPlatformLogEnabledTypes_Debug] = "debug"
     };
 
-    if (argc == 1) {
-        printf("Current enabled log type: %s.\r\n", enabled_type_strs[HAPPlatformLogGetEnabledTypes(NULL)]);
+    if (log_args.enabled_type->count == 0) {
+        printf("Current enabled log type: %s\n",
+            enabled_type_strs[HAPPlatformLogGetEnabledTypes(NULL)]);
         return 0;
-    } else if (argc == 2) {
-        for (int i = 0; i < HAPArrayCount(enabled_type_strs); i++) {
-            if (HAPStringAreEqual(argv[1], enabled_type_strs[i])) {
-                HAPPlatformLogSetEnabledTypes(NULL, i);
-                nvs_handle_t nvs_handle;
-                ESP_ERROR_CHECK(nvs_open(APP_NVS_NAMESPACE_NAME, NVS_READWRITE, &nvs_handle));
-                esp_err_t err = nvs_set_u8(nvs_handle, APP_NVS_LOG_ENABLED_TYPE, i);
-                nvs_close(nvs_handle);
-                return err;
-            }
+    }
+
+    for (int i = 0; i < HAPArrayCount(enabled_type_strs); i++) {
+        if (HAPStringAreEqual(argv[1], enabled_type_strs[i])) {
+            HAPPlatformLogSetEnabledTypes(NULL, i);
+            nvs_handle_t nvs_handle;
+            ESP_ERROR_CHECK(nvs_open(APP_NVS_NAMESPACE_NAME, NVS_READWRITE, &nvs_handle));
+            esp_err_t err = nvs_set_u8(nvs_handle, APP_NVS_LOG_ENABLED_TYPE, i);
+            nvs_close(nvs_handle);
+            return err;
         }
     }
 
-    printf("log: invalid command.\r\n");
+    printf("log: invalid command\n");
     return -1;
+}
+
+void app_register_log_cmd() {
+    log_args.enabled_type = arg_str0(NULL, NULL, "<none|default|info|debug>", "Log enabled type");
+    log_args.end = arg_end(1);
+
+    pal_err err = pal_cli_register(&(pal_cli_info) {
+        .cmd = "log",
+        .help = "Show or set enabled log type",
+        .argtable = &log_args,
+        .func = app_log_cmd,
+    }, NULL);
+    if (err != PAL_ERR_OK) {
+        HAPFatalError();
+    }
 }
 
 void app_main_task(void *arg) {
@@ -85,12 +113,7 @@ void app_main_task(void *arg) {
     pal_ssl_init();
     pal_dns_init();
 
-    pal_cli_register(&(pal_cli_info) {
-        .cmd = "log",
-        .help = "Show or set enabled log type.",
-        .hint = "[none|default|info|debug]",
-        .func = app_log_cmd,
-    }, NULL);
+    app_register_log_cmd();
 
     // Initialize application.
     app_init(APP_SPIFFS_DIR_PATH, CONFIG_LUA_APP_ENTRY);

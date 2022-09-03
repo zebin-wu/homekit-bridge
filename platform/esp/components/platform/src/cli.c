@@ -22,18 +22,22 @@ struct pal_cli_cmd {
 };
 
 struct pal_cli_run_ctx {
-    QueueHandle_t ret_que;
     struct pal_cli_cmd *cmd;
     int argc;
     char **argv;
 };
 
+static esp_console_repl_t *grepl;
 static bool ginited;
+static QueueHandle_t gretq;
 static SLIST_HEAD(, pal_cli_cmd) glist_head;
 
 void pal_cli_init() {
     HAPPrecondition(ginited == false);
+    HAPPrecondition(grepl == NULL);
 
+    gretq = xQueueCreate(1, sizeof(int));
+    HAPPrecondition(gretq);
     SLIST_INIT(&glist_head);
     ginited = true;
 }
@@ -47,6 +51,7 @@ void pal_cli_deinit() {
         pal_mem_free(cur);
     }
     SLIST_INIT(&glist_head);
+    vQueueDelete(gretq);
     ginited = false;
 }
 
@@ -56,28 +61,20 @@ static void pal_cli_run_cb(void *context, size_t contextSize) {
 
     struct pal_cli_run_ctx *ctx = context;
     int ret = ctx->cmd->func(ctx->argc, ctx->argv, ctx->cmd->ctx);
-    xQueueSend(ctx->ret_que, &ret, portMAX_DELAY);
+    xQueueSend(gretq, &ret, portMAX_DELAY);
 }
 
 static int pal_cli_run(struct pal_cli_cmd *cmd, int argc, char **argv) {
-    QueueHandle_t ret_que = xQueueCreate(1, sizeof(int));
-    if (ret_que == NULL) {
-        return -1;
-    }
-
     struct pal_cli_run_ctx ctx = {
-        .ret_que = ret_que,
         .cmd = cmd,
         .argc = argc,
         .argv = argv,
     };
     if (HAPPlatformRunLoopScheduleCallback(pal_cli_run_cb, &ctx, sizeof(ctx)) != kHAPError_None) {
-        vQueueDelete(ret_que);
         return -1;
     }
     int ret = -1;
-    xQueueReceive(ret_que, &ret, portMAX_DELAY);
-    vQueueDelete(ret_que);
+    xQueueReceive(gretq, &ret, portMAX_DELAY);
     return ret;
 }
 
@@ -101,10 +98,12 @@ pal_err pal_cli_register(const pal_cli_info *info, void *ctx) {
     HAPPrecondition(info);
     HAPPrecondition(info->cmd);
     HAPPrecondition(info->func);
+
     esp_err_t err = esp_console_cmd_register(&(esp_console_cmd_t) {
         .command = info->cmd,
         .help = info->help,
         .hint = info->hint,
+        .argtable = info->argtable,
         .func = pal_cli_cmd_func,
     });
     switch (err) {

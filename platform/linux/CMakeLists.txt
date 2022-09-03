@@ -18,6 +18,7 @@ include(${TOP_DIR}/cmake/adk.cmake)
 include(${TOP_DIR}/cmake/bridge.cmake)
 include(${TOP_DIR}/cmake/lua.cmake)
 include(${TOP_DIR}/cmake/lua-cjson.cmake)
+include(${TOP_DIR}/cmake/argtable3.cmake)
 include(${TOP_DIR}/cmake/platform.cmake)
 include(${TOP_DIR}/cmake/extension.cmake)
 
@@ -76,6 +77,7 @@ target_sources(${PROJECT}
         ${BRIDGE_SRCS}
         ${LUA_SRCS}
         ${LUA_CJSON_SRCS}
+        ${ARGTABLE3_SRCS}
 )
 
 # check code style
@@ -94,6 +96,7 @@ target_include_directories(${PROJECT}
         ${ADK_PAL_LINUX_DIR}
         ${BRIDGE_INC_DIR}
         ${LUA_INC_DIR}
+        ${ARGTABLE3_INC_DIR}
         ${PLATFORM_LINUX_INC_DIRS}
 )
 
