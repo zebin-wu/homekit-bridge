@@ -13,3 +13,7 @@ set(ARGTABLE3_SRC_DIR ${ARGTABLE3_DIR})
 set(ARGTABLE3_SRCS
     ${ARGTABLE3_SRC_DIR}/argtable3.c
 )
+
+if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+set_source_files_properties(${ARGTABLE3_SRCS} PROPERTIES COMPILE_FLAGS -Wno-clobbered)
+endif()
