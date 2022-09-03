@@ -13,7 +13,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
-#include <pal/memory.h>
+#include <pal/mem.h>
 #include <pal/nvs.h>
 
 #include <HAPPlatform.h>

@@ -7,7 +7,7 @@
 #include <esp_event.h>
 #include <lwip/dns.h>
 #include <pal/net/dns.h>
-#include <pal/memory.h>
+#include <pal/mem.h>
 #include <HAPPlatform.h>
 
 #if LWIP_DNS != 1

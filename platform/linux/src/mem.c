@@ -5,21 +5,20 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <stdlib.h>
-#include <esp_attr.h>
-#include <pal/memory.h>
+#include <pal/mem.h>
 
-IRAM_ATTR void *pal_mem_alloc(size_t size) {
+void *pal_mem_alloc(size_t size) {
     return malloc(size);
 }
 
-IRAM_ATTR void *pal_mem_calloc(size_t nmemb, size_t size) {
+void *pal_mem_calloc(size_t nmemb, size_t size) {
     return calloc(nmemb, size);
 }
 
-IRAM_ATTR void *pal_mem_realloc(void *ptr, size_t size) {
+void *pal_mem_realloc(void *ptr, size_t size) {
     return realloc(ptr, size);
 }
 
-IRAM_ATTR void pal_mem_free(void *p) {
+void pal_mem_free(void *p) {
     free(p);
 }

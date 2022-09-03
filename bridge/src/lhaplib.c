@@ -7,7 +7,7 @@
 #include <lualib.h>
 #include <lauxlib.h>
 #include <pal/hap.h>
-#include <pal/memory.h>
+#include <pal/mem.h>
 #include <pal/nvs.h>
 #include <HAP.h>
 #include <HAPCharacteristic.h>

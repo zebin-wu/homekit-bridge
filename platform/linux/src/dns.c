@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include <sys/queue.h>
 #include <pal/net/dns.h>
-#include <pal/memory.h>
+#include <pal/mem.h>
 #include <HAPPlatform.h>
 
 typedef struct pal_dns_req_ctx {

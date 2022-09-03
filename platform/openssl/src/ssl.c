@@ -6,7 +6,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#include <pal/memory.h>
+#include <pal/mem.h>
 #include <pal/crypto/ssl.h>
 #include <HAPPlatform.h>
 

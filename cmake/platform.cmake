@@ -28,7 +28,7 @@ set(PLATFORM_ESP_SRC_DIR ${PLATFORM_ESP_DIR}/src)
 # collect platform headers
 set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/chip.h
-    ${PLATFORM_INC_DIR}/pal/memory.h
+    ${PLATFORM_INC_DIR}/pal/mem.h
     ${PLATFORM_INC_DIR}/pal/hap.h
     ${PLATFORM_INC_DIR}/pal/crypto/cipher.h
     ${PLATFORM_INC_DIR}/pal/crypto/md.h
@@ -57,7 +57,7 @@ set(PLATFORM_LINUX_SRCS
     ${PLATFORM_OPENSSL_SRC_DIR}/ssl.c
     ${PLATFORM_LINUX_SRC_DIR}/hap.c
     ${PLATFORM_LINUX_SRC_DIR}/chip.c
-    ${PLATFORM_LINUX_SRC_DIR}/memory.c
+    ${PLATFORM_LINUX_SRC_DIR}/mem.c
     ${PLATFORM_LINUX_SRC_DIR}/main.c
     ${PLATFORM_LINUX_SRC_DIR}/dns.c
     ${PLATFORM_LINUX_SRC_DIR}/cli.c
@@ -81,7 +81,7 @@ set(PLATFORM_ESP_SRCS
     ${PLATFORM_ESP_SRC_DIR}/hap.c
     ${PLATFORM_ESP_SRC_DIR}/ssl.c
     ${PLATFORM_ESP_SRC_DIR}/chip.c
-    ${PLATFORM_ESP_SRC_DIR}/memory.c
+    ${PLATFORM_ESP_SRC_DIR}/mem.c
     ${PLATFORM_ESP_SRC_DIR}/dns.c
     ${PLATFORM_ESP_SRC_DIR}/nvs.cpp
     ${PLATFORM_ESP_SRC_DIR}/cli.c

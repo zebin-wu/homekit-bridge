@@ -13,7 +13,7 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <pal/net/socket.h>
-#include <pal/memory.h>
+#include <pal/mem.h>
 
 #include <HAPLog.h>
 #include <HAPPlatform.h>

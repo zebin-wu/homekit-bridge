@@ -10,7 +10,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <pal/cli.h>
-#include <pal/memory.h>
+#include <pal/mem.h>
 #include <HAPBase.h>
 #include <HAPPlatformRunLoop.h>
 
