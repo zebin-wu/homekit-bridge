@@ -17,9 +17,9 @@ extern "C" {
  * Address family.
  */
 HAP_ENUM_BEGIN(uint8_t, pal_addr_family) {
-    PAL_ADDR_FAMILY_UNSPEC,     /**< Unspecific. */
-    PAL_ADDR_FAMILY_IPV4,       /**< IPv4. */
-    PAL_ADDR_FAMILY_IPV6,       /**< IPv6. */
+    PAL_ADDR_FAMILY_UNSPEC,      /**< Unspecific. */
+    PAL_ADDR_FAMILY_INET,        /**< IPv4. */
+    PAL_ADDR_FAMILY_INET6,       /**< IPv6. */
 } HAP_ENUM_END(uint8_t, pal_addr_family);
 
 #ifdef __cplusplus

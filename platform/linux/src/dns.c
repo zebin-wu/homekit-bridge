@@ -33,8 +33,8 @@ static const HAPLogObject dns_log_obj = {
 
 static const int pal_dns_af_mapping[] = {
     [PAL_ADDR_FAMILY_UNSPEC] = AF_UNSPEC,
-    [PAL_ADDR_FAMILY_IPV4] = AF_INET,
-    [PAL_ADDR_FAMILY_IPV6] = AF_INET6
+    [PAL_ADDR_FAMILY_INET] = AF_INET,
+    [PAL_ADDR_FAMILY_INET6] = AF_INET6
 };
 
 static bool ginited;
@@ -77,12 +77,12 @@ static void pal_dns_req_ctx_schedule(void* _Nullable context, size_t contextSize
     case AF_INET: {
         struct sockaddr_in *in = (struct sockaddr_in *)result->ai_addr;
         addr = inet_ntop(AF_INET, &in->sin_addr, buf, sizeof(buf));
-        af = PAL_ADDR_FAMILY_IPV4;
+        af = PAL_ADDR_FAMILY_INET;
     } break;
     case AF_INET6: {
         struct sockaddr_in6 *in6 = (struct sockaddr_in6 *)result->ai_addr;
         addr = inet_ntop(AF_INET6, &in6->sin6_addr, buf, sizeof(buf));
-        af = PAL_ADDR_FAMILY_IPV6;
+        af = PAL_ADDR_FAMILY_INET6;
     } break;
     }
 
@@ -124,7 +124,7 @@ pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
     pal_dns_response_cb response_cb, void *arg) {
     HAPPrecondition(ginited);
     HAPPrecondition(hostname);
-    HAPPrecondition(af >= PAL_ADDR_FAMILY_UNSPEC && af <= PAL_ADDR_FAMILY_IPV6);
+    HAPPrecondition(af >= PAL_ADDR_FAMILY_UNSPEC && af <= PAL_ADDR_FAMILY_INET6);
     HAPPrecondition(response_cb);
 
     size_t namelen = strlen(hostname);

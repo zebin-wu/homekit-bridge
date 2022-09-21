@@ -36,8 +36,8 @@ static const HAPLogObject dns_log_obj = {
 
 static const int pal_dns_af_mapping[] = {
     [PAL_ADDR_FAMILY_UNSPEC] = LWIP_DNS_ADDRTYPE_DEFAULT,
-    [PAL_ADDR_FAMILY_IPV4] = LWIP_DNS_ADDRTYPE_IPV4,
-    [PAL_ADDR_FAMILY_IPV6] = LWIP_DNS_ADDRTYPE_IPV6
+    [PAL_ADDR_FAMILY_INET] = LWIP_DNS_ADDRTYPE_IPV4,
+    [PAL_ADDR_FAMILY_INET6] = LWIP_DNS_ADDRTYPE_IPV6
 };
 
 static void pal_dns_response(void* _Nullable context, size_t contextSize) {
@@ -60,10 +60,10 @@ static void pal_dns_response(void* _Nullable context, size_t contextSize) {
 
     switch (IP_GET_TYPE(&ctx->addr)) {
     case IPADDR_TYPE_V4:
-        af = PAL_ADDR_FAMILY_IPV4;
+        af = PAL_ADDR_FAMILY_INET;
         break;
     case IPADDR_TYPE_V6:
-        af = PAL_ADDR_FAMILY_IPV6;
+        af = PAL_ADDR_FAMILY_INET6;
         break;
     }
 
@@ -108,7 +108,7 @@ void pal_dns_deinit() {
 pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
     pal_dns_response_cb response_cb, void *arg) {
     HAPPrecondition(hostname);
-    HAPPrecondition(af <= PAL_ADDR_FAMILY_IPV6);
+    HAPPrecondition(af <= PAL_ADDR_FAMILY_INET6);
     HAPPrecondition(response_cb);
 
     pal_dns_req_ctx *ctx = pal_mem_calloc(1, sizeof(*ctx));
