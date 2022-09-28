@@ -7,7 +7,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <pal/mem.h>
-#include <pal/crypto/ssl.h>
+#include <pal/ssl.h>
 #include <HAPPlatform.h>
 
 #define LOG_OPENSSL_ERROR(msg) \

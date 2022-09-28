@@ -15,9 +15,9 @@
 #include <stdlib.h>
 
 #include <app.h>
-#include <pal/crypto/ssl.h>
-#include <pal/crypto/ssl_int.h>
-#include <pal/net/dns.h>
+#include <pal/ssl.h>
+#include <pal/ssl_int.h>
+#include <pal/dns.h>
 #include <pal/nvs_int.h>
 
 #include <HAPPlatformRunLoop+Init.h>

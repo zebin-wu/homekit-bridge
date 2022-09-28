@@ -6,7 +6,7 @@
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
-#include <pal/crypto/md.h>
+#include <pal/md.h>
 #include <HAPBase.h>
 
 typedef struct pal_md_ctx_int {

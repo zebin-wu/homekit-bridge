@@ -30,15 +30,15 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/chip.h
     ${PLATFORM_INC_DIR}/pal/mem.h
     ${PLATFORM_INC_DIR}/pal/hap.h
-    ${PLATFORM_INC_DIR}/pal/crypto/cipher.h
-    ${PLATFORM_INC_DIR}/pal/crypto/md.h
-    ${PLATFORM_INC_DIR}/pal/crypto/ssl.h
-    ${PLATFORM_INC_DIR}/pal/net/socket.h
-    ${PLATFORM_INC_DIR}/pal/net/addr.h
-    ${PLATFORM_INC_DIR}/pal/net/dns.h
+    ${PLATFORM_INC_DIR}/pal/cipher.h
+    ${PLATFORM_INC_DIR}/pal/md.h
+    ${PLATFORM_INC_DIR}/pal/ssl.h
+    ${PLATFORM_INC_DIR}/pal/socket.h
+    ${PLATFORM_INC_DIR}/pal/dns.h
     ${PLATFORM_INC_DIR}/pal/nvs.h
     ${PLATFORM_INC_DIR}/pal/err.h
     ${PLATFORM_INC_DIR}/pal/cli.h
+    ${PLATFORM_INC_DIR}/pal/net.h
 )
 
 # collect platform Linux include directories

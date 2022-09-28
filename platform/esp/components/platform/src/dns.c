@@ -6,7 +6,7 @@
 
 #include <esp_event.h>
 #include <lwip/dns.h>
-#include <pal/net/dns.h>
+#include <pal/dns.h>
 #include <pal/mem.h>
 #include <HAPPlatform.h>
 
@@ -35,9 +35,9 @@ static const HAPLogObject dns_log_obj = {
 };
 
 static const int pal_dns_af_mapping[] = {
-    [PAL_ADDR_FAMILY_UNSPEC] = LWIP_DNS_ADDRTYPE_DEFAULT,
-    [PAL_ADDR_FAMILY_INET] = LWIP_DNS_ADDRTYPE_IPV4,
-    [PAL_ADDR_FAMILY_INET6] = LWIP_DNS_ADDRTYPE_IPV6
+    [PAL_NET_ADDR_FAMILY_UNSPEC] = LWIP_DNS_ADDRTYPE_DEFAULT,
+    [PAL_NET_ADDR_FAMILY_INET] = LWIP_DNS_ADDRTYPE_IPV4,
+    [PAL_NET_ADDR_FAMILY_INET6] = LWIP_DNS_ADDRTYPE_IPV6
 };
 
 static void pal_dns_response(void* _Nullable context, size_t contextSize) {
@@ -52,7 +52,7 @@ static void pal_dns_response(void* _Nullable context, size_t contextSize) {
     void *arg = ctx->arg;
     const char *addr = NULL;
     const char *err = NULL;
-    pal_addr_family af = PAL_ADDR_FAMILY_UNSPEC;
+    pal_net_addr_family af = PAL_NET_ADDR_FAMILY_UNSPEC;
     if (!ctx->found) {
         err = "hostname not found";
         goto done;
@@ -60,10 +60,10 @@ static void pal_dns_response(void* _Nullable context, size_t contextSize) {
 
     switch (IP_GET_TYPE(&ctx->addr)) {
     case IPADDR_TYPE_V4:
-        af = PAL_ADDR_FAMILY_INET;
+        af = PAL_NET_ADDR_FAMILY_INET;
         break;
     case IPADDR_TYPE_V6:
-        af = PAL_ADDR_FAMILY_INET6;
+        af = PAL_NET_ADDR_FAMILY_INET6;
         break;
     }
 
@@ -105,10 +105,10 @@ void pal_dns_deinit() {
     ESP_ERROR_CHECK(esp_event_handler_unregister(PAL_DNS_EVENTS, ESP_EVENT_ANY_ID, pal_dns_event_handler));
 }
 
-pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
+pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_net_addr_family af,
     pal_dns_response_cb response_cb, void *arg) {
     HAPPrecondition(hostname);
-    HAPPrecondition(af <= PAL_ADDR_FAMILY_INET6);
+    HAPPrecondition(af <= PAL_NET_ADDR_FAMILY_INET6);
     HAPPrecondition(response_cb);
 
     pal_dns_req_ctx *ctx = pal_mem_calloc(1, sizeof(*ctx));

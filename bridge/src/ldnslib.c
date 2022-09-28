@@ -5,7 +5,7 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <lauxlib.h>
-#include <pal/net/dns.h>
+#include <pal/dns.h>
 
 #include "app_int.h"
 #include "lc.h"
@@ -32,7 +32,7 @@ static int ldns_response(lua_State *L) {
     lua_State *co = lua_touserdata(L, 1);
     const char *err = lua_touserdata(L, 2);
     const char *addr = lua_touserdata(L, 3);
-    pal_addr_family af = lua_tointeger(L, 4);
+    pal_net_addr_family af = lua_tointeger(L, 4);
     lua_pop(L, 4);
 
     int narg = 0;
@@ -54,7 +54,7 @@ static int ldns_response(lua_State *L) {
     return 0;
 }
 
-void ldns_response_cb(const char *err, const char *addr, pal_addr_family af, void *arg) {
+void ldns_response_cb(const char *err, const char *addr, pal_net_addr_family af, void *arg) {
     ldns_resolve_context *ctx = arg;
     lua_State *co = ctx->co;
     lua_State *L = lc_getmainthread(co);
@@ -84,7 +84,7 @@ static void ldns_timeout_timer_cb(HAPPlatformTimerRef timer, void *context) {
     ldns_resolve_context *ctx = context;
     ctx->timer = 0;
     pal_dns_cancel_request(ctx->req);
-    ldns_response_cb("resolve timeout", NULL, PAL_ADDR_FAMILY_UNSPEC, ctx);
+    ldns_response_cb("resolve timeout", NULL, PAL_NET_ADDR_FAMILY_UNSPEC, ctx);
 }
 
 static int finishresolve(lua_State *L, int status, lua_KContext extra) {
@@ -99,7 +99,7 @@ static int ldns_resolve(lua_State *L) {
     const char *hostname = luaL_checkstring(L, 1);
     lua_Integer timeout = luaL_checkinteger(L, 2);
     luaL_argcheck(L, timeout > 0, 2, "timeout out of range");
-    pal_addr_family af = luaL_checkoption(L, 3, "", ldns_family_strs);
+    pal_net_addr_family af = luaL_checkoption(L, 3, "", ldns_family_strs);
 
     ldns_resolve_context *ctx = lua_newuserdata(L, sizeof(*ctx));
     if (luai_unlikely(HAPPlatformTimerRegister(&ctx->timer,

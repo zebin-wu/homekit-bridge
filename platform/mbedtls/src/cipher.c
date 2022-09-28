@@ -6,7 +6,7 @@
 
 #include <mbedtls/cipher.h>
 #include <mbedtls/error.h>
-#include <pal/crypto/cipher.h>
+#include <pal/cipher.h>
 #include <HAPPlatform.h>
 
 #define MBEDTLS_PRINT_ERROR(func, err) \

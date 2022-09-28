@@ -5,7 +5,7 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <mbedtls/md.h>
-#include <pal/crypto/md.h>
+#include <pal/md.h>
 #include <HAPBase.h>
 
 typedef struct pal_md_ctx_int {

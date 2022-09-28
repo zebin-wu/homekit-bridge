@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/select.h>
-#include <pal/net/socket.h>
+#include <pal/socket.h>
 #include <pal/mem.h>
 
 #include <HAPLog.h>
@@ -71,7 +71,7 @@ typedef struct pal_socket_obj_int {
     pal_socket_state state;
 
     pal_socket_type type;
-    pal_addr_family af;
+    pal_net_addr_family af;
     uint16_t id;
     int fd;
     uint32_t timeout;
@@ -111,9 +111,9 @@ static const HAPLogObject socket_log_obj = {
 static uint16_t gsocket_count;
 
 static bool
-pal_socket_addr_set(pal_socket_addr *addr, pal_addr_family af, const char *str_addr, uint16_t port) {
+pal_socket_addr_set(pal_socket_addr *addr, pal_net_addr_family af, const char *str_addr, uint16_t port) {
     switch (af) {
-    case PAL_ADDR_FAMILY_INET: {
+    case PAL_NET_ADDR_FAMILY_INET: {
         struct sockaddr_in *sa = &addr->in;
         sa->sin_family = AF_INET;
         int ret = inet_pton(AF_INET, str_addr, &sa->sin_addr);
@@ -123,7 +123,7 @@ pal_socket_addr_set(pal_socket_addr *addr, pal_addr_family af, const char *str_a
         sa->sin_port = htons(port);
         break;
     }
-    case PAL_ADDR_FAMILY_INET6: {
+    case PAL_NET_ADDR_FAMILY_INET6: {
         struct sockaddr_in6 *sa = &addr->in6;
         sa->sin6_family = AF_INET6;
         int ret = inet_pton(AF_INET6, str_addr, &sa->sin6_addr);
@@ -675,7 +675,7 @@ static void pal_socket_udp_handle_event_cb(
     }
 }
 
-bool pal_socket_obj_init(pal_socket_obj *_o, pal_socket_type type, pal_addr_family af) {
+bool pal_socket_obj_init(pal_socket_obj *_o, pal_socket_type type, pal_net_addr_family af) {
     HAPPrecondition(_o);
 
     pal_socket_obj_int *o = (pal_socket_obj_int *)_o;
@@ -684,10 +684,10 @@ bool pal_socket_obj_init(pal_socket_obj *_o, pal_socket_type type, pal_addr_fami
     memset(o, 0, sizeof(*o));
 
     switch (af) {
-    case PAL_ADDR_FAMILY_INET:
+    case PAL_NET_ADDR_FAMILY_INET:
         _af = AF_INET;
         break;
-    case PAL_ADDR_FAMILY_INET6:
+    case PAL_NET_ADDR_FAMILY_INET6:
         _af = AF_INET6;
         break;
     default:

@@ -33,9 +33,9 @@
 #include <app.h>
 #include <pal/cli.h>
 #include <pal/cli_int.h>
-#include <pal/crypto/ssl.h>
-#include <pal/crypto/ssl_int.h>
-#include <pal/net/dns.h>
+#include <pal/ssl.h>
+#include <pal/ssl_int.h>
+#include <pal/dns.h>
 
 #include <HAPPlatformRunLoop+Init.h>
 #include <HAPPlatformLog+Init.h>

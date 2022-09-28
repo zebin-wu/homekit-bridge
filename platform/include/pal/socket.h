@@ -4,8 +4,8 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_NET_SOCKET_H_
-#define PLATFORM_INCLUDE_PAL_NET_SOCKET_H_
+#ifndef PLATFORM_INCLUDE_PAL_SOCKET_H_
+#define PLATFORM_INCLUDE_PAL_SOCKET_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,7 +15,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <pal/err.h>
-#include <pal/net/addr.h>
+#include <pal/net.h>
 #include <pal/types.h>
 
 /**
@@ -87,7 +87,7 @@ typedef struct {
  * @return true on success.
  * @return false on failure.
  */
-bool pal_socket_obj_init(pal_socket_obj *o, pal_socket_type type, pal_addr_family af);
+bool pal_socket_obj_init(pal_socket_obj *o, pal_socket_type type, pal_net_addr_family af);
 
 /**
  * Releases resources associated with a initialized socket object.
@@ -357,4 +357,4 @@ pal_err pal_socket_raw_recv(pal_socket_obj *o, void *buf, size_t *len);
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_NET_SOCKET_H_
+#endif  // PLATFORM_INCLUDE_PAL_SOCKET_H_

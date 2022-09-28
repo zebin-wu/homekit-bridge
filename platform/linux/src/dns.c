@@ -10,7 +10,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/queue.h>
-#include <pal/net/dns.h>
+#include <pal/dns.h>
 #include <pal/mem.h>
 #include <HAPPlatform.h>
 
@@ -32,9 +32,9 @@ static const HAPLogObject dns_log_obj = {
 };
 
 static const int pal_dns_af_mapping[] = {
-    [PAL_ADDR_FAMILY_UNSPEC] = AF_UNSPEC,
-    [PAL_ADDR_FAMILY_INET] = AF_INET,
-    [PAL_ADDR_FAMILY_INET6] = AF_INET6
+    [PAL_NET_ADDR_FAMILY_UNSPEC] = AF_UNSPEC,
+    [PAL_NET_ADDR_FAMILY_INET] = AF_INET,
+    [PAL_NET_ADDR_FAMILY_INET6] = AF_INET6
 };
 
 static bool ginited;
@@ -64,7 +64,7 @@ static void pal_dns_req_ctx_schedule(void* _Nullable context, size_t contextSize
     void *arg = ctx->arg;
     const char *addr = NULL;
     const char *err = NULL;
-    pal_addr_family af = PAL_ADDR_FAMILY_UNSPEC;
+    pal_net_addr_family af = PAL_NET_ADDR_FAMILY_UNSPEC;
 
     if (ctx->ret) {
         err = gai_strerror(ctx->ret);
@@ -77,12 +77,12 @@ static void pal_dns_req_ctx_schedule(void* _Nullable context, size_t contextSize
     case AF_INET: {
         struct sockaddr_in *in = (struct sockaddr_in *)result->ai_addr;
         addr = inet_ntop(AF_INET, &in->sin_addr, buf, sizeof(buf));
-        af = PAL_ADDR_FAMILY_INET;
+        af = PAL_NET_ADDR_FAMILY_INET;
     } break;
     case AF_INET6: {
         struct sockaddr_in6 *in6 = (struct sockaddr_in6 *)result->ai_addr;
         addr = inet_ntop(AF_INET6, &in6->sin6_addr, buf, sizeof(buf));
-        af = PAL_ADDR_FAMILY_INET6;
+        af = PAL_NET_ADDR_FAMILY_INET6;
     } break;
     }
 
@@ -120,11 +120,11 @@ static void *pal_dns_resolve(void *arg) {
     return NULL;
 }
 
-pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
+pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_net_addr_family af,
     pal_dns_response_cb response_cb, void *arg) {
     HAPPrecondition(ginited);
     HAPPrecondition(hostname);
-    HAPPrecondition(af >= PAL_ADDR_FAMILY_UNSPEC && af <= PAL_ADDR_FAMILY_INET6);
+    HAPPrecondition(af >= PAL_NET_ADDR_FAMILY_UNSPEC && af <= PAL_NET_ADDR_FAMILY_INET6);
     HAPPrecondition(response_cb);
 
     size_t namelen = strlen(hostname);

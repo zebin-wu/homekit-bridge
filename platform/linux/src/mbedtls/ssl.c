@@ -6,7 +6,7 @@
 
 #include <stdbool.h>
 #include <mbedtls/x509.h>
-#include <pal/crypto/ssl_int.h>
+#include <pal/ssl_int.h>
 #include <HAPPlatform.h>
 
 static mbedtls_x509_crt default_ca_chain;

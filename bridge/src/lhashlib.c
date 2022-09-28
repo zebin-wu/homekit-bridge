@@ -5,7 +5,7 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <lauxlib.h>
-#include <pal/crypto/md.h>
+#include <pal/md.h>
 
 #define LUA_HASH_OBJ_NAME "HashObject*"
 
