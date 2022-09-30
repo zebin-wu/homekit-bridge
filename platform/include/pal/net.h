@@ -12,33 +12,55 @@ extern "C" {
 #endif
 
 #include <pal/err.h>
-#include <HAPBase.h>
+#include <pal/types.h>
 
 /**
  * Address family.
  */
 HAP_ENUM_BEGIN(uint8_t, pal_net_addr_family) {
-    PAL_NET_ADDR_FAMILY_UNSPEC,      /**< Unspecific. */
-    PAL_NET_ADDR_FAMILY_INET,        /**< IPv4. */
-    PAL_NET_ADDR_FAMILY_INET6,       /**< IPv6. */
+    PAL_NET_ADDR_FAMILY_UNSPEC,     /**< Unspecific. */
+    PAL_NET_ADDR_FAMILY_INET,       /**< IPv4. */
+    PAL_NET_ADDR_FAMILY_INET6,      /**< IPv6. */
 } HAP_ENUM_END(uint8_t, pal_net_addr_family);
 
-typedef enum pal_net_if_event {
+HAP_ENUM_BEGIN(uint8_t, pal_net_if_event) {
     PAL_NET_IF_EVENT_ADD,
     PAL_NET_IF_EVENT_DEL,
     PAL_NET_IF_EVENT_UP,
     PAL_NET_IF_EVENT_DOWN,
     PAL_NET_IF_EVENT_GOT_ADDR,
     PAL_NET_IF_EVENT_LOST_ADDR,
-} pal_net_if_event;
+} HAP_ENUM_END(uint8_t, pal_net_if_event);
 
-typedef struct pal_net_addr pal_net_addr;
+/**
+ * Initialize a network address.
+ *
+ * @param addr The network address to initialize.
+ * @param af Address family, must be either PAL_NET_ADDR_FAMILY_INET or PAL_NET_ADDR_FAMILY_INET6.
+ * @param s The string of the address.
+ *
+ * @return PAL_ERR_OK on success.
+ * @return PAL_ERR_INVALID_ARG means the string is invalid.
+ */
+pal_err pal_net_addr_init(pal_net_addr *addr, pal_net_addr_family af, const char *s);
 
-typedef struct pal_net_if pal_net_if;
-
+/**
+ * Get the address family of the network address.
+ *
+ * @param addr The pointer to the network address.
+ * @return address family.
+ */
 pal_net_addr_family pal_net_addr_family_get(pal_net_addr *addr);
 
-pal_err pal_net_addr_string_get(pal_net_addr *addr, char *buf, size_t buflen);
+/**
+ * Get the string of the network address.
+ *
+ * @param addr The pointer to the network address.
+ * @param buf A buffer to hold the string.
+ * @param buflen Length of @p buf.
+ * @return the string of the network address.
+ */
+const char *pal_net_addr_string_get(pal_net_addr *addr, char *buf, size_t buflen);
 
 pal_net_if *pal_net_if_get(const char *name);
 

@@ -141,7 +141,7 @@ pal_socket_addr_set(pal_socket_addr *addr, pal_net_addr_family af, const char *s
 }
 
 static inline size_t
-pal_socket_addr_set_len(pal_socket_addr *addr) {
+pal_socket_addr_get_len(pal_socket_addr *addr) {
     switch (((struct sockaddr *)addr)->sa_family) {
     case AF_INET:
         return sizeof(struct sockaddr_in);
@@ -312,7 +312,7 @@ static pal_err pal_socket_connect_async(pal_socket_obj_int *o) {
 
     do {
         ret = connect(o->fd, (struct sockaddr *)&o->remote_addr,
-            pal_socket_addr_set_len(&o->remote_addr));
+            pal_socket_addr_get_len(&o->remote_addr));
     } while (ret == -1 && errno == EINTR);
     if (ret == -1) {
         switch (errno) {
@@ -332,7 +332,7 @@ static pal_err pal_socket_connect_async(pal_socket_obj_int *o) {
 static pal_err
 pal_socket_raw_sendto(pal_socket_obj_int *o, const void *data, size_t *len, pal_socket_addr *addr) {
     ssize_t rc;
-    socklen_t addrlen = addr ? pal_socket_addr_set_len(addr) : 0;
+    socklen_t addrlen = addr ? pal_socket_addr_get_len(addr) : 0;
 
     do {
         rc = sendto(o->fd, data, *len, 0, (struct sockaddr *)addr, addrlen);
@@ -804,7 +804,7 @@ pal_err pal_socket_bind(pal_socket_obj *_o, const char *addr, uint16_t port) {
         return PAL_ERR_INVALID_ARG;
     }
 
-    ret = bind(o->fd, (struct sockaddr *)&sa, pal_socket_addr_set_len(&sa));
+    ret = bind(o->fd, (struct sockaddr *)&sa, pal_socket_addr_get_len(&sa));
     if (ret == -1) {
         SOCKET_LOG_ERRNO(o, "bind");
         return PAL_ERR_UNKNOWN;

@@ -81,6 +81,7 @@ typedef struct {
 /**
  * Initializes a socket object.
  *
+ * @param o The socket object to initialize.
  * @param type Specified communication type.
  * @param af Specified address family.
  *
