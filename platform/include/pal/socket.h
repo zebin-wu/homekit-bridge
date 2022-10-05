@@ -15,7 +15,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <pal/err.h>
-#include <pal/net.h>
+#include <pal/net_addr.h>
 #include <pal/types.h>
 
 /**

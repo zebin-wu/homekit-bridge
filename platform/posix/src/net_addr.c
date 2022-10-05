@@ -4,23 +4,9 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#include <pal/net.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-
-typedef struct pal_net_addr_int {
-    pal_net_addr_family af;     /**< Address family. */
-    union {
-        struct in_addr in;      /**< IPv4. */
-        struct in6_addr in6;    /**< IPv6. */
-    } data;
-} pal_net_addr_int;
-HAP_STATIC_ASSERT(sizeof(pal_net_addr) >= sizeof(pal_net_addr_int), pal_net_addr_int);
-
-typedef struct pal_net_if_int {
-    
-} pal_net_if_int;
-HAP_STATIC_ASSERT(sizeof(pal_net_if) >= sizeof(pal_net_if_int), pal_net_if_int);
+#include <pal/err.h>
+#include <pal/net_addr.h>
+#include <pal/net_addr_int.h>
 
 pal_err pal_net_addr_init(pal_net_addr *_addr, pal_net_addr_family af, const char *s) {
     HAPPrecondition(_addr);
@@ -41,13 +27,13 @@ pal_err pal_net_addr_init(pal_net_addr *_addr, pal_net_addr_family af, const cha
     }
 }
 
-pal_net_addr_family pal_net_addr_family_get(pal_net_addr *addr) {
+pal_net_addr_family pal_net_addr_get_family(pal_net_addr *addr) {
     HAPPrecondition(addr);
 
     return ((pal_net_addr_int *)addr)->af;
 }
 
-const char *pal_net_addr_string_get(pal_net_addr *_addr, char *buf, size_t buflen) {
+const char *pal_net_addr_get_string(pal_net_addr *_addr, char *buf, size_t buflen) {
     HAPPrecondition(_addr);
     HAPPrecondition(buf);
     HAPPrecondition(buflen > 0);

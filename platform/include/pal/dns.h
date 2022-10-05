@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
-#include <pal/net.h>
+#include <pal/net_addr.h>
 
 /**
  * DNS resolve request context.
