@@ -16,11 +16,11 @@ extern "C" {
 #include <pal/net_addr.h>
 
 typedef struct pal_net_addr_int {
-    pal_net_addr_family af;     /**< Address family. */
+    pal_net_addr_family family;     /**< Address family. */
     union {
         struct in_addr in;      /**< IPv4. */
         struct in6_addr in6;    /**< IPv6. */
-    } data;
+    } u;
 } pal_net_addr_int;
 HAP_STATIC_ASSERT(sizeof(pal_net_addr) >= sizeof(pal_net_addr_int), pal_net_addr_int);
 

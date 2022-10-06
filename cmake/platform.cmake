@@ -38,7 +38,7 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/nvs.h
     ${PLATFORM_INC_DIR}/pal/err.h
     ${PLATFORM_INC_DIR}/pal/cli.h
-    ${PLATFORM_INC_DIR}/pal/net.h
+    ${PLATFORM_INC_DIR}/pal/net_addr.h
 )
 
 # collect platform Linux include directories
@@ -62,6 +62,7 @@ set(PLATFORM_LINUX_SRCS
     ${PLATFORM_LINUX_SRC_DIR}/dns.c
     ${PLATFORM_LINUX_SRC_DIR}/cli.c
     ${PLATFORM_POSIX_SRC_DIR}/nvs.c
+    ${PLATFORM_POSIX_SRC_DIR}/net_addr.c
     ${PLATFORM_COMMON_SRC_DIR}/err.c
 )
 

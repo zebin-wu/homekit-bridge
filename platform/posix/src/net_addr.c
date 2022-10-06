@@ -8,14 +8,15 @@
 #include <pal/net_addr.h>
 #include <pal/net_addr_int.h>
 
-pal_err pal_net_addr_init(pal_net_addr *_addr, pal_net_addr_family af, const char *s) {
+pal_err pal_net_addr_init(pal_net_addr *_addr, pal_net_addr_family family, const char *s) {
     HAPPrecondition(_addr);
-    HAPPrecondition(af == PAL_NET_ADDR_FAMILY_INET || af == PAL_NET_ADDR_FAMILY_INET6);
+    HAPPrecondition(family == PAL_NET_ADDR_FAMILY_INET || family == PAL_NET_ADDR_FAMILY_INET6);
     HAPPrecondition(s);
 
     pal_net_addr_int *addr = (pal_net_addr_int *)_addr;
 
-    int ret = inet_pton(af == PAL_NET_ADDR_FAMILY_INET ? AF_INET : AF_INET6, s, &addr->data);
+    addr->family = family;
+    int ret = inet_pton(family == PAL_NET_ADDR_FAMILY_INET ? AF_INET : AF_INET6, s, &addr->u);
     switch (ret) {
     case 1:
         return PAL_ERR_OK;
@@ -30,7 +31,7 @@ pal_err pal_net_addr_init(pal_net_addr *_addr, pal_net_addr_family af, const cha
 pal_net_addr_family pal_net_addr_get_family(pal_net_addr *addr) {
     HAPPrecondition(addr);
 
-    return ((pal_net_addr_int *)addr)->af;
+    return ((pal_net_addr_int *)addr)->family;
 }
 
 const char *pal_net_addr_get_string(pal_net_addr *_addr, char *buf, size_t buflen) {
@@ -40,11 +41,11 @@ const char *pal_net_addr_get_string(pal_net_addr *_addr, char *buf, size_t bufle
 
     pal_net_addr_int *addr = (pal_net_addr_int *)_addr;
 
-    switch (addr->af) {
+    switch (addr->family) {
     case PAL_NET_ADDR_FAMILY_INET:
-        return inet_ntop(AF_INET, &addr->data, buf, buflen);
+        return inet_ntop(AF_INET, &addr->u, buf, buflen);
     case PAL_NET_ADDR_FAMILY_INET6:
-        return inet_ntop(AF_INET6, &addr->data, buf, buflen);
+        return inet_ntop(AF_INET6, &addr->u, buf, buflen);
     default:
         HAPFatalError();
     }

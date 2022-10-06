@@ -5,12 +5,13 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #ifndef PLATFORM_INCLUDE_PAL_NET_ADDR_H_
-#define PLATFORM_INCLUDE_PAL_NET_H_
+#define PLATFORM_INCLUDE_PAL_NET_ADDR_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include <pal/err.h>
 #include <pal/types.h>
 
 /**
@@ -21,7 +22,6 @@ HAP_ENUM_BEGIN(uint8_t, pal_net_addr_family) {
     PAL_NET_ADDR_FAMILY_INET,       /**< IPv4. */
     PAL_NET_ADDR_FAMILY_INET6,      /**< IPv6. */
 } HAP_ENUM_END(uint8_t, pal_net_addr_family);
-
 
 /**
  * Initialize a network address.
