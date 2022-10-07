@@ -25,12 +25,24 @@ HAP_ENUM_BEGIN(uint8_t, pal_net_if_event) {
     PAL_NET_IF_EVENT_DOWN,
     PAL_NET_IF_EVENT_GOT_ADDR,
     PAL_NET_IF_EVENT_LOST_ADDR,
+
+    PAL_NET_IF_EVENT_COUNT,
 } HAP_ENUM_END(uint8_t, pal_net_if_event);
 
 /**
  * Opaque structure for network interface.
  */
 typedef struct pal_net_if pal_net_if;
+
+/**
+ * Initialize network interface module.
+ */
+void pal_net_if_init();
+
+/**
+ * De-initialize network interface module.
+ */
+void pal_net_if_deinit();
 
 pal_err pal_net_if_foreach(pal_err (*func)(pal_net_if *netif, void *arg), void *arg);
 
@@ -44,9 +56,8 @@ pal_err pal_net_if_get_ipv4_addr(pal_net_if *netif, pal_net_addr *addr);
 
 pal_err pal_net_if_get_ipv4_netmask(pal_net_if *netif, pal_net_addr *addr);
 
-pal_err pal_net_if_get_ipv6_addr(pal_net_if *netif, pal_net_addr *addrs[], size_t *naddrs);
-
-bool pal_net_if_is_up(pal_net_if *netif);
+pal_err pal_net_if_ipv6_addr_foreach(pal_net_if *netif,
+    pal_err (*func)(pal_net_if *netif, pal_net_addr *addr, void *arg), void *arg);
 
 typedef void (*pal_net_if_event_cb)(pal_net_if *netif, pal_net_if_event event, void *arg);
 
