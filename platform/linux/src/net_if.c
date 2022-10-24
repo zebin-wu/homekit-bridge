@@ -13,9 +13,13 @@
 #include <sys/queue.h>
 #include <net/if.h>
 #include <linux/rtnetlink.h>
+#include <HAPPlatformFileHandle.h>
 #include <pal/net_if.h>
 #include <pal/net_addr_int.h>
 #include <pal/mem.h>
+
+#define NET_IF_LOG_ERRNO(func) \
+    HAPLogError(&logObject, "%s: %s() failed: %s", __func__, #func, strerror(errno));
 
 struct event_cb_desc {
     pal_net_if_event event;
@@ -24,9 +28,16 @@ struct event_cb_desc {
     LIST_ENTRY(event_cb_desc) list_entry;
 };
 
-static int gfd;
-static LIST_HEAD(event_cb_desc_list_head, event_cb_desc)
-    gevent_cb_desc_list_heads[PAL_NET_IF_EVENT_COUNT];
+struct net_if_state {
+    int event_fd;
+    HAPPlatformFileHandleRef event_handle;
+    LIST_HEAD(, event_cb_desc) event_cb_desc_list_heads[PAL_NET_IF_EVENT_COUNT];
+};
+
+static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "netif" };
+
+static bool ginited;
+static struct net_if_state gstate;
 
 static ssize_t netlink_request(int fd, void *req, size_t reqlen) {
     struct sockaddr_nl nladdr;
@@ -45,7 +56,11 @@ static ssize_t netlink_request(int fd, void *req, size_t reqlen) {
     msg.msg_iov = &vec;
     msg.msg_iovlen = 1;
 
-    return sendmsg(fd, &msg, 0);
+    int ret = sendmsg(fd, &msg, 0);
+    if (ret < 0) {
+        NET_IF_LOG_ERRNO(sendmsg);
+    }
+    return ret;
 }
 
 static ssize_t netlink_response(int fd, void *resp, size_t resplen) {
@@ -70,22 +85,59 @@ static ssize_t netlink_response(int fd, void *resp, size_t resplen) {
     if (msg.msg_flags & MSG_TRUNC) {
         return -1;
     }
+    if (ret < 0) {
+        NET_IF_LOG_ERRNO(recvmsg);
+    }
     return ret;
 }
 
+static void pal_net_if_handle_event_cb(
+        HAPPlatformFileHandleRef fileHandle,
+        HAPPlatformFileHandleEvent fileHandleEvents,
+        void* _Nullable context) {
+    HAPPrecondition(fileHandle == gstate.event_handle);
+    HAPPrecondition(fileHandleEvents.isReadyForReading);
+}
+
 void pal_net_if_init() {
+    HAPPrecondition(ginited == false);
+
     for (size_t i = 0; i < PAL_NET_IF_EVENT_COUNT; i++) {
-        LIST_INIT(&gevent_cb_desc_list_heads[i]);
+        LIST_INIT(&gstate.event_cb_desc_list_heads[i]);
     }
 
-    gfd = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
-    if (gfd == -1) {
+    gstate.event_fd = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+    if (gstate.event_fd == -1) {
         HAPFatalError();
     }
+
+    struct sockaddr_nl sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.nl_family = AF_NETLINK;
+    sa.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE;
+    int ret = bind(gstate.event_fd, (struct sockaddr *)&sa, sizeof(sa));
+    if (ret == -1) {
+        HAPFatalError();
+    }
+
+    if (HAPPlatformFileHandleRegister(&gstate.event_handle, gstate.event_fd, (HAPPlatformFileHandleEvent) {
+        .hasErrorConditionPending = false,
+        .isReadyForReading = true,
+        .isReadyForWriting = false,
+    }, pal_net_if_handle_event_cb, NULL) != kHAPError_None) {
+        HAPFatalError();
+    }
+
+    ginited = true;
 }
 
 void pal_net_if_deinit() {
-    close(gfd);
+    HAPPrecondition(ginited);
+
+    HAPPlatformFileHandleDeregister(gstate.event_handle);
+    close(gstate.event_fd);
+
+    ginited = false;
 }
 
 pal_net_if *pal_net_if_find(const char *name) {
@@ -224,6 +276,7 @@ pal_err pal_net_if_ipv6_addr_foreach(
 
     int fd = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
     if (fd == -1) {
+        NET_IF_LOG_ERRNO(socket);
         return PAL_ERR_UNKNOWN;
     }
 
@@ -293,9 +346,7 @@ end:
 }
 
 void pal_net_if_register_event(pal_net_if *netif, pal_net_if_event event, pal_net_if_event_cb *event_cb) {
-
 }
 
 void pal_net_if_unregister_event(pal_net_if *netif, pal_net_if_event event, pal_net_if_event_cb *event_cb) {
-
 }
