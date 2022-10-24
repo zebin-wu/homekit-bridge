@@ -35,7 +35,7 @@
     "(%s:%u) " fmt, pal_socket_type_strs[(obj)->type], (obj)->id, ##arg)
 
 #define SOCKET_LOG_ERRNO(socket, func) \
-    SOCKET_LOG(Error, socket, "%s: %s() failed: %s.", __func__, func, strerror(errno))
+    SOCKET_LOG(Error, socket, "%s: %s() failed: %s.", __func__, #func, strerror(errno))
 
 #define PAL_SOCKET_OBJ_MAGIC 0x1515
 
@@ -224,7 +224,7 @@ static pal_socket_mbuf *pal_socket_mbuf_out(pal_socket_obj_int *o) {
 
 static bool pal_socket_set_nonblock(pal_socket_obj_int *o) {
     if (fcntl(o->fd, F_SETFL, fcntl(o->fd, F_GETFL, 0) | O_NONBLOCK) == -1) {
-        SOCKET_LOG_ERRNO(o, "fcntl");
+        SOCKET_LOG_ERRNO(o, fcntl);
         return false;
     }
     return true;
@@ -273,7 +273,7 @@ static pal_err pal_socket_accept_async(pal_socket_obj_int *o, pal_socket_obj_int
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return PAL_ERR_IN_PROGRESS;
         } else {
-            SOCKET_LOG_ERRNO(o, "accept");
+            SOCKET_LOG_ERRNO(o, accept);
             return PAL_ERR_UNKNOWN;
         }
     }
@@ -321,7 +321,7 @@ static pal_err pal_socket_connect_async(pal_socket_obj_int *o) {
         case EISCONN:
             return PAL_ERR_OK;
         default:
-            SOCKET_LOG_ERRNO(o, "connect");
+            SOCKET_LOG_ERRNO(o, connect);
             return PAL_ERR_UNKNOWN;
         }
     }
@@ -342,7 +342,7 @@ pal_socket_raw_sendto(pal_socket_obj_int *o, const void *data, size_t *len, pal_
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return PAL_ERR_AGAIN;
         } else {
-            SOCKET_LOG_ERRNO(o, "sendto");
+            SOCKET_LOG_ERRNO(o, sendto);
             return PAL_ERR_UNKNOWN;
         }
     }
@@ -376,7 +376,7 @@ pal_socket_raw_recvfrom(pal_socket_obj_int *o, void *buf, size_t *len, pal_socke
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return PAL_ERR_AGAIN;
         } else {
-            SOCKET_LOG_ERRNO(o, "recvfrom");
+            SOCKET_LOG_ERRNO(o, recvfrom);
             return PAL_ERR_UNKNOWN;
         }
     }
@@ -710,7 +710,7 @@ bool pal_socket_obj_init(pal_socket_obj *_o, pal_socket_type type, pal_net_addr_
 
     o->fd = socket(_af, _type, _protocol);
     if (o->fd == -1) {
-        SOCKET_LOG_ERRNO(o, "socket");
+        SOCKET_LOG_ERRNO(o, socket);
         goto err;
     }
 
@@ -782,7 +782,7 @@ pal_err pal_socket_enable_broadcast(pal_socket_obj *_o) {
     int optval = 1;
     int ret = setsockopt(o->fd, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
     if (ret != 0) {
-        SOCKET_LOG_ERRNO(o, "setsockopt");
+        SOCKET_LOG_ERRNO(o, setsockopt);
         return PAL_ERR_UNKNOWN;
     }
     return PAL_ERR_OK;
@@ -806,7 +806,7 @@ pal_err pal_socket_bind(pal_socket_obj *_o, const char *addr, uint16_t port) {
 
     ret = bind(o->fd, (struct sockaddr *)&sa, pal_socket_addr_get_len(&sa));
     if (ret == -1) {
-        SOCKET_LOG_ERRNO(o, "bind");
+        SOCKET_LOG_ERRNO(o, bind);
         return PAL_ERR_UNKNOWN;
     }
     SOCKET_LOG(Debug, o, "Bound to %s:%u", addr, port);
@@ -827,7 +827,7 @@ pal_err pal_socket_listen(pal_socket_obj *_o, int backlog) {
 
     int ret = listen(o->fd, backlog);
     if (ret == -1) {
-        SOCKET_LOG_ERRNO(o, "listen");
+        SOCKET_LOG_ERRNO(o, listen);
         return PAL_ERR_UNKNOWN;
     }
     o->state = PAL_SOCKET_ST_LISTENED;
