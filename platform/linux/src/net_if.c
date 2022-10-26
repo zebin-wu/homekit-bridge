@@ -18,6 +18,8 @@
 #include <pal/net_addr_int.h>
 #include <pal/mem.h>
 
+#define PAL_NET_IF_BUFLEN 512
+
 #define NET_IF_LOG_ERRNO(func) \
     HAPLogError(&logObject, "%s: %s() failed: %s", __func__, #func, strerror(errno));
 
@@ -91,12 +93,61 @@ static ssize_t netlink_response(int fd, void *resp, size_t resplen) {
     return ret;
 }
 
+static void pal_net_if_handle_link_event(struct nlmsghdr *hdr) {
+    HAPLogDebug(&logObject, "Got netif link event.");
+}
+
+static void pal_net_if_handle_addr_event(struct nlmsghdr *hdr) {
+    HAPLogDebug(&logObject, "Got netif address event.");
+}
+
+static void pal_net_if_handle_route_event(struct nlmsghdr *hdr) {
+    HAPLogDebug(&logObject, "Got netif route event.");
+}
+
 static void pal_net_if_handle_event_cb(
         HAPPlatformFileHandleRef fileHandle,
         HAPPlatformFileHandleEvent fileHandleEvents,
         void* _Nullable context) {
     HAPPrecondition(fileHandle == gstate.event_handle);
     HAPPrecondition(fileHandleEvents.isReadyForReading);
+
+    bool loop = true;
+    struct sockaddr_nl addr;
+    char buf[PAL_NET_IF_BUFLEN];
+
+    do {
+        socklen_t addrlen = sizeof(addr);
+        int len = recvfrom(gstate.event_fd, buf, sizeof(buf), 0, (struct sockaddr *)&addr, &addrlen);
+        if (len < 0) {
+            NET_IF_LOG_ERRNO(recvfrom);
+            break;
+        }
+
+        for (struct nlmsghdr *hdr = (struct nlmsghdr *)buf;
+            loop && NLMSG_OK(hdr, len); hdr = NLMSG_NEXT(hdr, len)) {
+            switch (hdr->nlmsg_type) {
+            case NLMSG_DONE:
+            case NLMSG_ERROR:
+                loop = false;
+                break;
+            case RTM_NEWLINK:
+            case RTM_DELLINK:
+                pal_net_if_handle_link_event(hdr);
+                break;
+            case RTM_NEWADDR:
+            case RTM_DELADDR:
+                pal_net_if_handle_addr_event(hdr);
+                break;
+            case RTM_NEWROUTE:
+            case RTM_DELROUTE:
+                pal_net_if_handle_route_event(hdr);
+                break;
+            default:
+                break;
+            }
+        }
+    } while (loop);
 }
 
 void pal_net_if_init() {
@@ -297,7 +348,7 @@ pal_err pal_net_if_ipv6_addr_foreach(
         goto end;
     }
 
-    char resp[1024];
+    char resp[PAL_NET_IF_BUFLEN];
 
     do {
         int len = netlink_response(fd, resp, sizeof(resp));
@@ -306,7 +357,8 @@ pal_err pal_net_if_ipv6_addr_foreach(
             goto end;
         }
 
-        for (struct nlmsghdr *hdr = (struct nlmsghdr *)resp; NLMSG_OK(hdr, len); hdr = NLMSG_NEXT(hdr, len)) {
+        for (struct nlmsghdr *hdr = (struct nlmsghdr *)resp;
+            NLMSG_OK(hdr, len); hdr = NLMSG_NEXT(hdr, len)) {
             struct rtattr *attr;
             ssize_t attrlen;
 
