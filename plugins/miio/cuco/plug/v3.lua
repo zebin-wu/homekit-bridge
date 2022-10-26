@@ -6,7 +6,7 @@ local M = {}
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
 function M.gen(device, info, conf)
-    -- Source https://miot-spec.org/miot-spec-v2/instance?type=urn:miot-spec-v2:device:outlet:0000A002:chuangmi-212a01:1
+    -- Source https://miot-spec.org/miot-spec-v2/instance?type=urn:miot-spec-v2:device:outlet:0000A002:cuco-v3:1
     device:setMapping({
         power = {siid = 2, piid = 1}
     })
