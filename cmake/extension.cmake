@@ -18,7 +18,7 @@ function(gen_lua_binary out in dir luac)
         set(LUAC_FLAGS ${LUAC_FLAGS} -s)
     endif()
     add_custom_command(OUTPUT ${out}
-        COMMAND cd ${dir}
+        WORKING_DIRECTORY ${dir}
         COMMAND ${luac} ${LUAC_FLAGS} -o ${out} ${in}
         DEPENDS ${luac} ${dir}/${in}
         COMMENT "Generating ${out}"
@@ -128,11 +128,11 @@ function (target_add_embedfs target dir root_name)
         set(header ${dest_dir}/${file}.h)
         set(headers ${headers} ${header})
         add_custom_command(OUTPUT ${header}
-            COMMAND cd ${dir}
+            WORKING_DIRECTORY ${dir}
             COMMAND ${CMAKE_COMMAND}
-            -D OUTPUT=${header}
-            -D INPUT=${file}
-            -P ${TOP_DIR}/cmake/bin2hex.cmake
+                -D OUTPUT=${header}
+                -D INPUT=${file}
+                -P ${TOP_DIR}/cmake/bin2hex.cmake
             DEPENDS ${dir}/${file}
             COMMENT "Generating ${header}"
         )
@@ -187,7 +187,7 @@ function(target_add_lua_binary_embedfs target root_name luac)
             set(headers ${headers} ${header})
             string(REGEX REPLACE "[/.]" "_" filename ${bin})
             add_custom_command(OUTPUT ${header}
-                COMMAND cd ${binary_dir}
+                WORKING_DIRECTORY ${binary_dir}
                 COMMAND ${CMAKE_COMMAND}
                     -D OUTPUT=${header}
                     -D INPUT=${bin}
