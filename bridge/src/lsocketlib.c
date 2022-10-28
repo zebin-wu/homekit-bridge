@@ -152,7 +152,7 @@ static int finishaccept(lua_State *L, int status, lua_KContext extra) {
 static int lsocket_obj_accept(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
 
-    char addr[64];
+    char addr[PAL_NET_ADDR_STR_LEN];
     uint16_t port;
 
     lsocket_obj *new_o = lua_newuserdata(L, sizeof(lsocket_obj));
@@ -365,7 +365,7 @@ static int lsocket_obj_recvfrom(lua_State *L) {
     lua_Integer maxlen = luaL_checkinteger(L, 2);
     luaL_argcheck(L, maxlen >= 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
 
-    char addr[64];
+    char addr[PAL_NET_ADDR_STR_LEN];
     uint16_t port;
     luaL_buffinitsize(L, &obj->B, maxlen);
     size_t len = maxlen;

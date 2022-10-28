@@ -14,6 +14,10 @@ extern "C" {
 #include <pal/err.h>
 #include <pal/types.h>
 
+#define PAL_NET_ADDR_INET_STR_LEN 16
+#define PAL_NET_ADDR_INET6_STR_LEN 46
+#define PAL_NET_ADDR_STR_LEN HAPMax(PAL_NET_ADDR_INET_STR_LEN, PAL_NET_ADDR_INET6_STR_LEN)
+
 /**
  * Address family.
  */
