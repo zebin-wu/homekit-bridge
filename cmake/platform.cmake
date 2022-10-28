@@ -53,6 +53,7 @@ set(PLATFORM_LINUX_INC_DIRS
 # collect platform Linux sources
 set(PLATFORM_LINUX_SRCS
     ${PLATFORM_POSIX_SRC_DIR}/socket.c
+    ${PLATFORM_POSIX_SRC_DIR}/net_addr.c
     ${PLATFORM_OPENSSL_SRC_DIR}/cipher.c
     ${PLATFORM_OPENSSL_SRC_DIR}/md.c
     ${PLATFORM_OPENSSL_SRC_DIR}/ssl.c
@@ -63,7 +64,6 @@ set(PLATFORM_LINUX_SRCS
     ${PLATFORM_LINUX_SRC_DIR}/dns.c
     ${PLATFORM_LINUX_SRC_DIR}/cli.c
     ${PLATFORM_POSIX_SRC_DIR}/nvs.c
-    ${PLATFORM_POSIX_SRC_DIR}/net_addr.c
     ${PLATFORM_LINUX_SRC_DIR}/net_if.c
     ${PLATFORM_COMMON_SRC_DIR}/err.c
 )
@@ -73,11 +73,13 @@ set(PLATFORM_ESP_INC_DIRS
     ${PLATFORM_INC_DIR}
     ${PLATFORM_ESP_INC_DIR}
     ${PLATFORM_MBEDTLS_INC_DIR}
+    ${PLATFORM_POSIX_INC_DIR}
 )
 
 # collect platform ESP sources
 set(PLATFORM_ESP_SRCS
     ${PLATFORM_POSIX_SRC_DIR}/socket.c
+    ${PLATFORM_POSIX_SRC_DIR}/net_addr.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/cipher.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/md.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/ssl.c
