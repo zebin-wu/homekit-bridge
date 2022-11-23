@@ -128,8 +128,15 @@ function session:loginStep2(sign)
         ["Cookie"] = self.cookie,
     })
     assert(body)
+    if code ~= 200 then
+        error("invalid login or password")
+    end
     local ssecurity = body:match("\"ssecurity\":\"(.-)\"")
-    if code ~= 200 or ssecurity == nil or #ssecurity < 4 then
+    if ssecurity == nil then
+        local notificationUrl = body:match("\"notificationUrl\":\"(.-)\"")
+        if notificationUrl then
+            error(("Two factor authentication required, please visit the following url and retry login: %s"):format(notificationUrl))
+        end
         error("invalid login or password")
     end
     self.ssecurity = ssecurity
