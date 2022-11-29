@@ -31,6 +31,7 @@ typedef enum pal_err {
     PAL_ERR_AGAIN,          /**< try again */
     PAL_ERR_WANT_READ,      /**< want read */
     PAL_ERR_WANT_WRITE,     /**< want write */
+    PAL_ERR_NOT_FOUND,      /**< not found */
 
     PAL_ERR_COUNT,          /**< Error count, not error number. */
 } pal_err;
