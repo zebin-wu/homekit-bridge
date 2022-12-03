@@ -4,8 +4,8 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#include <esp_event.h>
 #include <lwip/dns.h>
+#include <esp_event.h>
 #include <pal/dns.h>
 #include <pal/mem.h>
 #include <HAPPlatform.h>

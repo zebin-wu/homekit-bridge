@@ -18,7 +18,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <esp_system.h>
+#include <esp_random.h>
 #include "HAPPlatform.h"
 
 void HAPPlatformRandomNumberFill(void* bytes, size_t numBytes) {

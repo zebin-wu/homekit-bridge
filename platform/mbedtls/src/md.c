@@ -15,7 +15,6 @@ typedef struct pal_md_ctx_int {
 HAP_STATIC_ASSERT(sizeof(pal_md_ctx) >= sizeof(pal_md_ctx_int), pal_md_ctx_int);
 
 static const mbedtls_md_type_t pal_md_type_mapping[] = {
-    [PAL_MD_MD4] = MBEDTLS_MD_MD4,
     [PAL_MD_MD5] = MBEDTLS_MD_MD5,
     [PAL_MD_SHA1] = MBEDTLS_MD_SHA1,
     [PAL_MD_SHA224] = MBEDTLS_MD_SHA224,
@@ -61,7 +60,7 @@ size_t pal_md_get_size(pal_md_ctx *_ctx) {
     HAPPrecondition(_ctx);
     pal_md_ctx_int *ctx = (pal_md_ctx_int *)_ctx;
 
-    return mbedtls_md_get_size(ctx->ctx.md_info);
+    return mbedtls_md_get_size(mbedtls_md_info_from_ctx(&ctx->ctx));
 }
 
 bool pal_md_update(pal_md_ctx *_ctx, const void *data, size_t len) {

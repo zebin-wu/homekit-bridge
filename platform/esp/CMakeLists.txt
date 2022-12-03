@@ -10,7 +10,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 # required IDF version, some modules depend on specific IDF version
-set(REQUIRED_IDF_VERSION 4.4.2)
+set(REQUIRED_IDF_VERSION 5.0.0)
 
 # directories
 set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
@@ -18,7 +18,10 @@ set(PLUGINS_DIR ${TOP_DIR}/plugins)
 set(SCRIPTS_DST_DIR ${CMAKE_BINARY_DIR}/bridge_scripts)
 
 # set extra component directroies
-set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/system/console/advanced/components)
+set(EXTRA_COMPONENT_DIRS
+    $ENV{IDF_PATH}/examples/system/console/advanced/components
+    ${TOP_DIR}/ext/esp-protocols/components/mdns
+)
 
 # set the embedfs root
 set(BRIDGE_EMBEDFS_ROOT bridge_embedfs_root)
