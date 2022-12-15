@@ -42,7 +42,7 @@ pal_net_if *pal_net_if_find(const char *name);
 
 pal_err pal_net_if_is_up(pal_net_if *netif, bool *up);
 
-pal_err pal_net_if_is_loopback(pal_net_if *netif, bool *loopback);
+pal_err pal_net_if_get_index(pal_net_if *netif, int *index);
 
 pal_err pal_net_if_get_name(pal_net_if *netif, char buf[PAL_NET_IF_NAME_MAX_LEN]);
 

@@ -42,8 +42,7 @@ struct pal_net_if_ipv6_addr {
 
 struct pal_net_if {
     uint16_t magic;
-    bool up:1;
-    bool loopback:1;
+    bool up;
     int index;
     char name[IF_NAMESIZE];
     char hw_addr[PAL_NET_IF_HW_ADDR_LEN];
@@ -171,15 +170,15 @@ static pal_net_if *pal_net_if_create(int index, const char *name) {
         goto err1;
     }
     netif->up = FLAG_ISSET(ifr.ifr_flags, IFF_UP);
-    netif->loopback = FLAG_ISSET(ifr.ifr_flags, IFF_LOOPBACK);
 
     if (pal_net_if_get_config(name, fd, SIOCGIFHWADDR, &ifr)) {
         goto err1;
     }
     memcpy(netif->hw_addr, ifr.ifr_hwaddr.sa_data, sizeof(netif->hw_addr));
 
+    netif->ipv4_addr.family = PAL_NET_ADDR_FAMILY_INET;
+    netif->ipv4_addr.u.in.s_addr = INADDR_ANY;
     if (!pal_net_if_get_config(name, fd, SIOCGIFADDR, &ifr)) {
-        netif->ipv4_addr.family = PAL_NET_ADDR_FAMILY_INET;
         netif->ipv4_addr.u.in = ((struct sockaddr_in *) &ifr.ifr_addr)->sin_addr;
     }
 
@@ -196,8 +195,20 @@ err:
     return NULL;
 }
 
+static void pal_net_if_destroy(pal_net_if *netif) {
+    if (!TAILQ_EMPTY(&netif->ipv6_addrs)) {
+        for (struct pal_net_if_ipv6_addr *next = TAILQ_FIRST(&netif->ipv6_addrs); next;) {
+            struct pal_net_if_ipv6_addr *cur = next;
+            next = TAILQ_NEXT(cur, list_entry);
+            pal_mem_free(cur);
+        }
+    }
+    pal_mem_free(netif);
+}
+
 static void pal_net_if_handle_link_event(struct nlmsghdr *hdr) {
-    HAPLogDebug(&logObject, "Got netif link event.");
+    HAPLogDebug(&logObject, "Got %s event.",
+        hdr->nlmsg_type == RTM_NEWLINK ? "NEWLINK" : "DELLINK");
 
     struct ifinfomsg *ifi = NLMSG_DATA(hdr);
     int len = hdr->nlmsg_len - NLMSG_SPACE(sizeof(*ifi));
@@ -267,7 +278,8 @@ static void pal_net_if_set_ipv4_addr(pal_net_if *netif, struct in_addr *in) {
 }
 
 static void pal_net_if_handle_addr_event(struct nlmsghdr *hdr) {
-    HAPLogDebug(&logObject, "Got netif address event.");
+    HAPLogDebug(&logObject, "Got %s event.",
+        hdr->nlmsg_type == RTM_NEWADDR ? "NEWADDR" : "DELADDR");
 
     struct ifaddrmsg *ifa = NLMSG_DATA(hdr);
     int len = hdr->nlmsg_len - NLMSG_SPACE(sizeof(*ifa));
@@ -360,7 +372,6 @@ static void pal_net_if_handle_event_cb(
                 break;
             case RTM_NEWLINK:
             case RTM_DELLINK:
-            case RTM_SETLINK:
                 pal_net_if_handle_link_event(hdr);
                 break;
             case RTM_NEWADDR:
@@ -449,6 +460,7 @@ end:
     return err;
 }
 
+#ifdef PAL_NET_IF_DEBUG
 static pal_err print_ipv6(pal_net_if *netif, pal_net_addr *addr, void *arg) {
     char buf[64];
     HAPLogDebug(&logObject, "      %s", pal_net_addr_get_string(addr, buf, sizeof(buf)));
@@ -458,20 +470,19 @@ static pal_err print_ipv6(pal_net_if *netif, pal_net_addr *addr, void *arg) {
 static pal_err print_netif(pal_net_if *netif, void *arg) {
     char buf[256];
     pal_net_addr addr;
-    bool loopback, up;
+    bool up;
     pal_err err;
     pal_net_if_get_name(netif, buf);
-    pal_net_if_is_loopback(netif, &loopback);
     pal_net_if_is_up(netif, &up);
-    HAPLogDebug(&logObject, "  [%d] %s(%s, %s):", netif->index,
-        buf, loopback ? "loopback" : "eth", up ? "up" : "down");
+    HAPLogDebug(&logObject, "  [%d] %s(%s):", netif->index,
+        buf, up ? "up" : "down");
     uint8_t hwaddr[6];
     pal_net_if_get_hw_addr(netif, (uint8_t *)hwaddr);
     HAPLogDebug(&logObject, "    hw addr: %02X:%02X:%02X:%02X:%02X:%02X",
         hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
     err = pal_net_if_get_ipv4_addr(netif, &addr);
     if (err == PAL_ERR_OK) {
-        HAPLogDebug(&logObject, "    ipv4 addr: %s\n",
+        HAPLogDebug(&logObject, "    ipv4 addr: %s",
             pal_net_addr_get_string(&addr, buf, sizeof(buf)));
     }
     if (!TAILQ_EMPTY(&netif->ipv6_addrs)) {
@@ -480,6 +491,7 @@ static pal_err print_netif(pal_net_if *netif, void *arg) {
     }
     return PAL_ERR_OK;
 }
+#endif  // PAL_NET_IF_DEBUG
 
 static void pal_net_if_init_ifs() {
     TAILQ_INIT(&gstate.net_ifs);
@@ -504,11 +516,20 @@ static void pal_net_if_init_ifs() {
         HAPFatalError();
     }
 
+#ifdef PAL_NET_IF_DEBUG
     HAPLogDebug(&logObject, "Network interfaces:");
     pal_net_if_foreach(print_netif, NULL);
+#endif  // PAL_NET_IF_DEBUG
 }
 
 static void pal_net_if_deinit_ifs() {
+    for (pal_net_if *next = TAILQ_FIRST(&gstate.net_ifs); next;) {
+        pal_net_if *cur = next;
+        next = TAILQ_NEXT(cur, list_entry);
+        pal_net_if_destroy(cur);
+    }
+
+    TAILQ_INIT(&gstate.net_ifs);
 }
 
 void pal_net_if_init() {
@@ -559,6 +580,14 @@ void pal_net_if_deinit() {
     HAPPlatformFileHandleDeregister(gstate.event_handle);
     close(gstate.event_fd);
 
+    for (size_t i = 0; i < PAL_NET_IF_EVENT_COUNT; i++) {
+        for (struct event_cb_desc *next = LIST_FIRST(gstate.event_cbs + i); next;) {
+            struct event_cb_desc *cur = next;
+            next = LIST_NEXT(cur, list_entry);
+            pal_mem_free(cur);
+        }
+    }
+
     ginited = false;
 }
 
@@ -607,17 +636,16 @@ pal_err pal_net_if_is_up(pal_net_if *netif, bool *up) {
     return PAL_ERR_OK;
 }
 
-pal_err pal_net_if_is_loopback(pal_net_if *netif, bool *loopback) {
+pal_err pal_net_if_get_index(pal_net_if *netif, int *index) {
     HAPPrecondition(netif);
-    HAPPrecondition(loopback);
+    HAPPrecondition(index);
 
     if (!pal_net_if_is_valid(netif)) {
         HAPLogError(&logObject, "%s: invalid netif", __func__);
         return PAL_ERR_INVALID_ARG;
     }
 
-    *loopback = netif->loopback;
-
+    *index = netif->index;
     return PAL_ERR_OK;
 }
 
@@ -658,10 +686,6 @@ pal_err pal_net_if_get_ipv4_addr(pal_net_if *netif, pal_net_addr *_addr) {
     if (!pal_net_if_is_valid(netif)) {
         HAPLogError(&logObject, "%s: invalid netif", __func__);
         return PAL_ERR_INVALID_ARG;
-    }
-
-    if (addr->family != PAL_NET_ADDR_FAMILY_INET) {
-        return PAL_ERR_NOT_FOUND;
     }
 
     *addr = netif->ipv4_addr;
