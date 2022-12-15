@@ -5,7 +5,7 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <lauxlib.h>
-#include <pal/net/socket.h>
+#include <pal/socket.h>
 #include <HAPBase.h>
 #include <HAPLog.h>
 
@@ -40,7 +40,7 @@ static const char *lsocket_af_strs[] = {
 
 static int lsocket_create(lua_State *L) {
     pal_socket_type type = luaL_checkoption(L, 1, NULL, lsocket_type_strs);
-    pal_addr_family af = luaL_checkoption(L, 2, NULL, lsocket_af_strs);
+    pal_net_addr_family af = luaL_checkoption(L, 2, NULL, lsocket_af_strs);
 
     lsocket_obj *obj = lua_newuserdata(L, sizeof(lsocket_obj));
     luaL_setmetatable(L, LUA_SOCKET_OBJECT_NAME);
@@ -152,7 +152,7 @@ static int finishaccept(lua_State *L, int status, lua_KContext extra) {
 static int lsocket_obj_accept(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
 
-    char addr[64];
+    char addr[PAL_NET_ADDR_STR_LEN];
     uint16_t port;
 
     lsocket_obj *new_o = lua_newuserdata(L, sizeof(lsocket_obj));
@@ -365,7 +365,7 @@ static int lsocket_obj_recvfrom(lua_State *L) {
     lua_Integer maxlen = luaL_checkinteger(L, 2);
     luaL_argcheck(L, maxlen >= 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
 
-    char addr[64];
+    char addr[PAL_NET_ADDR_STR_LEN];
     uint16_t port;
     luaL_buffinitsize(L, &obj->B, maxlen);
     size_t len = maxlen;

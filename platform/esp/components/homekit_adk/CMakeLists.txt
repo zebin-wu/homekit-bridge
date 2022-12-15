@@ -30,7 +30,7 @@ idf_component_register(
     SRCS ${ADK_SRCS} ${ADK_PAL_MBEDTLS_SRCS} ${PORT_SRCS}
     INCLUDE_DIRS ${ADK_INC_DIRS} ${PORT_INC_DIR}
     REQUIRES
-    PRIV_REQUIRES nvs_flash mdns
+    PRIV_REQUIRES nvs_flash mdns mbedtls driver
 )
 
 add_definitions(-DHAP_LOG_LEVEL=${CONFIG_HAP_LOG_LEVEL})

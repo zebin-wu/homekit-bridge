@@ -19,6 +19,7 @@ const char *err_strs[] = {
     [PAL_ERR_AGAIN] = "try again",
     [PAL_ERR_WANT_READ] = "want read",
     [PAL_ERR_WANT_WRITE] = "want write",
+    [PAL_ERR_NOT_FOUND] = "not found",
 };
 
 const char *pal_err_string(pal_err err) {

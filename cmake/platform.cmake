@@ -18,6 +18,9 @@ set(PLATFORM_MBEDTLS_SRC_DIR ${PLATFORM_MBEDTLS_DIR}/src)
 set(PLATFORM_OPENSSL_DIR ${PLATFORM_DIR}/openssl)
 set(PLATFORM_OPENSSL_INC_DIR ${PLATFORM_OPENSSL_DIR}/include)
 set(PLATFORM_OPENSSL_SRC_DIR ${PLATFORM_OPENSSL_DIR}/src)
+set(PLATFORM_LWIP_DIR ${PLATFORM_DIR}/lwip)
+set(PLATFORM_LWIP_INC_DIR ${PLATFORM_LWIP_DIR}/include)
+set(PLATFORM_LWIP_SRC_DIR ${PLATFORM_LWIP_DIR}/src)
 set(PLATFORM_LINUX_DIR ${PLATFORM_DIR}/linux)
 set(PLATFORM_LINUX_INC_DIR ${PLATFORM_LINUX_DIR}/include)
 set(PLATFORM_LINUX_SRC_DIR ${PLATFORM_LINUX_DIR}/src)
@@ -30,15 +33,16 @@ set(PLATFORM_HEADERS
     ${PLATFORM_INC_DIR}/pal/chip.h
     ${PLATFORM_INC_DIR}/pal/mem.h
     ${PLATFORM_INC_DIR}/pal/hap.h
-    ${PLATFORM_INC_DIR}/pal/crypto/cipher.h
-    ${PLATFORM_INC_DIR}/pal/crypto/md.h
-    ${PLATFORM_INC_DIR}/pal/crypto/ssl.h
-    ${PLATFORM_INC_DIR}/pal/net/socket.h
-    ${PLATFORM_INC_DIR}/pal/net/addr.h
-    ${PLATFORM_INC_DIR}/pal/net/dns.h
+    ${PLATFORM_INC_DIR}/pal/cipher.h
+    ${PLATFORM_INC_DIR}/pal/md.h
+    ${PLATFORM_INC_DIR}/pal/ssl.h
+    ${PLATFORM_INC_DIR}/pal/socket.h
+    ${PLATFORM_INC_DIR}/pal/dns.h
     ${PLATFORM_INC_DIR}/pal/nvs.h
     ${PLATFORM_INC_DIR}/pal/err.h
     ${PLATFORM_INC_DIR}/pal/cli.h
+    ${PLATFORM_INC_DIR}/pal/net_addr.h
+    ${PLATFORM_INC_DIR}/pal/net_if.h
 )
 
 # collect platform Linux include directories
@@ -52,6 +56,7 @@ set(PLATFORM_LINUX_INC_DIRS
 # collect platform Linux sources
 set(PLATFORM_LINUX_SRCS
     ${PLATFORM_POSIX_SRC_DIR}/socket.c
+    ${PLATFORM_POSIX_SRC_DIR}/net_addr.c
     ${PLATFORM_OPENSSL_SRC_DIR}/cipher.c
     ${PLATFORM_OPENSSL_SRC_DIR}/md.c
     ${PLATFORM_OPENSSL_SRC_DIR}/ssl.c
@@ -62,6 +67,7 @@ set(PLATFORM_LINUX_SRCS
     ${PLATFORM_LINUX_SRC_DIR}/dns.c
     ${PLATFORM_LINUX_SRC_DIR}/cli.c
     ${PLATFORM_POSIX_SRC_DIR}/nvs.c
+    ${PLATFORM_LINUX_SRC_DIR}/net_if.c
     ${PLATFORM_COMMON_SRC_DIR}/err.c
 )
 
@@ -70,11 +76,15 @@ set(PLATFORM_ESP_INC_DIRS
     ${PLATFORM_INC_DIR}
     ${PLATFORM_ESP_INC_DIR}
     ${PLATFORM_MBEDTLS_INC_DIR}
+    ${PLATFORM_POSIX_INC_DIR}
+    ${PLATFORM_LWIP_INC_DIR}
 )
 
 # collect platform ESP sources
 set(PLATFORM_ESP_SRCS
     ${PLATFORM_POSIX_SRC_DIR}/socket.c
+    ${PLATFORM_POSIX_SRC_DIR}/net_addr.c
+    ${PLATFORM_LWIP_SRC_DIR}/net_if.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/cipher.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/md.c
     ${PLATFORM_MBEDTLS_SRC_DIR}/ssl.c

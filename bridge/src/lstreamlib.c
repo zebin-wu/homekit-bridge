@@ -5,9 +5,9 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <string.h>
-#include <pal/net/socket.h>
-#include <pal/net/dns.h>
-#include <pal/crypto/ssl.h>
+#include <pal/socket.h>
+#include <pal/dns.h>
+#include <pal/ssl.h>
 #include <lauxlib.h>
 #include <HAPLog.h>
 #include <HAPBase.h>
@@ -200,7 +200,7 @@ static void lstream_client_connected_cb(pal_socket_obj *o, pal_err err, void *ar
 }
 
 static void lstream_client_dns_response_cb(const char *errmsg, const char *addr,
-    pal_addr_family af, void *arg) {
+    pal_net_addr_family af, void *arg) {
     lstream_client *client = arg;
     client->dns_req = NULL;
 
@@ -210,7 +210,7 @@ static void lstream_client_dns_response_cb(const char *errmsg, const char *addr,
     }
 
     HAPAssert(addr);
-    HAPAssert(af != PAL_ADDR_FAMILY_UNSPEC);
+    HAPAssert(af != PAL_NET_ADDR_FAMILY_UNSPEC);
 
     if (HAPStringAreEqual(addr, client->host)) {
         client->host_is_addr = true;
@@ -301,7 +301,7 @@ static int lstream_client_create(lua_State *L) {
         luaL_error(L, "failed to create a timeout timer");
     }
 
-    client->dns_req = pal_dns_start_request(host, PAL_ADDR_FAMILY_UNSPEC,
+    client->dns_req = pal_dns_start_request(host, PAL_NET_ADDR_FAMILY_UNSPEC,
         lstream_client_dns_response_cb, client);
     if (luai_unlikely(!client->dns_req)) {
         HAPPlatformTimerDeregister(client->timer);

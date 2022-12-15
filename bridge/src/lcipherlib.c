@@ -5,7 +5,7 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <lauxlib.h>
-#include <pal/crypto/cipher.h>
+#include <pal/cipher.h>
 
 #define LCIPHER_CTX_NAME "CipherContext*"
 
@@ -49,11 +49,6 @@ static const char *lcipher_type_strs[] = {
     "DES-EDE-CBC",
     "DES-EDE3-ECB",
     "DES-EDE3-CBC",
-    "BLOWFISH-ECB",
-    "BLOWFISH-CBC",
-    "BLOWFISH-CFB64",
-    "BLOWFISH-CTR",
-    "ARC4-128",
     "AES-128-CCM",
     "AES-192-CCM",
     "AES-256-CCM",

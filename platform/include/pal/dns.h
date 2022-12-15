@@ -4,15 +4,15 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_NET_DNS_H_
-#define PLATFORM_INCLUDE_PAL_NET_DNS_H_
+#ifndef PLATFORM_INCLUDE_PAL_DNS_H_
+#define PLATFORM_INCLUDE_PAL_DNS_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <stddef.h>
-#include <pal/net/addr.h>
+#include <pal/net_addr.h>
 
 /**
  * DNS resolve request context.
@@ -27,7 +27,7 @@ typedef struct pal_dns_req_ctx pal_dns_req_ctx;
  * @param af Address family.
  * @param arg The last paramter of pal_dns_start_request().
  */
-typedef void (*pal_dns_response_cb)(const char *err, const char *addr, pal_addr_family af, void *arg);
+typedef void (*pal_dns_response_cb)(const char *err, const char *addr, pal_net_addr_family af, void *arg);
 
 /**
  * Initialize DNS module.
@@ -49,7 +49,7 @@ void pal_dns_deinit();
  * @return the request context on success.
  * @return NULL on failure.
  */
-pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_addr_family af,
+pal_dns_req_ctx *pal_dns_start_request(const char *hostname, pal_net_addr_family af,
     pal_dns_response_cb response_cb, void *arg);
 
 /**
@@ -63,4 +63,4 @@ void pal_dns_cancel_request(pal_dns_req_ctx *ctx);
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_NET_DNS_H_
+#endif  // PLATFORM_INCLUDE_PAL_DNS_H_

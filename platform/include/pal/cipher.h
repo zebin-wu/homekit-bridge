@@ -4,8 +4,8 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_CRYPTO_CIPHER_H_
-#define PLATFORM_INCLUDE_PAL_CRYPTO_CIPHER_H_
+#ifndef PLATFORM_INCLUDE_PAL_CIPHER_H_
+#define PLATFORM_INCLUDE_PAL_CIPHER_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,11 +56,6 @@ typedef enum {
     PAL_CIPHER_TYPE_DES_EDE_CBC,          /**< DES cipher with EDE CBC mode. */
     PAL_CIPHER_TYPE_DES_EDE3_ECB,         /**< DES cipher with EDE3 ECB mode. */
     PAL_CIPHER_TYPE_DES_EDE3_CBC,         /**< DES cipher with EDE3 CBC mode. */
-    PAL_CIPHER_TYPE_BLOWFISH_ECB,         /**< Blowfish cipher with ECB mode. */
-    PAL_CIPHER_TYPE_BLOWFISH_CBC,         /**< Blowfish cipher with CBC mode. */
-    PAL_CIPHER_TYPE_BLOWFISH_CFB64,       /**< Blowfish cipher with CFB64 mode. */
-    PAL_CIPHER_TYPE_BLOWFISH_CTR,         /**< Blowfish cipher with CTR mode. */
-    PAL_CIPHER_TYPE_ARC4_128,             /**< RC4 cipher with 128-bit mode. */
     PAL_CIPHER_TYPE_AES_128_CCM,          /**< AES cipher with 128-bit CCM mode. */
     PAL_CIPHER_TYPE_AES_192_CCM,          /**< AES cipher with 192-bit CCM mode. */
     PAL_CIPHER_TYPE_AES_256_CCM,          /**< AES cipher with 256-bit CCM mode. */
@@ -223,4 +218,4 @@ bool pal_cipher_finish(pal_cipher_ctx *ctx, void *out, size_t *olen);
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_CRYPTO_CIPHER_H_
+#endif  // PLATFORM_INCLUDE_PAL_CIPHER_H_

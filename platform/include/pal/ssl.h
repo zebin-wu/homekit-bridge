@@ -4,8 +4,8 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_CRYPTO_SSL_H_
-#define PLATFORM_INCLUDE_PAL_CRYPTO_SSL_H_
+#ifndef PLATFORM_INCLUDE_PAL_SSL_H_
+#define PLATFORM_INCLUDE_PAL_SSL_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -140,4 +140,4 @@ bool pal_ssl_pending(pal_ssl_ctx *ctx);
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_CRYPTO_SSL_H_
+#endif  // PLATFORM_INCLUDE_PAL_SSL_H_

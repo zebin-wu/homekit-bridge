@@ -7,8 +7,8 @@
 #include <string.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/error.h>
-#include <pal/crypto/ssl.h>
-#include <pal/crypto/ssl_int.h>
+#include <pal/ssl.h>
+#include <pal/ssl_int.h>
 #include <HAPPlatform.h>
 
 #define MBEDTLS_PRINT_ERROR(func, err) \

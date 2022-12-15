@@ -6,7 +6,7 @@
 
 #include <esp_err.h>
 #include <esp_crt_bundle.h>
-#include <pal/crypto/ssl_int.h>
+#include <pal/ssl_int.h>
 #include <HAPPlatform.h>
 
 void pal_ssl_init() {

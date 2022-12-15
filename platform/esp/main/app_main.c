@@ -33,9 +33,10 @@
 #include <app.h>
 #include <pal/cli.h>
 #include <pal/cli_int.h>
-#include <pal/crypto/ssl.h>
-#include <pal/crypto/ssl_int.h>
-#include <pal/net/dns.h>
+#include <pal/ssl.h>
+#include <pal/ssl_int.h>
+#include <pal/dns.h>
+#include <pal/net_if_int.h>
 
 #include <HAPPlatformRunLoop+Init.h>
 #include <HAPPlatformLog+Init.h>
@@ -112,6 +113,7 @@ void app_main_task(void *arg) {
     pal_cli_init();
     pal_ssl_init();
     pal_dns_init();
+    pal_net_if_init();
 
     app_register_log_cmd();
 
@@ -126,6 +128,7 @@ void app_main_task(void *arg) {
     app_deinit();
 
     // De-initialize pal modules.
+    pal_net_if_init();
     pal_dns_deinit();
     pal_ssl_deinit();
     pal_cli_deinit();

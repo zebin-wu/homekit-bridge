@@ -4,8 +4,11 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
+#include <stdio.h>
+#include <stddef.h>
 #include <pal/chip.h>
-#include <esp_system.h>
+#include <esp_chip_info.h>
+#include <esp_mac.h>
 
 #define SERIAL_NUMBER_BUF_LEN (6 * 2 + 1)
 #define HARDWARE_VERSION_BUF_LEN 16

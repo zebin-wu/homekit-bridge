@@ -232,13 +232,31 @@ HAPError HAPPlatformKeyValueStoreEnumerate(
     char name_space[15];
     snprintf(name_space, sizeof(name_space), "%s.%02X", keyValueStore->namespace_prefix, domain);
 
-    nvs_iterator_t it = nvs_entry_find(keyValueStore->part_name, name_space, NVS_TYPE_BLOB);
+    nvs_iterator_t it = NULL;
+    esp_err_t err = nvs_entry_find(keyValueStore->part_name, name_space, NVS_TYPE_BLOB, &it);
+    switch (err) {
+    case ESP_OK:
+    case ESP_ERR_NVS_NOT_FOUND:
+        break;
+    default:
+        return kHAPError_Unknown;
+    }
     while (it != NULL && shouldContinue) {
         nvs_entry_info_t info;
         nvs_entry_info(it, &info);
-        it = nvs_entry_next(it);
+        err = nvs_entry_next(&it);
+        switch (err) {
+        case ESP_OK:
+        case ESP_ERR_NVS_NOT_FOUND:
+            break;
+        default:
+            return kHAPError_Unknown;
+        }
         HAPError hap_err = callback(context, keyValueStore, domain, (HAPPlatformKeyValueStoreKey)atoi(info.key), &shouldContinue);
             if (hap_err != kHAPError_None) {
+                if (it) {
+                    nvs_release_iterator(it);
+                }
                 return kHAPError_Unknown;
             }
     };

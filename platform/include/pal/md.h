@@ -4,8 +4,8 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_CRYPTO_MD_H_
-#define PLATFORM_INCLUDE_PAL_CRYPTO_MD_H_
+#ifndef PLATFORM_INCLUDE_PAL_MD_H_
+#define PLATFORM_INCLUDE_PAL_MD_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -92,4 +92,4 @@ bool pal_md_digest(pal_md_ctx *ctx, uint8_t *output);
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_CRYPTO_MD_H_
+#endif  // PLATFORM_INCLUDE_PAL_MD_H_

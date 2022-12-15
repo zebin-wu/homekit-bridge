@@ -22,7 +22,7 @@
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "nvs" };
 
 #define NVS_LOG_ERR(fmt, arg...) \
-    HAPLogError(&logObject, "%s: " fmt, __func__, ##arg);
+    HAPLogError(&logObject, "%s: " fmt, __func__, ##arg)
 
 #define PAL_NVS_MAGIC "nvs"
 #define PAL_NVS_MAGIC_LEN sizeof(PAL_NVS_MAGIC) - 1

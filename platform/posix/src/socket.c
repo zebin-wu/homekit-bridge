@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/select.h>
-#include <pal/net/socket.h>
+#include <pal/socket.h>
 #include <pal/mem.h>
 
 #include <HAPLog.h>
@@ -35,7 +35,7 @@
     "(%s:%u) " fmt, pal_socket_type_strs[(obj)->type], (obj)->id, ##arg)
 
 #define SOCKET_LOG_ERRNO(socket, func) \
-    SOCKET_LOG(Error, socket, "%s: %s() failed: %s.", __func__, func, strerror(errno))
+    SOCKET_LOG(Error, socket, "%s: %s() failed: %s.", __func__, #func, strerror(errno))
 
 #define PAL_SOCKET_OBJ_MAGIC 0x1515
 
@@ -71,7 +71,7 @@ typedef struct pal_socket_obj_int {
     pal_socket_state state;
 
     pal_socket_type type;
-    pal_addr_family af;
+    pal_net_addr_family af;
     uint16_t id;
     int fd;
     uint32_t timeout;
@@ -111,9 +111,9 @@ static const HAPLogObject socket_log_obj = {
 static uint16_t gsocket_count;
 
 static bool
-pal_socket_addr_set(pal_socket_addr *addr, pal_addr_family af, const char *str_addr, uint16_t port) {
+pal_socket_addr_set(pal_socket_addr *addr, pal_net_addr_family af, const char *str_addr, uint16_t port) {
     switch (af) {
-    case PAL_ADDR_FAMILY_INET: {
+    case PAL_NET_ADDR_FAMILY_INET: {
         struct sockaddr_in *sa = &addr->in;
         sa->sin_family = AF_INET;
         int ret = inet_pton(AF_INET, str_addr, &sa->sin_addr);
@@ -123,7 +123,7 @@ pal_socket_addr_set(pal_socket_addr *addr, pal_addr_family af, const char *str_a
         sa->sin_port = htons(port);
         break;
     }
-    case PAL_ADDR_FAMILY_INET6: {
+    case PAL_NET_ADDR_FAMILY_INET6: {
         struct sockaddr_in6 *sa = &addr->in6;
         sa->sin6_family = AF_INET6;
         int ret = inet_pton(AF_INET6, str_addr, &sa->sin6_addr);
@@ -141,7 +141,7 @@ pal_socket_addr_set(pal_socket_addr *addr, pal_addr_family af, const char *str_a
 }
 
 static inline size_t
-pal_socket_addr_set_len(pal_socket_addr *addr) {
+pal_socket_addr_get_len(pal_socket_addr *addr) {
     switch (((struct sockaddr *)addr)->sa_family) {
     case AF_INET:
         return sizeof(struct sockaddr_in);
@@ -224,7 +224,7 @@ static pal_socket_mbuf *pal_socket_mbuf_out(pal_socket_obj_int *o) {
 
 static bool pal_socket_set_nonblock(pal_socket_obj_int *o) {
     if (fcntl(o->fd, F_SETFL, fcntl(o->fd, F_GETFL, 0) | O_NONBLOCK) == -1) {
-        SOCKET_LOG_ERRNO(o, "fcntl");
+        SOCKET_LOG_ERRNO(o, fcntl);
         return false;
     }
     return true;
@@ -273,7 +273,7 @@ static pal_err pal_socket_accept_async(pal_socket_obj_int *o, pal_socket_obj_int
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return PAL_ERR_IN_PROGRESS;
         } else {
-            SOCKET_LOG_ERRNO(o, "accept");
+            SOCKET_LOG_ERRNO(o, accept);
             return PAL_ERR_UNKNOWN;
         }
     }
@@ -312,7 +312,7 @@ static pal_err pal_socket_connect_async(pal_socket_obj_int *o) {
 
     do {
         ret = connect(o->fd, (struct sockaddr *)&o->remote_addr,
-            pal_socket_addr_set_len(&o->remote_addr));
+            pal_socket_addr_get_len(&o->remote_addr));
     } while (ret == -1 && errno == EINTR);
     if (ret == -1) {
         switch (errno) {
@@ -321,7 +321,7 @@ static pal_err pal_socket_connect_async(pal_socket_obj_int *o) {
         case EISCONN:
             return PAL_ERR_OK;
         default:
-            SOCKET_LOG_ERRNO(o, "connect");
+            SOCKET_LOG_ERRNO(o, connect);
             return PAL_ERR_UNKNOWN;
         }
     }
@@ -332,7 +332,7 @@ static pal_err pal_socket_connect_async(pal_socket_obj_int *o) {
 static pal_err
 pal_socket_raw_sendto(pal_socket_obj_int *o, const void *data, size_t *len, pal_socket_addr *addr) {
     ssize_t rc;
-    socklen_t addrlen = addr ? pal_socket_addr_set_len(addr) : 0;
+    socklen_t addrlen = addr ? pal_socket_addr_get_len(addr) : 0;
 
     do {
         rc = sendto(o->fd, data, *len, 0, (struct sockaddr *)addr, addrlen);
@@ -342,7 +342,7 @@ pal_socket_raw_sendto(pal_socket_obj_int *o, const void *data, size_t *len, pal_
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return PAL_ERR_AGAIN;
         } else {
-            SOCKET_LOG_ERRNO(o, "sendto");
+            SOCKET_LOG_ERRNO(o, sendto);
             return PAL_ERR_UNKNOWN;
         }
     }
@@ -376,7 +376,7 @@ pal_socket_raw_recvfrom(pal_socket_obj_int *o, void *buf, size_t *len, pal_socke
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return PAL_ERR_AGAIN;
         } else {
-            SOCKET_LOG_ERRNO(o, "recvfrom");
+            SOCKET_LOG_ERRNO(o, recvfrom);
             return PAL_ERR_UNKNOWN;
         }
     }
@@ -675,7 +675,7 @@ static void pal_socket_udp_handle_event_cb(
     }
 }
 
-bool pal_socket_obj_init(pal_socket_obj *_o, pal_socket_type type, pal_addr_family af) {
+bool pal_socket_obj_init(pal_socket_obj *_o, pal_socket_type type, pal_net_addr_family af) {
     HAPPrecondition(_o);
 
     pal_socket_obj_int *o = (pal_socket_obj_int *)_o;
@@ -684,10 +684,10 @@ bool pal_socket_obj_init(pal_socket_obj *_o, pal_socket_type type, pal_addr_fami
     memset(o, 0, sizeof(*o));
 
     switch (af) {
-    case PAL_ADDR_FAMILY_INET:
+    case PAL_NET_ADDR_FAMILY_INET:
         _af = AF_INET;
         break;
-    case PAL_ADDR_FAMILY_INET6:
+    case PAL_NET_ADDR_FAMILY_INET6:
         _af = AF_INET6;
         break;
     default:
@@ -710,7 +710,7 @@ bool pal_socket_obj_init(pal_socket_obj *_o, pal_socket_type type, pal_addr_fami
 
     o->fd = socket(_af, _type, _protocol);
     if (o->fd == -1) {
-        SOCKET_LOG_ERRNO(o, "socket");
+        SOCKET_LOG_ERRNO(o, socket);
         goto err;
     }
 
@@ -782,7 +782,7 @@ pal_err pal_socket_enable_broadcast(pal_socket_obj *_o) {
     int optval = 1;
     int ret = setsockopt(o->fd, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
     if (ret != 0) {
-        SOCKET_LOG_ERRNO(o, "setsockopt");
+        SOCKET_LOG_ERRNO(o, setsockopt);
         return PAL_ERR_UNKNOWN;
     }
     return PAL_ERR_OK;
@@ -804,9 +804,9 @@ pal_err pal_socket_bind(pal_socket_obj *_o, const char *addr, uint16_t port) {
         return PAL_ERR_INVALID_ARG;
     }
 
-    ret = bind(o->fd, (struct sockaddr *)&sa, pal_socket_addr_set_len(&sa));
+    ret = bind(o->fd, (struct sockaddr *)&sa, pal_socket_addr_get_len(&sa));
     if (ret == -1) {
-        SOCKET_LOG_ERRNO(o, "bind");
+        SOCKET_LOG_ERRNO(o, bind);
         return PAL_ERR_UNKNOWN;
     }
     SOCKET_LOG(Debug, o, "Bound to %s:%u", addr, port);
@@ -827,7 +827,7 @@ pal_err pal_socket_listen(pal_socket_obj *_o, int backlog) {
 
     int ret = listen(o->fd, backlog);
     if (ret == -1) {
-        SOCKET_LOG_ERRNO(o, "listen");
+        SOCKET_LOG_ERRNO(o, listen);
         return PAL_ERR_UNKNOWN;
     }
     o->state = PAL_SOCKET_ST_LISTENED;

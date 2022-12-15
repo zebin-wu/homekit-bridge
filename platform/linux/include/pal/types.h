@@ -33,6 +33,11 @@ typedef HAP_OPAQUE(48) pal_ssl_ctx;
  */
 typedef HAP_OPAQUE(176) pal_socket_obj;
 
+/**
+ * Opaque structure for network address.
+ */
+typedef HAP_OPAQUE(20) pal_net_addr;
+
 #ifdef __cplusplus
 }
 #endif

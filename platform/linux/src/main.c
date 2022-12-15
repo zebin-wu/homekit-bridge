@@ -15,10 +15,11 @@
 #include <stdlib.h>
 
 #include <app.h>
-#include <pal/crypto/ssl.h>
-#include <pal/crypto/ssl_int.h>
-#include <pal/net/dns.h>
+#include <pal/ssl.h>
+#include <pal/ssl_int.h>
+#include <pal/dns.h>
 #include <pal/nvs_int.h>
+#include <pal/net_if_int.h>
 
 #include <HAPPlatformRunLoop+Init.h>
 
@@ -88,6 +89,7 @@ int main(int argc, char *argv[]) {
     pal_ssl_init();
     pal_dns_init();
     pal_nvs_init(".nvs");
+    pal_net_if_init();
 
     // Initialize application.
     app_init(workdir, entry);
@@ -103,6 +105,7 @@ int main(int argc, char *argv[]) {
     app_deinit();
 
     // De-initialize pal modules.
+    pal_net_if_deinit();
     pal_nvs_deinit();
     pal_dns_deinit();
     pal_ssl_deinit();
