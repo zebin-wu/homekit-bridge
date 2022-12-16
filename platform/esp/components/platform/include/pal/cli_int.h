@@ -4,8 +4,8 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_CLI_INT_H_
-#define PLATFORM_INCLUDE_PAL_CLI_INT_H_
+#ifndef PLATFORM_ESP_INCLUDE_PAL_CLI_INT_H_
+#define PLATFORM_ESP_INCLUDE_PAL_CLI_INT_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,4 +25,4 @@ void pal_cli_deinit();
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_CLI_INT_H_
+#endif  // PLATFORM_ESP_INCLUDE_PAL_CLI_INT_H_

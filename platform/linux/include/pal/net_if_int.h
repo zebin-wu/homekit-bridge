@@ -21,4 +21,8 @@ void pal_net_if_init();
  */
 void pal_net_if_deinit();
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif  // PLATFORM_LINUX_INCLUDE_PAL_NET_IF_INT_H
