@@ -4,39 +4,28 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_INCLUDE_PAL_MEM_H_
-#define PLATFORM_INCLUDE_PAL_MEM_H_
+#ifndef PLATFORM_ESP_INCLUDE_PAL_MEM_INT_H
+#define PLATFORM_ESP_INCLUDE_PAL_MEM_INT_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <stddef.h>
-#include <pal/mem_int.h>
+#include <stdlib.h>
 
-/**
- * Allocate and free dynamic memory.
- * Every platform must to implement it.
- */
-
-#ifndef pal_mem_alloc
 /**
  * Allocate size bytes and return a pointer to the allocated memory.
  * The memory is not initialized.
  */
-void *pal_mem_alloc(size_t size);
-#endif
+#define pal_mem_alloc(size) malloc(size)
 
-#ifndef pal_mem_calloc
 /**
  * Allocates memory for an array of nmemb elements of size
  * bytes each and returns a pointer to the allocated memory.
  * The memory is set to zero.
  */
-void *pal_mem_calloc(size_t nmemb, size_t size);
-#endif
+#define pal_mem_calloc(nmemb, size) calloc(nmemb, size)
 
-#ifndef pal_mem_realloc
 /**
  * Change the size of the memory block pointed to by ptr to size bytes.
  *
@@ -44,20 +33,17 @@ void *pal_mem_calloc(size_t nmemb, size_t size);
  * if size is equal to 0, and ptr is not NULL, then the call is equivalent to pal_mem_free(ptr).
  * If realloc() fails, the original block is left untouched; it is not freed or moved.
  */
-void *pal_mem_realloc(void *ptr, size_t size);
-#endif
+#define pal_mem_realloc(ptr, size) realloc(ptr, size)
 
-#ifndef pal_mem_free
 /**
  * Free the memory space pointed to by ptr, which must have been
  * returned by a previous call to pal_mem_alloc(), pal_mem_calloc(),
  * or pal_mem_realloc().
  */
-void pal_mem_free(void *p);
-#endif
+#define pal_mem_free(ptr) free(ptr)
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // PLATFORM_INCLUDE_PAL_MEM_H_
+#endif  // PLATFORM_ESP_INCLUDE_PAL_MEM_INT_H
