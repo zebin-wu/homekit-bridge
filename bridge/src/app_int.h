@@ -58,6 +58,9 @@ LUAMOD_API int luaopen_arc4(lua_State *L);
 #define LUA_CLI_NAME "cli"
 LUAMOD_API int luaopen_cli(lua_State *L);
 
+#define LUA_JSON_NAME "json"
+LUAMOD_API int luaopen_json(lua_State *L);
+
 #ifdef __cplusplus
 }
 #endif

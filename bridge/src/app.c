@@ -40,6 +40,7 @@ static const luaL_Reg globallibs[] = {
     {LUA_CORE_NAME, luaopen_core},
     {LUA_LOG_NAME, luaopen_log},
     {LUA_CJSON_NAME, luaopen_cjson},
+    {LUA_JSON_NAME, luaopen_json},
     {NULL, NULL}
 };
 

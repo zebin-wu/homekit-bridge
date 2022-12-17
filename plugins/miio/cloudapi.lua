@@ -2,6 +2,7 @@ local httpc = require "httpc"
 local urllib = require "url"
 local hash = require "hash"
 local cjson = require "cjson"
+local json = require "json"
 local base64 = require "base64"
 local arc4 = require "arc4"
 local nvs = require "nvs"
@@ -251,13 +252,13 @@ function session:_request(path, data, encrypt)
     end
     local code, _, body = self.session:request("POST", url, 5000, headers)
     if code ~= 200 then
-        error(cjson.decode(assert(body)).message)
+        error(json.decode(assert(body)).message)
     end
     assert(body, "missing body")
     if encrypt then
         body = rc4ctx:crypt(base64.decode(body))
     end
-    local resp = cjson.decode(body)
+    local resp = json.decode(body)
     if resp.code ~= 0 then
         error(resp.message)
     end

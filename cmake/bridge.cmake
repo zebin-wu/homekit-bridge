@@ -27,6 +27,7 @@ set(BRIDGE_SRCS
     ${BRIDGE_SRC_DIR}/lbase64lib.c
     ${BRIDGE_SRC_DIR}/larc4lib.c
     ${BRIDGE_SRC_DIR}/lclilib.c
+    ${BRIDGE_SRC_DIR}/ljsonlib.c
     ${BRIDGE_SRC_DIR}/embedfs.c
 )
 

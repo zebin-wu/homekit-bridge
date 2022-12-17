@@ -1,7 +1,8 @@
 local socket = require "socket"
 local hash = require "hash"
 local cipher = require "cipher"
-local json = require "cjson"
+local cjson = require "cjson"
+local json = require "json"
 
 local assert = assert
 local type = type
@@ -304,7 +305,7 @@ function pcb:request(timeout, method, ...)
     end
     self.reqid = reqid
     do
-        local data = json.encode({
+        local data = cjson.encode({
             id = reqid,
             method = method,
             params = params
