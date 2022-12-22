@@ -34,7 +34,7 @@ local function checkRegion(region)
     return false
 end
 
----Get miIO devices.
+---Get PID by type.
 ---@param type? '"wifi"'|'"zigbee"'|'"bluetooth"'
 ---@return integer pid
 local function getPidByType(type)
@@ -274,7 +274,7 @@ function session:request(path, data, encrypt)
 
 ::again::
     local success, result = pcall(self._request, self, path, data, encrypt)
-    if success == false then
+    if success == false and result ~= "timeout" then
         if retry then
             retry = false
             self:logout()
