@@ -430,7 +430,7 @@ static int finishread(lua_State *L, int status, lua_KContext extra) {
 
     luaL_addsize(B, len);
 
-    size_t maxlen = B->size;
+    size_t maxlen = lua_tointeger(L, 2);
     len = luaL_bufflen(B);
     bool all = lua_toboolean(L, 3);
     if (len == maxlen || (!all && len != 0 && !pal_socket_readable(&client->sock))) {
@@ -446,11 +446,9 @@ success:
     return 1;
 }
 
-static int lstream_client_async_read(lua_State *L, lstream_client *client, size_t maxlen, lua_KFunction k) {
-    luaL_Buffer *B = &client->B;
-    size_t len = maxlen;
-    pal_err err = pal_socket_recv(&client->sock, luaL_buffaddr(B) + luaL_bufflen(B),
-        &len, lstream_client_read_recved_cb, client);
+static int lstream_client_async_read(lua_State *L, lstream_client *client, size_t len, lua_KFunction k) {
+    char *buf = luaL_prepbuffsize(&client->B, len);
+    pal_err err = pal_socket_recv(&client->sock, buf, &len, lstream_client_read_recved_cb, client);
     if (err == PAL_ERR_IN_PROGRESS) {
         client->co = L;
         return lua_yieldk(L, 0, (lua_KContext)client, k);
@@ -458,8 +456,7 @@ static int lstream_client_async_read(lua_State *L, lstream_client *client, size_
 
     int narg = 1;
     if (err == PAL_ERR_OK) {
-        narg = 3;
-        lua_pushlightuserdata(L, luaL_buffaddr(B) + luaL_bufflen(B));
+        narg = 2;
         lua_pushinteger(L, len);
     }
     lua_pushinteger(L, err);
@@ -494,8 +491,7 @@ static int lstream_client_read(lua_State *L) {
 
     lua_pop(L, 1);
     luaL_Buffer *B = &client->B;
-    luaL_buffinitsize(L, B, maxlen);
-    B->size = maxlen;
+    luaL_buffinit(L, B);
     luaL_addlstring(B, readbuf, len);
     return lstream_client_async_read(L, client, maxlen - len, finishread);
 }
@@ -526,7 +522,6 @@ static int finishreadall(lua_State *L, int status, lua_KContext extra) {
     }
 
     luaL_addsize(B, len);
-    luaL_prepbuffsize(B, LSTREAM_FRAME_LEN);
     return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finishreadall);
 
 success:
@@ -550,7 +545,6 @@ static int lstream_client_readall(lua_State *L) {
     luaL_Buffer *B = &client->B;
     luaL_buffinit(L, B);
     luaL_addlstring(B, readbuf, len);
-    luaL_prepbuffsize(B, LSTREAM_FRAME_LEN);
     return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finishreadall);
 }
 
@@ -628,7 +622,6 @@ static int finishreadline(lua_State *L, int status, lua_KContext extra) {
         return 1;
     }
 
-    luaL_prepbuffsize(B, LSTREAM_LINE_LEN);
     return lstream_client_async_read(L, client, LSTREAM_LINE_LEN, finishreadline);
 }
 
@@ -653,7 +646,6 @@ static int lstream_client_readline(lua_State *L) {
     luaL_Buffer *B = &client->B;
     luaL_buffinit(L, B);
     luaL_addlstring(B, readbuf, len);
-    luaL_prepbuffsize(B, LSTREAM_LINE_LEN);
     return lstream_client_async_read(L, client, LSTREAM_LINE_LEN, finishreadline);
 }
 
