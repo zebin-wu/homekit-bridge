@@ -137,7 +137,10 @@ end
 
 ---Close the connection.
 function client:close()
-    self.sc:close()
+    if self.sc then
+        self.sc:close()
+        self.sc = nil
+    end
 end
 
 ---Connect to HTTP server and return a client.
@@ -283,6 +286,7 @@ end
 function session:close()
     if self.hc then
         self.hc:close()
+        self.hc = nil
     end
 end
 
