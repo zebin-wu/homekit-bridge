@@ -1161,10 +1161,12 @@ int lhap_char_handle_read_finish(lua_State *L, int status, lua_KContext _ctx) {
                 HAPPlatformClockGetCurrent(),
                 lhap_schedule_read_requests_cb,
                 desc)) {
+            HAPLogError(&lhap_log, "%s: Failed to register schedule read requests timer.", __func__);
             HAPFatalError();
         }
     }
-    return 0;
+    lua_pushinteger(L, err);
+    return 1;
 }
 
 static int lhap_char_handle_read(lua_State *L) {
@@ -1197,8 +1199,7 @@ static int lhap_char_handle_read_pcall(lua_State *L) {
     status = lc_resume(co, L, 4, &nres);
     switch (status) {
     case LUA_OK:
-        HAPAssert(nres == 2);
-        return 2;
+        return nres;
     case LUA_YIELD:
         call_ctx->in_progress = true;
         lua_pushinteger(L, kHAPError_InProgress);

@@ -299,6 +299,7 @@ static int lcore_mq_send(lua_State *L) {
             if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
                 HAPLogError(&lcore_log, "%s: %s", __func__, lua_tostring(L, -1));
             }
+            lua_pop(L, nres);
         }
     } else {
         if (lcore_mq_size(obj) == obj->size) {
