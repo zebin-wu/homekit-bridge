@@ -344,9 +344,10 @@ static int lsocket_obj_recv(lua_State *L) {
     lua_Integer maxlen = luaL_checkinteger(L, 2);
     luaL_argcheck(L, maxlen >= 0 && maxlen <= UINT32_MAX, 2, "maxlen out of range");
 
-    luaL_buffinitsize(L, &obj->B, maxlen);
+    luaL_buffinit(L, &obj->B);
     size_t len = maxlen;
-    pal_err err = pal_socket_recv(&obj->socket, luaL_buffaddr(&obj->B), &len, lsocket_recved_cb, L);
+    pal_err err = pal_socket_recv(&obj->socket,
+        luaL_prepbuffsize(&obj->B, maxlen), &len, lsocket_recved_cb, L);
     switch (err) {
     case PAL_ERR_OK:
         luaL_addsize(&obj->B, len);
@@ -367,10 +368,10 @@ static int lsocket_obj_recvfrom(lua_State *L) {
 
     char addr[PAL_NET_ADDR_STR_LEN];
     uint16_t port;
-    luaL_buffinitsize(L, &obj->B, maxlen);
+    luaL_buffinit(L, &obj->B);
     size_t len = maxlen;
     pal_err err = pal_socket_recvfrom(&obj->socket,
-        luaL_buffaddr(&obj->B), &len, addr, sizeof(addr),
+        luaL_prepbuffsize(&obj->B, maxlen), &len, addr, sizeof(addr),
         &port, lsocket_recved_cb, L);
     switch (err) {
     case PAL_ERR_OK:
