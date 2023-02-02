@@ -51,7 +51,7 @@ function M.gen(device, info, conf)
                 end, function (request, value)
                     device:setProp("tgtHumidity", assert(tointeger(value), "value not a integer"))
                     raiseEvent(request.aid, request.sid, request.cid)
-                end)
+                end):setContraints(30, 70, 1)
             }),
             hap.newService(iids.temp, "TemperatureSensor", false, false, {
                 CurTemp.new(iids.curTemp, function (request)
