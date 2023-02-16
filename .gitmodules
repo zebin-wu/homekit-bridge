@@ -4,6 +4,3 @@
 [submodule "ext/lua"]
 	path = ext/lua
 	url = ../lua
-[submodule "ext/esp-protocols"]
-	path = ext/esp-protocols
-	url = https://github.com/espressif/esp-protocols
