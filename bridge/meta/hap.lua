@@ -364,7 +364,7 @@ function M.newService(iid, type, primary, hidden, characteristics) end
 ---@return HAPCharacteristic
 function M.newCharacteristic(iid, format, type, props, read, write, sub, unsub) end
 
----Accessory is valid.
+---Whether the accessory is valid.
 ---@param accessory HAPAccessory HAP accessory.
 ---@param bridged? boolean Whether the accessory is bridged accessory.
 function M.accessoryIsValid(accessory, bridged) end

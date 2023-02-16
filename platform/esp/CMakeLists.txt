@@ -20,7 +20,6 @@ set(SCRIPTS_DST_DIR ${CMAKE_BINARY_DIR}/bridge_scripts)
 # set extra component directroies
 set(EXTRA_COMPONENT_DIRS
     $ENV{IDF_PATH}/examples/system/console/advanced/components
-    ${TOP_DIR}/ext/esp-protocols/components/mdns
 )
 
 # set the embedfs root
