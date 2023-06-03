@@ -59,8 +59,9 @@ typedef struct pal_socket_mbuf {
     pal_socket_sent_cb sent_cb;
     void *arg;
     struct pal_socket_mbuf *next;
+    size_t sent_len;
     size_t len;
-    size_t pos;
+    char *pos;
     bool all;
     char buf[0];
 } pal_socket_mbuf;
@@ -179,7 +180,7 @@ pal_socket_addr_get_str_addr(pal_socket_addr *addr, char *buf, size_t buflen) {
     return NULL;
 }
 
-static pal_socket_mbuf *pal_socket_mbuf_create(const void *data, size_t len,
+static pal_socket_mbuf *pal_socket_mbuf_create(const void *data, size_t len, size_t sent_len,
     pal_socket_addr *to_addr, bool all, pal_socket_sent_cb sent_cb, void *arg) {
     pal_socket_mbuf *mbuf = pal_mem_alloc(sizeof(*mbuf) + len);
     if (!mbuf) {
@@ -192,8 +193,9 @@ static pal_socket_mbuf *pal_socket_mbuf_create(const void *data, size_t len,
         mbuf->to_addr.in.sin_family = AF_UNSPEC;
     }
     memcpy(mbuf->buf, data, len);
-    mbuf->pos = 0;
     mbuf->len = len;
+    mbuf->pos = mbuf->buf;
+    mbuf->sent_len = sent_len;
     mbuf->all = all;
     mbuf->sent_cb = sent_cb;
     mbuf->arg = arg;
@@ -542,23 +544,25 @@ static void pal_socket_handle_send_cb(
     }
 
     bool issendto = mbuf->to_addr.in.sin_family != AF_UNSPEC;
-    size_t sent_len = mbuf->len - mbuf->pos;
-    pal_err err = pal_socket_sendto_async(o, mbuf->buf + mbuf->pos, &sent_len,
+    size_t sent_len = mbuf->len;
+    pal_err err = pal_socket_sendto_async(o, mbuf->pos, &sent_len,
         issendto ? &mbuf->to_addr : NULL);
+    mbuf->sent_len += sent_len;
     switch (err) {
     case PAL_ERR_OK: {
         char addr[64];
         pal_socket_addr *_sa = issendto ? &mbuf->to_addr : &o->remote_addr;
         if (sent_len == mbuf->len) {
-            SOCKET_LOG(Debug, o, "Sent message(len=%zu) to %s:%u", mbuf->len,
+            SOCKET_LOG(Debug, o, "Sent message(len=%zu) to %s:%u", mbuf->sent_len,
                 pal_socket_addr_get_str_addr(_sa, addr, sizeof(addr)),
                 pal_socket_addr_get_port(_sa));
-        } else if (mbuf->all) {
+        } else if (mbuf->all && sent_len) {
             mbuf->pos += sent_len;
+            mbuf->len -= sent_len;
             return;
         } else {
             SOCKET_LOG(Debug, o, "Only sent %zu bytes message(len=%zu) to %s:%u",
-                sent_len, mbuf->len,
+                mbuf->sent_len, mbuf->len + mbuf->sent_len,
                 pal_socket_addr_get_str_addr(_sa, addr, sizeof(addr)),
                 pal_socket_addr_get_port(_sa));
         }
@@ -576,7 +580,7 @@ static void pal_socket_handle_send_cb(
     }
 
     if (mbuf->sent_cb) {
-        mbuf->sent_cb((pal_socket_obj *)o, err, sent_len, mbuf->arg);
+        mbuf->sent_cb((pal_socket_obj *)o, err, mbuf->sent_len, mbuf->arg);
     }
     pal_mem_free(mbuf);
 }
@@ -1000,14 +1004,14 @@ pal_err pal_socket_sendto(pal_socket_obj *_o, const void *data, size_t *len,
     pal_err err;
     if (pal_socket_mbuf_top(o)) {
         sent_len = 0;
-        err = PAL_ERR_IN_PROGRESS;
+        err = PAL_ERR_AGAIN;
     } else {
         sent_len = *len;
         err = pal_socket_sendto_async(o, data, &sent_len, psa);
     }
     switch (err) {
     case PAL_ERR_AGAIN: {
-        pal_socket_mbuf *mbuf = pal_socket_mbuf_create(data, *len, psa, all, sent_cb, arg);
+        pal_socket_mbuf *mbuf = pal_socket_mbuf_create(data, *len, sent_len, psa, all, sent_cb, arg);
         if (!mbuf) {
             return PAL_ERR_ALLOC;
         }
@@ -1020,12 +1024,13 @@ pal_err pal_socket_sendto(pal_socket_obj *_o, const void *data, size_t *len,
     case PAL_ERR_OK:
         if (sent_len == *len) {
             SOCKET_LOG(Debug, o, "Sent message(len=%zu) to %s:%u", *len, addr, port);
-        } else if (all) {
+        } else if (all && sent_len) {
             pal_socket_mbuf *mbuf = pal_socket_mbuf_create(data + sent_len, *len - sent_len,
-                psa, all, sent_cb, arg);
+                sent_len, psa, all, sent_cb, arg);
             if (!mbuf) {
                 return PAL_ERR_ALLOC;
             }
+            err = PAL_ERR_IN_PROGRESS;
             pal_socket_mbuf_in(o, mbuf);
             pal_socket_enable_write(o, true);
             SOCKET_LOG(Debug, o, "Sending message(len=%zu) to %s:%u ...", *len, addr, port);
