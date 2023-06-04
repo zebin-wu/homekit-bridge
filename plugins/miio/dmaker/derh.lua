@@ -12,10 +12,9 @@ local M = {}
 
 ---Create a dehumidifier.
 ---@param device MiioDevice Device object.
----@param info MiioDeviceInfo Device inforamtion.
 ---@param conf MiioAccessoryConf Device configuration.
 ---@return HAPAccessory accessory HomeKit Accessory.
-function M.gen(device, info, conf)
+function M.gen(device, conf)
     local iids = conf.iids
 
     return hap.newAccessory(
@@ -23,10 +22,10 @@ function M.gen(device, info, conf)
         "BridgedAccessory",
         conf.name or "Dmaker Dehumidifier",
         "dmaker",
-        info.model,
+        conf.model,
         conf.sn,
-        info.fw_ver,
-        info.hw_ver,
+        conf.fw_ver,
+        conf.hw_ver,
         {
             hap.AccessoryInformationService,
             hap.newService(iids.derh, "HumidifierDehumidifier", true, false, {

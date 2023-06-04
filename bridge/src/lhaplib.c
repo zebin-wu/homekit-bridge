@@ -16,7 +16,7 @@
 #include "app_int.h"
 #include "lc.h"
 
-#define LHAP_READ_REQUESTS_MAX 16
+#define LHAP_READ_REQUESTS_MAX 32
 
 #define lhap_optfunction(L, n) luaL_opt(L, lhap_checkfunction, n, false)
 #define lhap_optarray(L, n) luaL_opt(L, lhap_checkarray, n, 0)
@@ -1940,7 +1940,7 @@ static int lhap_new_accessory(lua_State *L) {
     const char *model = luaL_checkstring(L, 5);
     const char *sn = luaL_checkstring(L, 6);
     const char *fwVer = luaL_checkstring(L, 7);
-    const char *hwVer = luaL_checkstring(L, 8);
+    const char *hwVer = luaL_optstring(L, 8, NULL);
     size_t nservices = lhap_checkarray(L, 9);
     luaL_argcheck(L, nservices, 9, "empty services");
     bool has_identify = lhap_optfunction(L, 10);

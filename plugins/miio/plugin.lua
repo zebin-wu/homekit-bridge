@@ -18,6 +18,7 @@ local logger = log.getLogger("miio.plugin")
 ---@field token string Device token.
 ---@field sn string Accessory serial number.
 ---@field name string Accessory name.
+---@field model string Accessory model.
 
 ---Miio plugin configuration.
 ---@class MiioPluginConf:PluginConf
@@ -31,14 +32,7 @@ local logger = log.getLogger("miio.plugin")
 ---@param conf MiioAccessoryConf Accessory configuration.
 ---@return HAPAccessory accessory
 local function gen(conf)
-    local obj = device.create(conf.addr, conf.token)
-    local info = obj:getInfo()
-    local product = require("miio." .. info.model)
-    conf.sn = info.mac:gsub(":", "")
-    local handle = nvs.open(conf.sn)
-    conf.aid = hapUtil.getBridgedAccessoryIID(handle)
-    conf.iids = hapUtil.getInstanceIDs(handle)
-    return product.gen(obj, info, conf)
+    return require("miio." .. conf.model).gen(device.create(conf.addr, conf.token), conf)
 end
 
 ---Initialize plugin.
@@ -58,10 +52,18 @@ function M.init(conf)
         local ssid = conf.ssid
         for _, device in ipairs(devices) do
             if device.ssid == ssid then
+                local sn = device.mac:gsub(":", "")
+                local handle = nvs.open(sn)
                 tinsert(confs, {
+                    aid = hapUtil.getBridgedAccessoryIID(handle),
+                    iids = hapUtil.getInstanceIDs(handle),
                     addr = device.localip,
                     token = device.token,
-                    name = device.name
+                    name = device.name,
+                    model = device.model,
+                    sn = sn,
+                    fw_ver = device.extra.fw_version,
+                    hw_ver = device.extra.mcu_version or "0",
                 })
             end
         end
