@@ -29,19 +29,19 @@ function M.gen(device, conf)
                 Active.new(iids.active, function (request)
                     return device:getProp("power") and Active.value.Active or Active.value.Inactive
                 end, function (request, value)
-                    device:s_power(value == Active.value.Active)
+                    device:request("s_power", value == Active.value.Active)
                     raiseEvent(request.aid, request.sid, request.cid)
                 end),
                 RotationSpeed.new(iids.rotationSpeed, function (request)
                     return device:getProp("speed")
                 end, function (request, value)
-                    device:s_speed(tointeger(value))
+                    device:request("s_speed", tointeger(value))
                     raiseEvent(request.aid, request.sid, request.cid)
                 end):setContraints(1, 100, 1),
                 SwingMode.new(iids.swingMode, function (request)
                     return device:getProp("roll_enable") and SwingMode.value.Enabled or SwingMode.value.Disabled
                 end, function (request, value)
-                    device:s_roll(value == SwingMode.value.Enabled)
+                    device:request("s_roll", value == SwingMode.value.Enabled)
                     raiseEvent(request.aid, request.sid, request.cid)
                 end)
             })

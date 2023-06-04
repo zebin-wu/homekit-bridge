@@ -37,24 +37,14 @@ local M = {}
 ---@field netif MiioDeviceNetIf Network interface.
 
 ---@class MiioDevice Device object.
----
----@field get_prop fun(...: string): any[] Get properties.
----@field get_properties fun(...: MiotProperty): MiotProperty[] Get properties(MIOT).
----@field set_properties fun(...: MiotProperty): MiotProperty[] Set properties(MIOT).
-local device = setmetatable({}, {
-    __index = function (_, k)
-        return function (self, ...)
-            return self.pcb:request(self.timeout, k, ...)
-        end
-    end
-})
+local device = {}
 
 ---Get properties.
 ---@param obj MiioDevice
 local function getProps(obj)
     local names = obj.names
     obj.names = {}
-    local success, result = xpcall(obj.get_prop, traceback, obj, tunpack(names))
+    local success, result = xpcall(obj.request, traceback, obj, "get_prop", tunpack(names))
     if success == false then
         obj.mq:send(success, result)
         return
@@ -80,7 +70,7 @@ local function getPropsMiot(obj)
         })
     end
     obj.names = {}
-    local success, result = xpcall(obj.get_properties, traceback, obj, tunpack(params))
+    local success, result = xpcall(obj.request, traceback, obj, "get_properties", tunpack(params))
     if success == false then
         obj.mq:send(success, result)
         return
@@ -137,14 +127,14 @@ function device:setProp(name, value)
     assert(type(name) == "string")
 
     if self.mapping then
-        assert(self:set_properties({
+        assert(self:request("set_properties", {
             did = name,
             siid = self.mapping[name].siid,
             piid = self.mapping[name].piid,
             value = value
         })[1].code == 0)
     else
-        assert(self["set_" .. name](self, value)[1] == "ok")
+        assert(self:request("set_" .. name, value)[1] == "ok")
     end
 end
 
@@ -152,7 +142,11 @@ end
 ---@return MiioDeviceInfo info
 ---@nodiscard
 function device:getInfo()
-    return self["miIO.info"](self)
+    return self:request("miIO.info")
+end
+
+function device:request(method, ...)
+    return self.pcb:request(self.timeout, method, ...)
 end
 
 ---Create a device object.

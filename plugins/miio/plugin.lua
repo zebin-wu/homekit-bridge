@@ -19,6 +19,8 @@ local logger = log.getLogger("miio.plugin")
 ---@field sn string Accessory serial number.
 ---@field name string Accessory name.
 ---@field model string Accessory model.
+---@field fw_ver string Firmware version.
+---@field hw_ver string Hardware version.
 
 ---Miio plugin configuration.
 ---@class MiioPluginConf:PluginConf
