@@ -165,7 +165,7 @@ function M.create(addr, token)
         pcb = protocol.create(addr, util.hex2bin(token)),
         mapping = false,
         addr = addr,
-        timeout = 5000,
+        timeout = 1000,
         mq = core.createMQ(1),
         names = {}, ---@type string[]
     }
