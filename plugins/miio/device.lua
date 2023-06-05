@@ -145,6 +145,10 @@ function device:getInfo()
     return self:request("miIO.info")
 end
 
+---Start a request.
+---@param method string The request method.
+---@param ... any The request parameters.
+---@return any result
 function device:request(method, ...)
     return self.pcb:request(self.timeout, method, ...)
 end
