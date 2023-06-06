@@ -51,10 +51,10 @@ static void pal_dns_response(void* _Nullable context, size_t contextSize) {
     pal_dns_response_cb cb = ctx->cb;
     void *arg = ctx->arg;
     const char *addr = NULL;
-    const char *err = NULL;
+    pal_err err = PAL_ERR_OK;
     pal_net_addr_family af = PAL_NET_ADDR_FAMILY_UNSPEC;
     if (!ctx->found) {
-        err = "hostname not found";
+        err = PAL_ERR_NOT_FOUND;
         goto done;
     }
 
@@ -70,7 +70,7 @@ static void pal_dns_response(void* _Nullable context, size_t contextSize) {
     char buf[128];
     addr = ipaddr_ntoa_r(&ctx->addr, buf, sizeof(buf));
     if (!addr) {
-        err = "invalid address";
+        err = PAL_ERR_INVALID_ARG;
     }
 
 done:

@@ -63,11 +63,35 @@ static void pal_dns_req_ctx_schedule(void* _Nullable context, size_t contextSize
     pal_dns_response_cb cb = ctx->cb;
     void *arg = ctx->arg;
     const char *addr = NULL;
-    const char *err = NULL;
+    pal_err err = PAL_ERR_OK;
     pal_net_addr_family af = PAL_NET_ADDR_FAMILY_UNSPEC;
 
+    switch (ctx->ret) {
+    case 0:
+        break;
+    case EAI_BADFLAGS:
+    case EAI_FAMILY:
+    case EAI_NONAME:
+        err = PAL_ERR_INVALID_ARG;
+        break;
+    case EAI_AGAIN:
+        err = PAL_ERR_AGAIN;
+        break;
+    case EAI_MEMORY:
+        err = PAL_ERR_ALLOC;
+        break;
+    case EAI_FAIL:
+        err = PAL_ERR_NOT_FOUND;
+        break;
+    case EAI_SERVICE:
+    case EAI_SOCKTYPE:
+    case EAI_SYSTEM:
+    default:
+        err = PAL_ERR_UNKNOWN;
+        break;
+    }
+
     if (ctx->ret) {
-        err = gai_strerror(ctx->ret);
         goto done;
     }
 
@@ -84,10 +108,8 @@ static void pal_dns_req_ctx_schedule(void* _Nullable context, size_t contextSize
         addr = inet_ntop(AF_INET6, &in6->sin6_addr, buf, sizeof(buf));
         af = PAL_NET_ADDR_FAMILY_INET6;
     } break;
-    }
-
-    if (!addr) {
-        err = "invalid address";
+    default:
+        HAPFatalError();
     }
 
 done:
