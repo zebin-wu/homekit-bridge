@@ -19,7 +19,7 @@ typedef struct {
     pal_md_ctx ctx;
 } lhash_obj;
 
-const char *lhash_type_strs[] = {
+static const char *lhash_type_strs[] = {
     "MD4",
     "MD5",
     "SHA1",

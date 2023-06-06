@@ -58,6 +58,9 @@ LUAMOD_API int luaopen_arc4(lua_State *L);
 #define LUA_CLI_NAME "cli"
 LUAMOD_API int luaopen_cli(lua_State *L);
 
+#define LUA_NETIF_NAME "netif"
+LUAMOD_API int luaopen_netif(lua_State *L);
+
 #ifdef __cplusplus
 }
 #endif
