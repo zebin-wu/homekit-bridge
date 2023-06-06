@@ -86,6 +86,8 @@ void pal_dns_event_handler(void* event_handler_arg, esp_event_base_t event_base,
     HAPAssert(HAPPlatformRunLoopScheduleCallback(pal_dns_response, event_data, sizeof(void *)) == kHAPError_None);
 }
 
+// This function is called in the tcp/ip thread, if function HAPPlatformRunLoopScheduleCallback
+// is called directly here, it will cause deadlock.
 static void pal_dns_found_cb(const char *name, const ip_addr_t *ipaddr, void *callback_arg) {
     pal_dns_req_ctx *ctx = callback_arg;
     HAPAssert(!ctx->found);

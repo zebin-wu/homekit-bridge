@@ -5,12 +5,21 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <string.h>
+#include <esp_event.h>
 #include <lwip/netif.h>
 #include <lwip/inet.h>
 #include <sys/queue.h>
 #include <pal/mem.h>
 #include <pal/net_if.h>
 #include <pal/net_addr_int.h>
+#include <HAPPlatform.h>
+
+#if !LWIP_NETIF_EXT_STATUS_CALLBACK
+#error "LWIP_NETIF_EXT_STATUS_CALLBACK must enabled"
+#endif
+
+#define PAL_NET_IF_EVENT_ID 1
+ESP_EVENT_DEFINE_BASE(PAL_NET_IF_EVENTS);
 
 NETIF_DECLARE_EXT_CALLBACK(netif_callback)
 
@@ -23,10 +32,6 @@ struct event_cb_desc {
 
 static LIST_HEAD(, event_cb_desc) gevent_cbs[PAL_NET_IF_EVENT_COUNT];
 
-#if !LWIP_NETIF_EXT_STATUS_CALLBACK
-#error "LWIP_NETIF_EXT_STATUS_CALLBACK must enabled"
-#endif
-
 static void pal_net_if_call_event_handlers(pal_net_if *netif, pal_net_if_event event) {
     struct event_cb_desc *desc;
     LIST_FOREACH(desc, gevent_cbs + event, list_entry) {
@@ -37,7 +42,21 @@ static void pal_net_if_call_event_handlers(pal_net_if *netif, pal_net_if_event e
     }
 }
 
-static void pal_net_if_ext_callback(struct netif *netif, netif_nsc_reason_t reason, const netif_ext_callback_args_t *args) {
+struct pal_net_if_ext_callback_ctx {
+    struct netif *netif;
+    netif_nsc_reason_t reason;
+    const netif_ext_callback_args_t *args;
+};
+
+static void pal_net_if_ext_callback_schedule(void* _Nullable context, size_t contextSize) {
+    HAPPrecondition(context);
+    HAPPrecondition(contextSize == sizeof(struct pal_net_if_ext_callback_ctx));
+
+    struct pal_net_if_ext_callback_ctx *ctx = (struct pal_net_if_ext_callback_ctx *)context;
+    struct netif *netif = ctx->netif;
+    netif_nsc_reason_t reason = ctx->reason;
+    const netif_ext_callback_args_t *args = ctx->args;
+
     if (reason & LWIP_NSC_NETIF_ADDED) {
         pal_net_if_call_event_handlers((pal_net_if *)netif, PAL_NET_IF_EVENT_ADDED);
     }
@@ -56,15 +75,40 @@ static void pal_net_if_ext_callback(struct netif *netif, netif_nsc_reason_t reas
     }
 }
 
+static void pal_net_if_event_handler(void* event_handler_arg, esp_event_base_t event_base,
+    int32_t event_id, void* event_data) {
+    HAPPrecondition(event_base == PAL_NET_IF_EVENTS);
+    HAPPrecondition(event_id == PAL_NET_IF_EVENT_ID);
+
+    struct pal_net_if_ext_callback_ctx *ctx = event_data;
+
+    HAPAssert(
+        HAPPlatformRunLoopScheduleCallback(pal_net_if_ext_callback_schedule, ctx, sizeof(*ctx)) == kHAPError_None);
+}
+
+// This function is called in the tcp/ip thread, if function HAPPlatformRunLoopScheduleCallback
+// is called directly here, it will cause deadlock.
+static void pal_net_if_ext_callback(struct netif *netif,
+    netif_nsc_reason_t reason, const netif_ext_callback_args_t *args) {
+    struct pal_net_if_ext_callback_ctx ctx = {
+        .netif = netif,
+        .reason = reason,
+        .args = args,
+    };
+    ESP_ERROR_CHECK(esp_event_post(PAL_NET_IF_EVENTS, PAL_NET_IF_EVENT_ID, &ctx, sizeof(ctx), 0));
+}
+
 void pal_net_if_init() {
     for (size_t i = 0; i < PAL_NET_IF_EVENT_COUNT; i++) {
         LIST_INIT(&gevent_cbs[i]);
     }
 
     netif_add_ext_callback(&netif_callback, pal_net_if_ext_callback);
+    ESP_ERROR_CHECK(esp_event_handler_register(PAL_NET_IF_EVENTS, ESP_EVENT_ANY_ID, pal_net_if_event_handler, NULL));
 }
 
 void pal_net_if_deinit() {
+    ESP_ERROR_CHECK(esp_event_handler_unregister(PAL_NET_IF_EVENTS, ESP_EVENT_ANY_ID, pal_net_if_event_handler));
     netif_remove_ext_callback(&netif_callback);
 
     for (size_t i = 0; i < PAL_NET_IF_EVENT_COUNT; i++) {
