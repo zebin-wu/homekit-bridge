@@ -4,8 +4,8 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-#ifndef PLATFORM_LWIP_INCLUDE_PAL_NET_IF_INT_H
-#define PLATFORM_LWIP_INCLUDE_PAL_NET_IF_INT_H
+#ifndef PLATFORM_ESP_INCLUDE_PAL_NET_IF_INT_H
+#define PLATFORM_ESP_INCLUDE_PAL_NET_IF_INT_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,4 +25,4 @@ void pal_net_if_deinit();
 }
 #endif
 
-#endif  // PLATFORM_LWIP_INCLUDE_PAL_NET_IF_INT_H
+#endif  // PLATFORM_ESP_INCLUDE_PAL_NET_IF_INT_H

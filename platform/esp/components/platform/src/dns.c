@@ -51,10 +51,10 @@ static void pal_dns_response(void* _Nullable context, size_t contextSize) {
     pal_dns_response_cb cb = ctx->cb;
     void *arg = ctx->arg;
     const char *addr = NULL;
-    const char *err = NULL;
+    pal_err err = PAL_ERR_OK;
     pal_net_addr_family af = PAL_NET_ADDR_FAMILY_UNSPEC;
     if (!ctx->found) {
-        err = "hostname not found";
+        err = PAL_ERR_NOT_FOUND;
         goto done;
     }
 
@@ -70,7 +70,7 @@ static void pal_dns_response(void* _Nullable context, size_t contextSize) {
     char buf[128];
     addr = ipaddr_ntoa_r(&ctx->addr, buf, sizeof(buf));
     if (!addr) {
-        err = "invalid address";
+        err = PAL_ERR_INVALID_ARG;
     }
 
 done:
@@ -86,6 +86,8 @@ void pal_dns_event_handler(void* event_handler_arg, esp_event_base_t event_base,
     HAPAssert(HAPPlatformRunLoopScheduleCallback(pal_dns_response, event_data, sizeof(void *)) == kHAPError_None);
 }
 
+// This function is called in the tcp/ip thread, if function HAPPlatformRunLoopScheduleCallback
+// is called directly here, it will cause deadlock.
 static void pal_dns_found_cb(const char *name, const ip_addr_t *ipaddr, void *callback_arg) {
     pal_dns_req_ctx *ctx = callback_arg;
     HAPAssert(!ctx->found);

@@ -135,12 +135,6 @@ void app_main_task(void *arg) {
     HAPPlatformRunLoopRelease();
 }
 
-static void app_wifi_connected_cb() {
-    app_wifi_set_connected_cb(NULL);
-    xTaskCreate(app_main_task, "app", APP_MAIN_TASK_STACKSIZE,
-        NULL, APP_MAIN_TASK_PRIORITY, NULL);
-}
-
 void app_main() {
     // Initialize default NVS
     esp_err_t ret = nvs_flash_init();
@@ -163,10 +157,10 @@ void app_main() {
     app_console_init();
     app_wifi_init();
     app_wifi_on();
-    app_spiffs_init(APP_SPIFFS_DIR_PATH);
-
-    app_wifi_set_connected_cb(app_wifi_connected_cb);
     app_wifi_register_cmd();
-
+    app_spiffs_init(APP_SPIFFS_DIR_PATH);
     app_console_start();
+
+    xTaskCreate(app_main_task, "app", APP_MAIN_TASK_STACKSIZE,
+        NULL, APP_MAIN_TASK_PRIORITY, NULL);
 }

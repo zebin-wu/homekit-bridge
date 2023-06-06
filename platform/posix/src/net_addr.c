@@ -48,6 +48,6 @@ const char *pal_net_addr_get_string(pal_net_addr *_addr, char *buf, size_t bufle
     case PAL_NET_ADDR_FAMILY_INET6:
         return inet_ntop(AF_INET6, &addr->u, buf, buflen);
     default:
-        return NULL;
+        HAPFatalError();
     }
 }

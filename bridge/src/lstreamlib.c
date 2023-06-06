@@ -199,13 +199,23 @@ static void lstream_client_connected_cb(pal_socket_obj *o, pal_err err, void *ar
     }
 }
 
-static void lstream_client_dns_response_cb(const char *errmsg, const char *addr,
+static void lstream_client_dns_response_cb(pal_err err, const char *addr,
     pal_net_addr_family af, void *arg) {
     lstream_client *client = arg;
     client->dns_req = NULL;
 
-    if (errmsg) {
-        lstream_client_create_finish(client, errmsg);
+    switch (err) {
+    case PAL_ERR_OK:
+        break;
+    case PAL_ERR_AGAIN:
+        client->dns_req = pal_dns_start_request(client->host, PAL_NET_ADDR_FAMILY_UNSPEC,
+            lstream_client_dns_response_cb, client);
+        if (luai_unlikely(!client->dns_req)) {
+            lstream_client_create_finish(client, "failed to start DNS resolution request");
+        }
+        return;
+    default:
+        lstream_client_create_finish(client, pal_err_string(err));
         return;
     }
 
@@ -235,7 +245,7 @@ static void lstream_client_dns_response_cb(const char *errmsg, const char *addr,
     }
     client->sock_inited = true;
 
-    pal_err err = pal_socket_connect(&client->sock, addr,
+    err = pal_socket_connect(&client->sock, addr,
         client->port, lstream_client_connected_cb, client);
     switch (err) {
     case PAL_ERR_OK:

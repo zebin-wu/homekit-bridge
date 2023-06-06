@@ -30,15 +30,15 @@ typedef struct ldns_resolve_context {
 
 static int ldns_response(lua_State *L) {
     lua_State *co = lua_touserdata(L, 1);
-    const char *err = lua_touserdata(L, 2);
+    pal_err err = lua_tointeger(L, 2);
     const char *addr = lua_touserdata(L, 3);
     pal_net_addr_family af = lua_tointeger(L, 4);
     lua_pop(L, 4);
 
     int narg = 0;
-    if (err) {
+    if (err != PAL_ERR_OK) {
         narg = 1;
-        lua_pushstring(co, err);
+        lua_pushfstring(co, pal_err_string(err));
     } else {
         HAPAssert(addr);
         narg = 3;
@@ -54,7 +54,7 @@ static int ldns_response(lua_State *L) {
     return 0;
 }
 
-void ldns_response_cb(const char *err, const char *addr, pal_net_addr_family af, void *arg) {
+void ldns_response_cb(pal_err err, const char *addr, pal_net_addr_family af, void *arg) {
     ldns_resolve_context *ctx = arg;
     lua_State *co = ctx->co;
     lua_State *L = lc_getmainthread(co);
@@ -68,7 +68,7 @@ void ldns_response_cb(const char *err, const char *addr, pal_net_addr_family af,
     lc_pushtraceback(L);
     lua_pushcfunction(L, ldns_response);
     lua_pushlightuserdata(L, co);
-    lua_pushlightuserdata(L, (void *)err);
+    lua_pushinteger(L, err);
     lua_pushlightuserdata(L, (void *)addr);
     lua_pushinteger(L, af);
     int status = lua_pcall(L, 4, 0, 1);
@@ -84,7 +84,7 @@ static void ldns_timeout_timer_cb(HAPPlatformTimerRef timer, void *context) {
     ldns_resolve_context *ctx = context;
     ctx->timer = 0;
     pal_dns_cancel_request(ctx->req);
-    ldns_response_cb("resolve timeout", NULL, PAL_NET_ADDR_FAMILY_UNSPEC, ctx);
+    ldns_response_cb(PAL_ERR_TIMEOUT, NULL, PAL_NET_ADDR_FAMILY_UNSPEC, ctx);
 }
 
 static int finishresolve(lua_State *L, int status, lua_KContext extra) {
