@@ -2,8 +2,12 @@ local config = require "config"
 local plugins = require "hap.plugins"
 local hap = require "hap"
 local chip = require "chip"
+local netlink = require "netlink"
 
 local logger = log.getLogger()
+
+-- Wait for the network link is ready.
+if not netlink.isUp() then netlink.waitUp() end
 
 hap.start(
     hap.newAccessory(
