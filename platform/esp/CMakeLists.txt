@@ -10,7 +10,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 # required IDF version, some modules depend on specific IDF version
-set(REQUIRED_IDF_VERSION 5.0.0)
+set(REQUIRED_IDF_VERSION 5.1.0)
 
 # directories
 set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)

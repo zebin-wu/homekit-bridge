@@ -92,11 +92,11 @@ The configuration file `config.json` is placed in `/usr/local/lib/homekit-bridge
 
 Set up the host environment and ESP-IDF as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/v5.0/get-started/index.html).
 
-The currently tested ESP-IDF version is **v5.0**, switch to this version with the following command:
+The currently tested ESP-IDF version is **v5.1-rc1**, switch to this version with the following command:
 
 ```bash
 git fetch --tag
-git checkout v5.0
+git checkout v5.1-rc1
 git submodule update
 ```
 
@@ -107,7 +107,7 @@ Compile, flash and connect to console as below:
 ```bash
 cd /path/to/homekit-bridge/platform/esp
 export ESPPORT=/dev/ttyUSB0  # Set your board's serial port here
-idf.py set-target [esp32|esp32s2|esp32c3|esp32s3]
+idf.py set-target [esp32|esp32s2|esp32c3|esp32s3|esp32c6]
 idf.py flash
 idf.py monitor
 ```
