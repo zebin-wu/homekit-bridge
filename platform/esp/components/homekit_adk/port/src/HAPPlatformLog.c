@@ -23,7 +23,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
-#include <esp_attr.h>
+#include <esp_log.h>
 
 #include "HAP.h"
 #include "HAPPlatformLog+Init.h"
@@ -33,7 +33,6 @@
 #endif
 
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "Log" };
-static HAPLogType logEnabledType = HAP_LOG_LEVEL;
 
 void HAPPlatformLogPOSIXError(
         HAPLogType type,
@@ -54,28 +53,36 @@ void HAPPlatformLogPOSIXError(
     HAPLogWithType(&logObject, type, "%s:%d:%s - %s @ %s:%d", message, errorNumber, errorString, function, file, line);
 }
 
-void HAPPlatformLogSetEnabledTypes(const HAPLogObject* _Nonnull log HAP_UNUSED, HAPPlatformLogEnabledTypes type) {
-    logEnabledType = type;
+static void getTag(const HAPLogObject* log, char *buf, size_t buflen) {
+    if (log->subsystem) {
+        int len;
+        len = snprintf(buf, buflen, "%s", log->subsystem);
+        if (log->category) {
+            len += snprintf(buf + len, buflen - len, ":%s", log->category);
+        }
+    } else {
+        snprintf(buf, buflen, kHAPPlatform_LogSubsystem);
+    }
 }
 
 HAP_RESULT_USE_CHECK
 HAPPlatformLogEnabledTypes HAPPlatformLogGetEnabledTypes(const HAPLogObject* _Nonnull log HAP_UNUSED) {
-    switch (logEnabledType) {
-        case 0: {
+    char tag[64];
+    getTag(log, tag, sizeof(tag));
+
+    switch (esp_log_level_get(tag)) {
+        case ESP_LOG_NONE:
             return kHAPPlatformLogEnabledTypes_None;
-        }
-        case 1: {
+        case ESP_LOG_ERROR:
+        case ESP_LOG_WARN:
             return kHAPPlatformLogEnabledTypes_Default;
-        }
-        case 2: {
+        case ESP_LOG_INFO:
             return kHAPPlatformLogEnabledTypes_Info;
-        }
-        case 3: {
+        case ESP_LOG_DEBUG:
+        case ESP_LOG_VERBOSE:
             return kHAPPlatformLogEnabledTypes_Debug;
-        }
-        default: {
+        default:
             HAPFatalError();
-        }
     }
 }
 
@@ -90,131 +97,34 @@ void HAPPlatformLogCapture(
     HAPPrecondition(log);
     HAPPrecondition(!numBufferBytes || bufferBytes);
 
-    static volatile bool captureLock = 0;
-    while (__atomic_test_and_set(&captureLock, __ATOMIC_SEQ_CST))
-        ;
+    char tag[64];
+    getTag(log, tag, sizeof(tag));
 
-    // Format log message.
-    bool logHandled = false;
+    esp_log_level_t level;
 
-    // Perform regular logging.
-    if (!logHandled) {
-        // Color.
-        switch (type) {
-            case kHAPLogType_Debug: {
-                fprintf(stderr, "\x1B[0m");
-            } break;
-            case kHAPLogType_Info: {
-                fprintf(stderr, "\x1B[32m");
-            } break;
-            case kHAPLogType_Default: {
-                fprintf(stderr, "\x1B[35m");
-            } break;
-            case kHAPLogType_Error: {
-                fprintf(stderr, "\x1B[31m");
-            } break;
-            case kHAPLogType_Fault: {
-                fprintf(stderr, "\x1B[1m\x1B[31m");
-            } break;
-        }
-
-        // Time.
-        struct timeval now;
-        int err = gettimeofday(&now, NULL);
-        if (!err) {
-            struct tm g;
-            struct tm* gmt = gmtime_r(&now.tv_sec, &g);
-            if (gmt) {
-                (void) fprintf(
-                        stderr,
-                        "%04d-%02d-%02d'T'%02d:%02d:%02d'Z'",
-                        1900 + gmt->tm_year,
-                        1 + gmt->tm_mon,
-                        gmt->tm_mday,
-                        gmt->tm_hour,
-                        gmt->tm_min,
-                        gmt->tm_sec);
-            }
-        }
-
-        (void) fprintf(stderr, "\t");
-
-        // Type.
-        switch (type) {
-            case kHAPLogType_Debug: {
-                (void) fprintf(stderr, "Debug");
-            } break;
-            case kHAPLogType_Info: {
-                (void) fprintf(stderr, "Info");
-            } break;
-            case kHAPLogType_Default: {
-                (void) fprintf(stderr, "Default");
-            } break;
-            case kHAPLogType_Error: {
-                (void) fprintf(stderr, "Error");
-            } break;
-            case kHAPLogType_Fault: {
-                (void) fprintf(stderr, "Fault");
-            } break;
-        }
-        (void) fprintf(stderr, "\t");
-
-        // Subsystem / Category.
-        if (log->subsystem) {
-            (void) fprintf(stderr, "[%s", log->subsystem);
-            if (log->category) {
-                (void) fprintf(stderr, ":%s", log->category);
-            }
-            (void) fprintf(stderr, "] ");
-        }
-
-        // Message.
-        (void) vfprintf(stderr, format, args);
-        (void) fprintf(stderr, "\n");
-
-        // Buffer.
-        if (bufferBytes) {
-            size_t i, n;
-            const uint8_t* b = bufferBytes;
-            size_t length = numBufferBytes;
-            if (length == 0) {
-                (void) fprintf(stderr, "\n");
-            } else {
-                i = 0;
-                do {
-                    (void) fprintf(stderr, "    %04zx ", i);
-                    for (n = 0; n != 8 * 4; n++) {
-                        if (n % 4 == 0) {
-                            (void) fprintf(stderr, " ");
-                        }
-                        if ((n <= length) && (i < length - n)) {
-                            (void) fprintf(stderr, "%02x", b[i + n] & 0xff);
-                        } else {
-                            (void) fprintf(stderr, "  ");
-                        }
-                    };
-                    (void) fprintf(stderr, "    ");
-                    for (n = 0; n != 8 * 4; n++) {
-                        if (i != length) {
-                            if ((32 <= b[i]) && (b[i] < 127)) {
-                                (void) fprintf(stderr, "%c", b[i]);
-                            } else {
-                                (void) fprintf(stderr, ".");
-                            }
-                            i++;
-                        }
-                    }
-                    (void) fprintf(stderr, "\n");
-                } while (i != length);
-            }
-        }
-
-        // Reset color.
-        fprintf(stderr, "\x1B[0m");
+    switch (type) {
+    case kHAPLogType_Fault:
+    case kHAPLogType_Error:
+        level = ESP_LOG_ERROR;
+        esp_log_write(level, tag, LOG_COLOR_E "E (%lu) %s: ", esp_log_timestamp(), tag);
+        break;
+    case kHAPLogType_Default:
+        level = ESP_LOG_WARN;
+        esp_log_write(level, tag, LOG_COLOR_W "W (%lu) %s: ", esp_log_timestamp(), tag);
+        break;
+    case kHAPLogType_Info:
+        level = ESP_LOG_INFO;
+        esp_log_write(level, tag, LOG_COLOR_I "I (%lu) %s: ", esp_log_timestamp(), tag);
+        break;
+    case kHAPLogType_Debug:
+        level = ESP_LOG_DEBUG;
+        esp_log_write(level, tag, LOG_COLOR_D "D (%lu) %s: ", esp_log_timestamp(), tag);
+        break;
+    default:
+        HAPFatalError();
     }
 
-    // Finish log.
-    (void) fflush(stderr);
-
-    __atomic_clear(&captureLock, __ATOMIC_SEQ_CST);
+    esp_log_writev(level, tag, format, args);
+    esp_log_write(level, tag, LOG_RESET_COLOR "\n");
+    esp_log_buffer_hexdump_internal(tag, bufferBytes, numBufferBytes, level);
 }

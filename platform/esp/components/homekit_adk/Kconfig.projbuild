@@ -46,27 +46,11 @@ menu "HomeKit"
 
     endmenu
 
-    choice HAP_LOG_LEVEL
-        prompt "HAP Log Level"
-        default HAP_LOG_LEVEL_DEFAULT
-        help
-            HomeKit Logging Level
-
-        config HAP_LOG_LEVEL_NONE
-            bool "None"
-        config HAP_LOG_LEVEL_DEFAULT
-            bool "Default"
-        config HAP_LOG_LEVEL_INFO
-            bool "Info"
-        config HAP_LOG_LEVEL_DEBUG
-            bool "Debug"
-    endchoice
-
     config HAP_LOG_LEVEL
         int
-        default 0 if HAP_LOG_LEVEL_NONE
-        default 1 if HAP_LOG_LEVEL_DEFAULT
-        default 2 if HAP_LOG_LEVEL_INFO
-        default 3 if HAP_LOG_LEVEL_DEBUG
+        default 0 if LOG_MAXIMUM_LEVEL = 0
+        default 1 if LOG_MAXIMUM_LEVEL = 1 || LOG_MAXIMUM_LEVEL = 2
+        default 2 if LOG_MAXIMUM_LEVEL = 3
+        default 3 if LOG_MAXIMUM_LEVEL = 4 || LOG_MAXIMUM_LEVEL = 5
 
 endmenu

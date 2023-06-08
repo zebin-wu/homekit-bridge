@@ -51,17 +51,6 @@ void HAPPlatformLogPOSIXError(
         const char* file,
         int line);
 
-/**
- * Set whether a specific type of logging, such as default, info, debug, error, or fault, is enabled
- * for a specific log object. Different log objects may have different configurations.
- *
- * - Log levels are described in the documentation of HAPLogType in file HAPLog.h.
- *
- * @param      log                  Log object.
- * @param      type                 Logging levels that shall be enabled for the given subsystem / category.
- */
-void HAPPlatformLogSetEnabledTypes(const HAPLogObject* log, HAPPlatformLogEnabledTypes type);
-
 #if __has_feature(nullability)
 #pragma clang assume_nonnull end
 #endif
