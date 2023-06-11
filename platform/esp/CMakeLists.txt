@@ -45,13 +45,6 @@ endif()
 project(${PROJECT})
 
 set(SCRIPTS_SRC_DIRS ${BRIDGE_SCRIPTS_DIR})
-configure_file(${TOP_DIR}/config/default.json ${SCRIPTS_DST_DIR}/config.json)
-# create storage.bin
-spiffs_create_partition_image(storage
-    ${SCRIPTS_DST_DIR}
-    FLASH_IN_PROJECT
-    DEPENDS ${SCRIPTS_DST_DIR}/config.json
-)
 
 target_add_lua_binary_embedfs(${PROJECT}.elf
     ${BRIDGE_EMBEDFS_ROOT}

@@ -1,4 +1,4 @@
-local hap = require "hap"
+local config = require "config"
 local hapUtil = require "hap.util"
 local nvs = require "nvs"
 local device = require "miio.device"
@@ -22,14 +22,6 @@ local logger = log.getLogger("miio.plugin")
 ---@field fw_ver string Firmware version.
 ---@field hw_ver string Hardware version.
 
----Miio plugin configuration.
----@class MiioPluginConf:PluginConf
----
----@field region '"cn"'|'"de"'|'"us"'|'"ru"'|'"tw"'|'"sg"'|'"in"'|'"i2"' Server region.
----@field username string User ID or email.
----@field password string User password.
----@field ssid string Wi-Fi SSID.
-
 ---Generate accessory via configuration.
 ---@param conf MiioAccessoryConf Accessory configuration.
 ---@return HAPAccessory accessory
@@ -38,20 +30,22 @@ local function gen(conf)
 end
 
 ---Initialize plugin.
----@param conf MiioPluginConf Plugin configuration.
 ---@return HAPAccessory[] bridgedAccessories Bridges Accessories.
-function M.init(conf)
+function M.init()
     logger:info("Initialing ...")
 
     local confs = {}
     do
         local devices
         do
-            local session <close> = cloudapi.session(conf.region, conf.username, conf.password)
+            local region = assert(config.get("miio.region"))
+            local username = assert(config.get("miio.username"))
+            local password = assert(config.get("miio.password"))
+            local session <close> = cloudapi.session(region, username, password)
             devices = session:getDevices("wifi")
         end
         collectgarbage()
-        local ssid = conf.ssid
+        local ssid = assert(config.get("miio.ssid"))
         for _, device in ipairs(devices) do
             if device.ssid == ssid then
                 local sn = device.mac:gsub(":", "")

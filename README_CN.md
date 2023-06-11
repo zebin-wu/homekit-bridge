@@ -121,9 +121,36 @@ idf.py monitor
 join "<ssid>" "<password>"
 ```
 
-#### 配置
+### 配置
 
-TODO
+使用以下命令来操作配置项:
+
+#### 获取一个配置项
+
+```
+homekit-bridge conf <key>
+```
+
+#### 设置一个配置项
+
+```
+homekit-bridge conf <key> <value>
+```
+
+### 添加一个值到指定配置项
+
+```
+homekit-bridge conf --add <key> <value>
+```
+
+#### 配置项
+
+名称 | 类型 | 描述 | 是否必选 | 例子
+-|-|-|-|-
+`bridge.name` | `string` | 桥接附件的名称 | YES | `HomeKit Bridge`
+`bridge.plugins` | `string[]` | 插件名称列表 | NO | `miio`
+
+每个插件都有自己特定的配置，可以从插件的readme来获取详情。
 
 ## 许可证
 

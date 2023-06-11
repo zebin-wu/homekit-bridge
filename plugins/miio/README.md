@@ -20,25 +20,7 @@ When the device is created, the plugin will look for the adapted product script 
 
 Name | Type | Description | Required | Example
 -|-|-|-|-
-`region` | `string` | Server region | YES | `cn`,`de`,`us`,`ru`,`tw`,`sg`,`in`,`i2`
-`username` | `string` | User ID or email | YES | `xxx@xxx.com`,`12345678`
-`password` | `string` | User password | YES | `12345678`
-`ssid` | `string` | The SSID of the Wi-Fi | YES | `HUAWEI-A1`
-
-Example: config.json
-
-```json
-{
-    "bridge": {
-        "name": "HomeKit Bridge"
-    },
-    "plugins": {
-        "miio": {
-            "region": "cn",
-            "username": "xxx@xxx.com",
-            "password": "12345678",
-            "ssid": "HUAWEI-A1"
-        }
-    }
-}
-```
+`miio.region` | `string` | Server region | YES | `cn`,`de`,`us`,`ru`,`tw`,`sg`,`in`,`i2`
+`miio.username` | `string` | User ID or email | YES | `xxx@xxx.com`,`12345678`
+`miio.password` | `string` | User password | YES | `12345678`
+`miio.ssid` | `string` | The SSID of the Wi-Fi | YES | `HUAWEI-A1`

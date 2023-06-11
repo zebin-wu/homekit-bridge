@@ -20,25 +20,7 @@
 
 名称 | 类型 | 描述 | 是否必选 | 例子
 -|-|-|-|-
-`region` | `string` | 地区 | YES | `cn`,`de`,`us`,`ru`,`tw`,`sg`,`in`,`i2`
-`username` | `string` | 用户ID或邮箱 | YES | `xxx@xxx.com`,`12345678`
-`password` | `string` | 用户密码 | YES | `12345678`
-`ssid` | `string` | Wi-FI SSID | YES | `HUAWEI-A1`
-
-参考 ``config.json``:
-
-```json
-{
-    "bridge": {
-        "name": "HomeKit Bridge"
-    },
-    "plugins": {
-        "miio": {
-            "region": "cn",
-            "username": "xxx@xxx.com",
-            "password": "12345678",
-            "ssid": "HUAWEI-A1"
-        }
-    }
-}
-```
+`miio.region` | `string` | 地区 | YES | `cn`,`de`,`us`,`ru`,`tw`,`sg`,`in`,`i2`
+`miio.username` | `string` | 用户ID或邮箱 | YES | `xxx@xxx.com`,`12345678`
+`miio.password` | `string` | 用户密码 | YES | `12345678`
+`miio.ssid` | `string` | Wi-FI SSID | YES | `HUAWEI-A1`

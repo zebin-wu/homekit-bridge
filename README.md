@@ -81,10 +81,6 @@ Option | Description
 `-d`, `--dir` | set the working directory
 `-h`, `--help` | display this help and exit
 
-#### Configure
-
-The configuration file `config.json` is placed in `/usr/local/lib/homekit-bridge` by default, you can edit it before running homekit-bridge. If you specified the working directory, homekit-bridge will find `config.json` in the specified directory.
-
 ### ESP-IDF
 
 #### Prepare
@@ -119,9 +115,36 @@ Use `join` command to configure Wi-Fi:
 join "<ssid>" "<password>"
 ```
 
-#### Configure
+### Configure
 
-TODO
+Using the follow commands to operate configuration items:
+
+#### Get a item
+
+```
+homekit-bridge conf <key>
+```
+
+#### Set a item
+
+```
+homekit-bridge conf <key> <value>
+```
+
+### Add a value to the item
+
+```
+homekit-bridge conf --add <key> <value>
+```
+
+#### Configruation field
+
+Name | Type | Description | Required | Example
+-|-|-|-|-
+`bridge.name` | `string` | Name of the bridge accessory | YES | `HomeKit Bridge`
+`bridge.plugins` | `string[]` | Plugin names | NO | `miio`
+
+Each plugin has its own specific configuration, see the plugin readme for details.
 
 ## License
 

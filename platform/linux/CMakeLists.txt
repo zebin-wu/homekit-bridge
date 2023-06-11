@@ -61,12 +61,6 @@ gen_lua_binary_from_dir(tests_scripts
     SRC_DIRS ${TOP_DIR}/tests
 )
 
-# generate default config.json
-configure_file(${TOP_DIR}/config/default.json ${SCRIPTS_DIR}/config.json)
-
-# generate example config.json
-configure_file(${TOP_DIR}/example/config.json ${EXAMPLE_SCRIPTS_DIR}/config.json)
-
 # collect sources
 target_sources(${PROJECT}
     PRIVATE

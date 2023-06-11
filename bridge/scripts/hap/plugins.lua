@@ -1,15 +1,14 @@
 local util = require "util"
+local config = require "config"
 local traceback = debug.traceback
 
 local M = {}
 
 local logger = log.getLogger("hap.plugins")
 
----@class PluginConf:table Plugin configuration.
-
 ---@class Plugin:table Plugin.
 ---
----@field init fun(conf: PluginConf) Initialize plugin and generate accessories in initialization.
+---@field init fun() Initialize plugin and generate accessories in initialization.
 
 local priv = {
     plugins = {},   ---@type table<string, Plugin>
@@ -17,7 +16,7 @@ local priv = {
 
 ---Load plugin.
 ---@param name string Plugin name.
-local function loadPlugin(name, conf)
+local function loadPlugin(name)
     local plugin = priv.plugins[name]
     if plugin then
         error("Plugin is already loaded.")
@@ -40,20 +39,20 @@ local function loadPlugin(name, conf)
         end
     end
     logger:info(("Plugin '%s' initializing ..."):format(name))
-    local accessories = plugin.init(conf)
+    local accessories = plugin.init()
     logger:info(("Plugin '%s' initialized."):format(name))
     priv.plugins[name] = plugin
     return accessories
 end
 
 ---Load plugins and generate bridged accessories.
----@param pluginConfs table<string, PluginConf> Plugin configurations.
 ---@return HAPAccessory[] bridgedAccessories # Bridges Accessories.
-function M.init(pluginConfs)
+function M.init()
+    local names = config.getall("bridge.plugins")
     local accessories = {}
-    if pluginConfs then
-        for name, conf in pairs(pluginConfs) do
-            local success, result = xpcall(loadPlugin, traceback, name, conf)
+    if names then
+        for _, name in ipairs(names) do
+            local success, result = xpcall(loadPlugin, traceback, name)
             if success == false then
                 logger:error(result)
             end
@@ -61,12 +60,12 @@ function M.init(pluginConfs)
                 table.insert(accessories, accessory)
             end
         end
+        local loaded = package.loaded
+        for name, _ in pairs(loaded) do
+            loaded[name] = nil
+        end
+        collectgarbage()
     end
-    local loaded = package.loaded
-    for name, _ in pairs(loaded) do
-        loaded[name] = nil
-    end
-    collectgarbage()
     return accessories
 end
 

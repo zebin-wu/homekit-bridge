@@ -13,7 +13,7 @@ hap.start(
     hap.newAccessory(
         1,
         "Bridges",
-        config.bridge.name or "HomeKit Bridge",
+        config.get("bridge.name") or "HomeKit Bridge",
         chip.getInfo("mfg"),
         chip.getInfo("model"),
         chip.getInfo("sn"),
@@ -29,7 +29,7 @@ hap.start(
             logger:info("Identify callback is called.")
         end
     ),
-    plugins.init(config.plugins),
+    plugins.init(),
     true,
     function (session)
         logger:default(("Session %p is accepted."):format(session))
