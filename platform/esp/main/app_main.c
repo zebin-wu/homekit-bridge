@@ -58,7 +58,7 @@ static struct {
 } app_exec_args;
 
 static void app_default_returned(pal_err err, void *arg) {
-    if (err == PAL_ERR_OK) {
+    if (err == PAL_ERR_UNKNOWN) {
         app_exit();
     }
 }
