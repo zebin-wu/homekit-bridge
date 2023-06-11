@@ -79,7 +79,6 @@ The following options can be specified when running homekit-bridge:
 Option | Description
 -|-
 `-d`, `--dir` | set the working directory
-`-e`, `--entry` | set the entry script name
 `-h`, `--help` | display this help and exit
 
 #### Configure

@@ -9,5 +9,3 @@ end
 for i, suite in ipairs(suites) do
     runSuite(suite)
 end
-
-core.exit()

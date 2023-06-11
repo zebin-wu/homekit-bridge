@@ -4,10 +4,12 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
+#include <string.h>
 #include <lauxlib.h>
 #include <lualib.h>
 #include <embedfs.h>
 #include <pal/mem.h>
+#include <pal/err.h>
 #include <app.h>
 
 #include "app_int.h"
@@ -26,6 +28,15 @@ extern int luaopen_cjson(lua_State *L);
 
 // Bridge embedfs root.
 extern const embedfs_dir BRIDGE_EMBEDFS_ROOT;
+
+struct app_exec_ctx {
+    bool in_progress;
+    int argc;
+    const char *cmd;
+    const char **argv;
+    app_exec_returned_cb cb;
+    void *cb_arg;
+};
 
 static lua_State *L;
 
@@ -163,31 +174,9 @@ static void *app_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
     }
 }
 
-static int finishexit(lua_State *L, int status, lua_KContext extra) {
-    return 0;
-}
-
-static int finishentry(lua_State *L, int status, lua_KContext extra) {
-    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
-        HAPLogError(&kHAPLog_Default, "%s", lua_tostring(L, -1));
-        lua_getglobal(L, "core");
-        lua_getfield(L, -1, "exit");
-        lua_callk(L, 0, 0, 0, finishexit);
-    }
-    return 0;
-}
-
-// app_entry(traceback: function, entry: string)
-static int app_entry(lua_State *L) {
-    lua_getglobal(L, "require");
-    lua_insert(L, 2);
-    return finishentry(L, lua_pcallk(L, 1, 0, 1, 0, finishentry), 0);
-}
-
-// app_pinit(dir: lightuserdata, entry: lightuserdata)
+// app_pinit(dir: lightuserdata)
 static int app_pinit(lua_State *L) {
     const char *dir = lua_touserdata(L, 1);
-    const char *entry = lua_touserdata(L, 2);
 
     lua_settop(L, 0);
 
@@ -240,16 +229,6 @@ static int app_pinit(lua_State *L) {
     lua_pushstring(L, BRIDGE_VERSION);
     lua_setglobal(L, "_BRIDGE_VERSION");
 
-    // run entry
-    int nres, status;
-    lua_State *co = lc_newthread(L);
-    lua_pushcfunction(co, app_entry);
-    lc_pushtraceback(co);
-    lua_pushstring(co, entry);
-    status = lc_resume(co, L, 2, &nres);
-    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
-        lua_error(L);
-    }
     return 0;
 }
 
@@ -262,9 +241,8 @@ static int panic(lua_State *L) {
     return 0;  /* return to Lua to abort */
 }
 
-void app_init(const char *dir, const char *entry) {
+void app_init(const char *dir) {
     HAPPrecondition(dir);
-    HAPPrecondition(entry);
 
     L = lua_newstate(app_lua_alloc, NULL);
     if (luai_unlikely(!L)) {
@@ -278,10 +256,9 @@ void app_init(const char *dir, const char *entry) {
     // call 'app_pinit' in protected mode
     lua_pushcfunction(L, app_pinit);
     lua_pushlightuserdata(L, (void *)dir);
-    lua_pushlightuserdata(L, (void *)entry);
 
     // do the call
-    int status = lua_pcall(L, 2, 0, 0);
+    int status = lua_pcall(L, 1, 0, 0);
     if (luai_unlikely(status != LUA_OK)) {
         const char *msg = lua_tostring(L, -1);
         HAPLogError(&kHAPLog_Default, "%s", msg);
@@ -297,6 +274,122 @@ void app_deinit() {
         lua_close(L);
         L = NULL;
     }
+}
+
+static int finishentry(lua_State *L, int status, lua_KContext extra) {
+    struct app_exec_ctx *ctx = lua_touserdata(L, 1);
+
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        if (ctx->in_progress) {
+            HAPLogError(&kHAPLog_Default, "%s", lua_tostring(L, -1));
+            ctx->cb(PAL_ERR_UNKNOWN, ctx->cb_arg);
+            return 0;
+        }
+        lua_error(L);
+    }
+
+    if (ctx->in_progress) {
+        ctx->cb(PAL_ERR_OK, ctx->cb_arg);
+    }
+    return 0;
+}
+
+static int finishrequire(lua_State *L, int status, lua_KContext extra) {
+    struct app_exec_ctx *ctx = lua_touserdata(L, 1);
+
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        if (ctx->in_progress) {
+            HAPLogError(&kHAPLog_Default, "%s", lua_tostring(L, -1));
+            ctx->cb(PAL_ERR_UNKNOWN, ctx->cb_arg);
+            return 0;
+        }
+        lua_error(L);
+    }
+
+    // stack<ctx, traceback, module>
+    if (!lua_istable(L, -1) || lua_getfield(L, -1, APP_CMD_ENTRY) != LUA_TFUNCTION) {
+        if (ctx->in_progress) {
+            ctx->cb(PAL_ERR_OK, ctx->cb_arg);
+        }
+        return 0;
+    }
+
+    // stack<ctx, traceback, module, entry>
+    for (int i = 0; i < ctx->argc; i++) {
+        lua_pushstring(L, ctx->argv[i]);
+    }
+    return finishentry(L, lua_pcallk(L, ctx->argc, 0, 2, 0, finishentry), 0);
+}
+
+// app_entry(ctx: userdata, traceback: function)
+static int app_entry(lua_State *L) {
+    struct app_exec_ctx *ctx = lua_touserdata(L, 1);
+    lua_getglobal(L, "require");
+    lua_pushstring(L, ctx->cmd);
+    return finishrequire(L, lua_pcallk(L, 1, 1, 2, 0, finishrequire), 0);
+}
+
+// app_pexec(ctx: lightuserdata)
+static int app_pexec(lua_State *L) {
+    lua_State *co = lc_newthread(L);
+
+    lua_pushcfunction(co, app_entry);
+    struct app_exec_ctx *ctx = lua_newuserdata(co, sizeof(*ctx));
+    memcpy(ctx, lua_touserdata(L, 1), sizeof(*ctx));
+    lc_pushtraceback(co);
+
+    pal_err err = PAL_ERR_OK;
+    app_exec_returned_cb cb = ctx->cb;
+    void *cb_arg = ctx->cb_arg;
+
+    int nres, status;
+    status = lc_resume(co, L, 2, &nres);
+    switch (status) {
+    case LUA_OK:
+        break;
+    case LUA_YIELD:
+        ctx->in_progress = true;
+        return 0;
+    default:
+        HAPLogError(&kHAPLog_Default, "%s", lua_tostring(L, -1));
+        err = PAL_ERR_UNKNOWN;
+        break;
+    }
+
+    cb(err, cb_arg);
+
+    return 0;
+}
+
+static void app_exec_cb(void *context, size_t contextSize) {
+    HAPPrecondition(context);
+    HAPPrecondition(contextSize == sizeof(struct app_exec_ctx));
+
+    lua_pushcfunction(L, app_pexec);
+    lua_pushlightuserdata(L, context);
+    int status = lua_pcall(L, 1, 0, 0);
+    if (luai_unlikely(status != LUA_OK)) {
+        HAPLogError(&kHAPLog_Default, "%s", lua_tostring(L, -1));
+    }
+
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
+}
+
+void app_exec(const char *cmd, size_t argc, const char *argv[], app_exec_returned_cb cb, void *cb_arg) {
+    HAPPrecondition(cmd);
+    HAPPrecondition(argc == 0 || argv);
+    HAPPrecondition(cb);
+
+    struct app_exec_ctx ctx = {
+        .in_progress = false,
+        .cmd = cmd,
+        .argc = argc,
+        .argv = argv,
+        .cb = cb,
+        .cb_arg = cb_arg,
+    };
+    HAPAssert(HAPPlatformRunLoopScheduleCallback(app_exec_cb, &ctx, sizeof(ctx)) == kHAPError_None);
 }
 
 static int app_pexit(lua_State *L) {
@@ -315,9 +408,12 @@ static int app_pexit(lua_State *L) {
 static void app_exit_cb(void *context, size_t contextSize) {
     lua_pushcfunction(L, app_pexit);
     int status = lua_pcall(L, 0, 0, 0);
-    if (status != LUA_OK && status != LUA_YIELD) {
+    if (luai_unlikely(status != LUA_OK)) {
         HAPLogError(&kHAPLog_Default, "%s", lua_tostring(L, -1));
     }
+
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
 }
 
 void app_exit() {

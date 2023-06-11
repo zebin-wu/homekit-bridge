@@ -11,6 +11,7 @@
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
 
 #include <signal.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -28,15 +29,13 @@
 #endif
 
 static const char *help = \
-    "usage: %s [options]\n"
+    "usage: %s [options] [script [args]]\n"
     "options:\n"
     "  -d, --dir    set the working directory\n"
-    "  -e, --entry  set the entry script name\n"
     "  -h, --help   display this help and exit\n";
 
 static const char *progname = "homekit-bridge";
 static const char *workdir = BRIDGE_WORK_DIR;
-static const char *entry = BRIDGE_LUA_ENTRY_DEFAULT;
 
 static void usage(const char* message) {
     if (message) {
@@ -49,40 +48,48 @@ static void usage(const char* message) {
     fprintf(stderr, help, progname);
 }
 
-static void doargs(int argc, char *argv[]) {
+static int doargs(int argc, char *argv[]) {
     if (argv[0] && *argv[0] != 0) {
         progname = argv[0];
     }
     for (int i = 1; i < argc; i++) {
-        if (HAPStringAreEqual(argv[i], "-h") || HAPStringAreEqual(argv[i], "--help")) {
+        if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
             usage(NULL);
             exit(EXIT_SUCCESS);
-        } else if (HAPStringAreEqual(argv[i], "-d") || HAPStringAreEqual(argv[i], "--dir")) {
+        } else if (!strcmp(argv[i], "-d") || !strcmp(argv[i], "--dir")) {
             workdir = argv[++i];
             if (!workdir || *workdir == 0 || (*workdir == '-' && workdir[1] != 0)) {
                 usage("'-d' needs argument");
                 exit(EXIT_FAILURE);
             }
-        } else if (HAPStringAreEqual(argv[i], "-e") || HAPStringAreEqual(argv[i], "--entry")) {
-            entry = argv[++i];
-            if (!entry || *entry == 0 || (*entry == '-' && entry[1] != 0)) {
-                usage("'-e' needs argument");
-                exit(EXIT_FAILURE);
-            }
-        } else {
+        } else if (argv[i][0] == '-') {
             usage(argv[i]);
             exit(EXIT_FAILURE);
+        } else {
+            return i;
         }
+    }
+
+    return argc;
+}
+
+static void sigint(int signum) {
+    app_exit();
+}
+
+static void app_default_returned(pal_err err, void *arg) {
+    if (err == PAL_ERR_UNKNOWN) {
+        app_exit();
     }
 }
 
-void sigint(int signum) {
+static void app_returned(pal_err err, void *arg) {
     app_exit();
 }
 
 int main(int argc, char *argv[]) {
     // Parse arguments.
-    doargs(argc, argv);
+    int parsed = doargs(argc, argv);
 
     // Initialize pal modules.
     HAPPlatformRunLoopCreate();
@@ -92,7 +99,14 @@ int main(int argc, char *argv[]) {
     pal_net_if_init();
 
     // Initialize application.
-    app_init(workdir, entry);
+    app_init(workdir);
+
+    // Execute command.
+    if (argc == parsed) {
+        app_exec(APP_EXEC_DEFAULT_CMD, APP_EXEC_DEFAULT_ARGC, APP_EXEC_DEFAULT_ARGV, app_default_returned, NULL);
+    } else {
+        app_exec(argv[1], argc - parsed - 1, (const char **)argv + parsed + 1, app_returned, NULL);
+    }
 
     // Use 'ctrl + C' to exit the application.
     signal(SIGINT, sigint);
