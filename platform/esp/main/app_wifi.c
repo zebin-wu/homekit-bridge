@@ -120,11 +120,12 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             }
 
             if (esp_wifi_scan_get_ap_records(&sta_number, (wifi_ap_record_t *)ap_list_buffer) == ESP_OK) {
-                printf("%-32s\t%-16s\t%s\n", "SSID", "Auth Mode", "RSSI");
+                printf("%-32s    %-16s    %-8s    %s\n", "SSID", "Auth Mode", "Channel", "RSSI");
                 for (i = 0; i < sta_number; i++) {
-                    printf("%-32s\t%-16s\t%d\n",
+                    printf("%-32s    %-16s    %-8d    %d\n",
                         ap_list_buffer[i].ssid,
                         auth_mode_strs[ap_list_buffer[i].authmode],
+                        ap_list_buffer[i].primary,
                         ap_list_buffer[i].rssi);
                 }
             }
@@ -218,6 +219,7 @@ void app_wifi_off(void)
 void app_wifi_connect(const char *ssid, const char *password)
 {
     wifi_config_t wifi_config = {0};
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA_PSK;
     strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
     if (password) {
         strncpy((char *)wifi_config.sta.password, password,
