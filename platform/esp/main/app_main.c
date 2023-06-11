@@ -32,8 +32,7 @@
 #include <esp_console.h>
 
 #include <app.h>
-#include <pal/cli.h>
-#include <pal/cli_int.h>
+#include <argtable3.h>
 #include <pal/ssl.h>
 #include <pal/ssl_int.h>
 #include <pal/dns.h>
@@ -105,7 +104,6 @@ static void app_register_exec_cmd() {
 void app_main_task(void *arg) {
     // Initialize pal modules.
     HAPPlatformRunLoopCreate();
-    pal_cli_init();
     pal_ssl_init();
     pal_dns_init();
     pal_net_if_init();
@@ -128,7 +126,6 @@ void app_main_task(void *arg) {
     pal_net_if_init();
     pal_dns_deinit();
     pal_ssl_deinit();
-    pal_cli_deinit();
     HAPPlatformRunLoopRelease();
 }
 
