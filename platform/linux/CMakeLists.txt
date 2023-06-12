@@ -128,8 +128,3 @@ target_compile_options(${PROJECT}
 install(TARGETS ${PROJECT}
     DESTINATION bin
 )
-
-# install scripts
-install(DIRECTORY ${SCRIPTS_DIR}/
-    DESTINATION ${BRIDGE_WORK_DIR}
-)
