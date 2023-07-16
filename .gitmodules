@@ -4,3 +4,6 @@
 [submodule "third_party/lua/lua"]
 	path = third_party/lua/lua
 	url = ../lua
+[submodule "third_party/lua-cjson/lua-cjson"]
+	path = third_party/lua-cjson/lua-cjson
+	url = https://github.com/mpx/lua-cjson.git
