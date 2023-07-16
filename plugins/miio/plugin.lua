@@ -38,14 +38,14 @@ function M.init()
     do
         local devices
         do
-            local region = assert(config.get("miio.region"))
-            local username = assert(config.get("miio.username"))
-            local password = assert(config.get("miio.password"))
+            local region = assert(config.get("miio.region"), "config 'miio.region' not exist")
+            local username = assert(config.get("miio.username"), "config 'miio.username' not exist")
+            local password = assert(config.get("miio.password"), "missing 'miio.password' not exist")
             local session <close> = cloudapi.session(region, username, password)
             devices = session:getDevices("wifi")
         end
         collectgarbage()
-        local ssid = assert(config.get("miio.ssid"))
+        local ssid = assert(config.get("miio.ssid"), "config 'miio.ssid' not exist")
         for _, device in ipairs(devices) do
             if device.ssid == ssid then
                 local sn = device.mac:gsub(":", "")
