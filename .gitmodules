@@ -1,3 +1,6 @@
 [submodule "third_party/HomeKitAdk/HomeKitAdk"]
 	path = third_party/HomeKitAdk/HomeKitAdk
 	url = ../HomeKitAdk
+[submodule "third_party/lua/lua"]
+	path = third_party/lua/lua
+	url = ../lua
