@@ -1,10 +1,11 @@
-# Copyright (c) 2021-2022 Zebin Wu and homekit-bridge contributors
+# Copyright (c) 2021-2023 Zebin Wu and homekit-bridge contributors
 #
 # Licensed under the Apache License, Version 2.0 (the “License”);
 # you may not use this file except in compliance with the License.
 # See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 # directory
+set(LUA_DIR lua)
 set(LUA_INC_DIR ${LUA_DIR}/src)
 set(LUA_SRC_DIR ${LUA_DIR}/src)
 
@@ -76,3 +77,33 @@ set(LUA_HEADERS
     ${LUA_SRC_DIR}/lvm.h
     ${LUA_SRC_DIR}/lzio.h
 )
+
+add_library(lua STATIC ${LUA_SRCS})
+target_include_directories(lua PUBLIC ${LUA_INC_DIR})
+target_link_libraries(lua PRIVATE m)
+add_library(third_party::lua ALIAS lua)
+
+if(${PLATFORM} STREQUAL linux)
+    target_compile_definitions(lua PUBLIC
+        LUA_USE_LINUX
+    )
+endif()
+
+# compile host luac
+find_program(MAKE NAMES "make")
+if(NOT MAKE)
+    message(FATAL_ERROR "make not found")    
+endif()
+set(HOST_LUAC_BINARY ${CMAKE_CURRENT_BINARY_DIR}/host/luac)
+add_custom_command(OUTPUT ${HOST_LUAC_BINARY}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${LUA_DIR}
+    COMMAND ${MAKE} -s 1> /dev/null
+    COMMAND cp src/luac ${HOST_LUAC_BINARY}
+    COMMAND ${MAKE} -s clean
+    DEPENDS ${LUA_SRCS} ${LUAC_SRCS} ${LUA_HEADERS}
+    COMMENT "Compiling luac"
+)
+add_custom_target(HOST_LUAC_BINARY DEPENDS ${HOST_LUAC_BINARY})
+add_executable(host_luac IMPORTED GLOBAL)
+add_dependencies(host_luac HOST_LUAC_BINARY)
+set_target_properties(host_luac PROPERTIES IMPORTED_LOCATION ${HOST_LUAC_BINARY})
