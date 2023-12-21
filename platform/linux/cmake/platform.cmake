@@ -12,7 +12,7 @@ set(CONFIG_OPENSSL ON)
 set(CONFIG_MBEDTLS OFF)
 
 # set the work directory
-set(BRIDGE_WORK_DIR "/usr/local/lib/${CMAKE_PROJECT_NAME}")
+set(BRIDGE_WORK_DIR "/usr/local/lib/${TARGET}")
 
 # set the embedfs root
 set(BRIDGE_EMBEDFS_ROOT bridge_embedfs_root)
@@ -20,6 +20,6 @@ set(BRIDGE_EMBEDFS_ROOT bridge_embedfs_root)
 add_compile_options(-Wall -Werror)
 
 # install binaries
-install(TARGETS ${CMAKE_PROJECT_NAME}
+install(TARGETS ${TARGET}
     DESTINATION bin
 )

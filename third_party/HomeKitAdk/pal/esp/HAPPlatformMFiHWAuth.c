@@ -17,30 +17,38 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "HAPPlatform.h"
 
-#include <stdlib.h>
+#include "HAP+Internal.h"
+#include "HAPPlatformMFiHWAuth+Init.h"
 
-HAP_RESULT_USE_CHECK
-uint32_t HAPPlatformGetCompatibilityVersion(void) {
-    return HAP_PLATFORM_COMPATIBILITY_VERSION;
+void HAPPlatformMFiHWAuthCreate(HAPPlatformMFiHWAuthRef mfiHWAuth) {
+}
+
+void HAPPlatformMFiHWAuthRelease(HAPPlatformMFiHWAuthRef mfiHWAuth) {
 }
 
 HAP_RESULT_USE_CHECK
-const char* HAPPlatformGetIdentification(void) {
-    return "ESP-IDF";
+bool HAPPlatformMFiHWAuthIsPoweredOn(HAPPlatformMFiHWAuthRef mfiHWAuth) {
+    return false;
 }
 
 HAP_RESULT_USE_CHECK
-const char* HAPPlatformGetVersion(void) {
-    return IDF_VER;
+HAPError HAPPlatformMFiHWAuthPowerOn(HAPPlatformMFiHWAuthRef mfiHWAuth) {
+}
+
+void HAPPlatformMFiHWAuthPowerOff(HAPPlatformMFiHWAuthRef mfiHWAuth) {
 }
 
 HAP_RESULT_USE_CHECK
-const char* HAPPlatformGetBuild(void) {
-    HAP_DIAGNOSTIC_PUSH
-    HAP_DIAGNOSTIC_IGNORED_CLANG("-Wdate-time")
-    const char* build = __DATE__ " " __TIME__;
-    HAP_DIAGNOSTIC_POP
-    return build;
+HAPError HAPPlatformMFiHWAuthWrite(HAPPlatformMFiHWAuthRef mfiHWAuth, const void* bytes, size_t numBytes) {
+    return kHAPError_Unknown;
+}
+
+HAP_RESULT_USE_CHECK
+HAPError HAPPlatformMFiHWAuthRead(
+        HAPPlatformMFiHWAuthRef mfiHWAuth,
+        uint8_t registerAddress,
+        void* bytes,
+        size_t numBytes) {
+    return kHAPError_Unknown;
 }

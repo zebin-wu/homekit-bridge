@@ -6,7 +6,6 @@
 
 add_library(platform INTERFACE)
 target_include_directories(platform INTERFACE include)
-target_check_cstyle(platform )
 target_link_libraries(platform INTERFACE platform::${PLATFORM})
 
 add_subdirectory(common)

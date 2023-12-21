@@ -16,7 +16,8 @@ if(${ESP_PLATFORM})
     set(PLATFORM esp)
 
     # Default target is "esp32"
-    if(NOT DEFINED ${IDF_TARGET})
+    if(NOT DEFINED IDF_TARGET)
+        message("IDF_TARGET undefined, set to default target: esp32")
         set(IDF_TARGET "esp32")
     endif()
 
@@ -26,9 +27,14 @@ endif()
 
 # project name
 project("homekit-bridge"
-    LANGUAGES C
+    LANGUAGES C CXX
     VERSION 0.1
 )
+
+if(NOT DEFINED PLATFORM)
+    string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM)
+endif()
+message("Current platform: " ${PLATFORM})
 
 set(TARGET ${CMAKE_PROJECT_NAME})
 
@@ -41,11 +47,6 @@ add_custom_command(OUTPUT ${dummy_c_file}
 add_custom_target(dummy_c_file DEPENDS ${dummy_c_file})
 add_executable(${TARGET} ${dummy_c_file})
 add_dependencies(${TARGET} dummy_c_file)
-
-if(NOT DEFINED PLATFORM)
-    string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM)
-endif()
-message("Current platform: " ${PLATFORM})
 
 include(platform/${PLATFORM}/cmake/platform.cmake)
 
@@ -60,15 +61,3 @@ target_link_libraries(${TARGET}
     third_party::lua
     third_party::lua-cjson
 )
-
-if(CONFIG_POSIX)
-    target_link_libraries(${TARGET} platform::posix)
-endif()
-
-if(CONFIG_OPENSSL)
-    target_link_libraries(${TARGET} platform::openssl)
-endif()
-
-if(CONFIG_MBEDTLS)
-    target_link_libraries(${TARGET} platform::mbedtls)
-endif()

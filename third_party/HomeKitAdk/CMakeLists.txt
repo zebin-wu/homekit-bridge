@@ -96,6 +96,7 @@ target_include_directories(HomeKitAdk PUBLIC
 if(CONFIG_MBEDTLS)
     target_sources(HomeKitAdk PRIVATE ${ADK_DIR}/PAL/Crypto/MbedTLS/HAPMbedTLS.c)
     target_include_directories(HomeKitAdk PRIVATE ${ADK_DIR}/PAL/Crypto/MbedTLS)
+    target_link_libraries(HomeKitAdk PRIVATE mbedtls mbedcrypto)
 endif()
 
 if(CONFIG_OPENSSL)
@@ -129,6 +130,45 @@ if(${PLATFORM} STREQUAL linux)
         HAP_LOG_LEVEL=3
     )
     target_link_libraries(HomeKitAdk PRIVATE dns_sd)
+elseif(${PLATFORM} STREQUAL esp)
+    target_sources(HomeKitAdk PRIVATE
+        ${ADK_PAL_ESP_DIR}/HAPPlatformAbort.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformAccessorySetup.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformKeyValueStore.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformMFiTokenAuth.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformAccessorySetupDisplay.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatform.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformClock.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformRandomNumber.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformTCPStreamManager.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformLog.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformRunLoop.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformAccessorySetupNFC.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformServiceDiscovery.c
+        ${ADK_PAL_ESP_DIR}/HAPPlatformMFiHWAuth.c
+    )
+    target_include_directories(HomeKitAdk PUBLIC ${ADK_PAL_ESP_DIR})
+    target_link_libraries(HomeKitAdk PRIVATE
+        idf::mbedtls
+        idf::driver
+        idf::esp_event
+        idf::nvs_flash
+        idf::espressif__mdns
+    )
+
+    if (${CONFIG_LOG_MAXIMUM_LEVEL} EQUAL 0)
+        set(HAP_LOG_LEVEL 0)
+    elseif(${CONFIG_LOG_MAXIMUM_LEVEL} EQUAL 1 OR ${CONFIG_LOG_MAXIMUM_LEVEL} EQUAL 2)
+        set(HAP_LOG_LEVEL 1)
+    elseif(${CONFIG_LOG_MAXIMUM_LEVEL} EQUAL 3)
+        set(HAP_LOG_LEVEL 2)
+    elseif(${CONFIG_LOG_MAXIMUM_LEVEL} EQUAL 4 OR ${CONFIG_LOG_MAXIMUM_LEVEL} EQUAL 5)
+        set(HAP_LOG_LEVEL 3)
+    endif()
+
+    target_compile_definitions(HomeKitAdk PUBLIC
+        HAP_LOG_LEVEL=${HAP_LOG_LEVEL}
+    )
 endif()
 
 add_library(third_party::HomeKitAdk ALIAS HomeKitAdk)

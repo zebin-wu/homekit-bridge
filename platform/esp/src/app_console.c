@@ -10,8 +10,8 @@
 #include <esp_log.h>
 #include <esp_system.h>
 #include <esp_console.h>
-#include <cmd_system.h>
 
+#include "cmd_system.h"
 #include "app_console.h"
 
 #define APP_CONSOLE_TASK_STACKSIZE  3 * 1024

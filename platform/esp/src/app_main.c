@@ -32,7 +32,7 @@
 #include <esp_console.h>
 
 #include <app.h>
-#include <argtable3.h>
+#include <argtable3/argtable3.h>
 #include <pal/ssl.h>
 #include <pal/ssl_int.h>
 #include <pal/dns.h>
