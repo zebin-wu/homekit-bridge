@@ -87,6 +87,7 @@ if(${PLATFORM} STREQUAL linux)
     target_compile_definitions(lua PUBLIC
         LUA_USE_LINUX
     )
+    target_link_libraries(lua PRIVATE m dl)
 endif()
 
 # compile host luac

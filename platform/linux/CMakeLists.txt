@@ -21,7 +21,7 @@ if(CONFIG_POSIX)
 endif()
 
 if(CONFIG_OPENSSL)
-    target_link_libraries(platform_linux PRIVATE platform::openssl ssl crypto)
+    target_link_libraries(platform_linux PRIVATE platform::openssl ssl crypto pthread)
 endif()
 
 if(CONFIG_MBEDTLS)
