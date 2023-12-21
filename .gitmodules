@@ -1,9 +1,9 @@
-[submodule "ext/HomeKitAdk"]
-	path = ext/HomeKitAdk
-	url = ../HomeKitADK
-[submodule "ext/lua"]
-	path = ext/lua
+[submodule "third_party/HomeKitAdk/HomeKitAdk"]
+	path = third_party/HomeKitAdk/HomeKitAdk
+	url = ../HomeKitAdk
+[submodule "third_party/lua/lua"]
+	path = third_party/lua/lua
 	url = ../lua
-[submodule "ext/argtable3"]
-	path = ext/argtable3
-	url = https://github.com/argtable/argtable3
+[submodule "third_party/lua-cjson/lua-cjson"]
+	path = third_party/lua-cjson/lua-cjson
+	url = https://github.com/mpx/lua-cjson.git
