@@ -85,13 +85,13 @@ Option | Description
 
 #### Prepare
 
-Set up the host environment and ESP-IDF as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/v5.1/get-started/index.html).
+Set up the host environment and ESP-IDF as per the steps given [here](https://docs.espressif.com/projects/esp-idf/en/v5.1.2/get-started/index.html).
 
-The currently tested ESP-IDF version is **v5.1**, switch to this version with the following command:
+The currently tested ESP-IDF version is **v5.1.2**, switch to this version with the following command:
 
 ```bash
 git fetch --tag
-git checkout v5.1
+git checkout v5.1.2
 git submodule update
 ```
 

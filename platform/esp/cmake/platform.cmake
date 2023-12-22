@@ -4,6 +4,9 @@
 # you may not use this file except in compliance with the License.
 # See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
+# required IDF version, some modules depend on specific IDF version
+set(REQUIRED_IDF_VERSION 5.1.2)
+
 # system api
 set(CONFIG_POSIX ON)
 
@@ -19,6 +22,10 @@ set(BRIDGE_EMBEDFS_ROOT bridge_embedfs_root)
 
 include($ENV{IDF_PATH}/tools/cmake/idf.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/extension.cmake)
+
+if(NOT $ENV{IDF_VERSION} STREQUAL ${REQUIRED_IDF_VERSION})
+message(FATAL_ERROR "IDF version must be v${REQUIRED_IDF_VERSION}, current version is v$ENV{IDF_VERSION}")
+endif()
 
 # Enable the component manager for regular projects if not explicitly disabled.
 if(NOT "$ENV{IDF_COMPONENT_MANAGER}" EQUAL "0")
