@@ -106,11 +106,8 @@ git submodule update
 使用以下命令来编译、烧录和运行：
 
 ```bash
-cd /path/to/homekit-bridge/platform/esp
-export ESPPORT=/dev/ttyUSB0  # 设置开发板的串口
 idf.py set-target [esp32|esp32s2|esp32c3|esp32s3|esp32c6]
-idf.py flash
-idf.py monitor
+idf.py flash monitor
 ```
 
 #### 连接Wi-Fi
