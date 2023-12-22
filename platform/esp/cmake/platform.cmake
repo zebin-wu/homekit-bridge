@@ -11,10 +11,11 @@ set(CONFIG_POSIX ON)
 set(CONFIG_OPENSSL OFF)
 set(CONFIG_MBEDTLS ON)
 
+# export compile_commands.json
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # set the embedfs root
 set(BRIDGE_EMBEDFS_ROOT bridge_embedfs_root)
-
-add_compile_definitions(_GNU_SOURCE)
 
 include($ENV{IDF_PATH}/tools/cmake/idf.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/extension.cmake)
@@ -50,3 +51,17 @@ idf_build_executable(${TARGET})
 
 # Generate project_description.json
 project_info("${test_components}")
+
+# Add idf commands
+add_idf_commands()
+
+# Init compile options
+init_compiler_options()
+
+# generate storage partition
+set(STORAGE_DIR ${CMAKE_BINARY_DIR}/storage)
+make_directory(${STORAGE_DIR})
+spiffs_create_partition_image(storage
+    ${STORAGE_DIR}
+    FLASH_IN_PROJECT
+)

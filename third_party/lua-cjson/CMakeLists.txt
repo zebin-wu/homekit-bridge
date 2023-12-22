@@ -12,5 +12,7 @@ add_library(lua-cjson STATIC
     ${LUA_CJSON_DIR}/fpconv.c
 )
 
+target_compile_options(lua-cjson PRIVATE -Wno-implicit-fallthrough)
+
 target_link_libraries(lua-cjson PRIVATE lua)
 add_library(third_party::lua-cjson ALIAS lua-cjson)

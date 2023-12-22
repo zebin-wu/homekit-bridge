@@ -88,3 +88,102 @@ function(project_info test_components)
         message(STATUS "Test component paths: ${test_component_paths}")
     endif()
 endfunction()
+
+#
+# Add idf commands
+#
+function(add_idf_commands)
+    set(mapfile "${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}.map")
+    set(idf_target "${IDF_TARGET}")
+    string(TOUPPER ${idf_target} idf_target)
+    # Add cross-reference table to the map file
+    target_link_options(${TARGET} PRIVATE "-Wl,--cref")
+    # Add this symbol as a hint for esp_idf_size to guess the target name
+    target_link_options(${TARGET} PRIVATE "-Wl,--defsym=IDF_TARGET_${idf_target}=0")
+    # Enable map file output
+    target_link_options(${TARGET} PRIVATE "-Wl,--Map=${mapfile}")
+    # Check if linker supports --no-warn-rwx-segments
+    execute_process(COMMAND ${CMAKE_LINKER} "--no-warn-rwx-segments" "--version"
+        RESULT_VARIABLE result
+        OUTPUT_QUIET
+        ERROR_QUIET)
+    if(${result} EQUAL 0)
+        # Do not print RWX segment warnings
+        target_link_options(${TARGET} PRIVATE "-Wl,--no-warn-rwx-segments")
+    endif()
+    unset(idf_target)
+
+    set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY
+        ADDITIONAL_CLEAN_FILES
+        "${mapfile}" "${project_elf_src}")
+
+    idf_build_get_property(idf_path IDF_PATH)
+    idf_build_get_property(python PYTHON)
+
+    set(idf_size ${python} -m esp_idf_size)
+
+    # Add size targets, depend on map file, run esp_idf_size
+    # OUTPUT_JSON is passed for compatibility reasons, SIZE_OUTPUT_FORMAT
+    # environment variable is recommended and has higher priority
+    add_custom_target(size
+        COMMAND ${CMAKE_COMMAND}
+        -D "IDF_SIZE_TOOL=${idf_size}"
+        -D "MAP_FILE=${mapfile}"
+        -D "OUTPUT_JSON=${OUTPUT_JSON}"
+        -P "${idf_path}/tools/cmake/run_size_tool.cmake"
+        DEPENDS ${mapfile}
+        USES_TERMINAL
+        VERBATIM
+    )
+
+    add_custom_target(size-files
+        COMMAND ${CMAKE_COMMAND}
+        -D "IDF_SIZE_TOOL=${idf_size}"
+        -D "IDF_SIZE_MODE=--files"
+        -D "MAP_FILE=${mapfile}"
+        -D "OUTPUT_JSON=${OUTPUT_JSON}"
+        -P "${idf_path}/tools/cmake/run_size_tool.cmake"
+        DEPENDS ${mapfile}
+        USES_TERMINAL
+        VERBATIM
+    )
+
+    add_custom_target(size-components
+        COMMAND ${CMAKE_COMMAND}
+        -D "IDF_SIZE_TOOL=${idf_size}"
+        -D "IDF_SIZE_MODE=--archives"
+        -D "MAP_FILE=${mapfile}"
+        -D "OUTPUT_JSON=${OUTPUT_JSON}"
+        -P "${idf_path}/tools/cmake/run_size_tool.cmake"
+        DEPENDS ${mapfile}
+        USES_TERMINAL
+        VERBATIM
+    )
+
+    unset(idf_size)
+endfunction(add_idf_commands)
+
+#
+# Sets initial list of build specifications (compile options, definitions, etc.) common across
+# all library targets built under the ESP-IDF build system. These build specifications are added
+# privately using the directory-level CMake commands (add_compile_options, include_directories, etc.)
+# during component registration.
+#
+function(init_compiler_options)
+    # Use generator expression so that users can append/override flags even after call to
+    # idf_build_process
+    idf_build_get_property(include_directories INCLUDE_DIRECTORIES GENERATOR_EXPRESSION)
+    idf_build_get_property(compile_options COMPILE_OPTIONS GENERATOR_EXPRESSION)
+    idf_build_get_property(compile_definitions COMPILE_DEFINITIONS GENERATOR_EXPRESSION)
+    idf_build_get_property(c_compile_options C_COMPILE_OPTIONS GENERATOR_EXPRESSION)
+    idf_build_get_property(cxx_compile_options CXX_COMPILE_OPTIONS GENERATOR_EXPRESSION)
+    idf_build_get_property(asm_compile_options ASM_COMPILE_OPTIONS GENERATOR_EXPRESSION)
+    idf_build_get_property(common_reqs ___COMPONENT_REQUIRES_COMMON)
+
+    include_directories("${include_directories}")
+    add_compile_options("${compile_options}")
+    add_compile_definitions("${compile_definitions}")
+    add_c_compile_options("${c_compile_options}")
+    add_cxx_compile_options("${cxx_compile_options}")
+    add_asm_compile_options("${asm_compile_options}")
+endfunction(init_compiler_options)
