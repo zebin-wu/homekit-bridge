@@ -58,7 +58,7 @@ function M.reset()
 end
 
 local function help()
-    print("usage: conf [option] [key [value]]")
+    print("usage: config [option] [key [value]]")
 end
 
 local function checkop(op)

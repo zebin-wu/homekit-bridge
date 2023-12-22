@@ -119,19 +119,19 @@ Using the follow commands to operate configuration items:
 #### Get a item
 
 ```
-homekit-bridge conf <key>
+homekit-bridge config <key>
 ```
 
 #### Set a item
 
 ```
-homekit-bridge conf <key> <value>
+homekit-bridge config <key> <value>
 ```
 
 ### Add a value to the item
 
 ```
-homekit-bridge conf --add <key> <value>
+homekit-bridge config --add <key> <value>
 ```
 
 #### Configruation field

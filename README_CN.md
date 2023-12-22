@@ -125,19 +125,19 @@ join "<ssid>" "<password>"
 #### 获取一个配置项
 
 ```
-homekit-bridge conf <key>
+homekit-bridge config <key>
 ```
 
 #### 设置一个配置项
 
 ```
-homekit-bridge conf <key> <value>
+homekit-bridge config <key> <value>
 ```
 
 ### 添加一个值到指定配置项
 
 ```
-homekit-bridge conf --add <key> <value>
+homekit-bridge config --add <key> <value>
 ```
 
 #### 配置项
