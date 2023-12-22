@@ -2435,6 +2435,7 @@ static int lhap_start(lua_State *L) {
     lua_pushvalue(L, 1);
     lua_rawsetp(L, LUA_REGISTRYINDEX, &desc->primary_acc);
 
+    lua_pushvalue(L, 2);
     lua_rawsetp(L, LUA_REGISTRYINDEX, &desc->bridged_accs);
 
     if (has_session_accept) {
