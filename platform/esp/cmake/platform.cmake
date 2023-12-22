@@ -21,6 +21,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BRIDGE_EMBEDFS_ROOT bridge_embedfs_root)
 
 include($ENV{IDF_PATH}/tools/cmake/idf.cmake)
+include($ENV{IDF_PATH}/tools/cmake/ldgen.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/extension.cmake)
 
 if(NOT $ENV{IDF_VERSION} STREQUAL ${REQUIRED_IDF_VERSION})
@@ -72,3 +73,6 @@ spiffs_create_partition_image(storage
     ${STORAGE_DIR}
     FLASH_IN_PROJECT
 )
+
+# Add linker fragment file
+__ldgen_add_fragment_files(${CMAKE_CURRENT_LIST_DIR}/../linker.lf)
