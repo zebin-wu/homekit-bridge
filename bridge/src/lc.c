@@ -193,14 +193,14 @@ lua_State *lc_newthread(lua_State *L) {
     return co;
 }
 
-static void lc_freethread(lua_State *L) {
+static void lc_freethread(lua_State *L, lua_State *from) {
     if (thread_pool_full()) {
         lua_pushnil(L);
         lua_rawsetp(L, LUA_REGISTRYINDEX, L);
     } else {
         thread_pool_enque(L);
     }
-    lua_resetthread(L);
+    lua_closethread(L, from);
 }
 
 int lc_resume(lua_State *L, lua_State *from, int narg, int *nres) {
@@ -216,13 +216,13 @@ int lc_resume(lua_State *L, lua_State *from, int narg, int *nres) {
             luaL_error(L, "too many arguments to resume");
         }
         lua_xmove(L, from, *nres);
-        lc_freethread(L);
+        lc_freethread(L, from);
         break;
     case LUA_YIELD:
         break;
     default:
         luaL_traceback(from, L, lua_tostring(L, -1), 1);
-        lc_freethread(L);
+        lc_freethread(L, from);
         break;
     }
     return status;
