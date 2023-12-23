@@ -2375,12 +2375,24 @@ static int lhap_start(lua_State *L) {
             lua_pop(L, 1);
         }
         desc->bridged_accs[desc->num_bridged_accs] = NULL;
+        lua_rawsetp(L, LUA_REGISTRYINDEX, &desc->bridged_accs);
     }
 
-    HAPAccessoryServerCallbacks *server_cbs = &desc->server_cbs;
-    server_cbs->handleSessionAccept = has_session_accept ? lhap_server_handle_session_accept : NULL;
-    server_cbs->handleSessionInvalidate = has_session_invalid ? lhap_server_handle_session_invalid : NULL;
-    server_cbs->handleUpdatedState = lhap_server_handle_update_state;
+    lua_pushvalue(L, 1);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &desc->primary_acc);
+
+    if (has_session_accept) {
+        lua_pushvalue(L, 4);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, &desc->server_cbs.handleSessionAccept);
+    }
+    if (has_session_invalid) {
+        lua_pushvalue(L, 5);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, &desc->server_cbs.handleSessionInvalidate);
+    }
+
+    desc->server_cbs.handleSessionAccept = has_session_accept ? lhap_server_handle_session_accept : NULL;
+    desc->server_cbs.handleSessionInvalidate = has_session_invalid ? lhap_server_handle_session_invalid : NULL;
+    desc->server_cbs.handleUpdatedState = lhap_server_handle_update_state;
 
     size_t num_attr = LHAP_ATTR_CNT_DFT;
     size_t num_readable = LHAP_CHAR_READ_CNT_DFT;
@@ -2430,21 +2442,6 @@ static int lhap_start(lua_State *L) {
         (const struct HAPAccessory *const *)desc->bridged_accs, conf_changed);
     } else {
         HAPAccessoryServerStart(&desc->server, desc->primary_acc);
-    }
-
-    lua_pushvalue(L, 1);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &desc->primary_acc);
-
-    lua_pushvalue(L, 2);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, &desc->bridged_accs);
-
-    if (has_session_accept) {
-        lua_pushvalue(L, 4);
-        lua_rawsetp(L, LUA_REGISTRYINDEX, &server_cbs->handleSessionAccept);
-    }
-    if (has_session_invalid) {
-        lua_pushvalue(L, 5);
-        lua_rawsetp(L, LUA_REGISTRYINDEX, &server_cbs->handleSessionInvalidate);
     }
 
     desc->num_read_requests = 0;
