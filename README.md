@@ -1,7 +1,5 @@
 # homekit-bridge
 
-English Version | [中文版](README_CN.md)
-
 ## Introduction
 
 homekit-bridge designed for embedded devices allows you to connect non-HomeKit devices to Apple HomeKit quickly. It provides the following features:
@@ -128,7 +126,7 @@ homekit-bridge config <key>
 homekit-bridge config <key> <value>
 ```
 
-### Add a value to the item
+#### Add a value to the item
 
 ```
 homekit-bridge config --add <key> <value>
@@ -142,6 +140,12 @@ Name | Type | Description | Required | Example
 `bridge.plugins` | `string[]` | Plugin names | NO | `miio`
 
 Each plugin has its own specific configuration, see the plugin readme for details.
+
+### Add the bridge to Home APP
+homekit-bridge will automatically generate a **setup code**, which can be entered when adding accessory. The **setup code** can be obtained through the following command:
+```
+homekit-bridge setupcode
+```
 
 ## License
 

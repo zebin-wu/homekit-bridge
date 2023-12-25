@@ -2462,8 +2462,6 @@ static int lhap_stop_finish(lua_State *L, int status, lua_KContext extra) {
 
     lhap_deinit_ip(&desc->server_options);
 
-    pal_hap_deinit_platform(&desc->platform);
-
     lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &desc->primary_acc);
     lhap_rawsetp_reset(L, LUA_REGISTRYINDEX, &desc->bridged_accs);
 
@@ -2553,6 +2551,18 @@ static int lhap_get_new_iid(lua_State *L) {
     return 1;
 }
 
+static int lhap_get_setup_code(lua_State *L) {
+    lhap_desc *desc = &gv_lhap_desc;
+
+    pal_hap_init_platform(&desc->platform);
+
+    HAPSetupCode setupCode;
+    HAPPlatformAccessorySetupLoadSetupCode(desc->platform.accessorySetup, &setupCode);
+    lua_pushstring(L, setupCode.stringValue);
+
+    return 1;
+}
+
 static int lhap_restore_factory_settings(lua_State *L) {
     lhap_desc *desc = &gv_lhap_desc;
 
@@ -2585,6 +2595,7 @@ static const luaL_Reg haplib[] = {
     {"stop", lhap_stop},
     {"raiseEvent", lhap_raise_event},
     {"getNewInstanceID", lhap_get_new_iid},
+    {"getSetupCode", lhap_get_setup_code},
     {"restoreFactorySettings", lhap_restore_factory_settings},
     /* placeholders */
     {"AccessoryInformationService", NULL},

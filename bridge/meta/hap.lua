@@ -395,6 +395,11 @@ function M.raiseEvent(aid, sid, cid, session) end
 ---@nodiscard
 function M.getNewInstanceID(bridgedAccessory) end
 
+---Get setup code.
+---@return string setupCode
+---@nodiscard
+function M.getSetupCode() end
+
 ---Restore factory settings.
 ---
 ---This function must be called before calling start().

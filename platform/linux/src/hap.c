@@ -94,8 +94,11 @@ static void pal_hap_acc_setup_gen(HAPPlatformKeyValueStoreRef kv_store) {
 }
 
 void pal_hap_init_platform(HAPPlatform *platform) {
-    HAPPrecondition(!ginited);
     HAPPrecondition(platform);
+
+    if (ginited) {
+        return;
+    }
 
     HAPAssert(HAPGetCompatibilityVersion() == HAP_COMPATIBILITY_VERSION);
 
@@ -148,8 +151,11 @@ void pal_hap_init_platform(HAPPlatform *platform) {
 }
 
 void pal_hap_deinit_platform(HAPPlatform *platform) {
-    HAPPrecondition(ginited);
     HAPPrecondition(platform);
+
+    if (!ginited) {
+        return;
+    }
 
 #if HAVE_MFI_HW_AUTH
     // Apple Authentication Coprocessor provider.
