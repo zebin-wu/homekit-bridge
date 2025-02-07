@@ -4,6 +4,8 @@
 # you may not use this file except in compliance with the License.
 # See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
+set(CURRENT_DIR ${CMAKE_CURRENT_LIST_DIR})
+
 # Generate lua binray from lua script.
 #
 # out: absolute path of the output file
@@ -112,7 +114,7 @@ function (target_add_embedfs target dir root_name)
             COMMAND ${CMAKE_COMMAND}
                 -D OUTPUT=${header}
                 -D INPUT=${file}
-                -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/bin2hex.cmake
+                -P ${CURRENT_DIR}/bin2hex.cmake
             DEPENDS ${dir}/${file}
             COMMENT "Generating ${header}"
         )
@@ -124,8 +126,8 @@ function (target_add_embedfs target dir root_name)
             -D ROOT_DIR=${dir}
             -D DEST_DIR=${dest_dir}
             -D EMBEDFS_ROOT_NAME=${root_name}
-            -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/gen_embedfs.cmake
-        DEPENDS ${headers} ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/gen_embedfs.cmake
+            -P ${CURRENT_DIR}/gen_embedfs.cmake
+        DEPENDS ${headers} ${CURRENT_DIR}/gen_embedfs.cmake
     )
     target_sources(${target}
         PRIVATE ${output}
@@ -171,7 +173,7 @@ function(target_add_lua_binary_embedfs target root_name)
                 COMMAND ${CMAKE_COMMAND}
                     -D OUTPUT=${header}
                     -D INPUT=${bin}
-                    -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/bin2hex.cmake
+                    -P ${CURRENT_DIR}/bin2hex.cmake
                 DEPENDS ${binary_dir}/${bin}
                 COMMENT "Generating ${header}"
             )
@@ -184,8 +186,8 @@ function(target_add_lua_binary_embedfs target root_name)
             -D ROOT_DIR=${binary_dir}
             -D DEST_DIR=${dest_dir}
             -D EMBEDFS_ROOT_NAME=${root_name}
-            -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/gen_embedfs.cmake
-        DEPENDS ${headers} ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/gen_embedfs.cmake
+            -P ${CURRENT_DIR}/gen_embedfs.cmake
+        DEPENDS ${headers} ${CURRENT_DIR}/gen_embedfs.cmake
         COMMENT "Generating ${output}"
     )
     target_sources(${target}
