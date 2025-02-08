@@ -30,6 +30,7 @@ Zhimi DC Variable Frequency Fan 2S | `zhimi.fan.za4`
 Xiaomi DC Variable Frequency Fan 1X | `dmaker.fan.p5`
 Xiaomi DC Variable Frequency Tower Fan | `dmaker.fan.p9`
 Xiaomi Smart Dehumidifier 22L | `dmaker.derh.22l`
+Xiaomi Smart Heater | `xiaomi.heater.ma4`
 
 ## Supported platform
 
