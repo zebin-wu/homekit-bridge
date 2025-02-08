@@ -215,15 +215,17 @@ end
 function M.scan(timeout, addr)
     assert(timeout > 0, "timeout must be greater then 0")
 
+    local numSend = 1
     local sock <close> = socket.create("UDP", "IPV4")
     sock:settimeout(timeout)
 
     if not addr then
+        numSend = 3
         sock:enablebroadcast()
     end
 
     local hello = pack(0xffffffff, 0xffffffff, 0xffffffff)
-    for i = 1, 3, 1 do
+    for i = 1, numSend, 1 do
         assert(sock:sendto(hello, addr or "255.255.255.255", 54321), "failed to send hello message")
     end
 
