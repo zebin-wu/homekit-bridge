@@ -41,6 +41,5 @@ target_compile_definitions(bridge PUBLIC
 
 target_add_lua_binary_embedfs(bridge
     ${BRIDGE_EMBEDFS_ROOT}
-    DEBUG
     SRC_DIRS scripts ../plugins
 )

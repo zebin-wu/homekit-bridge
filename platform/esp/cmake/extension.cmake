@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
-function(__component_info components output)
+function(__build_component_info components output)
     set(components_json "")
     foreach(name ${components})
         __component_get_target(target ${name})
@@ -58,6 +58,62 @@ function(__component_info components output)
             "            \"managed_priv_reqs\": ${managed_priv_reqs},"
             "            \"file\": \"${file}\","
             "            \"sources\": ${sources},"
+            "            \"include_dirs\": ${include_dirs}"
+            "        }"
+        )
+        string(CONFIGURE "${component_json}" component_json)
+        if(NOT "${components_json}" STREQUAL "")
+            string(APPEND components_json ",\n")
+        endif()
+        string(APPEND components_json "${component_json}")
+    endforeach()
+    string(PREPEND components_json "{\n")
+    string(APPEND components_json "\n    }")
+    set(${output} "${components_json}" PARENT_SCOPE)
+endfunction()
+
+function(__all_component_info output)
+    set(components_json "")
+
+    idf_build_get_property(build_prefix __PREFIX)
+    idf_build_get_property(component_targets __COMPONENT_TARGETS)
+
+    foreach(target ${component_targets})
+        __component_get_property(name ${target} COMPONENT_NAME)
+        __component_get_property(alias ${target} COMPONENT_ALIAS)
+        __component_get_property(prefix ${target} __PREFIX)
+        __component_get_property(dir ${target} COMPONENT_DIR)
+        __component_get_property(type ${target} COMPONENT_TYPE)
+        __component_get_property(lib ${target} COMPONENT_LIB)
+        __component_get_property(reqs ${target} REQUIRES)
+        __component_get_property(include_dirs ${target} INCLUDE_DIRS)
+        __component_get_property(priv_reqs ${target} PRIV_REQUIRES)
+        __component_get_property(managed_reqs ${target} MANAGED_REQUIRES)
+        __component_get_property(managed_priv_reqs ${target} MANAGED_PRIV_REQUIRES)
+
+        if(prefix STREQUAL build_prefix)
+            set(name ${name})
+        else()
+            set(name ${alias})
+        endif()
+
+        make_json_list("${reqs}" reqs)
+        make_json_list("${priv_reqs}" priv_reqs)
+        make_json_list("${managed_reqs}" managed_reqs)
+        make_json_list("${managed_priv_reqs}" managed_priv_reqs)
+        make_json_list("${include_dirs}" include_dirs)
+
+        string(JOIN "\n" component_json
+            "        \"${name}\": {"
+            "            \"alias\": \"${alias}\","
+            "            \"target\": \"${target}\","
+            "            \"prefix\": \"${prefix}\","
+            "            \"dir\": \"${dir}\","
+            "            \"lib\": \"${lib}\","
+            "            \"reqs\": ${reqs},"
+            "            \"priv_reqs\": ${priv_reqs},"
+            "            \"managed_reqs\": ${managed_reqs},"
+            "            \"managed_priv_reqs\": ${managed_priv_reqs},"
             "            \"include_dirs\": ${include_dirs}"
             "        }"
         )
@@ -136,7 +192,8 @@ function(project_info test_components)
     make_json_list("${build_component_paths};${test_component_paths}" build_component_paths_json)
     make_json_list("${common_component_reqs}" common_component_reqs_json)
 
-    __component_info("${build_components};${test_components}" build_component_info_json)
+    __build_component_info("${build_components};${test_components}" build_component_info_json)
+    __all_component_info(all_component_info_json)
 
     # The configure_file function doesn't process generator expressions, which are needed
     # e.g. to get component target library(TARGET_LINKER_FILE), so the project_description
@@ -149,7 +206,7 @@ function(project_info test_components)
     file(READ "${build_dir}/project_description.json.templ" project_description_json_templ)
     file(REMOVE "${build_dir}/project_description.json.templ")
     file(GENERATE OUTPUT "${build_dir}/project_description.json"
-        CONTENT "${project_description_json_templ}")
+         CONTENT "${project_description_json_templ}")
 
     # Generate component dependency graph
     depgraph_generate("${build_dir}/component_deps.dot")
@@ -194,6 +251,10 @@ function(add_idf_commands)
     if(${result} EQUAL 0)
         # Do not print RWX segment warnings
         target_link_options(${TARGET} PRIVATE "-Wl,--no-warn-rwx-segments")
+    endif()
+    if(CONFIG_COMPILER_ORPHAN_SECTIONS_WARNING)
+        # Print warnings if orphan sections are found
+        target_link_options(${TARGET} PRIVATE "-Wl,--orphan-handling=warn")
     endif()
     unset(idf_target)
 
@@ -245,6 +306,37 @@ function(add_idf_commands)
     )
 
     unset(idf_size)
+
+    # Add DFU build and flash targets
+    __add_dfu_targets()
+
+    # Add uf2 related targets
+    idf_build_get_property(idf_path IDF_PATH)
+    idf_build_get_property(python PYTHON)
+
+    set(UF2_ARGS --json "${CMAKE_CURRENT_BINARY_DIR}/flasher_args.json")
+    set(UF2_CMD ${python} "${idf_path}/tools/mkuf2.py" write --chip ${chip_model})
+
+    add_custom_target(uf2
+        COMMAND ${CMAKE_COMMAND}
+        -D "IDF_PATH=${idf_path}"
+        -D "UF2_CMD=${UF2_CMD}"
+        -D "UF2_ARGS=${UF2_ARGS};-o;${CMAKE_CURRENT_BINARY_DIR}/uf2.bin"
+        -P "${idf_path}/tools/cmake/run_uf2_cmds.cmake"
+        USES_TERMINAL
+        VERBATIM
+        )
+
+    add_custom_target(uf2-app
+        COMMAND ${CMAKE_COMMAND}
+        -D "IDF_PATH=${idf_path}"
+        -D "UF2_CMD=${UF2_CMD}"
+        -D "UF2_ARGS=${UF2_ARGS};-o;${CMAKE_CURRENT_BINARY_DIR}/uf2-app.bin;--bin;app"
+        -P "${idf_path}/tools/cmake/run_uf2_cmds.cmake"
+        USES_TERMINAL
+        VERBATIM
+        )
+
 endfunction(add_idf_commands)
 
 #
