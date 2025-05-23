@@ -24,3 +24,4 @@ Name | Type | Description | Required | Example
 `miio.username` | `string` | User ID or email | YES | `xxx@xxx.com`,`12345678`
 `miio.password` | `string` | User password | YES | `12345678`
 `miio.ssid` | `string` | The SSID of the Wi-Fi | YES | `HUAWEI-A1`
+`miio.ticket` | `string` | Verify Ticket | NO | `123456`

@@ -5,7 +5,7 @@
 # See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 # required IDF version, some modules depend on specific IDF version
-set(REQUIRED_IDF_VERSION 5.1.2)
+set(REQUIRED_IDF_VERSION 5.4.0)
 
 # system api
 set(CONFIG_POSIX ON)

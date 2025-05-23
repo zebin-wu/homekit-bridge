@@ -33,7 +33,7 @@ target_link_libraries(platform_esp
     idf::spiffs
     idf::esp_wifi
     idf::esp_timer
-    idf::nvs_flash
+    idf::spi_flash
     idf::driver
 )
 

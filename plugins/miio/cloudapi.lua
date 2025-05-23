@@ -96,7 +96,7 @@ end
 ---Login step 1.
 ---@return string sign
 function session:loginStep1()
-    local code, _, body = self.session:request(
+    local code, headers, body = self.session:request(
         "GET", "https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true", 5000, {
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
@@ -107,6 +107,29 @@ function session:loginStep1()
         error("invalid username")
     end
     return body:match("\"_sign\":\"(.-)\"")
+end
+
+local function readCache(username)
+    local handle <close> = nvs.open("miio.cloudapi")
+    return handle:get(username:sub(1, 15)) or {}
+end
+
+local function saveCache(username, cache)
+    local handle <close> = nvs.open("miio.cloudapi")
+    handle:set(username:sub(1, 15), cache)
+    handle:commit()
+end
+
+function session:saveCache()
+    saveCache(self.username:sub(1, 15), self.cache)
+end
+
+function session:resetCache()
+    self.cache.serviceToken = nil
+    self.cache.ssecurity = nil
+    self.cache.userId = nil
+    self.cache.verifyUrl = nil
+    self:resetCache()
 end
 
 ---Login step 2.
@@ -135,12 +158,14 @@ function session:loginStep2(sign)
     if ssecurity == nil then
         local notificationUrl = body:match("\"notificationUrl\":\"(.-)\"")
         if notificationUrl then
+            self.cache.verifyUrl = notificationUrl
+            self:saveCache()
             error(("Two factor authentication required, please visit the following url and retry login: %s"):format(notificationUrl))
         end
         error("invalid login or password")
     end
-    self.ssecurity = ssecurity
-    self.userId = body:match("\"userId\":(%d+)")
+    self.cache.ssecurity = ssecurity
+    self.cache.userId = body:match("\"userId\":(%d+)")
     return body:match("\"location\":\"(.-)\"")
 end
 
@@ -159,27 +184,110 @@ function session:loginStep3(location)
     for _, setcookie in ipairs(headers["Set-Cookie"]) do
         local serviceToken = setcookie:match("serviceToken=(.-);")
         if serviceToken then
-            self.serviceToken = serviceToken
+            self.cache.serviceToken = serviceToken
             return
         end
     end
     error("no service token in response")
 end
 
+---Check identity list from verify url
+---@param url string
+---@return string identitySession
+---@return number[] options
+function session:checkIdentityList(url)
+    local code, headers, body = self.session:request(
+        "GET", url:gsub("identity/authStart", "identity/list"), 5000, {
+        ["User-Agent"] = self.agent,
+        ["Content-Type"] = "application/x-www-form-urlencoded",
+        ["Cookie"] = self.cookie,
+    })
+    if code ~= 200 then
+        error("unable to get identity list")
+    end
+
+    assert(body)
+
+    assert(type(headers["Set-Cookie"]) == "string")
+    local identitySession = headers["Set-Cookie"]:match("identity_session=(.-);")
+    if identitySession == nil then
+        error("missing identity_session")
+    end
+
+    local options = body:match("\"options\":(.-),")
+    options = options and cjson.decode(options) or { tonumber(body:match("\"flag\":(%d+)")) }
+    if options == nil or options == {} then
+        error("missing options or flag")
+    end
+
+    return identitySession, options
+end
+
+---Verify ticket
+---@param ticket string
+---@return string location
+function session:verifyTicket(ticket)
+    if not self.cache.verifyUrl then
+        return ""
+    end
+
+    local identitySession, options = self:checkIdentityList(self.cache.verifyUrl)
+    for _, flag in ipairs(options) do
+        local path
+        if flag == 4 then
+            path = "/identity/auth/verifyPhone"
+        elseif flag == 8 then
+            path = "/identity/auth/verifyEmail"
+        end
+
+        local code, headers, body = self.session:request(
+            "POST", "https://account.xiaomi.com" .. path .. "?" .. urllib.buildQuery({
+                _dc = core.time(),
+                _flag = flag,
+                ticket = ticket,
+                trust = true,
+                _json = true,
+            }), 5000, {
+            ["User-Agent"] = self.agent,
+            ["Content-Type"] = "application/x-www-form-urlencoded",
+            ["Cookie"] = self.cookie .. ";identity_session=" .. identitySession,
+        })
+        assert(body)
+        if code == 200 and tonumber(body:match("\"code\":(%d+)")) == 0 then
+            self.cache.verifyUrl = nil
+            return body:match("\"location\":\"(.-)\"")
+        end
+    end
+
+    error("verify failed")
+end
+
+function session:accountGet(url)
+    local code, headers, body = self.session:request(
+        "GET", url, 5000, {
+        ["User-Agent"] = self.agent,
+        ["Content-Type"] = "application/x-www-form-urlencoded",
+        ["Cookie"] = self.cookie,
+    })
+
+    if code == 302 then
+        self:accountGet(headers["Location"])
+    elseif code ~= 200 then
+        error("failed to get account")
+    end
+end
+
 ---Login.
 ---@return MiCloudSession
-function session:login()
+function session:login(ticket)
     assert(self:isLogin() == false, "attempt to login repeatedly")
+    local location = nil
+    if ticket then
+        location = self:verifyTicket(ticket)
+        self:accountGet(location)
+    end
     self:loginStep3(self:loginStep2(self:loginStep1()))
-    local handle <close> = nvs.open("miio.cloudapi")
-    handle:set(self.username:sub(1, 15), {
-        agentId = self.agentId,
-        deviceId = self.deviceId,
-        serviceToken = self.serviceToken,
-        ssecurity = self.ssecurity,
-        userId = self.userId
-    })
-    handle:commit()
+    self:saveCache()
     return self
 end
 
@@ -187,18 +295,13 @@ function session:logout()
     if not self:isLogin() then
         return
     end
-    self.serviceToken = nil
-    self.ssecurity = nil
-    self.userId = nil
-    local handle <close> = nvs.open("miio.cloudapi")
-    handle:set(self.username:sub(1, 15), nil)
-    handle:commit()
+    self:resetCache()
 end
 
 ---Is login.
 ---@return boolean
 function session:isLogin()
-    return self.serviceToken ~= nil
+    return self.cache.serviceToken ~= nil
 end
 
 ---Private request.
@@ -208,7 +311,7 @@ end
 ---@return table result
 function session:_request(path, data, encrypt)
     assert(self:isLogin(), "attemp to request before login")
-    local ssecurity = base64.decode(self.ssecurity)
+    local ssecurity = base64.decode(self.cache.ssecurity)
     local nonce = genNonce()
     local signedNonce = signNonce(ssecurity, nonce)
     local rc4ctx
@@ -235,9 +338,9 @@ function session:_request(path, data, encrypt)
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
         ["Cookie"] = self.cookie .. ";" .. buildCookie({
-            userId = self.userId,
-            yetAnotherServiceToken = self.serviceToken,
-            serviceToken = self.serviceToken,
+            userId = self.cache.userId,
+            yetAnotherServiceToken = self.cache.serviceToken,
+            serviceToken = self.cache.serviceToken,
             locale = "zn_CN",
             timezone = "GMT+08:00",
             is_daylight = "1",
@@ -323,35 +426,29 @@ end
 ---@param region '"cn"'|'"de"'|'"us"'|'"ru"'|'"tw"'|'"sg"'|'"in"'|'"i2"' Server region.
 ---@param username string User ID or email.
 ---@param password string User password.
+---@param ticket string 2FA verify ticket
 ---@return MiCloudSession session
-function M.session(region, username, password)
+function M.session(region, username, password, ticket)
     assert(checkRegion(region), "region must be one of ['cn', 'de', 'us', 'ru', 'tw', 'sg', 'in', 'i2']")
     assert(type(username) == "string", "username must be a string")
     assert(type(password) == "string", "password must be a string")
 
-    local cache
-    do
-        local handle <close> = nvs.open("miio.cloudapi")
-        cache = handle:get(username:sub(1, 15)) or {}
-    end
-    local agentId = cache.agentid or randomBytes(65, 69, 13)
-    local deviceId = cache.agentid or randomBytes(97, 122, 6)
+    local cache = readCache(username:sub(1, 15))
+    cache.agentId = cache.agentId or randomBytes(65, 69, 13)
+    cache.deviceId = cache.deviceId or randomBytes(97, 122, 6)
 
     ---@class MiCloudSession
     local o = {
         region = region,
         username = username,
-        agentId = agentId,
-        deviceId = deviceId,
         password = hash.create("MD5"):update(password):hexdigest():upper(),
-        agent = ("Android-7.1.1-1.0.0-ONEPLUS A3010-136-%s APP/xiaomi.smarthome APPV/62830"):format(agentId),
+        agent = ("Android-7.1.1-1.0.0-ONEPLUS A3010-136-%s APP/xiaomi.smarthome APPV/62830"):format(cache.agentId),
         cookie = buildCookie({
             sdkVersion = "accountsdk-18.8.15",
-            deviceId = deviceId,
+            deviceId = cache.deviceId,
         }),
-        ssecurity = cache.ssecurity,
-        userId = cache.userId,
-        serviceToken = cache.serviceToken,
+        cache = cache,
+        ticket = ticket,
         session = httpc.session()
     }
 
@@ -360,7 +457,7 @@ function M.session(region, username, password)
         __close = session.close
     })
 
-    return o:isLogin() and o or o:login()
+    return o:isLogin() and o or o:login(ticket)
 end
 
 return M
