@@ -48,6 +48,7 @@ static const luaL_Reg globallibs[] = {
     {LUA_MATHLIBNAME, luaopen_math},
     {LUA_UTF8LIBNAME, luaopen_utf8},
     {LUA_DBLIBNAME, luaopen_debug},
+    {LUA_OSLIBNAME, luaopen_os},
     {LUA_CORE_NAME, luaopen_core},
     {LUA_LOG_NAME, luaopen_log},
     {LUA_CJSON_NAME, luaopen_cjson},

@@ -93,6 +93,28 @@ local function signNonce(ssecurity, nonce)
     return hash.create("SHA256"):update(ssecurity .. nonce):digest()
 end
 
+local function parseUTC(s)
+    local dow, day, mon, year, hour, min, sec =
+        s:match("(%a+), (%d+) (%a+) (%d+) (%d+):(%d+):(%d+) GMT")
+
+    local months = {
+        Jan=1, Feb=2, Mar=3, Apr=4, May=5, Jun=6,
+        Jul=7, Aug=8, Sep=9, Oct=10, Nov=11, Dec=12
+    }
+
+    local utc = os.time({
+        year  = tonumber(year),
+        month = months[mon],
+        day   = tonumber(day),
+        hour  = tonumber(hour),
+        min   = tonumber(min),
+        sec   = tonumber(sec),
+        isdst = false,
+    })
+
+    return utc
+end
+
 ---Login step 1.
 ---@return string sign
 function session:loginStep1()
@@ -106,6 +128,7 @@ function session:loginStep1()
     if code ~= 200 or body:find("_sign", 1, true) == nil then
         error("invalid username")
     end
+    self.tsOffset = parseUTC(headers["Date"]) * 1000 - core.time() / 1000
     return body:match("\"_sign\":\"(.-)\"")
 end
 
@@ -129,26 +152,59 @@ function session:resetCache()
     self.cache.ssecurity = nil
     self.cache.userId = nil
     self.cache.verifyUrl = nil
-    self:resetCache()
+    self.cache.captcode = nil
+    self.cache.ick = nil
+    self:saveCache()
+end
+
+---Get captcha image.
+---@param captchaUrl string
+---@return string captchaImg raw data of the captcha image
+function session:getCaptcha(captchaUrl)
+    local code, headers, body = self.session:request(
+        "GET", captchaUrl, 5000)
+    assert(headers["Set-Cookie"], "missing cookie")
+    assert(body)
+
+    local ick
+    for _, setcookie in ipairs(headers["Set-Cookie"]) do
+        ick = setcookie:match("ick=(.-);")
+        if ick then
+            self.cache.ick = ick
+            self:saveCache()
+            break
+        end
+    end
+    assert(ick, "missing ick")
+    return body
 end
 
 ---Login step 2.
 ---@param sign string
 ---@return string location
 function session:loginStep2(sign)
+    local params = {
+        sid = "xiaomiio",
+        _dc = self.tsOffset + core.time(),
+        hash = self.password,
+        callback = "https://sts.api.io.mi.com/sts",
+        qs = "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
+        user = self.username,
+        _sign = sign,
+        _json = true
+    }
+    local cookie = self.cookie
+    if self.cache.captcode then
+        params.captCode = self.cache.captcode
+        cookie = cookie .. ";ick=" .. self.cache.ick
+        self.cache.ick = nil
+        self.cache.captcode = nil
+    end
     local code, _, body = self.session:request(
-        "POST", "https://account.xiaomi.com/pass/serviceLoginAuth2?" .. urllib.buildQuery({
-            sid = "xiaomiio",
-            hash = self.password,
-            callback = "https://sts.api.io.mi.com/sts",
-            qs = "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
-            user = self.username,
-            _sign = sign,
-            _json = true
-        }), 5000, {
+        "POST", "https://account.xiaomi.com/pass/serviceLoginAuth2?" .. urllib.buildQuery(params), 10000, {
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
-        ["Cookie"] = self.cookie,
+        ["Cookie"] = cookie,
     })
     assert(body)
     if code ~= 200 then
@@ -161,6 +217,18 @@ function session:loginStep2(sign)
             self.cache.verifyUrl = notificationUrl
             self:saveCache()
             error(("Two factor authentication required, please visit the following url and retry login: %s"):format(notificationUrl))
+        end
+        local captchaUrl = body:match("\"captchaUrl\":\"(.-)\"")
+        if captchaUrl then
+            if not captchaUrl:find("^http") then
+                captchaUrl = "https://account.xiaomi.com" .. captchaUrl
+            end
+            local img = base64.encode(self:getCaptcha(captchaUrl))
+            -- steps:
+            -- 1. paste the following captcha code link into the input box in your browser and press Enter
+            -- 2. use command "homekit-bridge config miio.captcode <captcode>" to set captcode on your device
+            -- 3. use command "restart" to try again
+            error(("Need captcha code, please visit the following captcha code: data:image/jpeg;base64,%s"):format(img))
         end
         error("invalid login or password")
     end
@@ -197,7 +265,7 @@ end
 ---@return number[] options
 function session:checkIdentityList(url)
     local code, headers, body = self.session:request(
-        "GET", url:gsub("identity/authStart", "identity/list"), 5000, {
+        "GET", url:gsub("fe/service/identity/authStart", "identity/list"), 5000, {
         ["User-Agent"] = self.agent,
         ["Content-Type"] = "application/x-www-form-urlencoded",
         ["Cookie"] = self.cookie,
@@ -207,6 +275,10 @@ function session:checkIdentityList(url)
     end
 
     assert(body)
+
+    if headers["Date"] then
+        self.tsOffset = parseUTC(headers["Date"]) * 1000 - core.time() / 1000
+    end
 
     assert(type(headers["Set-Cookie"]) == "string")
     local identitySession = headers["Set-Cookie"]:match("identity_session=(.-);")
@@ -242,7 +314,7 @@ function session:verifyTicket(ticket)
 
         local code, headers, body = self.session:request(
             "POST", "https://account.xiaomi.com" .. path .. "?" .. urllib.buildQuery({
-                _dc = core.time(),
+                _dc = self.tsOffset + core.time(),
                 _flag = flag,
                 ticket = ticket,
                 trust = true,
@@ -427,24 +499,27 @@ end
 ---@param username string User ID or email.
 ---@param password string User password.
 ---@param ticket string 2FA verify ticket
+---@param captcode string Captcha code.
 ---@return MiCloudSession session
-function M.session(region, username, password, ticket)
+function M.session(region, username, password, ticket, captcode)
     assert(checkRegion(region), "region must be one of ['cn', 'de', 'us', 'ru', 'tw', 'sg', 'in', 'i2']")
     assert(type(username) == "string", "username must be a string")
     assert(type(password) == "string", "password must be a string")
 
     local cache = readCache(username:sub(1, 15))
+    cache.captcode = captcode
     cache.agentId = cache.agentId or randomBytes(65, 69, 13)
     cache.deviceId = cache.deviceId or randomBytes(97, 122, 6)
 
     ---@class MiCloudSession
     local o = {
+        tsOffset = 0,
         region = region,
         username = username,
         password = hash.create("MD5"):update(password):hexdigest():upper(),
         agent = ("Android-7.1.1-1.0.0-ONEPLUS A3010-136-%s APP/xiaomi.smarthome APPV/62830"):format(cache.agentId),
         cookie = buildCookie({
-            sdkVersion = "accountsdk-18.8.15",
+            sdkVersion = "3.8.6",
             deviceId = cache.deviceId,
         }),
         cache = cache,

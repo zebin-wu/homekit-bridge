@@ -110,7 +110,7 @@ function client:request(method, path, headers, body)
         end
     end
 
-    local length = headers["Content-Length"]
+    local length = tonumber(headers["Content-Length"])
     local mode = headers["Transfer-Encoding"]
     if mode then
         if mode ~= "identity" and mode ~= "chunked" then
@@ -125,8 +125,12 @@ function client:request(method, path, headers, body)
             return chunk
         end
     elseif length then
-        body = sc:read(assert(tointeger(length)), true)
-    elseif code == 204 or code == 304 or code < 200 then
+        if length > 0 then
+            body = sc:read(assert(tointeger(length)), true)
+        else
+            body = nil
+        end
+    elseif code == 204 or code == 302 or code == 304 or code < 200 then
         body = nil
     else
         body = sc:readall()
