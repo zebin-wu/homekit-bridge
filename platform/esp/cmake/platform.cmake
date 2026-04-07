@@ -45,7 +45,7 @@ idf_build_component(${CMAKE_CURRENT_LIST_DIR}/../dependencies)
 set(components dependencies)
 
 idf_build_process(${IDF_TARGET}
-    COMPONENTS idf::spiffs
+    COMPONENTS idf::spiffs idf::esp_psram
     SDKCONFIG ${CMAKE_SOURCE_DIR}/sdkconfig
     SDKCONFIG_DEFAULTS ${CMAKE_CURRENT_LIST_DIR}/../sdkconfig.defaults
     BUILD_DIR ${CMAKE_BINARY_DIR}

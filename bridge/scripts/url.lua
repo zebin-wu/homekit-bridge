@@ -248,8 +248,8 @@ function M.parseQuery(s, sep)
     end or decode
 
     local res = {}
-    for key, val in s:gmatch(("([^%q=]+)(=*[^%q=]*)"):format(sep, sep)) do
-        key = _decode(key)
+    for _k, _v in s:gmatch(("([^%q=]+)(=*[^%q=]*)"):format(sep, sep)) do
+        local key = _decode(_k)
         local keys = {}
         key = key:gsub("%[([^%]]*)%]", function (v)
             -- extract keys between balanced brackets
@@ -262,7 +262,7 @@ function M.parseQuery(s, sep)
             return "="
         end)
         key = key:gsub("=+.*$", ""):gsub("%s", "_")
-        val = val:gsub("^=+", "")
+        local val = _v:gsub("^=+", "")
 
         if not res[key] then
             res[key] = {}

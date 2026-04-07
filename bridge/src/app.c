@@ -23,9 +23,6 @@ extern int luaopen_cjson(lua_State *L);
 #error "Please define BRIDGE_VERSION"
 #endif  // BRIDGE_VERSION
 
-#define luaL_dobufferx(L, buff, sz, name, mode) \
-    (luaL_loadbufferx(L, buff, sz, name, mode) || lua_pcall(L, 0, LUA_MULTRET, 0))
-
 // Bridge embedfs root.
 extern const embedfs_dir BRIDGE_EMBEDFS_ROOT;
 
@@ -106,7 +103,7 @@ static int searcher_embedfs(lua_State *L) {
     gen_filename(name, filename);
     const embedfs_file *file = embedfs_find_file(&BRIDGE_EMBEDFS_ROOT, filename);
     if (file) {
-        luaL_loadbufferx(L, file->data, file->len, NULL, "const");
+        luaL_loadbufferx(L, file->data, file->len, NULL, "B");
     } else {
         lua_pushfstring(L, "no file '%s' in bridge embedfs", filename);
     }
@@ -244,7 +241,7 @@ static int panic(lua_State *L) {
 void app_init(const char *dir) {
     HAPPrecondition(dir);
 
-    L = lua_newstate(app_lua_alloc, NULL);
+    L = lua_newstate(app_lua_alloc, NULL, luaL_makeseed(NULL));
     if (luai_unlikely(!L)) {
         HAPLogError(&kHAPLog_Default,
             "%s: Cannot create state: not enough memory", __func__);
