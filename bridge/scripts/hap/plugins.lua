@@ -17,12 +17,11 @@ local priv = {
 ---Load plugin.
 ---@param name string Plugin name.
 local function loadPlugin(name)
-    local plugin = priv.plugins[name]
-    if plugin then
+    if priv.plugins[name] then
         error("Plugin is already loaded.")
     end
 
-    plugin = require(name .. ".plugin")
+    local plugin = require(name .. ".plugin")
     if util.isEmptyTable(plugin) then
         error(("No fields in plugin '%s'."):format(name))
     end
@@ -41,7 +40,7 @@ local function loadPlugin(name)
     logger:info(("Plugin '%s' initializing ..."):format(name))
     local accessories = plugin.init()
     logger:info(("Plugin '%s' initialized."):format(name))
-    priv.plugins[name] = plugin
+    priv.plugins[name] = true
     return accessories
 end
 
@@ -51,20 +50,27 @@ function M.init()
     local names = config.getall("bridge.plugins")
     local accessories = {}
     if names then
+        local loaded = package.loaded
+        local loadedBefore = {}
+        for name in pairs(loaded) do
+            loadedBefore[name] = true
+        end
         for _, name in ipairs(names) do
             local success, result = xpcall(loadPlugin, traceback, name)
             if success == false then
                 logger:error(result)
-            end
-            for _, accessory in ipairs(result) do
-                table.insert(accessories, accessory)
+            else
+                for _, accessory in ipairs(result) do
+                    table.insert(accessories, accessory)
+                end
             end
         end
-        local loaded = package.loaded
-        for name, _ in pairs(loaded) do
-            loaded[name] = nil
+        for name in pairs(loaded) do
+            if not loadedBefore[name] then
+                loaded[name] = nil
+            end
         end
-        collectgarbage()
+        collectgarbage("collect")
     end
     return accessories
 end
