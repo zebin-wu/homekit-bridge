@@ -11,6 +11,24 @@
 #include "lc.h"
 
 #define THREAD_POOL_SIZE 8
+#define LC_GC_STEP_SMALL ((size_t) 4 * 1024)
+#define LC_GC_STEP_MEDIUM ((size_t) 8 * 1024)
+#define LC_GC_STEP_LARGE ((size_t) 16 * 1024)
+#define LC_GC_STEP_HUGE ((size_t) 32 * 1024)
+
+static size_t lc_gc_step_size(lua_State *L) {
+    int kb = lua_gc(L, LUA_GCCOUNT);
+    if (kb >= 1024) {
+        return LC_GC_STEP_HUGE;
+    }
+    if (kb >= 512) {
+        return LC_GC_STEP_LARGE;
+    }
+    if (kb >= 256) {
+        return LC_GC_STEP_MEDIUM;
+    }
+    return LC_GC_STEP_SMALL;
+}
 
 static const HAPLogObject lc_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
@@ -166,6 +184,25 @@ lua_State *lc_getmainthread(lua_State *L) {
 }
 
 void lc_collectgarbage(lua_State *L) {
+    lua_gc(L, LUA_GCSTEP, lc_gc_step_size(L));
+}
+
+void lc_collectgarbage_idle(lua_State *L) {
+    int kb = lua_gc(L, LUA_GCCOUNT);
+    int rounds = 1;
+    if (kb >= 1024) {
+        rounds = 4;
+    } else if (kb >= 512) {
+        rounds = 3;
+    } else if (kb >= 256) {
+        rounds = 2;
+    }
+    for (int i = 0; i < rounds; i++) {
+        lua_gc(L, LUA_GCSTEP, lc_gc_step_size(L));
+    }
+}
+
+void lc_collectgarbage_full(lua_State *L) {
     lua_gc(L, LUA_GCCOLLECT);
 }
 

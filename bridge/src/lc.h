@@ -67,9 +67,19 @@ bool lc_traverse_array(lua_State *L, int idx,
 lua_State *lc_getmainthread(lua_State *L);
 
 /**
- * Collect garbage.
+ * Run a bounded garbage-collection step on hot paths.
  */
 void lc_collectgarbage(lua_State *L);
+
+/**
+ * Run a stronger garbage-collection step when the run loop is otherwise idle.
+ */
+void lc_collectgarbage_idle(lua_State *L);
+
+/**
+ * Run a full garbage-collection cycle at batch boundaries.
+ */
+void lc_collectgarbage_full(lua_State *L);
 
 /**
  * Push traceback function to lua stack.

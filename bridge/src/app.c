@@ -11,6 +11,8 @@
 #include <pal/mem.h>
 #include <pal/err.h>
 #include <app.h>
+#include <HAPPlatformClock.h>
+#include <HAPPlatformTimer.h>
 
 #include "app_int.h"
 #include "lc.h"
@@ -26,6 +28,11 @@ extern int luaopen_cjson(lua_State *L);
 // Bridge embedfs root.
 extern const embedfs_dir BRIDGE_EMBEDFS_ROOT;
 
+#define APP_GC_PAUSE 120
+#define APP_GC_STEPMUL 400
+#define APP_GC_STEPSIZE 1024
+#define APP_GC_PUMP_INTERVAL_MS 100
+
 struct app_exec_ctx {
     bool in_progress;
     int argc;
@@ -36,6 +43,7 @@ struct app_exec_ctx {
 };
 
 static lua_State *L;
+static HAPPlatformTimerRef gc_timer;
 
 static const luaL_Reg globallibs[] = {
     {LUA_GNAME, luaopen_base},
@@ -171,6 +179,34 @@ static void *app_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
     }
 }
 
+static void app_schedule_gc_pump(void);
+
+static void app_gc_pump_cb(HAPPlatformTimerRef timer, void *context) {
+    (void)timer;
+    (void)context;
+    gc_timer = 0;
+    if (!L) {
+        return;
+    }
+    HAPAssert(lua_gettop(L) == 0);
+    lc_collectgarbage_idle(L);
+    lua_settop(L, 0);
+    app_schedule_gc_pump();
+}
+
+static void app_schedule_gc_pump(void) {
+    if (!L || gc_timer) {
+        return;
+    }
+    HAPError err = HAPPlatformTimerRegister(&gc_timer,
+        HAPPlatformClockGetCurrent() + APP_GC_PUMP_INTERVAL_MS,
+        app_gc_pump_cb, NULL);
+    if (err != kHAPError_None) {
+        gc_timer = 0;
+        HAPLogError(&kHAPLog_Default, "%s: failed to schedule GC pump", __func__);
+    }
+}
+
 // app_pinit(dir: lightuserdata)
 static int app_pinit(lua_State *L) {
     const char *dir = lua_touserdata(L, 1);
@@ -183,8 +219,11 @@ static int app_pinit(lua_State *L) {
         lua_pop(L, 1);  /* remove lib */
     }
 
-    // GC in generational mode
-    lua_gc(L, LUA_GCGEN, 0, 0);
+    // GC in incremental mode tuned for lower memory peaks.
+    lua_gc(L, LUA_GCINC);
+    lua_gc(L, LUA_GCPARAM, LUA_GCPPAUSE, APP_GC_PAUSE);
+    lua_gc(L, LUA_GCPARAM, LUA_GCPSTEPMUL, APP_GC_STEPMUL);
+    lua_gc(L, LUA_GCPARAM, LUA_GCPSTEPSIZE, APP_GC_STEPSIZE);
 
     // package.path = "${dir}/?.lua;${dir}/?.luac"
     lua_getglobal(L, "package");
@@ -263,10 +302,15 @@ void app_init(const char *dir) {
     }
 
     lua_settop(L, 0);
-    lc_collectgarbage(L);
+    lc_collectgarbage_full(L);
+    app_schedule_gc_pump();
 }
 
 void app_deinit() {
+    if (gc_timer) {
+        HAPPlatformTimerDeregister(gc_timer);
+        gc_timer = 0;
+    }
     if (L) {
         lua_close(L);
         L = NULL;
