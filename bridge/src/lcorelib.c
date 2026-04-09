@@ -12,7 +12,9 @@
 #include "lc.h"
 
 #define LUA_TIMER_NAME "Timer*"
-#define LUA_MQ_OBJ_NAME "MQ*"
+#define LUA_FUTURE_OBJ_NAME "Future*"
+#define LUA_EVENT_OBJ_NAME "Event*"
+#define LUA_QUEUE_OBJ_NAME "Queue*"
 #define LCORE_ATEXITS "_ATEXITS"
 
 static const HAPLogObject lcore_log = {
@@ -29,11 +31,25 @@ typedef struct {
     HAPPlatformTimerRef timer;  /* Timer ID. Start from 1. */
 } lcore_timer_ctx;
 
+typedef enum {
+    LCORE_FUTURE_PENDING,
+    LCORE_FUTURE_RESOLVED,
+    LCORE_FUTURE_REJECTED,
+} lcore_future_state;
+
+typedef struct {
+    lcore_future_state state;
+} lcore_future;
+
+typedef struct {
+    bool set;
+} lcore_event;
+
 typedef struct {
     size_t first;
     size_t last;
     size_t size;
-} lcore_mq;
+} lcore_queue;
 
 static int lcore_time(lua_State *L) {
     lua_pushnumber(L, HAPPlatformClockGetCurrent());
@@ -124,6 +140,11 @@ static int lcore_sleep(lua_State *L) {
     return lua_yield(L, 0);
 }
 
+static int lcore_isyieldable(lua_State *L) {
+    lua_pushboolean(L, lua_isyieldable(L));
+    return 1;
+}
+
 static int lcore_create_timer(lua_State *L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
 
@@ -137,19 +158,6 @@ static int lcore_create_timer(lua_State *L) {
     ctx->nargs = n - 1;
     ctx->timer = 0;
     ctx->mL = lc_getmainthread(L);
-    return 1;
-}
-
-static int lcore_create_mq(lua_State *L) {
-    size_t size = luaL_checkinteger(L, 1);
-    luaL_argcheck(L, size > 0, 1, "size out of range");
-    lcore_mq *obj = lua_newuserdatauv(L, sizeof(*obj), 1);
-    luaL_setmetatable(L, LUA_MQ_OBJ_NAME);
-    obj->first = 1;
-    obj->last = 1;
-    obj->size = size;
-    lua_createtable(L, 0, 1);
-    lua_setuservalue(L, -2);
     return 1;
 }
 
@@ -268,126 +276,443 @@ static void lcore_timer_createmeta(lua_State *L) {
     lua_pop(L, 1);  /* pop metatable */
 }
 
-static size_t lcore_mq_size(lcore_mq *obj) {
-    return obj->first > obj->last ? obj->size - obj->first + obj->last : obj->last - obj->first;
-}
+static char lcore_nil_sentinel;
 
-static int lcore_mq_send(lua_State *L) {
-    lcore_mq *obj = luaL_checkudata(L, 1, LUA_MQ_OBJ_NAME);
-    int narg = lua_gettop(L) - 1;
-    int status, nres;
-
-    lua_getuservalue(L, 1);
-
-    if (lua_getfield(L, -1, "wait") == LUA_TTABLE) {
-        lua_pushnil(L);
-        lua_setfield(L, -3, "wait");  // que.wait = nil
-        int waiting = luaL_len(L, -1);
-        for (int i = 1; i <= waiting; i++) {
-            HAPAssert(lua_geti(L, -1, i) == LUA_TTHREAD);
-            lua_State *co = lua_tothread(L, -1);
-            lua_pop(L, 1);
-            int max = 1 + narg;
-            if (luai_unlikely(!lua_checkstack(L, narg))) {
-                luaL_error(L, "stack overflow");
-            }
-            for (int i = 2; i <= max; i++) {
-                lua_pushvalue(L, i);
-            }
-            lua_xmove(L, co, narg);
-            status = lc_resume(co, L, narg, &nres);
-            if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
-                HAPLogError(&lcore_log, "%s: %s", __func__, lua_tostring(L, -1));
-            }
-            lua_pop(L, nres);
-        }
-    } else {
-        if (lcore_mq_size(obj) == obj->size) {
-            luaL_error(L, "the message queue is full");
-        }
-        lua_pop(L, 1);
-        lua_insert(L, 2);
-        lua_createtable(L, narg, 0);
-        lua_insert(L, 3);
-        for (int i = narg; i >= 1; i--) {
-            lua_seti(L, 3, i);
-        }
-        lua_seti(L, 2, obj->last);
-        obj->last++;
-        if (obj->last > obj->size + 1) {
-            obj->last = 1;
-        }
+static int lcore_checkyieldable(lua_State *L) {
+    if (luai_unlikely(!lua_isyieldable(L))) {
+        return luaL_error(L, "current context is not yieldable");
     }
     return 0;
 }
 
-static int lcore_mq_recv(lua_State *L) {
-    lcore_mq *obj = luaL_checkudata(L, 1, LUA_MQ_OBJ_NAME);
-    if (lua_gettop(L) != 1) {
-        luaL_error(L, "invalid arguements");
-    }
-    lua_getuservalue(L, 1);
-    if (obj->last == obj->first) {
-        int type = lua_getfield(L, 2, "wait");
-        if (type == LUA_TNIL) {
-            lua_pop(L, 1);
-            lua_createtable(L, 1, 0);
-            lua_pushthread(L);
-            lua_seti(L, 3, 1);
-            lua_setfield(L, 2, "wait");
+static void lcore_pack_values(lua_State *L, int start, int narg) {
+    lua_createtable(L, narg, 1);
+    for (int i = 0; i < narg; i++) {
+        if (lua_type(L, start + i) == LUA_TNIL) {
+            lua_pushlightuserdata(L, (void *)&lcore_nil_sentinel);
         } else {
-            HAPAssert(type == LUA_TTABLE);
-            lua_pushthread(L);
-            lua_seti(L, 3, luaL_len(L, 3) + 1);
+            lua_pushvalue(L, start + i);
+        }
+        lua_seti(L, -2, i + 1);
+    }
+    lua_pushinteger(L, narg);
+    lua_setfield(L, -2, "n");
+}
+
+static int lcore_unpack_values(lua_State *L, int idx) {
+    idx = lua_absindex(L, idx);
+    if (luai_unlikely(lua_getfield(L, idx, "n") != LUA_TNUMBER)) {
+        luaL_error(L, "corrupted core object state");
+    }
+    int narg = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    if (luai_unlikely(!lua_checkstack(L, narg))) {
+        luaL_error(L, "stack overflow");
+    }
+    for (int i = 1; i <= narg; i++) {
+        lua_geti(L, idx, i);
+        if (lua_islightuserdata(L, -1) &&
+                lua_touserdata(L, -1) == (void *)&lcore_nil_sentinel) {
             lua_pop(L, 1);
+            lua_pushnil(L);
         }
+    }
+    return narg;
+}
+
+static void lcore_waiters_add(lua_State *L, int idx, const char *field) {
+    idx = lua_absindex(L, idx);
+    int type = lua_getfield(L, idx, field);
+    if (type == LUA_TNIL) {
         lua_pop(L, 1);
-        return lua_yield(L, 0);
+        lua_createtable(L, 1, 0);
+        lua_pushthread(L);
+        lua_seti(L, -2, 1);
+        lua_setfield(L, idx, field);
     } else {
-        lua_geti(L, 2, obj->first);
-        lua_pushnil(L);
-        lua_seti(L, 2, obj->first);
-        obj->first++;
-        if (obj->first > obj->size + 1) {
-            obj->first = 1;
-        }
-        int nargs = luaL_len(L, 3);
-        for (int i = 1; i <= nargs; i++) {
-            lua_geti(L, 3, i);
-        }
-        return nargs;
+        HAPAssert(type == LUA_TTABLE);
+        lua_pushthread(L);
+        lua_seti(L, -2, luaL_len(L, -2) + 1);
+        lua_pop(L, 1);
     }
 }
 
-static int lcore_mq_tostring(lua_State *L) {
-    lcore_mq *obj = luaL_checkudata(L, 1, LUA_MQ_OBJ_NAME);
-    lua_pushfstring(L, "message queue (%p)", obj);
+static lua_State *lcore_waiters_take_first(lua_State *L, int idx, const char *field) {
+    idx = lua_absindex(L, idx);
+    int type = lua_getfield(L, idx, field);
+    if (type == LUA_TNIL) {
+        lua_pop(L, 1);
+        return NULL;
+    }
+
+    HAPAssert(type == LUA_TTABLE);
+    int waiting = luaL_len(L, -1);
+    if (waiting == 0) {
+        lua_pop(L, 1);
+        lua_pushnil(L);
+        lua_setfield(L, idx, field);
+        return NULL;
+    }
+
+    HAPAssert(lua_geti(L, -1, 1) == LUA_TTHREAD);
+    lua_State *co = lua_tothread(L, -1);
+    lua_pop(L, 1);
+    for (int i = 2; i <= waiting; i++) {
+        lua_geti(L, -1, i);
+        lua_seti(L, -2, i - 1);
+    }
+    lua_pushnil(L);
+    lua_seti(L, -2, waiting);
+
+    if (waiting == 1) {
+        lua_pop(L, 1);
+        lua_pushnil(L);
+        lua_setfield(L, idx, field);
+    } else {
+        lua_pop(L, 1);
+    }
+    return co;
+}
+
+static void lcore_resume_thread(lua_State *L, lua_State *co, int arg_start, int narg) {
+    int status, nres;
+
+    if (luai_unlikely(!lua_checkstack(co, narg))) {
+        luaL_error(L, "stack overflow");
+    }
+    for (int i = 0; i < narg; i++) {
+        lua_pushvalue(L, arg_start + i);
+    }
+    lua_xmove(L, co, narg);
+    status = lc_resume(co, L, narg, &nres);
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        HAPLogError(&lcore_log, "%s: %s", __func__, lua_tostring(L, -1));
+    }
+    lua_pop(L, nres);
+}
+
+static void lcore_waiters_broadcast(lua_State *L, int idx, const char *field, int arg_start, int narg) {
+    idx = lua_absindex(L, idx);
+    int type = lua_getfield(L, idx, field);
+    if (type == LUA_TNIL) {
+        lua_pop(L, 1);
+        return;
+    }
+
+    HAPAssert(type == LUA_TTABLE);
+    lua_pushnil(L);
+    lua_setfield(L, idx, field);
+
+    int waiting = luaL_len(L, -1);
+    for (int i = 1; i <= waiting; i++) {
+        HAPAssert(lua_geti(L, -1, i) == LUA_TTHREAD);
+        lua_State *co = lua_tothread(L, -1);
+        lua_pop(L, 1);
+        lcore_resume_thread(L, co, arg_start, narg);
+    }
+    lua_pop(L, 1);
+}
+
+static const char *lcore_future_state_strs[] = {
+    "pending",
+    "resolved",
+    "rejected",
+    NULL,
+};
+
+static int lcore_create_future(lua_State *L) {
+    lcore_future *obj = lua_newuserdatauv(L, sizeof(*obj), 1);
+    luaL_setmetatable(L, LUA_FUTURE_OBJ_NAME);
+    obj->state = LCORE_FUTURE_PENDING;
+    lua_createtable(L, 0, 2);
+    lua_setuservalue(L, -2);
+    return 1;
+}
+
+static int lcore_future_complete(lua_State *L, lcore_future_state state) {
+    lcore_future *obj = luaL_checkudata(L, 1, LUA_FUTURE_OBJ_NAME);
+    if (luai_unlikely(obj->state != LCORE_FUTURE_PENDING)) {
+        return luaL_error(L, "future is already completed");
+    }
+
+    int narg = lua_gettop(L) - 1;
+    lua_getuservalue(L, 1);
+    int uv = lua_gettop(L);
+    lcore_pack_values(L, 2, narg);
+    lua_setfield(L, uv, "result");
+    obj->state = state;
+
+    lua_pushboolean(L, state == LCORE_FUTURE_RESOLVED);
+    lua_insert(L, 2);
+    lcore_waiters_broadcast(L, uv + 1, "wait", 2, narg + 1);
+    lua_pop(L, 1);
+    return 0;
+}
+
+static int lcore_future_resolve(lua_State *L) {
+    return lcore_future_complete(L, LCORE_FUTURE_RESOLVED);
+}
+
+static int lcore_future_reject(lua_State *L) {
+    return lcore_future_complete(L, LCORE_FUTURE_REJECTED);
+}
+
+static int lcore_future_wait(lua_State *L) {
+    lcore_future *obj = luaL_checkudata(L, 1, LUA_FUTURE_OBJ_NAME);
+    if (obj->state == LCORE_FUTURE_PENDING) {
+        lcore_checkyieldable(L);
+        lua_getuservalue(L, 1);
+        lcore_waiters_add(L, -1, "wait");
+        lua_pop(L, 1);
+        return lua_yield(L, 0);
+    }
+
+    lua_getuservalue(L, 1);
+    lua_pushboolean(L, obj->state == LCORE_FUTURE_RESOLVED);
+    if (luai_unlikely(lua_getfield(L, 2, "result") != LUA_TTABLE)) {
+        luaL_error(L, "corrupted future state");
+    }
+    int narg = lcore_unpack_values(L, -1);
+    lua_remove(L, lua_gettop(L) - narg);
+    lua_remove(L, 2);
+    return narg + 1;
+}
+
+static int lcore_future_getstate(lua_State *L) {
+    lcore_future *obj = luaL_checkudata(L, 1, LUA_FUTURE_OBJ_NAME);
+    lua_pushstring(L, lcore_future_state_strs[obj->state]);
+    return 1;
+}
+
+static int lcore_future_tostring(lua_State *L) {
+    lcore_future *obj = luaL_checkudata(L, 1, LUA_FUTURE_OBJ_NAME);
+    lua_pushfstring(L, "future (%p, %s)", obj, lcore_future_state_strs[obj->state]);
     return 1;
 }
 
 /*
- * metamethods for message queue object
+ * metamethods for future object
  */
-static const luaL_Reg lcore_mq_metameth[] = {
+static const luaL_Reg lcore_future_metameth[] = {
     {"__index", NULL},  /* place holder */
-    {"__tostring", lcore_mq_tostring},
+    {"__tostring", lcore_future_tostring},
     {NULL, NULL}
 };
 
 /*
- * methods for MQ object
+ * methods for future object
  */
-static const luaL_Reg lcore_mq_meth[] = {
-    {"send", lcore_mq_send},
-    {"recv", lcore_mq_recv},
+static const luaL_Reg lcore_future_meth[] = {
+    {"resolve", lcore_future_resolve},
+    {"reject", lcore_future_reject},
+    {"wait", lcore_future_wait},
+    {"state", lcore_future_getstate},
     {NULL, NULL},
 };
 
-static void lcore_mq_createmeta(lua_State *L) {
-    luaL_newmetatable(L, LUA_MQ_OBJ_NAME);  /* metatable for MQ object */
-    luaL_setfuncs(L, lcore_mq_metameth, 0);  /* add metamethods to new metatable */
-    luaL_newlibtable(L, lcore_mq_meth);  /* create method table */
-    luaL_setfuncs(L, lcore_mq_meth, 0);  /* add MQ object methods to method table */
+static void lcore_future_createmeta(lua_State *L) {
+    luaL_newmetatable(L, LUA_FUTURE_OBJ_NAME);  /* metatable for future object */
+    luaL_setfuncs(L, lcore_future_metameth, 0);  /* add metamethods to new metatable */
+    luaL_newlibtable(L, lcore_future_meth);  /* create method table */
+    luaL_setfuncs(L, lcore_future_meth, 0);  /* add future methods to method table */
+    lua_setfield(L, -2, "__index");  /* metatable.__index = method table */
+    lua_pop(L, 1);  /* pop metatable */
+}
+
+static int lcore_create_event(lua_State *L) {
+    lcore_event *obj = lua_newuserdatauv(L, sizeof(*obj), 1);
+    luaL_setmetatable(L, LUA_EVENT_OBJ_NAME);
+    obj->set = false;
+    lua_createtable(L, 0, 1);
+    lua_setuservalue(L, -2);
+    return 1;
+}
+
+static int lcore_event_wait(lua_State *L) {
+    lcore_event *obj = luaL_checkudata(L, 1, LUA_EVENT_OBJ_NAME);
+    if (obj->set) {
+        return 0;
+    }
+
+    lcore_checkyieldable(L);
+    lua_getuservalue(L, 1);
+    lcore_waiters_add(L, -1, "wait");
+    lua_pop(L, 1);
+    return lua_yield(L, 0);
+}
+
+static int lcore_event_set(lua_State *L) {
+    lcore_event *obj = luaL_checkudata(L, 1, LUA_EVENT_OBJ_NAME);
+    obj->set = true;
+    lua_getuservalue(L, 1);
+    lcore_waiters_broadcast(L, -1, "wait", 0, 0);
+    lua_pop(L, 1);
+    return 0;
+}
+
+static int lcore_event_clear(lua_State *L) {
+    lcore_event *obj = luaL_checkudata(L, 1, LUA_EVENT_OBJ_NAME);
+    obj->set = false;
+    return 0;
+}
+
+static int lcore_event_isset(lua_State *L) {
+    lcore_event *obj = luaL_checkudata(L, 1, LUA_EVENT_OBJ_NAME);
+    lua_pushboolean(L, obj->set);
+    return 1;
+}
+
+static int lcore_event_tostring(lua_State *L) {
+    lcore_event *obj = luaL_checkudata(L, 1, LUA_EVENT_OBJ_NAME);
+    lua_pushfstring(L, "event (%p, %s)", obj, obj->set ? "set" : "clear");
+    return 1;
+}
+
+/*
+ * metamethods for event object
+ */
+static const luaL_Reg lcore_event_metameth[] = {
+    {"__index", NULL},  /* place holder */
+    {"__tostring", lcore_event_tostring},
+    {NULL, NULL}
+};
+
+/*
+ * methods for event object
+ */
+static const luaL_Reg lcore_event_meth[] = {
+    {"wait", lcore_event_wait},
+    {"set", lcore_event_set},
+    {"clear", lcore_event_clear},
+    {"isSet", lcore_event_isset},
+    {NULL, NULL},
+};
+
+static void lcore_event_createmeta(lua_State *L) {
+    luaL_newmetatable(L, LUA_EVENT_OBJ_NAME);  /* metatable for event object */
+    luaL_setfuncs(L, lcore_event_metameth, 0);  /* add metamethods to new metatable */
+    luaL_newlibtable(L, lcore_event_meth);  /* create method table */
+    luaL_setfuncs(L, lcore_event_meth, 0);  /* add event methods to method table */
+    lua_setfield(L, -2, "__index");  /* metatable.__index = method table */
+    lua_pop(L, 1);  /* pop metatable */
+}
+
+static size_t lcore_queue_size(lcore_queue *obj) {
+    return obj->first > obj->last ? obj->size + 1 - obj->first + obj->last : obj->last - obj->first;
+}
+
+static int lcore_create_queue(lua_State *L) {
+    size_t size = luaL_checkinteger(L, 1);
+    luaL_argcheck(L, size > 0, 1, "size out of range");
+
+    lcore_queue *obj = lua_newuserdatauv(L, sizeof(*obj), 1);
+    luaL_setmetatable(L, LUA_QUEUE_OBJ_NAME);
+    obj->first = 1;
+    obj->last = 1;
+    obj->size = size;
+    lua_createtable(L, 0, 1);
+    lua_setuservalue(L, -2);
+    return 1;
+}
+
+static int lcore_queue_send(lua_State *L) {
+    lcore_queue *obj = luaL_checkudata(L, 1, LUA_QUEUE_OBJ_NAME);
+    int narg = lua_gettop(L) - 1;
+
+    lua_getuservalue(L, 1);
+    lua_State *co = lcore_waiters_take_first(L, -1, "recv_wait");
+    if (co != NULL) {
+        lua_pop(L, 1);
+        lcore_resume_thread(L, co, 2, narg);
+        return 0;
+    }
+
+    if (lcore_queue_size(obj) == obj->size) {
+        return luaL_error(L, "queue is full");
+    }
+
+    int uv = lua_gettop(L);
+    lcore_pack_values(L, 2, narg);
+    lua_seti(L, uv, obj->last);
+    obj->last++;
+    if (obj->last > obj->size + 1) {
+        obj->last = 1;
+    }
+    lua_pop(L, 1);
+    return 0;
+}
+
+static int lcore_queue_recv(lua_State *L) {
+    lcore_queue *obj = luaL_checkudata(L, 1, LUA_QUEUE_OBJ_NAME);
+    lua_getuservalue(L, 1);
+    int uv = lua_gettop(L);
+
+    if (obj->last == obj->first) {
+        lcore_checkyieldable(L);
+        lcore_waiters_add(L, uv, "recv_wait");
+        lua_pop(L, 1);
+        return lua_yield(L, 0);
+    }
+
+    if (luai_unlikely(lua_geti(L, uv, obj->first) != LUA_TTABLE)) {
+        luaL_error(L, "corrupted queue state");
+    }
+    lua_pushnil(L);
+    lua_seti(L, uv, obj->first);
+    obj->first++;
+    if (obj->first > obj->size + 1) {
+        obj->first = 1;
+    }
+    int narg = lcore_unpack_values(L, -1);
+    lua_remove(L, lua_gettop(L) - narg);
+    lua_remove(L, uv);
+    return narg;
+}
+
+static int lcore_queue_len(lua_State *L) {
+    lcore_queue *obj = luaL_checkudata(L, 1, LUA_QUEUE_OBJ_NAME);
+    lua_pushinteger(L, lcore_queue_size(obj));
+    return 1;
+}
+
+static int lcore_queue_cap(lua_State *L) {
+    lcore_queue *obj = luaL_checkudata(L, 1, LUA_QUEUE_OBJ_NAME);
+    lua_pushinteger(L, obj->size);
+    return 1;
+}
+
+static int lcore_queue_tostring(lua_State *L) {
+    lcore_queue *obj = luaL_checkudata(L, 1, LUA_QUEUE_OBJ_NAME);
+    lua_pushfstring(L, "queue (%p, %d/%d)", obj, (int)lcore_queue_size(obj), (int)obj->size);
+    return 1;
+}
+
+/*
+ * metamethods for queue object
+ */
+static const luaL_Reg lcore_queue_metameth[] = {
+    {"__index", NULL},  /* place holder */
+    {"__tostring", lcore_queue_tostring},
+    {NULL, NULL}
+};
+
+/*
+ * methods for queue object
+ */
+static const luaL_Reg lcore_queue_meth[] = {
+    {"send", lcore_queue_send},
+    {"recv", lcore_queue_recv},
+    {"len", lcore_queue_len},
+    {"cap", lcore_queue_cap},
+    {NULL, NULL},
+};
+
+static void lcore_queue_createmeta(lua_State *L) {
+    luaL_newmetatable(L, LUA_QUEUE_OBJ_NAME);  /* metatable for queue object */
+    luaL_setfuncs(L, lcore_queue_metameth, 0);  /* add metamethods to new metatable */
+    luaL_newlibtable(L, lcore_queue_meth);  /* create method table */
+    luaL_setfuncs(L, lcore_queue_meth, 0);  /* add queue methods to method table */
     lua_setfield(L, -2, "__index");  /* metatable.__index = method table */
     lua_pop(L, 1);  /* pop metatable */
 }
@@ -396,15 +721,20 @@ static const luaL_Reg lcore_funcs[] = {
     {"time", lcore_time},
     {"exit", lcore_exit},
     {"atexit", lcore_atexit},
+    {"isYieldable", lcore_isyieldable},
     {"sleep", lcore_sleep},
     {"createTimer", lcore_create_timer},
-    {"createMQ", lcore_create_mq},
+    {"createFuture", lcore_create_future},
+    {"createEvent", lcore_create_event},
+    {"createQueue", lcore_create_queue},
     {NULL, NULL},
 };
 
 LUAMOD_API int luaopen_core(lua_State *L) {
     luaL_newlib(L, lcore_funcs);
     lcore_timer_createmeta(L);
-    lcore_mq_createmeta(L);
+    lcore_future_createmeta(L);
+    lcore_event_createmeta(L);
+    lcore_queue_createmeta(L);
     return 1;
 }

@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
     if (argc == parsed) {
         app_exec(APP_EXEC_DEFAULT_CMD, APP_EXEC_DEFAULT_ARGC, APP_EXEC_DEFAULT_ARGV, app_default_returned, NULL);
     } else {
-        app_exec(argv[1], argc - parsed - 1, (const char **)argv + parsed + 1, app_returned, NULL);
+        app_exec(argv[parsed], argc - parsed - 1, (const char **)argv + parsed + 1, app_returned, NULL);
     }
 
     // Use 'ctrl + C' to exit the application.

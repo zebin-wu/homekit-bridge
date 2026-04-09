@@ -1,4 +1,5 @@
 local suites = {
+    "testcore",
     "testsocket",
     "testnvs"
 }

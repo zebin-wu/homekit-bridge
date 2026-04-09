@@ -41,10 +41,11 @@ function M.gen(device, conf)
                     return device:getProp("curTemp")
                 end):setContraints(-30, 100, 1),
                 CurHeatCoolState.new(iids.curState, function (request)
-                    if not device:getProp("on") then
+                    local props = device:getProps({"on", "curState"})
+                    if not props.on then
                         return CurHeatCoolState.value.Inactive
                     end
-                    return device:getProp("curState") == 2 and CurHeatCoolState.value.Heating or CurHeatCoolState.value.Idle
+                    return props.curState == 2 and CurHeatCoolState.value.Heating or CurHeatCoolState.value.Idle
                 end):setValidVals(CurHeatCoolState.value.Inactive, CurHeatCoolState.value.Idle, CurHeatCoolState.value.Heating),
                 TgtHeatCoolState.new(iids.tgtState, function (request)
                     return TgtHeatCoolState.value.Heat
