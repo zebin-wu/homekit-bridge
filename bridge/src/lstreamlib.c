@@ -16,6 +16,9 @@
 
 #define LSTREAM_FRAME_LEN 1500
 #define LSTREAM_LINE_LEN 256
+#define LSTREAM_BUFFER_INITIAL_LEN LSTREAM_LINE_LEN
+#define LSTREAM_BUFFER_RETAIN_LEN (LSTREAM_LINE_LEN * 2)
+#define LSTREAM_BUFFER_SHRINK_THRESHOLD (LSTREAM_BUFFER_RETAIN_LEN * 4)
 #define LSTREAM_CLIENT_NAME "StreamClient*"
 
 HAP_ENUM_BEGIN(uint8_t, lstream_client_type) {
@@ -42,8 +45,6 @@ const char *lstream_client_type_strs[] = {
 
 typedef struct lstream_client {
     bool host_is_addr;
-    bool sslctx_pending;
-    bool sslctx_inited;
     bool sock_inited;
     lstream_client_state state;
     lstream_client_type type;
@@ -52,9 +53,14 @@ typedef struct lstream_client {
     lua_State *co;
     const char *host;
     pal_dns_req_ctx *dns_req;
-    pal_ssl_ctx sslctx;
+    pal_ssl_ctx *sslctx;
     pal_socket_obj sock;
-    luaL_Buffer B;
+    lua_Alloc allocf;
+    void *alloc_ud;
+    char *buf;
+    size_t buf_start;
+    size_t buf_end;
+    size_t buf_cap;
 } lstream_client;
 
 static const HAPLogObject lstream_log = {
@@ -63,6 +69,126 @@ static const HAPLogObject lstream_log = {
 };
 
 static int lstream_client_async_read(lua_State *L, lstream_client *client, size_t maxlen, lua_KFunction k);
+
+static void lstream_client_sslctx_free(lstream_client *client) {
+    if (!client->sslctx) {
+        return;
+    }
+
+    pal_ssl_ctx_deinit(client->sslctx);
+    client->allocf(client->alloc_ud, client->sslctx, sizeof(*client->sslctx), 0);
+    client->sslctx = NULL;
+}
+
+static size_t lstream_client_buffer_len(const lstream_client *client) {
+    return client->buf_end - client->buf_start;
+}
+
+static const char *lstream_client_buffer_data(const lstream_client *client) {
+    return client->buf ? client->buf + client->buf_start : "";
+}
+
+static void lstream_client_buffer_shrink(lstream_client *client, size_t cap) {
+    if (!client->buf || client->buf_cap <= cap) {
+        return;
+    }
+
+    char *buf = client->allocf(client->alloc_ud, client->buf, client->buf_cap, cap);
+    if (buf) {
+        client->buf = buf;
+        client->buf_cap = cap;
+    }
+}
+
+static void lstream_client_buffer_reset(lstream_client *client) {
+    client->buf_start = 0;
+    client->buf_end = 0;
+    if (client->buf_cap > LSTREAM_BUFFER_SHRINK_THRESHOLD) {
+        lstream_client_buffer_shrink(client, LSTREAM_BUFFER_RETAIN_LEN);
+    }
+}
+
+static void lstream_client_buffer_free(lstream_client *client) {
+    if (client->buf && client->allocf) {
+        client->allocf(client->alloc_ud, client->buf, client->buf_cap, 0);
+        client->buf = NULL;
+    }
+    client->buf_start = 0;
+    client->buf_end = 0;
+    client->buf_cap = 0;
+}
+
+static void lstream_client_buffer_compact(lstream_client *client) {
+    size_t len = lstream_client_buffer_len(client);
+
+    if (len == 0) {
+        lstream_client_buffer_reset(client);
+        return;
+    }
+
+    if (client->buf_start != 0) {
+        memmove(client->buf, client->buf + client->buf_start, len);
+        client->buf_start = 0;
+        client->buf_end = len;
+    }
+}
+
+static char *lstream_client_buffer_prep(lua_State *L, lstream_client *client, size_t len) {
+    size_t unread = lstream_client_buffer_len(client);
+    if (luai_unlikely(len > (~(size_t)0) - unread)) {
+        luaL_error(L, "resulting string too large");
+    }
+
+    if (client->buf && client->buf_cap - client->buf_end >= len) {
+        return client->buf + client->buf_end;
+    }
+
+    lstream_client_buffer_compact(client);
+    if (client->buf && client->buf_cap - client->buf_end >= len) {
+        return client->buf + client->buf_end;
+    }
+
+    size_t need = client->buf_end + len;
+    size_t cap = client->buf_cap ? client->buf_cap : LSTREAM_BUFFER_INITIAL_LEN;
+    while (cap < need) {
+        size_t grown = cap + (cap >> 1);
+        if (grown <= cap) {
+            cap = need;
+            break;
+        }
+        cap = grown;
+    }
+
+    char *buf = client->allocf(client->alloc_ud, client->buf, client->buf_cap, cap);
+    if (luai_unlikely(!buf)) {
+        luaL_error(L, "out of memory");
+    }
+
+    client->buf = buf;
+    client->buf_cap = cap;
+    return client->buf + client->buf_end;
+}
+
+static void lstream_client_buffer_addsize(lstream_client *client, size_t len) {
+    client->buf_end += len;
+}
+
+static void lstream_client_buffer_consume(lstream_client *client, size_t len) {
+    HAPPrecondition(len <= lstream_client_buffer_len(client));
+
+    client->buf_start += len;
+    if (client->buf_start == client->buf_end) {
+        lstream_client_buffer_reset(client);
+    }
+}
+
+static int lstream_client_buffer_push(lua_State *L, lstream_client *client, size_t len) {
+    HAPPrecondition(len <= lstream_client_buffer_len(client));
+
+    lua_pushlstring(L, lstream_client_buffer_data(client), len);
+    lstream_client_buffer_consume(client, len);
+    return 1;
+}
 
 static void lstream_client_cleanup(lstream_client *client) {
     client->state = LSTREAM_CLIENT_NONE;
@@ -78,10 +204,8 @@ static void lstream_client_cleanup(lstream_client *client) {
         pal_socket_obj_deinit(&client->sock);
         client->sock_inited = false;
     }
-    if (client->sslctx_inited) {
-        pal_ssl_ctx_deinit(&client->sslctx);
-        client->sslctx_inited = false;
-    }
+    lstream_client_sslctx_free(client);
+    lstream_client_buffer_free(client);
 }
 
 static void lstream_client_create_finish(lstream_client *client, const char *errmsg) {
@@ -152,22 +276,29 @@ static void lstream_client_handshake(lstream_client *client) {
         HAPFatalError();
     }
 
-    HAPAssert(!client->sslctx_inited);
-    if (luai_unlikely(!pal_ssl_ctx_init(&client->sslctx, ssltype, PAL_SSL_ENDPOINT_CLIENT,
+    HAPAssert(!client->sslctx);
+    client->sslctx = client->allocf(client->alloc_ud, NULL, 0, sizeof(*client->sslctx));
+    if (luai_unlikely(!client->sslctx)) {
+        lstream_client_create_finish(client, "failed to create ssl context");
+        return;
+    }
+
+    if (luai_unlikely(!pal_ssl_ctx_init(client->sslctx, ssltype, PAL_SSL_ENDPOINT_CLIENT,
         client->host_is_addr ? NULL : client->host, &client->sock, &(pal_ssl_bio_method) {
         .read = (void *)pal_socket_raw_recv,
         .write = (void *)pal_socket_raw_send,
     }))) {
+        client->allocf(client->alloc_ud, client->sslctx, sizeof(*client->sslctx), 0);
+        client->sslctx = NULL;
         lstream_client_create_finish(client, "failed to create ssl context");
         return;
     }
-    pal_socket_set_bio(&client->sock, &client->sslctx, &(pal_socket_bio_method) {
+    pal_socket_set_bio(&client->sock, client->sslctx, &(pal_socket_bio_method) {
         .handshake = (void *)pal_ssl_handshake,
         .recv = (void *)pal_ssl_read,
         .send = (void *)pal_ssl_write,
         .pending = (void *)pal_ssl_pending,
     });
-    client->sslctx_inited = true;
 
     pal_err err = pal_socket_handshake(&client->sock, lstream_client_handshaked_cb, client);
     switch (err) {
@@ -287,23 +418,21 @@ static int lstream_client_create(lua_State *L) {
     lua_Integer timeout = luaL_checkinteger(L, 4);
     luaL_argcheck(L, timeout >= 0, 4, "timeout out of range");
 
-    lstream_client *client = lua_newuserdatauv(L, sizeof(*client), 2);
+    lstream_client *client = lua_newuserdatauv(L, sizeof(*client), 1);
+    memset(client, 0, sizeof(*client));
     luaL_setmetatable(L, LSTREAM_CLIENT_NAME);
     lua_pushvalue(L, 2);
     lua_setiuservalue(L, -2, 1);
-    lua_pushstring(L, "");
-    lua_setiuservalue(L, -2, 2);
     client->type = type;
     client->port = port;
     client->host = host;
     client->host_is_addr = false;
-    client->sslctx_pending = false;
-    client->sslctx_inited = false;
     client->sock_inited = false;
     client->co = NULL;
     client->dns_req = NULL;
     client->timer = 0;
     client->state = LSTREAM_CLIENT_NONE;
+    client->allocf = lua_getallocf(L, &client->alloc_ud);
 
     if (luai_unlikely(HAPPlatformTimerRegister(&client->timer,
         HAPPlatformClockGetCurrent() + timeout,
@@ -418,15 +547,12 @@ static void lstream_client_read_recved_cb(pal_socket_obj *o, pal_err err,
 
 static int finishread(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
-    luaL_Buffer *B = &client->B;
     client->co = NULL;
 
     pal_err err = lua_tointeger(L, -1);
     lua_pop(L, 1);
 
     if (luai_unlikely(err != PAL_ERR_OK)) {
-        luaL_pushresult(B);
-        lua_setiuservalue(L, 1, 2);
         lua_pushstring(L, pal_err_string(err));
         return lua_error(L);
     }
@@ -438,10 +564,10 @@ static int finishread(lua_State *L, int status, lua_KContext extra) {
         goto success;
     }
 
-    luaL_addsize(B, len);
+    lstream_client_buffer_addsize(client, len);
 
     size_t maxlen = lua_tointeger(L, 2);
-    len = luaL_bufflen(B);
+    len = lstream_client_buffer_len(client);
     bool all = lua_toboolean(L, 3);
     if (len == maxlen || (!all && len != 0 && !pal_socket_readable(&client->sock))) {
         goto success;
@@ -450,14 +576,11 @@ static int finishread(lua_State *L, int status, lua_KContext extra) {
     return lstream_client_async_read(L, client, maxlen - len, finishread);
 
 success:
-    luaL_pushresult(B);
-    lua_pushstring(L, "");
-    lua_setiuservalue(L, 1, 2);
-    return 1;
+    return lstream_client_buffer_push(L, client, lstream_client_buffer_len(client));
 }
 
 static int lstream_client_async_read(lua_State *L, lstream_client *client, size_t len, lua_KFunction k) {
-    char *buf = luaL_prepbuffsize(&client->B, len);
+    char *buf = lstream_client_buffer_prep(L, client, len);
     pal_err err = pal_socket_recv(&client->sock, buf, &len, lstream_client_read_recved_cb, client);
     if (err == PAL_ERR_IN_PROGRESS) {
         client->co = L;
@@ -482,33 +605,19 @@ static int lstream_client_read(lua_State *L) {
     }
     bool all = lua_toboolean(L, 3);
 
-    if (luai_unlikely(lua_getiuservalue(L, 1, 2) != LUA_TSTRING)) {
-        luaL_argerror(L, 1, "readbuf must be a string");
+    size_t len = lstream_client_buffer_len(client);
+    if (len >= (size_t)maxlen) {
+        return lstream_client_buffer_push(L, client, maxlen);
+    }
+    if (!all && len > 0 && !pal_socket_readable(&client->sock)) {
+        return lstream_client_buffer_push(L, client, len);
     }
 
-    size_t len;
-    const char *readbuf = lua_tolstring(L, -1, &len);
-    if (len == maxlen || (!all && len > 0 && len < maxlen && !pal_socket_readable(&client->sock))) {
-        lua_pushstring(L, "");
-        lua_setiuservalue(L, 1, 2);
-        return 1;
-    } else if (len > maxlen) {
-        lua_pushlstring(L, readbuf + maxlen, len - maxlen);
-        lua_setiuservalue(L, 1, 2);
-        lua_pushlstring(L, readbuf, maxlen);
-        return 1;
-    }
-
-    lua_pop(L, 1);
-    luaL_Buffer *B = &client->B;
-    luaL_buffinit(L, B);
-    luaL_addlstring(B, readbuf, len);
     return lstream_client_async_read(L, client, maxlen - len, finishread);
 }
 
 static int finishreadall(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
-    luaL_Buffer *B = &client->B;
     client->co = NULL;
 
     pal_err err = lua_tointeger(L, -1);
@@ -518,8 +627,6 @@ static int finishreadall(lua_State *L, int status, lua_KContext extra) {
         if (err == PAL_ERR_TIMEOUT) {
             goto success;
         }
-        luaL_pushresult(B);
-        lua_setiuservalue(L, 1, 2);
         lua_pushstring(L, pal_err_string(err));
         return lua_error(L);
     }
@@ -531,30 +638,15 @@ static int finishreadall(lua_State *L, int status, lua_KContext extra) {
         goto success;
     }
 
-    luaL_addsize(B, len);
+    lstream_client_buffer_addsize(client, len);
     return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finishreadall);
 
 success:
-    luaL_pushresult(B);
-    lua_pushstring(L, "");
-    lua_setiuservalue(L, 1, 2);
-    return 1;
+    return lstream_client_buffer_push(L, client, lstream_client_buffer_len(client));
 }
 
 static int lstream_client_readall(lua_State *L) {
     lstream_client *client = lstream_client_get(L, 1);
-
-    if (luai_unlikely(lua_getiuservalue(L, 1, 2) != LUA_TSTRING)) {
-        luaL_argerror(L, 1, "readbuf must be a string");
-    }
-
-    size_t len;
-    const char *readbuf = lua_tolstring(L, -1, &len);
-
-    lua_pop(L, 1);
-    luaL_Buffer *B = &client->B;
-    luaL_buffinit(L, B);
-    luaL_addlstring(B, readbuf, len);
     return lstream_client_async_read(L, client, LSTREAM_FRAME_LEN, finishreadall);
 }
 
@@ -580,13 +672,15 @@ static const char *memfind(const char *s1, size_t l1, const char *s2, size_t l2)
     }
 }
 
-static bool lstream_client_getline(lua_State *L, bool skip, const char *data, size_t len,
+static bool lstream_client_getline(lua_State *L, lstream_client *client, bool skip,
     const char *sep, size_t seplen, size_t init) {
+    size_t len = lstream_client_buffer_len(client);
+    const char *data = lstream_client_buffer_data(client);
     const char *s = memfind(data + init, len - init, sep, seplen);
     if (s) {
-        lua_pushlstring(L, s + seplen, len - (s + seplen - data));
-        lua_setiuservalue(L, 1, 2);
-        lua_pushlstring(L, data, skip ? s - data : s - data + seplen);
+        size_t linelen = (size_t)(s - data);
+        lua_pushlstring(L, data, skip ? linelen : linelen + seplen);
+        lstream_client_buffer_consume(client, linelen + seplen);
         return true;
     }
     return false;
@@ -594,15 +688,12 @@ static bool lstream_client_getline(lua_State *L, bool skip, const char *data, si
 
 static int finishreadline(lua_State *L, int status, lua_KContext extra) {
     lstream_client *client = (lstream_client *)extra;
-    luaL_Buffer *B = &client->B;
     client->co = NULL;
 
     pal_err err = lua_tointeger(L, -1);
     lua_pop(L, 1);
 
     if (luai_unlikely(err != PAL_ERR_OK)) {
-        luaL_pushresult(B);
-        lua_setiuservalue(L, 1, 2);
         lua_pushstring(L, pal_err_string(err));
         return lua_error(L);
     }
@@ -611,8 +702,6 @@ static int finishreadline(lua_State *L, int status, lua_KContext extra) {
     lua_pop(L, 1);
 
     if (len == 0) {
-        luaL_pushresult(B);
-        lua_setiuservalue(L, 1, 2);
         lua_pushstring(L, "read EOF");
         return lua_error(L);
     }
@@ -621,14 +710,14 @@ static int finishreadline(lua_State *L, int status, lua_KContext extra) {
     const char *sep = luaL_optlstring(L, 2, "\n", &seplen);
     bool skip = lua_toboolean(L, 3);
     size_t init = 0;
-    if (seplen < luaL_bufflen(B)) {
-        init = luaL_bufflen(B) + 1 - seplen;
+    size_t unread = lstream_client_buffer_len(client);
+    if (seplen < unread) {
+        init = unread + 1 - seplen;
     }
 
-    luaL_addsize(B, len);
+    lstream_client_buffer_addsize(client, len);
 
-    if (lstream_client_getline(L, skip, luaL_buffaddr(B),
-        luaL_bufflen(B), sep, seplen, init)) {
+    if (lstream_client_getline(L, client, skip, sep, seplen, init)) {
         return 1;
     }
 
@@ -641,21 +730,10 @@ static int lstream_client_readline(lua_State *L) {
     const char *sep = luaL_optlstring(L, 2, "\n", &seplen);
     bool skip = lua_toboolean(L, 3);
 
-    if (luai_unlikely(lua_getiuservalue(L, 1, 2) != LUA_TSTRING)) {
-        luaL_argerror(L, 1, "readbuf must be a string");
-    }
-
-    size_t init = 0;
-    size_t len;
-    const char *readbuf = lua_tolstring(L, -1, &len);
-    if (len > 0 && lstream_client_getline(L, skip, readbuf, len, sep, seplen, init)) {
+    if (lstream_client_getline(L, client, skip, sep, seplen, 0)) {
         return 1;
     }
 
-    lua_pop(L, 1);
-    luaL_Buffer *B = &client->B;
-    luaL_buffinit(L, B);
-    luaL_addlstring(B, readbuf, len);
     return lstream_client_async_read(L, client, LSTREAM_LINE_LEN, finishreadline);
 }
 
