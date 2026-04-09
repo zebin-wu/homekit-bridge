@@ -115,6 +115,24 @@ local function parseUTC(s)
     return utc
 end
 
+local function getHeader(headers, name)
+    return headers[name] or headers[name:lower()]
+end
+
+local function findCookieValue(values, name)
+    if type(values) == "string" then
+        return values:match(name .. "=(.-);")
+    end
+    if type(values) == "table" then
+        for _, value in ipairs(values) do
+            local match = value:match(name .. "=(.-);")
+            if match then
+                return match
+            end
+        end
+    end
+end
+
 ---Login step 1.
 ---@return string sign
 function session:loginStep1()
@@ -128,7 +146,7 @@ function session:loginStep1()
     if code ~= 200 or body:find("_sign", 1, true) == nil then
         error("invalid username")
     end
-    self.tsOffset = parseUTC(headers["Date"]) * 1000 - core.time() / 1000
+    self.tsOffset = parseUTC(getHeader(headers, "Date")) * 1000 - core.time() / 1000
     return body:match("\"_sign\":\"(.-)\"")
 end
 
@@ -163,17 +181,14 @@ end
 function session:getCaptcha(captchaUrl)
     local code, headers, body = self.session:request(
         "GET", captchaUrl, 5000)
-    assert(headers["Set-Cookie"], "missing cookie")
+    local setCookie = getHeader(headers, "Set-Cookie")
+    assert(setCookie, "missing cookie")
     assert(body)
 
-    local ick
-    for _, setcookie in ipairs(headers["Set-Cookie"]) do
-        ick = setcookie:match("ick=(.-);")
-        if ick then
-            self.cache.ick = ick
-            self:saveCache()
-            break
-        end
+    local ick = findCookieValue(setCookie, "ick")
+    if ick then
+        self.cache.ick = ick
+        self:saveCache()
     end
     assert(ick, "missing ick")
     return body
@@ -249,12 +264,10 @@ function session:loginStep3(location)
     if code ~= 200 then
         error("unable to get service token")
     end
-    for _, setcookie in ipairs(headers["Set-Cookie"]) do
-        local serviceToken = setcookie:match("serviceToken=(.-);")
-        if serviceToken then
-            self.cache.serviceToken = serviceToken
-            return
-        end
+    local serviceToken = findCookieValue(getHeader(headers, "Set-Cookie"), "serviceToken")
+    if serviceToken then
+        self.cache.serviceToken = serviceToken
+        return
     end
     error("no service token in response")
 end
@@ -276,19 +289,19 @@ function session:checkIdentityList(url)
 
     assert(body)
 
-    if headers["Date"] then
-        self.tsOffset = parseUTC(headers["Date"]) * 1000 - core.time() / 1000
+    local date = getHeader(headers, "Date")
+    if date then
+        self.tsOffset = parseUTC(date) * 1000 - core.time() / 1000
     end
 
-    assert(type(headers["Set-Cookie"]) == "string")
-    local identitySession = headers["Set-Cookie"]:match("identity_session=(.-);")
+    local identitySession = findCookieValue(getHeader(headers, "Set-Cookie"), "identity_session")
     if identitySession == nil then
         error("missing identity_session")
     end
 
     local options = body:match("\"options\":(.-),")
     options = options and cjson.decode(options) or { tonumber(body:match("\"flag\":(%d+)")) }
-    if options == nil or options == {} then
+    if options == nil or #options == 0 then
         error("missing options or flag")
     end
 
@@ -343,7 +356,7 @@ function session:accountGet(url)
     })
 
     if code == 302 then
-        self:accountGet(headers["Location"])
+        self:accountGet(getHeader(headers, "Location"))
     elseif code ~= 200 then
         error("failed to get account")
     end
