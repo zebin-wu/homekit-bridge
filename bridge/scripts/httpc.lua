@@ -3,6 +3,7 @@ local urllib = require "url"
 local tonumber = tonumber
 local tointeger = math.tointeger
 local tinsert = table.insert
+local tconcat = table.concat
 local ipairs = ipairs
 local pairs = pairs
 local assert = assert
@@ -79,7 +80,7 @@ function client:request(method, path, headers, body)
                 if #chunk > 0 then
                     sc:write(("%X\r\n%s\r\n"):format(#chunk, chunk))
                 else
-                    sc:write("\r\n")
+                    sc:write("0\r\n\r\n")
                     break
                 end
             end
@@ -207,15 +208,17 @@ end
 ---@param body fun():string
 ---@return string
 local function getChunk(body)
-    local chunk = ""
+    local chunks = {}
+    local count = 0
     while true do
         local bytes = body()
         if bytes == "" then
             break
         end
-        chunk = chunk .. bytes
+        count = count + 1
+        chunks[count] = bytes
     end
-    return chunk
+    return count > 0 and tconcat(chunks) or ""
 end
 
 ---Start a HTTP request and wait for the response back.
@@ -278,7 +281,8 @@ function session:request(method, url, timeout, headers, body)
     if type(body) == "function" then
         body = getChunk(body)
     end
-    if headers.connection == "close" then
+    local connection = headers.connection or headers.Connection
+    if connection and connection:lower() == "close" then
         hc:close()
         self.hc = nil
         self.host = nil
