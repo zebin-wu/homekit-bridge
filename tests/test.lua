@@ -1,5 +1,6 @@
 local suites = {
     "testsocket",
+    "teststream",
     "testnvs"
 }
 
