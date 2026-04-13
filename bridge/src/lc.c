@@ -222,22 +222,30 @@ void lc_pushtraceback(lua_State *L) {
 
 lua_State *lc_newthread(lua_State *L) {
     if (!thread_pool_empty()) {
-        return thread_pool_deque();
+        lua_State *co = thread_pool_deque();
+        HAPAssert(lua_gettop(co) == 0);
+        return co;
     }
     lua_State *co = lua_newthread(L);
     lua_pushthread(co);
     lua_rawsetp(co, LUA_REGISTRYINDEX, co);
+    HAPAssert(lua_gettop(co) == 0);
     return co;
 }
 
 static void lc_freethread(lua_State *L, lua_State *from) {
+    int status = lua_closethread(L, from);
+    // lua_closethread keeps the error object on the dead thread stack.
+    if (status != LUA_OK) {
+        lua_settop(L, 0);
+    }
+    HAPAssert(lua_gettop(L) == 0);
     if (thread_pool_full()) {
         lua_pushnil(L);
         lua_rawsetp(L, LUA_REGISTRYINDEX, L);
     } else {
         thread_pool_enque(L);
     }
-    lua_closethread(L, from);
 }
 
 int lc_resume(lua_State *L, lua_State *from, int narg, int *nres) {
