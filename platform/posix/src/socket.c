@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <net/if.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -790,6 +791,40 @@ pal_err pal_socket_enable_broadcast(pal_socket_obj *_o) {
         return PAL_ERR_UNKNOWN;
     }
     return PAL_ERR_OK;
+}
+
+pal_err pal_socket_bind_netif(pal_socket_obj *_o, const char *netif_name) {
+    HAPPrecondition(_o);
+    HAPPrecondition(netif_name);
+
+    pal_socket_obj_int *o = (pal_socket_obj_int *)_o;
+    HAPAssert(o->magic == PAL_SOCKET_OBJ_MAGIC);
+
+    SOCKET_LOG(Debug, o, "%s(netif_name = \"%s\")", __func__, netif_name);
+
+#if defined(SO_BINDTODEVICE)
+    if (netif_name[0] == '\0' || strnlen(netif_name, IFNAMSIZ) >= IFNAMSIZ) {
+        return PAL_ERR_INVALID_ARG;
+    }
+
+    char ifname[IFNAMSIZ];
+    memset(ifname, 0, sizeof(ifname));
+    strncpy(ifname, netif_name, sizeof(ifname) - 1);
+
+    int ret = setsockopt(o->fd, SOL_SOCKET, SO_BINDTODEVICE, ifname, sizeof(ifname));
+    if (ret != 0) {
+        SOCKET_LOG_ERRNO(o, setsockopt);
+        if (errno == ENODEV) {
+            return PAL_ERR_NOT_FOUND;
+        }
+        return PAL_ERR_UNKNOWN;
+    }
+    SOCKET_LOG(Debug, o, "Bound to interface %s", ifname);
+    return PAL_ERR_OK;
+#else
+    SOCKET_LOG(Error, o, "%s: SO_BINDTODEVICE is not supported.", __func__);
+    return PAL_ERR_UNKNOWN;
+#endif
 }
 
 pal_err pal_socket_bind(pal_socket_obj *_o, const char *addr, uint16_t port) {

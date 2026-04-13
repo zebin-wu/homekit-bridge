@@ -13,6 +13,12 @@ function socket:settimeout(ms) end
 ---Enable broadcast.
 function socket:enablebroadcast() end
 
+---Bind a socket to a network interface.
+---
+---Call this before `bind`, `connect` or `listen` when you need traffic to stay on a specific interface.
+---@param netif netif|string Network interface object or interface name.
+function socket:bindif(netif) end
+
 ---Bind a socket to a local IP address and port.
 ---@param addr string Local address to use.
 ---@param port integer Local port number, in host order.

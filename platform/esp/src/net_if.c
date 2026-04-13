@@ -45,7 +45,7 @@ static void pal_net_if_call_event_handlers(pal_net_if *netif, pal_net_if_event e
 struct pal_net_if_ext_callback_ctx {
     struct netif *netif;
     netif_nsc_reason_t reason;
-    const netif_ext_callback_args_t *args;
+    uint8_t status_changed_state;
 };
 
 static void pal_net_if_ext_callback_schedule(void* _Nullable context, size_t contextSize) {
@@ -55,7 +55,6 @@ static void pal_net_if_ext_callback_schedule(void* _Nullable context, size_t con
     struct pal_net_if_ext_callback_ctx *ctx = (struct pal_net_if_ext_callback_ctx *)context;
     struct netif *netif = ctx->netif;
     netif_nsc_reason_t reason = ctx->reason;
-    const netif_ext_callback_args_t *args = ctx->args;
 
     if (reason & LWIP_NSC_NETIF_ADDED) {
         pal_net_if_call_event_handlers((pal_net_if *)netif, PAL_NET_IF_EVENT_ADDED);
@@ -65,12 +64,12 @@ static void pal_net_if_ext_callback_schedule(void* _Nullable context, size_t con
     }
     if (reason & LWIP_NSC_STATUS_CHANGED) {
         pal_net_if_call_event_handlers((pal_net_if *)netif,
-            args->status_changed.state ? PAL_NET_IF_EVENT_UP : PAL_NET_IF_EVENT_DOWN);
+            ctx->status_changed_state ? PAL_NET_IF_EVENT_UP : PAL_NET_IF_EVENT_DOWN);
     }
     if (reason & LWIP_NSC_IPV4_ADDRESS_CHANGED) {
         pal_net_if_call_event_handlers((pal_net_if *)netif, PAL_NET_IF_EVENT_IPV4_ADDR_CHANGED);
     }
-    if (reason & (LWIP_NSC_IPV6_ADDR_STATE_CHANGED | LWIP_NSC_IPV6_ADDR_STATE_CHANGED)) {
+    if (reason & LWIP_NSC_IPV6_ADDR_STATE_CHANGED) {
         pal_net_if_call_event_handlers((pal_net_if *)netif, PAL_NET_IF_EVENT_IPV6_ADDR_CHANGED);
     }
 }
@@ -93,7 +92,8 @@ static void pal_net_if_ext_callback(struct netif *netif,
     struct pal_net_if_ext_callback_ctx ctx = {
         .netif = netif,
         .reason = reason,
-        .args = args,
+        .status_changed_state =
+            ((reason & LWIP_NSC_STATUS_CHANGED) && args) ? args->status_changed.state : 0,
     };
     ESP_ERROR_CHECK(esp_event_post(PAL_NET_IF_EVENTS, PAL_NET_IF_EVENT_ID, &ctx, sizeof(ctx), 0));
 }
@@ -162,7 +162,7 @@ pal_err pal_net_if_get_name(pal_net_if *_netif, char buf[PAL_NET_IF_NAME_MAX_LEN
 
     struct netif *netif = (struct netif *)_netif;
 
-    snprintf(buf, PAL_NET_IF_NAME_MAX_LEN, "%c%c%d", netif->name[0], netif->name[1], netif_get_index(netif));
+    snprintf(buf, PAL_NET_IF_NAME_MAX_LEN, "%c%c%u", netif->name[0], netif->name[1], netif->num);
 
     return PAL_ERR_OK;
 }

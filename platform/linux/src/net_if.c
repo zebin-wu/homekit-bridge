@@ -596,7 +596,7 @@ pal_net_if *pal_net_if_find(const char *name) {
 
     pal_net_if *netif;
     TAILQ_FOREACH(netif, &gstate.net_ifs, list_entry) {
-        if (strcmp(name, netif->name)) {
+        if (!strcmp(name, netif->name)) {
             return netif;
         }
     }

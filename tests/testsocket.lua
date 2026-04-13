@@ -1,4 +1,5 @@
 local socket = require "socket"
+local netif = require "netif"
 
 local function fillStr(n, fill)
     fill = fill or "0123456789"
@@ -66,6 +67,27 @@ do
         local success, error = pcall(sock.bind, sock, "0.0.0.0", port)
         assert(success == false)
     end
+end
+
+---Test socket.bindif() with a netif object.
+do
+    local loopback = netif.find("lo")
+    assert(netif.getIpv4Addr(loopback) == "127.0.0.1")
+    local sock <close> = socket.create("UDP", "IPV4")
+    sock:bindif(loopback)
+end
+
+---Test socket.bindif() with a interface name.
+do
+    local sock <close> = socket.create("UDP", "IPV4")
+    sock:bindif("lo")
+end
+
+---Test socket.bindif() with invalid argument.
+do
+    local sock <close> = socket.create("UDP", "IPV4")
+    local success = pcall(sock.bindif, sock, {})
+    assert(success == false)
 end
 
 ---Test UDP socket echo

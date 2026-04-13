@@ -121,6 +121,16 @@ void pal_socket_set_timeout(pal_socket_obj *o, uint32_t ms);
 pal_err pal_socket_enable_broadcast(pal_socket_obj *o);
 
 /**
+ * Bind a socket to a network interface.
+ *
+ * @param o The pointer to the socket object.
+ * @param netif_name Local network interface name to use.
+ *
+ * @returns zero on success, error number on error.
+ */
+pal_err pal_socket_bind_netif(pal_socket_obj *o, const char *netif_name);
+
+/**
  * Bind a local IP address and port.
  *
  * @param o The pointer to the socket object.
