@@ -11,6 +11,7 @@ local spack = string.pack
 local sunpack = string.unpack
 local schar = string.char
 local srep = string.rep
+local tconcat = table.concat
 
 local M = {}
 local logger = log.getLogger("miio.protocol")
@@ -66,13 +67,6 @@ local logger = log.getLogger("miio.protocol")
 ---      encrypted with AES-128: see below.
 ---      length = packet_length - 0x20
 ---
----@class MiioMessage
----
----@field unknown integer
----@field did integer
----@field stamp integer
----@field data string
-
 ---
 --- miIO Encryption.
 ---
@@ -92,23 +86,28 @@ local encryption = {}
 ---@param input string
 ---@return string output
 function encryption:encrypt(input)
-    local ctx = self.ctx
-    return ctx:begin("encrypt", self.key, self.iv):update(input) .. ctx:finish()
+    return self.ctx:process("encrypt", self.key, self.iv, input)
 end
 
 ---Decrypt data.
 ---@param input string
 ---@return string output
 function encryption:decrypt(input)
-    local ctx = self.ctx
-    return ctx:begin("decrypt", self.key, self.iv):update(input) .. ctx:finish()
+    return self.ctx:process("decrypt", self.key, self.iv, input)
 end
 
 ---Calculates a MD5 checksum for the given data.
----@param data string
+---@param ... string
 ---@return string digest
-local function md5(data)
-    return hash.create("MD5"):update(data):digest()
+local function md5(...)
+    local ctx = hash.create("MD5")
+    for i = 1, select("#", ...) do
+        local part = select(i, ...)
+        if part ~= nil and part ~= "" then
+            ctx:update(part)
+        end
+    end
+    return ctx:digest()
 end
 
 ---Create an encryption.
@@ -120,7 +119,7 @@ local function createEncryption(token)
     ctx:setPadding("PKCS7")
 
     local key = md5(token)
-    local iv = md5(key .. token)
+    local iv = md5(key, token)
 
     ---@class MiioEncryption
     local o = {
@@ -152,19 +151,22 @@ local function pack(unknown, did, stamp, token, data)
         0x2131, len, unknown, did, stamp)
     local checksum = nil
     if token then
-        checksum = md5(header .. token .. (data or ""))
+        checksum = md5(header, token, data or "")
     else
         checksum = srep(schar(0xff), 16)
     end
     assert(#checksum == 16)
 
-    return header .. checksum .. (data or "")
+    return tconcat({header, checksum, data or ""})
 end
 
 ---Unpack a message from a binary package.
 ---@param package string A binary package.
 ---@param token? string Device token: 128-bit.
----@return MiioMessage message
+---@return integer unknown
+---@return integer did
+---@return integer stamp
+---@return string? data
 ---@nodiscard
 local function unpack(package, token)
     if sunpack(">I2", package, 1) ~= 0x2131 then
@@ -182,19 +184,17 @@ local function unpack(package, token)
     end
 
     if token then
-        local checksum = md5(sunpack("c16", package, 1) .. token .. (data or ""))
+        local checksum = md5(sunpack("c16", package, 1), token, data or "")
         assert(#checksum == 16)
         if checksum ~= sunpack("c16", package, 17) then
             error("Got checksum error which indicates use of an invalid token.")
         end
     end
 
-    return {
-        unknown = sunpack(">I4", package, 5),
-        did = sunpack(">I4", package, 9),
-        stamp = sunpack(">I4", package, 13),
-        data = data
-    }
+    return sunpack(">I4", package, 5),
+        sunpack(">I4", package, 9),
+        sunpack(">I4", package, 13),
+        data
 end
 
 ---@class ScanResult Scan Result.
@@ -225,7 +225,7 @@ function M.scan(timeout, addr)
     end
 
     local hello = pack(0xffffffff, 0xffffffff, 0xffffffff)
-    for i = 1, numSend, 1 do
+    for _ = 1, numSend do
         assert(sock:sendto(hello, addr or "255.255.255.255", 54321), "failed to send hello message")
     end
 
@@ -240,20 +240,19 @@ function M.scan(timeout, addr)
             end
             error(result)
         end
-        local m = unpack(result)
-        if m == nil or m.unknown ~= 0 or m.data then
+        local unknown, did, stamp, data = unpack(result)
+        if unknown ~= 0 or data then
             error("Got a invalid miIO protocol packet.")
         end
-        table.insert(results, {
-            addr = fromAddr,
-            devid = m.did,
-            stamp = m.stamp
-        })
-        if addr then
-            assert(addr == fromAddr)
-            return results
-        end
-        if seen[fromAddr] == false then
+        if not seen[fromAddr] then
+            table.insert(results, {
+                addr = fromAddr,
+                devid = did,
+                stamp = stamp
+            })
+            if addr then
+                return results
+            end
             seen[fromAddr] = true
         end
     end
@@ -326,12 +325,12 @@ function pcb:request(timeout, method, ...)
         error(result)
     end
     self.errCnt = 0
-    local msg = unpack(result, self.token)
+    local _, did, _, data = unpack(result, self.token)
 
-    if msg == nil or msg.did ~= self.devid or msg.data == nil then
+    if did ~= self.devid or data == nil then
         error("Receive a invalid message.")
     end
-    local s = self.encryption:decrypt(msg.data)
+    local s = self.encryption:decrypt(data)
     if not s then
         error("Failed to decrypt the message.")
     end

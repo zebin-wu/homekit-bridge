@@ -115,6 +115,15 @@ function ctx:update(input) end
 ---@nodiscard
 function ctx:finish() end
 
+---Run a complete encryption/decryption process and return the final output.
+---@param op '"encrypt"'|'"decrypt"' Operation.
+---@param key string The key to use.
+---@param iv? string The initialization vector (IV).
+---@param input string Input binary data.
+---@return string output Output binary data.
+---@nodiscard
+function ctx:process(op, key, iv, input) end
+
 ---Create a cipher context.
 ---@param type CipherType Cipher type.
 ---@return ChiperContext context Cipher context.

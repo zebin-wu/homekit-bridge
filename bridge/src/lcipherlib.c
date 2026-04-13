@@ -179,22 +179,77 @@ static int lcipher_ctx_update(lua_State *L) {
     size_t inlen;
     const char *in = luaL_checklstring(L, 2, &inlen);
     size_t outlen = inlen + pal_cipher_get_block_size(&ctx->ctx);
-    char out[outlen];
+    luaL_Buffer B;
+    char *out = luaL_buffinitsize(L, &B, outlen);
     if (luai_unlikely(!pal_cipher_update(&ctx->ctx, in, inlen, out, &outlen))) {
         luaL_error(L, "failed to update data to the cipher");
     }
-    lua_pushlstring(L, out, outlen);
+    luaL_pushresultsize(&B, outlen);
     return 1;
 }
 
 static int lcipher_ctx_finish(lua_State *L) {
     lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
     size_t outlen = pal_cipher_get_block_size(&ctx->ctx);
-    char out[outlen];
+    luaL_Buffer B;
+    char *out = luaL_buffinitsize(L, &B, outlen);
     if (luai_unlikely(!pal_cipher_finish(&ctx->ctx, out, &outlen))) {
         luaL_error(L, "failed to finish the process");
     }
-    lua_pushlstring(L, out, outlen);
+    luaL_pushresultsize(&B, outlen);
+    return 1;
+}
+
+static int lcipher_ctx_process(lua_State *L) {
+    lcipher_ctx *ctx = LCIPHER_GET_CTX(L, 1);
+    pal_cipher_operation op = luaL_checkoption(L, 2, NULL, lcipher_op_strs);
+    size_t keylen;
+    const char *key = luaL_checklstring(L, 3, &keylen);
+    if (pal_cipher_get_key_len(&ctx->ctx) != keylen) {
+        luaL_error(L, "invalid key length");
+    }
+
+    int input_idx = 4;
+    const char *iv = NULL;
+    size_t ivlen = 0;
+    size_t iv_expected_len = pal_cipher_get_iv_len(&ctx->ctx);
+    if (iv_expected_len != 0) {
+        iv = luaL_checklstring(L, 4, &ivlen);
+        if (iv_expected_len != ivlen) {
+            luaL_error(L, "invalid IV length");
+        }
+        input_idx = 5;
+    }
+
+    size_t inlen;
+    const char *in = luaL_checklstring(L, input_idx, &inlen);
+
+    if (luai_unlikely(!pal_cipher_begin(&ctx->ctx, op,
+        (const uint8_t *)key, (const uint8_t *)iv))) {
+        luaL_error(L, "failed to begin a %s process", lcipher_op_strs[op]);
+    }
+
+    size_t blocksize = pal_cipher_get_block_size(&ctx->ctx);
+    if (luai_unlikely(blocksize > ((~(size_t)0) - inlen) / 2)) {
+        luaL_error(L, "result too large");
+    }
+
+    luaL_Buffer B;
+    size_t cap = inlen + blocksize * 2;
+    char *out = luaL_buffinitsize(L, &B, cap);
+    size_t outlen = cap;
+    if (luai_unlikely(!pal_cipher_update(&ctx->ctx, in, inlen, out, &outlen))) {
+        luaL_error(L, "failed to update data to the cipher");
+    }
+    luaL_addsize(&B, outlen);
+
+    size_t finlen = cap - luaL_bufflen(&B);
+    if (luai_unlikely(!pal_cipher_finish(&ctx->ctx,
+        luaL_buffaddr(&B) + luaL_bufflen(&B), &finlen))) {
+        luaL_error(L, "failed to finish the process");
+    }
+    luaL_addsize(&B, finlen);
+    luaL_pushresult(&B);
     return 1;
 }
 
@@ -218,6 +273,7 @@ static const luaL_Reg lcipher_ctx_meth[] = {
     {"begin", lcipher_ctx_begin},
     {"update", lcipher_ctx_update},
     {"finish", lcipher_ctx_finish},
+    {"process", lcipher_ctx_process},
     {NULL, NULL},
 };
 

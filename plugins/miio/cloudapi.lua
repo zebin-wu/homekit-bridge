@@ -11,8 +11,11 @@ local tunpack = table.unpack
 local tconcat = table.concat
 local floor = math.floor
 local schar = string.char
+local ipairs = ipairs
 local pairs = pairs
 local error = error
+local tostring = tostring
+local type = type
 
 local M = {}
 
@@ -64,25 +67,50 @@ local function randomBytes(m, n, count)
     return schar(tunpack(bytes))
 end
 
-local function genSignatureARC4(method, path, signed_nonce, query)
-    local strs = {method, path}
-    local keys = urllib.sortQueryKeys(query)
-    for _, key in pairs(keys) do
-        tinsert(strs, ("%s=%s"):format(key, query[key]))
+local function createSignatureAppender(ctx)
+    local first = true
+    local function write(part)
+        if type(part) ~= "string" then
+            part = tostring(part)
+        end
+        ctx:update(part)
     end
-    tinsert(strs, base64.encode(signed_nonce))
-    local s = tconcat(strs, "&")
-    return base64.encode(hash.create("SHA1"):update(s):digest())
+    local function append(part)
+        if first then
+            first = false
+        else
+            ctx:update("&")
+        end
+        write(part)
+    end
+    local function appendQuery(query)
+        for _, key in ipairs(urllib.sortQueryKeys(query)) do
+            append(key)
+            ctx:update("=")
+            write(query[key])
+        end
+    end
+    return append, appendQuery
+end
+
+local function genSignatureARC4(method, path, signed_nonce, query)
+    local ctx = hash.create("SHA1")
+    local append, appendQuery = createSignatureAppender(ctx)
+    append(method)
+    append(path)
+    appendQuery(query)
+    append(base64.encode(signed_nonce))
+    return base64.encode(ctx:digest())
 end
 
 local function genSignature(path, nonce, signNonce, query)
-    local strs = {path, base64.encode(signNonce), base64.encode(nonce)}
-    local keys = urllib.sortQueryKeys(query)
-    for _, key in pairs(keys) do
-        tinsert(strs, ("%s=%s"):format(key, query[key]))
-    end
-    local s = tconcat(strs, "&")
-    return base64.encode(hash.create("SHA256", signNonce):update(s):digest())
+    local ctx = hash.create("SHA256", signNonce)
+    local append, appendQuery = createSignatureAppender(ctx)
+    append(path)
+    append(base64.encode(signNonce))
+    append(base64.encode(nonce))
+    appendQuery(query)
+    return base64.encode(ctx:digest())
 end
 
 local function genNonce()
@@ -90,7 +118,7 @@ local function genNonce()
 end
 
 local function signNonce(ssecurity, nonce)
-    return hash.create("SHA256"):update(ssecurity .. nonce):digest()
+    return hash.create("SHA256"):update(ssecurity):update(nonce):digest()
 end
 
 local function parseUTC(s)
