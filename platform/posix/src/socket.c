@@ -867,6 +867,34 @@ pal_err pal_socket_bind(pal_socket_obj *_o, const char *addr, uint16_t port) {
     return PAL_ERR_OK;
 }
 
+pal_err pal_socket_getsockname(pal_socket_obj *_o, char *addr, size_t addrlen, uint16_t *port) {
+    HAPPrecondition(_o);
+    HAPPrecondition(addr);
+    HAPPrecondition(addrlen > 0);
+    HAPPrecondition(port);
+
+    pal_socket_obj_int *o = (pal_socket_obj_int *)_o;
+    HAPAssert(o->magic == PAL_SOCKET_OBJ_MAGIC);
+
+    pal_socket_addr sa;
+    memset(&sa, 0, sizeof(sa));
+    socklen_t salen = sizeof(sa);
+
+    int ret = getsockname(o->fd, (struct sockaddr *)&sa, &salen);
+    if (ret != 0) {
+        SOCKET_LOG_ERRNO(o, getsockname);
+        return PAL_ERR_UNKNOWN;
+    }
+    if (pal_socket_addr_get_str_addr(&sa, addr, addrlen) == NULL) {
+        SOCKET_LOG_ERRNO(o, inet_ntop);
+        return PAL_ERR_UNKNOWN;
+    }
+    *port = pal_socket_addr_get_port(&sa);
+
+    SOCKET_LOG(Debug, o, "%s() = %s:%u", __func__, addr, *port);
+    return PAL_ERR_OK;
+}
+
 pal_err pal_socket_listen(pal_socket_obj *_o, int backlog) {
     HAPPrecondition(_o);
 

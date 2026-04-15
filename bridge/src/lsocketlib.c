@@ -132,6 +132,20 @@ static int lsocket_obj_bind(lua_State *L) {
     return 0;
 }
 
+static int lsocket_obj_getsockname(lua_State *L) {
+    lsocket_obj *obj = lsocket_obj_get(L, 1);
+    char addr[PAL_NET_ADDR_STR_LEN];
+    uint16_t port;
+
+    pal_err err = pal_socket_getsockname(&obj->socket, addr, sizeof(addr), &port);
+    if (luai_unlikely(err != PAL_ERR_OK)) {
+        luaL_error(L, pal_err_string(err));
+    }
+    lua_pushstring(L, addr);
+    lua_pushinteger(L, port);
+    return 2;
+}
+
 static int lsocket_obj_listen(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
     lua_Integer backlog = luaL_checkinteger(L, 2);
@@ -473,6 +487,7 @@ static const luaL_Reg lsocket_obj_meth[] = {
     {"reuseaddr", lsocket_obj_reuseaddr},
     {"bindif", lsocket_obj_bindif},
     {"bind", lsocket_obj_bind},
+    {"getsockname", lsocket_obj_getsockname},
     {"listen", lsocket_obj_listen},
     {"accept", lsocket_obj_accept},
     {"connect", lsocket_obj_connect},

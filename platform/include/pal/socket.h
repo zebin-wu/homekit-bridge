@@ -151,6 +151,18 @@ pal_err pal_socket_bind_netif(pal_socket_obj *o, const char *netif_name);
 pal_err pal_socket_bind(pal_socket_obj *o, const char *addr, uint16_t port);
 
 /**
+ * Get the current local address and port.
+ *
+ * @param o The pointer to the socket object.
+ * @param addr The buffer for storing the local address.
+ * @param addrlen The length of the buffer.
+ * @param port Local port number, in host order.
+ *
+ * @returns zero on success, error number on error.
+ */
+pal_err pal_socket_getsockname(pal_socket_obj *o, char *addr, size_t addrlen, uint16_t *port);
+
+/**
  * Listen for connections.
  * 
  * @param o The pointer to the socket object.

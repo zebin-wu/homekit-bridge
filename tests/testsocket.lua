@@ -69,6 +69,15 @@ do
     end
 end
 
+---Test socket.getsockname().
+do
+    local sock <close> = socket.create("UDP", "IPV4")
+    sock:bind("127.0.0.1", 0)
+    local addr, port = sock:getsockname()
+    assert(addr == "127.0.0.1")
+    assert(port > 0 and port <= 65535)
+end
+
 ---Test socket.bindif() with a netif object.
 do
     local loopback = netif.find("lo")

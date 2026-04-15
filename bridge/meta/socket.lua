@@ -27,6 +27,12 @@ function socket:bindif(netif) end
 ---@param port integer Local port number, in host order.
 function socket:bind(addr, port) end
 
+---Get the current local address and port.
+---@return string addr Local address.
+---@return integer port Local port.
+---@nodiscard
+function socket:getsockname() end
+
 ---Set the remote address and/or port.
 ---@param addr string Remote address to use.
 ---@param port integer Remote port number, in host order.
