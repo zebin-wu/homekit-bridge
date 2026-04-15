@@ -4,6 +4,7 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
+#include <pal/mem.h>
 #include <pal/net_if.h>
 #include <lauxlib.h>
 #include <HAPLog.h>
@@ -15,6 +16,13 @@ static const HAPLogObject lnetif_log = {
     .subsystem = APP_BRIDGE_LOG_SUBSYSTEM,
     .category = "netif",
 };
+
+typedef struct {
+    lua_State *co;
+    pal_net_if *netif;
+    pal_net_if_event event;
+    bool registered;
+} lnetif_wait_ctx;
 
 static const char *lnetif_event_strs[] = {
     "Added",
@@ -57,9 +65,21 @@ static int lnetif_find(lua_State *L) {
 }
 
 static void lnetif_event_cb(pal_net_if *netif, pal_net_if_event event, void *arg) {
-    lua_State *co = arg;
+    lnetif_wait_ctx *ctx = arg;
+    lua_State *co = ctx->co;
     lua_State *L = lc_getmainthread(co);
     int status, nres;
+
+    if (ctx->registered) {
+        pal_err err = pal_net_if_unregister_event_callback(
+            ctx->netif, ctx->event, lnetif_event_cb, ctx);
+        if (err == PAL_ERR_OK) {
+            ctx->registered = false;
+        } else {
+            HAPLogError(&lnetif_log, "%s: failed to unregister wait callback: %s",
+                __func__, pal_err_string(err));
+        }
+    }
 
     lua_pushlightuserdata(co, netif);
     status = lc_resume(co, L, 1, &nres);  // stack <..., netif>
@@ -72,6 +92,10 @@ static void lnetif_event_cb(pal_net_if *netif, pal_net_if_event event, void *arg
 }
 
 static int finishwait(lua_State *L, int status, lua_KContext extra) {
+    lnetif_wait_ctx *ctx = (lnetif_wait_ctx *)extra;
+    if (ctx && !ctx->registered) {
+        pal_mem_free(ctx);
+    }
     return 1;
 }
 
@@ -79,8 +103,24 @@ static int lnetif_wait(lua_State *L) {
     pal_net_if_event event = luaL_checkoption(L, 1, NULL, lnetif_event_strs);
     pal_net_if *netif = lua_touserdata(L, 2);
 
-    pal_net_if_register_event_callback(netif, event, lnetif_event_cb, L);
-    return lua_yieldk(L, 0, 0, finishwait);
+    lnetif_wait_ctx *ctx = pal_mem_alloc(sizeof(*ctx));
+    if (!ctx) {
+        luaL_error(L, "failed to alloc netif wait context");
+    }
+
+    *ctx = (lnetif_wait_ctx) {
+        .co = L,
+        .netif = netif,
+        .event = event,
+        .registered = true,
+    };
+
+    pal_err err = pal_net_if_register_event_callback(netif, event, lnetif_event_cb, ctx);
+    if (err != PAL_ERR_OK) {
+        pal_mem_free(ctx);
+        luaL_error(L, "failed to register netif callback: %s", pal_err_string(err));
+    }
+    return lua_yieldk(L, 0, (lua_KContext)ctx, finishwait);
 }
 
 static int lnetif_is_up(lua_State *L) {

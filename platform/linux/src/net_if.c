@@ -134,12 +134,15 @@ static pal_net_if *pal_net_if_find_by_index(int index) {
 }
 
 static void pal_net_if_call_event_handlers(pal_net_if *netif, pal_net_if_event event) {
-    struct event_cb_desc *desc;
-    LIST_FOREACH(desc, gstate.event_cbs + event, list_entry) {
+    struct event_cb_desc *desc = LIST_FIRST(gstate.event_cbs + event);
+    while (desc) {
+        struct event_cb_desc *next = LIST_NEXT(desc, list_entry);
         if (desc->netif && desc->netif != netif) {
+            desc = next;
             continue;
         }
         desc->cb(netif, event, desc->arg);
+        desc = next;
     }
 }
 
@@ -742,7 +745,7 @@ pal_err pal_net_if_unregister_event_callback(pal_net_if *netif, pal_net_if_event
 
     struct event_cb_desc *desc;
     LIST_FOREACH(desc, gstate.event_cbs + event, list_entry) {
-        if (desc->netif == netif && desc->cb == event_cb) {
+        if (desc->netif == netif && desc->cb == event_cb && desc->arg == arg) {
             LIST_REMOVE(desc, list_entry);
             pal_mem_free(desc);
             return PAL_ERR_OK;
