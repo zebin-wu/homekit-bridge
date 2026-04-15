@@ -1,9 +1,11 @@
-local socket = require "socket"
 local hash = require "hash"
 local cipher = require "cipher"
 local json = require "cjson"
+local transportLib = require "miio.transport"
 
 local assert = assert
+local ipairs = ipairs
+local pcall = pcall
 local type = type
 local error = error
 local floor = math.floor
@@ -17,6 +19,8 @@ local tconcat = table.concat
 local M = {}
 local logger = log.getLogger("miio.protocol")
 local defaultVirtualDid = nil
+local defaultNetifs = nil
+local defaultTransport = nil
 
 ---
 --- Message format
@@ -151,6 +155,28 @@ local function getDefaultVirtualDid()
     return defaultVirtualDid
 end
 
+---@return MiioTransport transport
+---@nodiscard
+local function getTransport()
+    if defaultTransport == nil then
+        defaultTransport = transportLib.create(defaultNetifs)
+    end
+    return defaultTransport
+end
+
+local function normalizeInitArgs(netifs, virtualDid)
+    if type(netifs) == "number" and virtualDid == nil then
+        return nil, netifs
+    end
+    if netifs ~= nil then
+        assert(type(netifs) == "table", "netifs must be a table")
+    end
+    if virtualDid ~= nil then
+        assert(type(virtualDid) == "number")
+    end
+    return netifs, virtualDid
+end
+
 ---Pack a message to a binary package.
 ---@param did integer Device ID: 64-bit.
 ---@param stamp integer Stamp: 32 bit unsigned int.
@@ -231,6 +257,7 @@ end
 ---
 ---@field addr string Device address.
 ---@field devid integer Device ID: 64-bit.
+---@field ifname string Network interface key.
 ---@field stamp integer Device time stamp.
 
 ---Scan for devices in the local network.
@@ -246,47 +273,56 @@ function M.scan(timeout, addr)
     assert(timeout > 0, "timeout must be greater then 0")
 
     local numSend = 1
-    local sock <close> = socket.create("UDP", "IPV4")
-    sock:settimeout(timeout)
+    local probe = packProbe(getDefaultVirtualDid())
+    local queue = core.createMQ(64)
+    local timer = core.createTimer(function(mq)
+        mq:send(false, "timeout")
+    end, queue)
+    local tp = getTransport()
 
     if not addr then
         numSend = 3
-        sock:enablebroadcast()
-    end
-
-    local probe = packProbe(getDefaultVirtualDid())
-    for _ = 1, numSend do
-        assert(sock:sendto(probe, addr or "255.255.255.255", 54321), "failed to send probe message")
     end
 
     local seen = {}
     local results = {}
+    local subId = tp:subscribe(function(packet, fromAddr, _, ifname)
+        if addr ~= nil and fromAddr ~= addr then
+            return
+        end
+        local success, did, stamp, data = pcall(unpack, packet)
+        if not success or did == -1 or data ~= nil or seen[fromAddr] then
+            return
+        end
+        seen[fromAddr] = true
+        queue:send(true, {
+            addr = fromAddr,
+            devid = did,
+            ifname = ifname,
+            stamp = stamp,
+        })
+    end)
+
+    timer:start(timeout)
+    for _ = 1, numSend do
+        assert(tp:sendto(probe, addr or "255.255.255.255", 54321) > 0, "failed to send probe message")
+    end
 
     while true do
-        local success, result, fromAddr, _ = pcall(sock.recvfrom, sock, 1024)
+        local success, result = queue:recv()
         if success == false then
-            if addr == nil and result:find("timeout") then
-                return results
-            end
-            error(result)
+            break
         end
-        local did, stamp, data = unpack(result)
-        if did == -1 or data then
-            goto continue
+        table.insert(results, result)
+        if addr then
+            break
         end
-        if not seen[fromAddr] then
-            table.insert(results, {
-                addr = fromAddr,
-                devid = did,
-                stamp = stamp
-            })
-            if addr then
-                return results
-            end
-            seen[fromAddr] = true
-        end
-::continue::
     end
+
+    timer:stop()
+    tp:unsubscribe(subId)
+
+    return results
 end
 
 ---@class MiioPcb: table miio protocol control block.
@@ -303,8 +339,10 @@ function pcb:handshake(timeout)
     logger:debug("Handshake ...")
     local results = M.scan(timeout, self.addr)
     local result = results[1]
+    assert(result ~= nil, "handshake failed")
     logger:debug("Handshake done.")
     self.devid = result.devid
+    self.ifname = result.ifname
     self.stampDiff = floor(core.time() / 1000) - result.stamp
 end
 
@@ -326,60 +364,89 @@ function pcb:request(timeout, method, ...)
         self:handshake(timeout)
     end
 
-    local sock <close> = socket.create("UDP", "IPV4")
-    sock:settimeout(timeout)
-    sock:connect(self.addr, 54321)
-
     local reqid = self.reqid + 1
     if reqid == 9999 then
         reqid = 1
     end
     self.reqid = reqid
-    do
-        local data = json.encode({
-            id = reqid,
-            method = method,
-            params = params
-        })
 
-        sock:send(pack(self.devid, floor(core.time() / 1000) - self.stampDiff,
-            self.token, self.encryption:encrypt(data)))
+    local clear = json.encode({
+        id = reqid,
+        method = method,
+        params = params
+    })
+    local packet = pack(
+        self.devid,
+        floor(core.time() / 1000) - self.stampDiff,
+        self.token,
+        self.encryption:encrypt(clear)
+    )
+    local tp = getTransport()
+    local queue = core.createMQ(4)
+    local timer = core.createTimer(function(mq)
+        mq:send(false, "timeout")
+    end, queue)
 
-        logger:debug(("%s => %s"):format(data, self.addr))
+    local subId = tp:subscribe(function(raw, fromAddr, _, ifname)
+        if fromAddr ~= self.addr then
+            return
+        end
+        local success, did, _, data = pcall(unpack, raw, self.token)
+        if not success or did ~= self.devid or data == nil then
+            return
+        end
+        local ok, payload = pcall(self.encryption.decrypt, self.encryption, data)
+        if not ok or payload == nil then
+            return
+        end
+        local decodedOk, decoded = pcall(json.decode, payload)
+        if not decodedOk or decoded == nil or decoded.id ~= reqid then
+            return
+        end
+        self.ifname = ifname
+        queue:send(true, decoded)
+    end)
+
+    timer:start(timeout)
+    logger:debug(("%s => %s"):format(clear, self.addr))
+
+    local sent = 0
+    if self.ifname ~= nil then
+        local ok, result = pcall(tp.sendto, tp, packet, self.addr, 54321, self.ifname)
+        if ok then
+            sent = result
+        else
+            logger:debug(("send via %s failed, retry all netifs, %s"):format(self.ifname, tostring(result)))
+            self.ifname = nil
+        end
+    end
+    if sent == 0 then
+        sent = tp:sendto(packet, self.addr, 54321)
+    end
+    if sent == 0 then
+        timer:stop()
+        tp:unsubscribe(subId)
+        error("failed to send request")
     end
 
-    local success, result = pcall(sock.recv, sock, 1024)
+    local success, result = queue:recv()
+    timer:stop()
+    tp:unsubscribe(subId)
     if success == false then
-        if result:find("timeout") then
-            self.stampDiff = nil
-        end
+        self.ifname = nil
+        self.stampDiff = nil
         error(result)
     end
-    self.errCnt = 0
-    local did, _, data = unpack(result, self.token)
 
-    if did ~= self.devid or data == nil then
-        error("Receive a invalid message.")
-    end
-    local s = self.encryption:decrypt(data)
-    if not s then
-        error("Failed to decrypt the message.")
-    end
-    logger:debug(("%s => %s"):format(self.addr, s))
-    local payload =  json.decode(s)
-    if not payload then
-        error("Failed to parse the JSON string.")
-    end
-    if payload.id ~= reqid then
-        error("response id ~= request id")
-    end
+    self.errCnt = 0
+    logger:debug(("%s => %s"):format(self.addr, json.encode(result)))
     ---@class MiioError
-    local err = payload.error
+    local err = result.error
     if err then
         error(err)
     end
 
-    return payload.result
+    return result.result
 end
 
 ---Create a PCB(protocol control block).
@@ -409,12 +476,22 @@ function M.create(addr, token)
 end
 
 ---Initialize the miIO protocol module.
+---@param netifs? string[] Network interface names.
 ---@param virtualDid? integer Virtual device ID: 64-bit.
-function M.init(virtualDid)
+---@return integer virtualDid
+function M.init(netifs, virtualDid)
+    netifs, virtualDid = normalizeInitArgs(netifs, virtualDid)
+    defaultNetifs = netifs
     if virtualDid ~= nil then
-        assert(type(virtualDid) == "number")
+        defaultVirtualDid = virtualDid
+    else
+        defaultVirtualDid = createVirtualDid()
     end
-    defaultVirtualDid = virtualDid or createVirtualDid()
+    if defaultTransport ~= nil then
+        defaultTransport:close()
+        defaultTransport = nil
+    end
+    return defaultVirtualDid
 end
 
 return M

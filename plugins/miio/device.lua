@@ -184,9 +184,11 @@ function M.create(addr, token)
 end
 
 ---Initialize the miIO device module.
+---@param netifs? string[] Network interface names.
 ---@param virtualDid? integer Virtual device ID: 64-bit.
-function M.init(virtualDid)
-    protocol.init(virtualDid)
+---@return integer virtualDid
+function M.init(netifs, virtualDid)
+    return protocol.init(netifs, virtualDid)
 end
 
 return M

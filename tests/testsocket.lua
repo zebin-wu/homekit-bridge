@@ -1,3 +1,4 @@
+local core = require "core"
 local socket = require "socket"
 local netif = require "netif"
 
@@ -8,6 +9,13 @@ local function fillStr(n, fill)
         s = s .. fill
     end
     return s .. fill:sub(0, n - #s)
+end
+
+local function bindEphemeral(sock, addr)
+    sock:bind(addr, 0)
+    local _, port = sock:getsockname()
+    assert(port > 0 and port <= 65535)
+    return port
 end
 
 ---Test socket.create() with valid parameters.
@@ -105,14 +113,14 @@ do
     local sock2 <close> = socket.create("UDP", "IPV4")
     sock1:reuseaddr()
     sock2:reuseaddr()
-    sock1:bind("127.0.0.1", 8889)
-    sock2:bind("127.0.0.1", 8889)
+    local port = bindEphemeral(sock1, "127.0.0.1")
+    sock2:bind("127.0.0.1", port)
 end
 
 ---Test UDP socket echo
 do
     local server = socket.create("UDP", "IPV4")
-    server:bind("127.0.0.1", 8888)
+    local port = bindEphemeral(server, "127.0.0.1")
     core.createTimer(function ()
         while true do
             local msg, addr, port = server:recvfrom(1024)
@@ -124,7 +132,7 @@ do
         end
     end):start(0)
     local client <close> = socket.create("UDP", "IPV4")
-    client:connect("127.0.0.1", 8888)
+    client:connect("127.0.0.1", port)
     for i = 1, 100, 1 do
         local msg = fillStr(1024)
         assert(client:send(msg) == #msg)
@@ -136,7 +144,7 @@ end
 ---Test TCP socket echo
 do
     local listener = socket.create("TCP", "IPV4")
-    listener:bind("127.0.0.1", 8888)
+    local port = bindEphemeral(listener, "127.0.0.1")
     listener:listen(1024)
     core.createTimer(function ()
         while true do
@@ -152,7 +160,7 @@ do
         end
     end):start(0)
     local client <close> = socket.create("TCP", "IPV4")
-    client:connect("127.0.0.1", 8888)
+    client:connect("127.0.0.1", port)
     for i = 1, 5, 1 do
         local msg = fillStr(1024)
         assert(client:send(msg) == #msg)
