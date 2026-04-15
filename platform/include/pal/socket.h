@@ -121,6 +121,15 @@ void pal_socket_set_timeout(pal_socket_obj *o, uint32_t ms);
 pal_err pal_socket_enable_broadcast(pal_socket_obj *o);
 
 /**
+ * Enable address reuse.
+ *
+ * @param o The pointer to the socket object.
+ *
+ * @returns zero on success, error number on error.
+ */
+pal_err pal_socket_enable_reuseaddr(pal_socket_obj *o);
+
+/**
  * Bind a socket to a network interface.
  *
  * @param o The pointer to the socket object.

@@ -90,6 +90,16 @@ do
     assert(success == false)
 end
 
+---Test socket.reuseaddr().
+do
+    local sock1 <close> = socket.create("UDP", "IPV4")
+    local sock2 <close> = socket.create("UDP", "IPV4")
+    sock1:reuseaddr()
+    sock2:reuseaddr()
+    sock1:bind("127.0.0.1", 8889)
+    sock2:bind("127.0.0.1", 8889)
+end
+
 ---Test UDP socket echo
 do
     local server = socket.create("UDP", "IPV4")

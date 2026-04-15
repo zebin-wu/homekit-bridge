@@ -13,6 +13,9 @@ function socket:settimeout(ms) end
 ---Enable broadcast.
 function socket:enablebroadcast() end
 
+---Enable address reuse.
+function socket:reuseaddr() end
+
 ---Bind a socket to a network interface.
 ---
 ---Call this before `bind`, `connect` or `listen` when you need traffic to stay on a specific interface.

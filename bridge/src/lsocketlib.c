@@ -81,6 +81,15 @@ static int lsocket_obj_enablebroadcast(lua_State *L) {
     return 0;
 }
 
+static int lsocket_obj_reuseaddr(lua_State *L) {
+    lsocket_obj *obj = lsocket_obj_get(L, 1);
+    pal_err err = pal_socket_enable_reuseaddr(&obj->socket);
+    if (luai_unlikely(err != PAL_ERR_OK)) {
+        luaL_error(L, pal_err_string(err));
+    }
+    return 0;
+}
+
 static int lsocket_obj_bindif(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
     const char *netif_name;
@@ -461,6 +470,7 @@ static const luaL_Reg lsocket_funcs[] = {
 static const luaL_Reg lsocket_obj_meth[] = {
     {"settimeout", lsocket_obj_settimeout},
     {"enablebroadcast", lsocket_obj_enablebroadcast},
+    {"reuseaddr", lsocket_obj_reuseaddr},
     {"bindif", lsocket_obj_bindif},
     {"bind", lsocket_obj_bind},
     {"listen", lsocket_obj_listen},

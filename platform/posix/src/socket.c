@@ -793,6 +793,21 @@ pal_err pal_socket_enable_broadcast(pal_socket_obj *_o) {
     return PAL_ERR_OK;
 }
 
+pal_err pal_socket_enable_reuseaddr(pal_socket_obj *_o) {
+    HAPPrecondition(_o);
+
+    pal_socket_obj_int *o = (pal_socket_obj_int *)_o;
+    HAPAssert(o->magic == PAL_SOCKET_OBJ_MAGIC);
+
+    int optval = 1;
+    int ret = setsockopt(o->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+    if (ret != 0) {
+        SOCKET_LOG_ERRNO(o, setsockopt);
+        return PAL_ERR_UNKNOWN;
+    }
+    return PAL_ERR_OK;
+}
+
 pal_err pal_socket_bind_netif(pal_socket_obj *_o, const char *netif_name) {
     HAPPrecondition(_o);
     HAPPrecondition(netif_name);
