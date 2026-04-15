@@ -7,6 +7,7 @@ local assert = assert
 local type = type
 local error = error
 local floor = math.floor
+local random = math.random
 local spack = string.pack
 local sunpack = string.unpack
 local schar = string.char
@@ -15,6 +16,7 @@ local tconcat = table.concat
 
 local M = {}
 local logger = log.getLogger("miio.protocol")
+local defaultVirtualDid = nil
 
 ---
 --- Message format
@@ -129,6 +131,26 @@ local function createEncryption(token)
     })
 end
 
+---Create a virtual device ID for probe packets.
+---@return integer virtualDid
+---@nodiscard
+local function createVirtualDid()
+    local now = floor(core.time())
+    local high = floor(now / 1000) & 0xffffffff
+    local low = (now & 0xffffffff) ~ random(0, 0xffffffff)
+    return (high << 32) | low
+end
+
+---Get the default virtual device ID.
+---@return integer virtualDid
+---@nodiscard
+local function getDefaultVirtualDid()
+    if defaultVirtualDid == nil then
+        defaultVirtualDid = createVirtualDid()
+    end
+    return defaultVirtualDid
+end
+
 ---Pack a message to a binary package.
 ---@param did integer Device ID: 64-bit.
 ---@param stamp integer Stamp: 32 bit unsigned int.
@@ -153,6 +175,21 @@ local function pack(did, stamp, token, data)
     assert(#checksum == 16)
 
     return tconcat({header, checksum, data or ""})
+end
+
+---Pack a probe packet.
+---
+---The probe packet keeps the 32-byte miIO header layout, but replaces the
+---MD5/token area with `MDID + virtualDid + 0x00000000`.
+---@param virtualDid integer Virtual device ID: 64-bit.
+---@return string package
+---@nodiscard
+local function packProbe(virtualDid)
+    return tconcat({
+        spack(">I2I2I8I4", 0x2131, 32, -1, -1),
+        "MDID",
+        spack(">I8I4", virtualDid, 0),
+    })
 end
 
 ---Unpack a message from a binary package.
@@ -199,8 +236,8 @@ end
 ---Scan for devices in the local network.
 ---
 ---This method is used to discover supported devices by sending
----a handshake message to the broadcast address on port 54321.
----If the target IP address is given, the handshake will be send as an unicast packet.
+---a probe message to the broadcast address on port 54321.
+---If the target IP address is given, the probe will be send as an unicast packet.
 ---@param timeout integer Timeout period (in milliseconds).
 ---@param addr? string Target Address.
 ---@return ScanResult[] results A array of scan results.
@@ -217,9 +254,9 @@ function M.scan(timeout, addr)
         sock:enablebroadcast()
     end
 
-    local hello = pack(-1, -1)
+    local probe = packProbe(getDefaultVirtualDid())
     for _ = 1, numSend do
-        assert(sock:sendto(hello, addr or "255.255.255.255", 54321), "failed to send hello message")
+        assert(sock:sendto(probe, addr or "255.255.255.255", 54321), "failed to send probe message")
     end
 
     local seen = {}
@@ -369,6 +406,15 @@ function M.create(addr, token)
     })
 
     return o
+end
+
+---Initialize the miIO protocol module.
+---@param virtualDid? integer Virtual device ID: 64-bit.
+function M.init(virtualDid)
+    if virtualDid ~= nil then
+        assert(type(virtualDid) == "number")
+    end
+    defaultVirtualDid = virtualDid or createVirtualDid()
 end
 
 return M

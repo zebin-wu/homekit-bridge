@@ -183,4 +183,10 @@ function M.create(addr, token)
     return o
 end
 
+---Initialize the miIO device module.
+---@param virtualDid? integer Virtual device ID: 64-bit.
+function M.init(virtualDid)
+    protocol.init(virtualDid)
+end
+
 return M

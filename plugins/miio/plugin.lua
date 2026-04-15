@@ -70,6 +70,8 @@ function M.init()
     end
     collectgarbage()
 
+    device.init()
+
     local accessories = {}
 
     for _, conf in ipairs(confs) do
