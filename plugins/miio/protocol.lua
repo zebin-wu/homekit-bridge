@@ -186,7 +186,7 @@ end
 ---@nodiscard
 local function packProbe(virtualDid)
     return tconcat({
-        spack(">I2I2I8I4", 0x2131, 32, -1, -1),
+        spack(">I2I2I8I4", 0x2131, 32, -1, 0xffffffff),
         "MDID",
         spack(">I8I4", virtualDid, 0),
     })
