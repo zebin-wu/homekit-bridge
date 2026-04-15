@@ -24,9 +24,9 @@ local logger = log.getLogger("miio.protocol")
 --- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 --- | Magic number = 0x2131         | Packet Length (incl. header)  |
 --- |-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
---- | Unknown                                                       |
+--- | Device ID ("did"), high 32 bits                               |
 --- |-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
---- | Device ID ("did")                                             |
+--- | Device ID ("did"), low 32 bits                                |
 --- |-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
 --- | Stamp                                                         |
 --- |-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
@@ -45,13 +45,9 @@ local logger = log.getLogger("miio.protocol")
 ---  Packet length: 16 bits unsigned int
 ---      Length in bytes of the whole packet, including the header.
 ---
----  Unknown: 32 bits
----      This value is always 0,
----      except in the "Hello" packet, when it's 0xFFFFFFFF
----
----  Device ID: 32 bits
+---  Device ID: 64 bits
 ---      Unique number. Possibly derived from the MAC address.
----      except in the "Hello" packet, when it's 0xFFFFFFFF
+---      except in the "Hello" packet, when it's 0xFFFFFFFFFFFFFFFF
 ---
 ---  Stamp: 32 bit unsigned int
 ---      Unix style epoch time
@@ -134,21 +130,20 @@ local function createEncryption(token)
 end
 
 ---Pack a message to a binary package.
----@param unknown integer Unknown: 32-bit.
----@param did integer Device ID: 32-bit.
+---@param did integer Device ID: 64-bit.
 ---@param stamp integer Stamp: 32 bit unsigned int.
 ---@param token? string Device token: 128-bit.
 ---@param data? string Optional variable-sized data.
 ---@return string package
 ---@nodiscard
-local function pack(unknown, did, stamp, token, data)
+local function pack(did, stamp, token, data)
     local len = 32
     if data then
         len = len + #data
     end
 
-    local header = spack(">I2>I2>I4>I4>I4",
-        0x2131, len, unknown, did, stamp)
+    local header = spack(">I2>I2>I8>I4",
+        0x2131, len, did, stamp)
     local checksum = nil
     if token then
         checksum = md5(header, token, data or "")
@@ -163,7 +158,6 @@ end
 ---Unpack a message from a binary package.
 ---@param package string A binary package.
 ---@param token? string Device token: 128-bit.
----@return integer unknown
 ---@return integer did
 ---@return integer stamp
 ---@return string? data
@@ -191,8 +185,7 @@ local function unpack(package, token)
         end
     end
 
-    return sunpack(">I4", package, 5),
-        sunpack(">I4", package, 9),
+    return sunpack(">I8", package, 5),
         sunpack(">I4", package, 13),
         data
 end
@@ -200,7 +193,7 @@ end
 ---@class ScanResult Scan Result.
 ---
 ---@field addr string Device address.
----@field devid integer Device ID: 32-bit.
+---@field devid integer Device ID: 64-bit.
 ---@field stamp integer Device time stamp.
 
 ---Scan for devices in the local network.
@@ -224,7 +217,7 @@ function M.scan(timeout, addr)
         sock:enablebroadcast()
     end
 
-    local hello = pack(0xffffffff, 0xffffffff, 0xffffffff)
+    local hello = pack(-1, -1)
     for _ = 1, numSend do
         assert(sock:sendto(hello, addr or "255.255.255.255", 54321), "failed to send hello message")
     end
@@ -240,9 +233,9 @@ function M.scan(timeout, addr)
             end
             error(result)
         end
-        local unknown, did, stamp, data = unpack(result)
-        if unknown ~= 0 or data then
-            error("Got a invalid miIO protocol packet.")
+        local did, stamp, data = unpack(result)
+        if did == -1 or data then
+            goto continue
         end
         if not seen[fromAddr] then
             table.insert(results, {
@@ -255,6 +248,7 @@ function M.scan(timeout, addr)
             end
             seen[fromAddr] = true
         end
+::continue::
     end
 end
 
@@ -311,7 +305,7 @@ function pcb:request(timeout, method, ...)
             params = params
         })
 
-        sock:send(pack(0, self.devid, floor(core.time() / 1000) - self.stampDiff,
+        sock:send(pack(self.devid, floor(core.time() / 1000) - self.stampDiff,
             self.token, self.encryption:encrypt(data)))
 
         logger:debug(("%s => %s"):format(data, self.addr))
@@ -325,7 +319,7 @@ function pcb:request(timeout, method, ...)
         error(result)
     end
     self.errCnt = 0
-    local _, did, _, data = unpack(result, self.token)
+    local did, _, data = unpack(result, self.token)
 
     if did ~= self.devid or data == nil then
         error("Receive a invalid message.")
