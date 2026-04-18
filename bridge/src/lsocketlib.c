@@ -5,7 +5,6 @@
 // See [CONTRIBUTORS.md] for the list of homekit-bridge project authors.
 
 #include <lauxlib.h>
-#include <pal/net_if.h>
 #include <pal/socket.h>
 #include <HAPBase.h>
 #include <HAPLog.h>
@@ -92,25 +91,7 @@ static int lsocket_obj_reuseaddr(lua_State *L) {
 
 static int lsocket_obj_bindif(lua_State *L) {
     lsocket_obj *obj = lsocket_obj_get(L, 1);
-    const char *netif_name;
-    char buf[PAL_NET_IF_NAME_MAX_LEN];
-
-    switch (lua_type(L, 2)) {
-    case LUA_TSTRING:
-        netif_name = lua_tostring(L, 2);
-        break;
-    case LUA_TLIGHTUSERDATA: {
-        pal_net_if *netif = lua_touserdata(L, 2);
-        pal_err err = pal_net_if_get_name(netif, buf);
-        if (luai_unlikely(err != PAL_ERR_OK)) {
-            luaL_error(L, pal_err_string(err));
-        }
-        netif_name = buf;
-        break;
-    }
-    default:
-        return luaL_argerror(L, 2, "expected netif or interface name");
-    }
+    const char *netif_name = luaL_checkstring(L, 2);
 
     pal_err err = pal_socket_bind_netif(&obj->socket, netif_name);
     if (luai_unlikely(err != PAL_ERR_OK)) {
