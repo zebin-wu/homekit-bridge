@@ -2,7 +2,8 @@ local suites = {
     "testcore",
     "testsocket",
     "teststream",
-    "testnvs"
+    "testnvs",
+    "testmiiotransport",
 }
 
 local function runSuite(s)

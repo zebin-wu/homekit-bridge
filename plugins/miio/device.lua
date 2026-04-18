@@ -8,6 +8,7 @@ local tunpack = table.unpack
 local tinsert = table.insert
 
 local M = {}
+local currentRuntime = nil
 
 ---@class MiotIID:table MIOT instance ID.
 ---
@@ -153,6 +154,14 @@ function device:request(method, ...)
     return self.pcb:request(self.timeout, method, ...)
 end
 
+---@return MiioProtocolRuntime runtime
+local function ensureRuntime()
+    if currentRuntime == nil then
+        currentRuntime = protocol.create()
+    end
+    return currentRuntime
+end
+
 ---Create a device object.
 ---@param addr string Device address.
 ---@param token string Device token.
@@ -166,7 +175,7 @@ function M.create(addr, token)
     ---@class MiioDevice
     local o = {
         logger = log.getLogger("miio.device:" .. addr),
-        pcb = protocol.create(addr, util.hex2bin(token)),
+        pcb = ensureRuntime():createPcb(addr, util.hex2bin(token)),
         mapping = false,
         addr = addr,
         timeout = 1000,
@@ -184,9 +193,16 @@ function M.create(addr, token)
 end
 
 ---Initialize the miIO device module.
+---@param netifs? string[] Network interface names.
 ---@param virtualDid? integer Virtual device ID: 64-bit.
-function M.init(virtualDid)
-    protocol.init(virtualDid)
+---@return MiioProtocolRuntime runtime
+function M.init(netifs, virtualDid)
+    local nextRuntime = protocol.create(netifs, virtualDid)
+    if currentRuntime ~= nil then
+        currentRuntime:close()
+    end
+    currentRuntime = nextRuntime
+    return nextRuntime
 end
 
 return M
