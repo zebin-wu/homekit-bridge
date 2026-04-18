@@ -28,6 +28,10 @@ function M.find(name) end
 ---@return netif
 function M.wait(event, netif) end
 
+---Get interface name.
+---@return string
+function M.getName(netif) end
+
 ---Whether the interface is up.
 ---@return boolean
 function M.isUp(netif) end
