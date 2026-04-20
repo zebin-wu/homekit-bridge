@@ -20,7 +20,7 @@ extern "C" {
 #define PAL_HAP_IP_SESSION_STORAGE_INBOUND_BUFSIZE ((size_t) 1500)
 
 // Size for the outbound buffer of an IP session.
-#define PAL_HAP_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE ((size_t) 1500)
+#define PAL_HAP_IP_SESSION_STORAGE_OUTBOUND_BUFSIZE ((size_t) 2048)
 
 // Size for the scratch buffer of an IP session.
 #define PAL_HAP_IP_SESSION_STORAGE_SCRATCH_BUFSIZE ((size_t) 1500)
