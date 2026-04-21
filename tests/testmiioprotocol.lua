@@ -4,12 +4,10 @@ local netif = require "netif"
 local hash = require "hash"
 local cipher = require "cipher"
 local json = require "cjson"
-local transport = require "miio.transport"
 local protocol = require "miio.protocol"
 
 local floor = math.floor
 local ipairs = ipairs
-local pairs = pairs
 local spack = string.pack
 local sunpack = string.unpack
 local srep = string.rep
@@ -93,6 +91,18 @@ local function waitFor(mq, timeout)
     return ok, result
 end
 
+local function waitUntil(timeout, predicate)
+    local deadline = floor(core.time()) + timeout
+    while floor(core.time()) < deadline do
+        local result = predicate()
+        if result then
+            return result
+        end
+        core.sleep(5)
+    end
+    return predicate()
+end
+
 local function startUdpDevice(handler)
     local server = socket.create("UDP", "IPV4")
     server:reuseaddr()
@@ -116,171 +126,31 @@ local function startUdpDevice(handler)
     end
 end
 
--- Tests auto-selected transport skips loopback interfaces.
+-- Tests wildcard scan waiter is registered while waiting and removed after timeout.
 do
-    local tp = transport.create()
-    local count = 0
-    for ifname in pairs(tp.sockets) do
-        count = count + 1
-        assert(netif.getIpv4Addr(netif.find(ifname)) ~= "127.0.0.1")
-    end
-    assert(count > 0)
-    tp:close()
-end
+    local bindif = findTestNetif()
+    local runtime = protocol.create({bindif}, 0x1111222233334444)
+    local mq = core.createMQ(1)
 
--- Tests transport creation fails instead of silently dropping requested interfaces.
-do
-    local origSocketCreate = socket.create
-    local origGetInterfaces = netif.getInterfaces
-    local origGetName = netif.getName
-    local origIsUp = netif.isUp
-    local origGetIpv4Addr = netif.getIpv4Addr
-    local origFind = netif.find
+    core.createTimer(function()
+        local ok, results = pcall(runtime.scan, runtime, 50)
+        mq:send(ok, results)
+    end):start(0)
 
-    local destroyed = {}
-    local fakeIfs = {
-        eth0 = {
-            name = "eth0",
-            addr = "192.168.10.2",
-        },
-        wlan0 = {
-            name = "wlan0",
-            addr = "192.168.20.2",
-        },
-    }
-    local nextPort = 40000
+    assert(waitUntil(100, function()
+        local waiters = runtime.scanMqs["*"]
+        return waiters ~= nil and #waiters == 1
+    end))
 
-    local function restore()
-        socket.create = origSocketCreate
-        netif.getInterfaces = origGetInterfaces
-        netif.getName = origGetName
-        netif.isUp = origIsUp
-        netif.getIpv4Addr = origGetIpv4Addr
-        netif.find = origFind
-    end
-
-    local ok, err = pcall(function()
-        netif.getInterfaces = function()
-            return {fakeIfs.eth0, fakeIfs.wlan0}
-        end
-        netif.getName = function(iface)
-            return iface.name
-        end
-        netif.isUp = function(_)
-            return true
-        end
-        netif.getIpv4Addr = function(iface)
-            return iface.addr
-        end
-        netif.find = function(name)
-            return assert(fakeIfs[name])
-        end
-
-        socket.create = function(sockType, familyName)
-            assert(sockType == "UDP")
-            assert(familyName == "IPV4")
-            nextPort = nextPort + 1
-
-            local o = {
-                port = nextPort,
-            }
-
-            function o:settimeout(ms)
-                assert(ms == 0)
-            end
-
-            function o:enablebroadcast() end
-
-            function o:reuseaddr() end
-
-            function o:bindif(ifname)
-                self.ifname = ifname
-                if ifname == "wlan0" then
-                    error("bindif failed")
-                end
-            end
-
-            function o:bind(addr, port)
-                assert(addr == "0.0.0.0")
-                assert(type(port) == "number")
-            end
-
-            function o:getsockname()
-                return "0.0.0.0", self.port
-            end
-
-            function o:destroy()
-                destroyed[self.ifname] = true
-            end
-
-            return o
-        end
-
-        local created, createErr = pcall(transport.create, {"eth0", "wlan0"})
-        assert(created == false)
-        assert(createErr:find("failed to bind miio transport sockets", 1, true) ~= nil)
-        assert(createErr:find("wlan0", 1, true) ~= nil)
-    end)
-
-    restore()
-    assert(ok, err)
-    assert(destroyed.eth0 == true)
-    assert(destroyed.wlan0 == true)
-end
-
--- Tests resident transport send/recv flow, source-port filtering and unsubscribe.
-do
-    local bindif, addr = findTestNetif()
-    local tp = transport.create({bindif})
-    local ctx = assert(tp.sockets[bindif])
-    local _, localPort = ctx.sock:getsockname()
-    assert(localPort == tp.localPort)
-
-    local recvMq = core.createMQ(4)
-    local stopDevice = startUdpDevice(function(msg, fromAddr, fromPort, server)
-        assert(fromAddr == addr)
-        assert(fromPort == tp.localPort)
-
-        if msg == "ping" then
-            assert(server:sendto("pong", fromAddr, fromPort) == 4)
-        elseif msg == "notify" then
-            assert(server:sendto("after-unsub", fromAddr, fromPort) == 11)
-        end
-    end)
-
-    local subId = tp:subscribe(function(data, fromAddr, port, inboundIfname)
-        recvMq:send(true, {
-            data = data,
-            addr = fromAddr,
-            port = port,
-            ifname = inboundIfname,
-        })
-    end)
-
-    assert(tp:sendto("ping", addr, UDP_PORT, bindif) == 1)
-    local ok, packet = waitFor(recvMq, 1000)
+    local ok, results = waitFor(mq, 500)
     assert(ok == true)
-    assert(packet.data == "pong")
-    assert(packet.addr == addr)
-    assert(packet.port == UDP_PORT)
-    assert(packet.ifname == bindif)
+    assert(type(results) == "table")
+    assert(runtime.scanMqs["*"] == nil)
 
-    local other <close> = socket.create("UDP", "IPV4")
-    assert(other:sendto("ignored", addr, tp.localPort) == 7)
-    ok = waitFor(recvMq, 100)
-    assert(ok == false)
-
-    tp:unsubscribe(subId)
-    assert(tp:sendto("notify", addr, UDP_PORT, bindif) == 1)
-    ok = waitFor(recvMq, 100)
-    assert(ok == false)
-
-    stopDevice(addr)
-    tp:close()
-    tp:close()
+    runtime:close()
 end
 
--- Tests protocol.scan/request over the resident transport with a virtual miIO device.
+-- Tests protocol.scan/request over the resident protocol runtime with a virtual miIO device.
 do
     local bindif, addr = findTestNetif()
     local token = "0123456789abcdef"
@@ -326,6 +196,8 @@ do
     assert(results[1].addr == addr)
     assert(results[1].devid == deviceDid)
     assert(results[1].ifname == bindif)
+    assert(runtime.scanMqs[addr] == nil)
+    assert(runtime.scanMqs["*"] == nil)
 
     local pcb = runtime:createPcb(addr, token)
     local result1 = pcb:request(1000, "test.echo", "ping")
@@ -333,11 +205,13 @@ do
     assert(result1[2] == "ping")
     assert(result1[3] == 1)
     assert(pcb.ifname == bindif)
+    assert(runtime.requestMqs[addr] == nil)
 
     local result2 = pcb:request(1000, "test.echo", "pong")
     assert(result2[1] == "test.echo")
     assert(result2[2] == "pong")
     assert(result2[3] == 2)
+    assert(runtime.requestMqs[addr] == nil)
 
     assert(stats.probes == 2)
     assert(stats.requests == 2)
@@ -354,6 +228,8 @@ do
     local deviceStamp = floor(core.time()) - 5
     local enc = createEncryption(token)
     local pending = {}
+    local readyMq = core.createMQ(1)
+    local releaseMq = core.createMQ(1)
 
     local stopDevice = startUdpDevice(function(msg, fromAddr, fromPort, server)
         local ok, did, stamp, data = pcall(unpack, msg)
@@ -376,7 +252,10 @@ do
             return
         end
 
-        for _, item in ipairs(pending) do
+        readyMq:send(true)
+        releaseMq:recv()
+        for i = 1, #pending do
+            local item = pending[i]
             local payload = json.encode({
                 id = item.req.id,
                 result = {
@@ -405,6 +284,15 @@ do
         mq:send("pcb2", ok, result)
     end):start(0)
 
+    local ready = waitFor(readyMq, 1000)
+    assert(ready == true)
+    assert(waitUntil(100, function()
+        local waiters = runtime.requestMqs[addr]
+        return waiters ~= nil and #waiters == 2
+    end))
+
+    releaseMq:send(true)
+
     local results = {}
     for _ = 1, 2 do
         local name, ok, result = mq:recv()
@@ -416,6 +304,56 @@ do
     assert(results.pcb1[2] == "A")
     assert(results.pcb2[1] == "test.echo")
     assert(results.pcb2[2] == "B")
+    assert(runtime.requestMqs[addr] == nil)
+
+    stopDevice(addr)
+    runtime:close()
+end
+
+-- Tests timed out requests remove their waiter entry from the runtime.
+do
+    local bindif, addr = findTestNetif()
+    local token = "0123456789abcdef"
+    local deviceDid = 0x2122232425262728
+    local deviceStamp = floor(core.time()) - 5
+    local requestSeen = core.createMQ(1)
+
+    local stopDevice = startUdpDevice(function(msg, fromAddr, fromPort, server)
+        local ok, did, stamp, data = pcall(unpack, msg)
+        if ok and did == -1 and stamp == 0xffffffff and data == nil then
+            local resp = pack(deviceDid, deviceStamp)
+            assert(server:sendto(resp, fromAddr, fromPort) == #resp)
+            return
+        end
+
+        did, stamp, data = unpack(msg, token)
+        assert(did == deviceDid)
+        requestSeen:send(true, fromAddr, fromPort)
+    end)
+
+    local runtime = protocol.create({bindif}, 0x9999000011112222)
+    local pcb = runtime:createPcb(addr, token)
+    pcb:handshake(1000)
+
+    local mq = core.createMQ(1)
+    core.createTimer(function()
+        local ok, err = pcall(pcb.request, pcb, 60, "test.timeout")
+        mq:send(ok, err)
+    end):start(0)
+
+    local ok = waitFor(requestSeen, 1000)
+    assert(ok == true)
+    assert(waitUntil(100, function()
+        local waiters = runtime.requestMqs[addr]
+        return waiters ~= nil and #waiters == 1
+    end))
+
+    local success, err = waitFor(mq, 500)
+    assert(success == false)
+    assert(tostring(err):find("timeout", 1, true) ~= nil)
+    assert(runtime.requestMqs[addr] == nil)
+    assert(pcb.ifname == nil)
+    assert(pcb.stampDiff == nil)
 
     stopDevice(addr)
     runtime:close()
