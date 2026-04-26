@@ -19,8 +19,8 @@ function socket:reuseaddr() end
 ---Bind a socket to a network interface.
 ---
 ---Call this before `bind`, `connect` or `listen` when you need traffic to stay on a specific interface.
----@param netif netif|string Network interface object or interface name.
-function socket:bindif(netif) end
+---@param ifname string Network interface name.
+function socket:bindif(ifname) end
 
 ---Bind a socket to a local IP address and port.
 ---@param addr string Local address to use.

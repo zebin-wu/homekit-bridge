@@ -35,6 +35,12 @@ typedef struct {
     size_t size;
 } lcore_mq;
 
+typedef struct {
+    lua_State *co;
+    HAPPlatformTimerRef timer;
+    bool with_status;
+} lcore_mq_wait_ctx;
+
 static int lcore_time(lua_State *L) {
     lua_pushnumber(L, HAPPlatformClockGetCurrent());
     return 1;
@@ -272,10 +278,189 @@ static size_t lcore_mq_size(lcore_mq *obj) {
     return obj->first > obj->last ? obj->size - obj->first + obj->last : obj->last - obj->first;
 }
 
+static void lcore_mq_resume(lua_State *L, lua_State *co, int nargs) {
+    int status, nres;
+    lua_xmove(L, co, nargs);
+    status = lc_resume(co, L, nargs, &nres);
+    if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
+        HAPLogError(&lcore_log, "%s: %s", __func__, lua_tostring(L, -1));
+    }
+    lua_pop(L, nres);
+}
+
+static int lcore_mq_recv_ready(lua_State *L, int mq_idx, lcore_mq *obj, bool with_status) {
+    mq_idx = lua_absindex(L, mq_idx);
+    HAPAssert(lua_getuservalue(L, mq_idx) == LUA_TTABLE);
+    int store_idx = lua_gettop(L);
+    lua_geti(L, store_idx, obj->first);
+    lua_pushnil(L);
+    lua_seti(L, store_idx, obj->first);
+    obj->first++;
+    if (obj->first > obj->size + 1) {
+        obj->first = 1;
+    }
+    int nargs = luaL_len(L, store_idx + 1);
+    if (with_status) {
+        lua_pushboolean(L, true);
+    }
+    for (int i = 1; i <= nargs; i++) {
+        lua_geti(L, store_idx + 1, i);
+    }
+    return with_status ? nargs + 1 : nargs;
+}
+
+static bool lcore_mq_wait_remove_at(lua_State *L, int wait_idx, int pos) {
+    wait_idx = lua_absindex(L, wait_idx);
+    int wait_count = luaL_len(L, wait_idx);
+    if (pos != wait_count) {
+        lua_geti(L, wait_idx, wait_count);
+        lua_seti(L, wait_idx, pos);
+    }
+    lua_pushnil(L);
+    lua_seti(L, wait_idx, wait_count);
+    return wait_count == 1;
+}
+
+static void lcore_mq_wait_remove(lua_State *L, lcore_mq_wait_ctx *ctx) {
+    if (lua_rawgetp(L, LUA_REGISTRYINDEX, ctx) != LUA_TUSERDATA) {
+        lua_pop(L, 1);
+        return;
+    }
+
+    int ctx_idx = lua_gettop(L);
+    HAPAssert(lua_getiuservalue(L, ctx_idx, 1) == LUA_TUSERDATA);
+    int mq_idx = lua_gettop(L);
+    HAPAssert(lua_getuservalue(L, mq_idx) == LUA_TTABLE);
+    int store_idx = lua_gettop(L);
+    if (lua_getfield(L, store_idx, "wait") == LUA_TTABLE) {
+        int wait_idx = lua_gettop(L);
+        int wait_count = luaL_len(L, wait_idx);
+        for (int i = 1; i <= wait_count; i++) {
+            if (lua_geti(L, wait_idx, i) == LUA_TUSERDATA && lua_touserdata(L, -1) == ctx) {
+                lua_pop(L, 1);
+                if (lcore_mq_wait_remove_at(L, wait_idx, i)) {
+                    lua_pushnil(L);
+                    lua_setfield(L, store_idx, "wait");
+                }
+                break;
+            }
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 1);
+    } else {
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 3);
+}
+
+static void lcore_mq_waitctx_release(lua_State *L, int idx, bool cancel_timer) {
+    idx = lua_absindex(L, idx);
+    lcore_mq_wait_ctx *ctx = lua_touserdata(L, idx);
+
+    if (cancel_timer && ctx->timer) {
+        HAPPlatformTimerDeregister(ctx->timer);
+    }
+    ctx->timer = 0;
+
+    lua_pushnil(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, ctx);
+    lua_pushnil(L);
+    lua_setiuservalue(L, idx, 1);
+    ctx->co = NULL;
+}
+
+static int lcore_mq_wait_timeout_resume(lua_State *L) {
+    lcore_mq_wait_ctx *ctx = lua_touserdata(L, 1);
+    lua_pop(L, 1);
+
+    if (lua_rawgetp(L, LUA_REGISTRYINDEX, ctx) != LUA_TUSERDATA) {
+        lua_pop(L, 1);
+        return 0;
+    }
+
+    lua_State *co = ctx->co;
+    lcore_mq_wait_remove(L, ctx);
+    lcore_mq_waitctx_release(L, -1, false);
+    lua_pop(L, 1);
+
+    if (!co) {
+        return 0;
+    }
+
+    lua_pushboolean(L, false);
+    lua_pushliteral(L, "timeout");
+    lcore_mq_resume(L, co, 2);
+    return 0;
+}
+
+static void lcore_mq_wait_timeout_cb(HAPPlatformTimerRef timer, void *context) {
+    lcore_mq_wait_ctx *ctx = context;
+    if (!ctx->co) {
+        return;
+    }
+    lua_State *L = lc_getmainthread(ctx->co);
+
+    ctx->timer = 0;
+
+    HAPAssert(lua_gettop(L) == 0);
+
+    lc_pushtraceback(L);
+    lua_pushcfunction(L, lcore_mq_wait_timeout_resume);
+    lua_pushlightuserdata(L, ctx);
+    int status = lua_pcall(L, 1, 0, 1);
+    if (luai_unlikely(status != LUA_OK)) {
+        HAPLogError(&lcore_log, "%s: %s", __func__, lua_tostring(L, -1));
+    }
+
+    lua_settop(L, 0);
+    lc_collectgarbage(L);
+}
+
+static int lcore_mq_wait(lua_State *L, int mq_idx, bool with_status, HAPTime deadline) {
+    mq_idx = lua_absindex(L, mq_idx);
+    HAPAssert(lua_getuservalue(L, mq_idx) == LUA_TTABLE);
+    int store_idx = lua_gettop(L);
+    int type = lua_getfield(L, store_idx, "wait");
+    if (type == LUA_TNIL) {
+        lua_pop(L, 1);
+        lua_createtable(L, 1, 0);
+        lua_pushvalue(L, -1);
+        lua_setfield(L, store_idx, "wait");
+    } else {
+        HAPAssert(type == LUA_TTABLE);
+    }
+
+    int wait_idx = lua_gettop(L);
+    lcore_mq_wait_ctx *ctx = lua_newuserdatauv(L, sizeof(*ctx), 1);
+    ctx->co = L;
+    ctx->timer = 0;
+    ctx->with_status = with_status;
+    lua_pushvalue(L, mq_idx);
+    lua_setiuservalue(L, -2, 1);
+
+    int wait_pos = luaL_len(L, wait_idx) + 1;
+    lua_pushvalue(L, -1);
+    lua_seti(L, wait_idx, wait_pos);
+    if (deadline) {
+        lua_pushvalue(L, -1);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, ctx);
+        if (luai_unlikely(HAPPlatformTimerRegister(&ctx->timer,
+            deadline, lcore_mq_wait_timeout_cb, ctx) != kHAPError_None)) {
+            if (lcore_mq_wait_remove_at(L, wait_idx, wait_pos)) {
+                lua_pushnil(L);
+                lua_setfield(L, store_idx, "wait");
+            }
+            lcore_mq_waitctx_release(L, -1, false);
+            luaL_error(L, "failed to create a timer");
+        }
+    }
+    lua_pop(L, 3);
+    return lua_yield(L, 0);
+}
+
 static int lcore_mq_send(lua_State *L) {
     lcore_mq *obj = luaL_checkudata(L, 1, LUA_MQ_OBJ_NAME);
     int narg = lua_gettop(L) - 1;
-    int status, nres;
 
     lua_getuservalue(L, 1);
 
@@ -284,22 +469,25 @@ static int lcore_mq_send(lua_State *L) {
         lua_setfield(L, -3, "wait");  // que.wait = nil
         int waiting = luaL_len(L, -1);
         for (int i = 1; i <= waiting; i++) {
-            HAPAssert(lua_geti(L, -1, i) == LUA_TTHREAD);
-            lua_State *co = lua_tothread(L, -1);
+            HAPAssert(lua_geti(L, -1, i) == LUA_TUSERDATA);
+            lcore_mq_wait_ctx *ctx = lua_touserdata(L, -1);
+            lua_State *co = ctx->co;
+            bool with_status = ctx->with_status;
+            lcore_mq_waitctx_release(L, -1, true);
             lua_pop(L, 1);
-            int max = 1 + narg;
-            if (luai_unlikely(!lua_checkstack(L, narg))) {
+            int nargs = narg + with_status;
+            if (luai_unlikely(!lua_checkstack(L, nargs))) {
                 luaL_error(L, "stack overflow");
             }
-            for (int i = 2; i <= max; i++) {
-                lua_pushvalue(L, i);
+            if (with_status) {
+                lua_pushboolean(L, true);
             }
-            lua_xmove(L, co, narg);
-            status = lc_resume(co, L, narg, &nres);
-            if (luai_unlikely(status != LUA_OK && status != LUA_YIELD)) {
-                HAPLogError(&lcore_log, "%s: %s", __func__, lua_tostring(L, -1));
+            for (int j = 2; j <= 1 + narg; j++) {
+                lua_pushvalue(L, j);
             }
-            lua_pop(L, nres);
+            if (co) {
+                lcore_mq_resume(L, co, nargs);
+            }
         }
     } else {
         if (lcore_mq_size(obj) == obj->size) {
@@ -326,37 +514,30 @@ static int lcore_mq_recv(lua_State *L) {
     if (lua_gettop(L) != 1) {
         luaL_error(L, "invalid arguements");
     }
-    lua_getuservalue(L, 1);
     if (obj->last == obj->first) {
-        int type = lua_getfield(L, 2, "wait");
-        if (type == LUA_TNIL) {
-            lua_pop(L, 1);
-            lua_createtable(L, 1, 0);
-            lua_pushthread(L);
-            lua_seti(L, 3, 1);
-            lua_setfield(L, 2, "wait");
-        } else {
-            HAPAssert(type == LUA_TTABLE);
-            lua_pushthread(L);
-            lua_seti(L, 3, luaL_len(L, 3) + 1);
-            lua_pop(L, 1);
-        }
-        lua_pop(L, 1);
-        return lua_yield(L, 0);
+        return lcore_mq_wait(L, 1, false, 0);
     } else {
-        lua_geti(L, 2, obj->first);
-        lua_pushnil(L);
-        lua_seti(L, 2, obj->first);
-        obj->first++;
-        if (obj->first > obj->size + 1) {
-            obj->first = 1;
-        }
-        int nargs = luaL_len(L, 3);
-        for (int i = 1; i <= nargs; i++) {
-            lua_geti(L, 3, i);
-        }
-        return nargs;
+        return lcore_mq_recv_ready(L, 1, obj, false);
     }
+}
+
+static int lcore_mq_recv_until(lua_State *L) {
+    lcore_mq *obj = luaL_checkudata(L, 1, LUA_MQ_OBJ_NAME);
+    lua_Integer deadline = luaL_checkinteger(L, 2);
+    luaL_argcheck(L, deadline >= 0, 2, "deadline out of range");
+    if (lua_gettop(L) != 2) {
+        luaL_error(L, "invalid arguements");
+    }
+    if (obj->last != obj->first) {
+        return lcore_mq_recv_ready(L, 1, obj, true);
+    }
+
+    if ((HAPTime)deadline <= HAPPlatformClockGetCurrent()) {
+        lua_pushboolean(L, false);
+        lua_pushliteral(L, "timeout");
+        return 2;
+    }
+    return lcore_mq_wait(L, 1, true, (HAPTime)deadline);
 }
 
 static int lcore_mq_tostring(lua_State *L) {
@@ -380,6 +561,7 @@ static const luaL_Reg lcore_mq_metameth[] = {
 static const luaL_Reg lcore_mq_meth[] = {
     {"send", lcore_mq_send},
     {"recv", lcore_mq_recv},
+    {"recvUntil", lcore_mq_recv_until},
     {NULL, NULL},
 };
 

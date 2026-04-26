@@ -10,6 +10,7 @@ local timer = {}
 local mq = {}
 
 ---Get current time in milliseconds.
+---@return integer time
 function core.time() end
 
 ---Cause normal program termination.
@@ -47,9 +48,20 @@ function mq:send(...) end
 ---
 ---When the message queue is empty, the current coroutine
 ---waits here until a message is received.
----@return ...
+---@return any ...
 ---@nodiscard
 function mq:recv() end
+
+---Receive message until the deadline.
+---
+---When the message queue is empty, the current coroutine
+---waits here until a message is received or the deadline expires.
+---Returns ``true, ...`` on success, or ``false, "timeout"`` on timeout.
+---@param deadline integer Absolute deadline in milliseconds.
+---@return boolean success
+---@return any ...
+---@nodiscard
+function mq:recvUntil(deadline) end
 
 ---Create a message queue.
 ---@param size integer Queue size.

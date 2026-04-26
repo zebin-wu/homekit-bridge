@@ -123,6 +123,19 @@ static int lnetif_wait(lua_State *L) {
     return lua_yieldk(L, 0, (lua_KContext)ctx, finishwait);
 }
 
+static int lnetif_get_name(lua_State *L) {
+    luaL_argcheck(L, lua_islightuserdata(L, 1), 1, "not a lightuserdata");
+    pal_net_if *netif = lua_touserdata(L, 1);
+
+    char buf[PAL_NET_IF_NAME_MAX_LEN];
+    pal_err err = pal_net_if_get_name(netif, buf);
+    if (err != PAL_ERR_OK) {
+        luaL_error(L, "failed to get name: %s", pal_err_string(err));
+    }
+    lua_pushstring(L, buf);
+    return 1;
+}
+
 static int lnetif_is_up(lua_State *L) {
     luaL_argcheck(L, lua_islightuserdata(L, 1), 1, "not a lightuserdata");
     pal_net_if *netif = lua_touserdata(L, 1);
@@ -176,6 +189,7 @@ static const luaL_Reg lnetif_funcs[] = {
     {"getInterfaces", lnetif_get_interfaces},
     {"find", lnetif_find},
     {"wait", lnetif_wait},
+    {"getName", lnetif_get_name},
     {"isUp", lnetif_is_up},
     {"getIpv4Addr", lnetif_get_ipv4_addr},
     {"getIpv6Addrs", lnetif_get_ipv6_addrs},

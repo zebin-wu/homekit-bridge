@@ -53,7 +53,7 @@ function M.init()
         for _, device in ipairs(devices) do
             if device.ssid == ssid then
                 local sn = device.mac:gsub(":", "")
-                local handle = nvs.open(sn)
+                local handle <close> = nvs.open(sn)
                 tinsert(confs, {
                     aid = hapUtil.getBridgedAccessoryIID(handle),
                     iids = hapUtil.getInstanceIDs(handle),
@@ -79,7 +79,7 @@ function M.init()
         if success == false then
             logger:error(result)
         else
-            table.insert(accessories, result)
+            tinsert(accessories, result)
         end
     end
     return accessories
